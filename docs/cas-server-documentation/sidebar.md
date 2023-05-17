@@ -676,7 +676,7 @@ layout: null
         *   [Clickatell](/cas/{{ version }}/notifications/SMS-Messaging-Configuration-Clickatell.html)
         *   [SmsMode](/cas/{{ version }}/notifications/SMS-Messaging-Configuration-SmsMode.html)
         *   [Amazon SNS](/cas/{{ version }}/notifications/SMS-Messaging-Configuration-AmazonSNS.html)
-        *   [Nexmo](/cas/{{ version }}/notifications/SMS-Messaging-Configuration-Nexmo.html)
+        *   [Vonage (Nexmo)](/cas/{{ version }}/notifications/SMS-Messaging-Configuration-Vonage.html)
     *   [Sending Notifications](/cas/{{ version }}/notifications/Notifications-Configuration.html)
 
 * [Integration](#appintegration)

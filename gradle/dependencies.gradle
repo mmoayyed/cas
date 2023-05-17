@@ -2182,7 +2182,7 @@ ext.libraries = [
             exclude(group: "javax.xml.bind", module: "jaxb-api")
             exclude(group: "org.apache.httpcomponents", module: "httpclient")
         },
-        nexmo                      : dependencies.create("com.nexmo:client:$nexmoVersion") {
+        vonage                      : dependencies.create("com.vonage:client:$vonageVersion") {
             exclude(group: "org.slf4j", module: "slf4j-api")
             exclude(group: "com.fasterxml.jackson.core", module: "jackson-annotations")
             exclude(group: "com.fasterxml.jackson.core", module: "jackson-databind")

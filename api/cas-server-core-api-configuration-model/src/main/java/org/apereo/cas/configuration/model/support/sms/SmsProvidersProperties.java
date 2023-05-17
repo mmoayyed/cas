@@ -58,7 +58,7 @@ public class SmsProvidersProperties implements Serializable {
      * Nexmo settings.
      */
     @NestedConfigurationProperty
-    private NexmoProperties nexmo = new NexmoProperties();
+    private VonageProperties vonage = new VonageProperties();
 
     /**
      * Groovy script for sending sms notifications.
