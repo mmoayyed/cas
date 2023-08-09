@@ -16,6 +16,7 @@ import org.apereo.cas.configuration.model.support.jaas.JaasAuthenticationPropert
 import org.apereo.cas.configuration.model.support.jdbc.JdbcAuthenticationProperties;
 import org.apereo.cas.configuration.model.support.ldap.LdapAuthenticationProperties;
 import org.apereo.cas.configuration.model.support.mfa.MultifactorAuthenticationProperties;
+import org.apereo.cas.configuration.model.support.midpoint.MidPointAuthenticationProperties;
 import org.apereo.cas.configuration.model.support.mongo.MongoDbAuthenticationProperties;
 import org.apereo.cas.configuration.model.support.oauth.OAuthProperties;
 import org.apereo.cas.configuration.model.support.oidc.OidcProperties;
@@ -109,6 +110,12 @@ public class AuthenticationProperties implements Serializable {
      */
     @NestedConfigurationProperty
     private SyncopeAuthenticationProperties syncope = new SyncopeAuthenticationProperties();
+
+    /**
+     * midPoint authentication settings.
+     */
+    @NestedConfigurationProperty
+    private MidPointAuthenticationProperties midpoint = new MidPointAuthenticationProperties();
 
     /**
      * Azure AD authentication settings.

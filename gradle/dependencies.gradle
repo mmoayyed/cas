@@ -255,6 +255,13 @@ ext.libraries = [
                     exclude(group: "com.squareup.okio", module: "okio")
                 }
         ],
+        midpointclient : [
+                dependencies.create("com.evolveum.midpoint.client:midpoint-client-impl-prism:$midpointClientVersion") {
+                    exclude(group: "org.slf4j", module: "slf4j-api")
+                    exclude(group: "ch.qos.logback", module: "logback-core")
+                    exclude(group: "ch.qos.logback", module: "logback-classic")
+                }
+        ],
         bouncycastle               : [
                 dependencies.create("org.bouncycastle:bcpkix-jdk18on:$bouncyCastleVersion") {
                     exclude(group: "commons-cli", module: "commons-cli")

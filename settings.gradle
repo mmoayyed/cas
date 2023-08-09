@@ -49,10 +49,17 @@ dependencyResolutionManagement {
         }
         maven {
             url "https://build.shibboleth.net/maven/releases/"
-            mavenContent {releasesOnly() }
+            mavenContent { releasesOnly() }
             content {
                 includeGroupByRegex "org\\.opensaml.*"
                 includeGroupByRegex "net\\.shibboleth.*"
+            }
+        }
+        maven {
+            url "https://nexus.evolveum.com/nexus/repository/releases/"
+            mavenContent { releasesOnly() }
+            content {
+                includeGroupByRegex "com\\.evolveum.*"
             }
         }
         maven {
@@ -335,6 +342,7 @@ include "support:cas-server-support-memcached-monitor"
 include "support:cas-server-support-memcached-spy"
 include "support:cas-server-support-memcached-ticket-registry"
 include "support:cas-server-support-metrics"
+include "support:cas-server-support-midpoint"
 include "support:cas-server-support-mongo"
 include "support:cas-server-support-mongo-core"
 include "support:cas-server-support-mongo-monitor"
