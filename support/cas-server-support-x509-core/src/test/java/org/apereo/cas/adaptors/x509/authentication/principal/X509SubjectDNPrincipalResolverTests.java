@@ -18,6 +18,10 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.cloud.autoconfigure.RefreshAutoConfiguration;
+import org.springframework.context.ConfigurableApplicationContext;
 
 import javax.security.auth.x500.X500Principal;
 import java.security.cert.X509Certificate;
@@ -31,6 +35,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * @since 3.0.0
  */
 @Tag("X509")
+@SpringBootTest(classes = RefreshAutoConfiguration.class)
 class X509SubjectDNPrincipalResolverTests {
     private static final CasX509Certificate VALID_CERTIFICATE = new CasX509Certificate(true);
 
@@ -44,6 +49,9 @@ class X509SubjectDNPrincipalResolverTests {
     @Mock
     private AttributeDefinitionStore attributeDefinitionStore;
 
+    @Autowired
+    private ConfigurableApplicationContext applicationContext;
+    
     @BeforeEach
     public void before() throws Exception {
         MockitoAnnotations.openMocks(this).close();
@@ -61,6 +69,7 @@ class X509SubjectDNPrincipalResolverTests {
             .principalNameTransformer(formUserId -> formUserId)
             .useCurrentPrincipalId(false)
             .resolveAttributes(true)
+            .applicationContext(applicationContext)
             .activeAttributeRepositoryIdentifiers(CollectionUtils.wrapSet(IPersonAttributeDao.WILDCARD))
             .build();
         resolver = new X509SubjectDNPrincipalResolver(context);
@@ -71,20 +80,20 @@ class X509SubjectDNPrincipalResolverTests {
     }
 
     @Test
-    void verifyResolvePrincipalInternal() {
-        val c = new X509CertificateCredential(new X509Certificate[]{VALID_CERTIFICATE});
-        c.setCertificate(VALID_CERTIFICATE);
-        assertEquals(VALID_CERTIFICATE.getSubjectDN().getName(), this.resolver.resolve(c,
+    void verifyResolvePrincipalInternal() throws Throwable {
+        val credential = new X509CertificateCredential(new X509Certificate[]{VALID_CERTIFICATE});
+        credential.setCertificate(VALID_CERTIFICATE);
+        assertEquals(VALID_CERTIFICATE.getSubjectDN().getName(), this.resolver.resolve(credential,
             Optional.of(CoreAuthenticationTestUtils.getPrincipal()),
             Optional.of(new SimpleTestUsernamePasswordAuthenticationHandler()),
             Optional.of(CoreAuthenticationTestUtils.getService())).getId());
     }
 
     @Test
-    void verifyResolvePrincipalInternalRFC2253() {
-        val c = new X509CertificateCredential(new X509Certificate[]{VALID_CERTIFICATE});
-        c.setCertificate(VALID_CERTIFICATE);
-        assertEquals(VALID_CERTIFICATE.getSubjectX500Principal().getName(X500Principal.RFC2253), this.resolverRFC2253.resolve(c,
+    void verifyResolvePrincipalInternalRFC2253() throws Throwable {
+        val credential = new X509CertificateCredential(new X509Certificate[]{VALID_CERTIFICATE});
+        credential.setCertificate(VALID_CERTIFICATE);
+        assertEquals(VALID_CERTIFICATE.getSubjectX500Principal().getName(X500Principal.RFC2253), this.resolverRFC2253.resolve(credential,
             Optional.of(CoreAuthenticationTestUtils.getPrincipal()),
             Optional.of(new SimpleTestUsernamePasswordAuthenticationHandler()),
             Optional.of(CoreAuthenticationTestUtils.getService())).getId());
@@ -92,13 +101,13 @@ class X509SubjectDNPrincipalResolverTests {
 
 
     @Test
-    void verifySupport() {
+    void verifySupport() throws Throwable {
         val c = new X509CertificateCredential(new X509Certificate[]{VALID_CERTIFICATE});
         assertTrue(this.resolver.supports(c));
     }
 
     @Test
-    void verifySupportFalse() {
+    void verifySupportFalse() throws Throwable {
         assertFalse(this.resolver.supports(new UsernamePasswordCredential()));
     }
 }

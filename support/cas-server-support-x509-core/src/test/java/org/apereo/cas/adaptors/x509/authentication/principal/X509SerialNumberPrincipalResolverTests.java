@@ -18,6 +18,10 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.cloud.autoconfigure.RefreshAutoConfiguration;
+import org.springframework.context.ConfigurableApplicationContext;
 
 import java.math.BigInteger;
 import java.security.cert.X509Certificate;
@@ -32,6 +36,7 @@ import static org.mockito.Mockito.*;
  * @since 3.0.0.6
  */
 @Tag("X509")
+@SpringBootTest(classes = RefreshAutoConfiguration.class)
 class X509SerialNumberPrincipalResolverTests {
     private static final CasX509Certificate VALID_CERTIFICATE = new CasX509Certificate(true);
 
@@ -44,6 +49,9 @@ class X509SerialNumberPrincipalResolverTests {
 
     @Mock
     private AttributeDefinitionStore attributeDefinitionStore;
+
+    @Autowired
+    private ConfigurableApplicationContext applicationContext;
 
     @BeforeEach
     public void setup() throws Exception {
@@ -58,6 +66,7 @@ class X509SerialNumberPrincipalResolverTests {
             .principalNameTransformer(formUserId -> formUserId)
             .useCurrentPrincipalId(false)
             .resolveAttributes(true)
+            .applicationContext(applicationContext)
             .activeAttributeRepositoryIdentifiers(CollectionUtils.wrapSet(IPersonAttributeDao.WILDCARD))
             .build();
         resolver = new X509SerialNumberPrincipalResolver(resolutionContext);
@@ -65,7 +74,7 @@ class X509SerialNumberPrincipalResolverTests {
     }
 
     @Test
-    void verifyResolvePrincipalInternal() {
+    void verifyResolvePrincipalInternal() throws Throwable {
         val credential = new X509CertificateCredential(new X509Certificate[]{VALID_CERTIFICATE});
         credential.setCertificate(VALID_CERTIFICATE);
         assertEquals(VALID_CERTIFICATE.getSerialNumber().toString(),
@@ -75,18 +84,18 @@ class X509SerialNumberPrincipalResolverTests {
     }
 
     @Test
-    void verifySupport() {
+    void verifySupport() throws Throwable {
         val credential = new X509CertificateCredential(new X509Certificate[]{VALID_CERTIFICATE});
         assertTrue(this.resolver.supports(credential));
     }
 
     @Test
-    void verifySupportFalse() {
+    void verifySupportFalse() throws Throwable {
         assertFalse(this.resolver.supports(new UsernamePasswordCredential()));
     }
 
     @Test
-    void verifyHexPrincipalOdd() {
+    void verifyHexPrincipalOdd() throws Throwable {
         val r = new X509SerialNumberPrincipalResolver(resolutionContext);
         r.setRadix(16);
         r.setZeroPadding(true);
@@ -98,7 +107,7 @@ class X509SerialNumberPrincipalResolverTests {
     }
 
     @Test
-    void verifyHexPrincipalOddFalse() {
+    void verifyHexPrincipalOddFalse() throws Throwable {
         val r = new X509SerialNumberPrincipalResolver(resolutionContext);
         r.setRadix(16);
         val mockCert = mock(X509Certificate.class);
@@ -109,7 +118,7 @@ class X509SerialNumberPrincipalResolverTests {
     }
 
     @Test
-    void verifyHexPrincipalEven() {
+    void verifyHexPrincipalEven() throws Throwable {
         val r = new X509SerialNumberPrincipalResolver(resolutionContext);
         r.setRadix(16);
         r.setZeroPadding(true);

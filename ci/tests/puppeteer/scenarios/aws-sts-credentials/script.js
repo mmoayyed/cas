@@ -1,9 +1,9 @@
 const assert = require('assert');
 const cas = require('../../cas.js');
 
-(async () => {
-    await cas.doPost("https://localhost:8443/cas/actuator/awsSts?duration=PT15S",
-        "username=casuser&password=Mellon", {
+(async () =>
+    await cas.doPost("https://localhost:8443/cas/actuator/awsSts",
+        "username=casuser&password=Mellon&duration=PT15S", {
             'Content-Type': "application/x-www-form-urlencoded"
         },
         res => {
@@ -16,5 +16,4 @@ const cas = require('../../cas.js');
         },
         () => {
             throw 'Unable to fetch credentials';
-        });
-})();
+        }))();

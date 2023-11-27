@@ -1,7 +1,6 @@
 package org.apereo.cas.syncope;
 
 import org.apereo.cas.authentication.AuthenticationHandlerExecutionResult;
-import org.apereo.cas.authentication.PreventedException;
 import org.apereo.cas.authentication.credential.UsernamePasswordCredential;
 import org.apereo.cas.authentication.exceptions.AccountDisabledException;
 import org.apereo.cas.authentication.exceptions.AccountPasswordMustChangeException;
@@ -11,9 +10,11 @@ import org.apereo.cas.configuration.model.support.syncope.SyncopeAuthenticationP
 import org.apereo.cas.monitor.Monitorable;
 import org.apereo.cas.services.ServicesManager;
 import org.apereo.cas.util.CollectionUtils;
-import org.apereo.cas.util.HttpUtils;
 import org.apereo.cas.util.function.FunctionUtils;
+import org.apereo.cas.util.http.HttpExecutionRequest;
+import org.apereo.cas.util.http.HttpUtils;
 import org.apereo.cas.util.serialization.JacksonObjectMapperFactory;
+import org.apereo.cas.util.spring.SpringExpressionLanguageValueResolver;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
@@ -25,7 +26,6 @@ import org.apache.hc.core5.http.HttpStatus;
 import org.apache.hc.core5.http.io.entity.EntityUtils;
 import org.springframework.http.HttpMethod;
 import javax.security.auth.login.FailedLoginException;
-import java.security.GeneralSecurityException;
 import java.util.ArrayList;
 import java.util.Objects;
 import java.util.Optional;
@@ -57,8 +57,7 @@ public class SyncopeAuthenticationHandler extends AbstractUsernamePasswordAuthen
 
     @Override
     protected AuthenticationHandlerExecutionResult authenticateUsernamePasswordInternal(
-        final UsernamePasswordCredential credential, final String originalPassword)
-        throws GeneralSecurityException, PreventedException {
+        final UsernamePasswordCredential credential, final String originalPassword) throws Throwable {
         val result = authenticateSyncopeUser(credential);
         if (result.isPresent()) {
             val user = result.get();
@@ -79,8 +78,8 @@ public class SyncopeAuthenticationHandler extends AbstractUsernamePasswordAuthen
     protected Optional<JsonNode> authenticateSyncopeUser(final UsernamePasswordCredential credential) {
         HttpResponse response = null;
         try {
-            val syncopeRestUrl = StringUtils.appendIfMissing(properties.getUrl(), "/rest/users/self");
-            val exec = HttpUtils.HttpExecutionRequest.builder()
+            val syncopeRestUrl = StringUtils.appendIfMissing(SpringExpressionLanguageValueResolver.getInstance().resolve(properties.getUrl()), "/rest/users/self");
+            val exec = HttpExecutionRequest.builder()
                 .method(HttpMethod.GET)
                 .url(syncopeRestUrl)
                 .basicAuthUsername(credential.getUsername())

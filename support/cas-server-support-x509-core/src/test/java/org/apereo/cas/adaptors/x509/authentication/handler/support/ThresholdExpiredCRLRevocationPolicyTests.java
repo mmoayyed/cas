@@ -19,7 +19,7 @@ import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.stream.Stream;
 
-import static org.apereo.cas.util.junit.Assertions.assertThrowsOrNot;
+import static org.apereo.cas.util.junit.Assertions.*;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 
 /**
@@ -74,11 +74,11 @@ class ThresholdExpiredCRLRevocationPolicyTests {
     }
 
     /**
-     * Test method for {@link ThresholdExpiredCRLRevocationPolicy#apply(java.security.cert.X509CRL)}.
+     * Test method for {@link ThresholdExpiredCRLRevocationPolicy#apply(X509CRL)}.
      */
     @ParameterizedTest
     @MethodSource("getTestParameters")
-    public void verifyApply(final ThresholdExpiredCRLRevocationPolicy policy, final X509CRL crl, final GeneralSecurityException expected) {
+    void verifyApply(final ThresholdExpiredCRLRevocationPolicy policy, final X509CRL crl, final GeneralSecurityException expected) {
         assertThrowsOrNot(expected, () -> policy.apply(crl));
     }
 }

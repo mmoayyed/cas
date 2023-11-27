@@ -3,6 +3,7 @@ package org.apereo.cas.validation;
 import org.apereo.cas.authentication.AuthenticationEventExecutionPlan;
 import org.apereo.cas.authentication.AuthenticationHandler;
 import org.apereo.cas.authentication.principal.Service;
+import org.apereo.cas.services.RegisteredService;
 import org.apereo.cas.services.RegisteredServiceAccessStrategyUtils;
 import org.apereo.cas.services.ServicesManager;
 import org.apereo.cas.services.UnauthorizedServiceException;
@@ -12,12 +13,11 @@ import org.apereo.cas.util.LoggingUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
-import org.apache.commons.lang3.StringUtils;
 import org.springframework.context.ConfigurableApplicationContext;
 
 import jakarta.servlet.http.HttpServletRequest;
 
-import java.util.Optional;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -37,14 +37,14 @@ public class AuthenticationPolicyAwareServiceTicketValidationAuthorizer implemen
 
     @Override
     public void authorize(final HttpServletRequest request, final Service service, final Assertion assertion) {
-        val registeredService = this.servicesManager.findServiceBy(service);
+        val registeredService = servicesManager.findServiceBy(service);
         RegisteredServiceAccessStrategyUtils.ensureServiceAccessIsAllowed(service, registeredService);
 
         LOGGER.debug("Evaluating service [{}] to ensure required authentication handlers can satisfy assertion", service);
         val primaryAuthentication = assertion.getPrimaryAuthentication();
         val attributes = primaryAuthentication.getAttributes();
         if (!attributes.containsKey(AuthenticationHandler.SUCCESSFUL_AUTHENTICATION_HANDLERS)) {
-            throw new UnauthorizedServiceException(UnauthorizedServiceException.CODE_UNAUTHZ_SERVICE, StringUtils.EMPTY);
+            throw UnauthorizedServiceException.denied("Unauthorized: %s".formatted(service.getId()));
         }
         val successfulHandlerNames = CollectionUtils.toCollection(attributes.get(AuthenticationHandler.SUCCESSFUL_AUTHENTICATION_HANDLERS));
         val assertedHandlers = authenticationEventExecutionPlan.getAuthenticationHandlers()
@@ -53,17 +53,18 @@ public class AuthenticationPolicyAwareServiceTicketValidationAuthorizer implemen
             .collect(Collectors.toSet());
 
         val policies = authenticationEventExecutionPlan.getAuthenticationPolicies(primaryAuthentication);
-        policies.forEach(p -> {
+        policies.forEach(policy -> {
             try {
-                val simpleName = p.getClass().getSimpleName();
+                val simpleName = policy.getClass().getSimpleName();
                 LOGGER.trace("Executing authentication policy [{}]", simpleName);
-                val result = p.isSatisfiedBy(primaryAuthentication, assertedHandlers, applicationContext, Optional.of(assertion));
+                val result = policy.isSatisfiedBy(primaryAuthentication, assertedHandlers, applicationContext,
+                    Map.of(Assertion.class.getName(), assertion, RegisteredService.class.getName(), registeredService));
                 if (!result.isSuccess()) {
-                    throw new UnauthorizedServiceException(UnauthorizedServiceException.CODE_UNAUTHZ_SERVICE, StringUtils.EMPTY);
+                    throw UnauthorizedServiceException.denied("Unauthorized: %s".formatted(service.getId()));
                 }
-            } catch (final Exception e) {
+            } catch (final Throwable e) {
                 LoggingUtils.error(LOGGER, e);
-                throw new UnauthorizedServiceException(UnauthorizedServiceException.CODE_UNAUTHZ_SERVICE, StringUtils.EMPTY);
+                throw UnauthorizedServiceException.denied("Unauthorized: %s".formatted(service.getId()));
             }
         });
     }

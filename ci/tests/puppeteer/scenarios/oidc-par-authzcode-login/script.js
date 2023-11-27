@@ -8,7 +8,7 @@ const assert = require('assert');
 
     await page.setRequestInterception(true);
 
-    page.once("request", interceptedRequest => {
+    page.once("request", interceptedRequest =>
         interceptedRequest.continue({
             'method': 'POST',
             'postData': 'response_type=code&'
@@ -21,8 +21,7 @@ const assert = require('assert');
                 ...interceptedRequest.headers(),
                 "Content-Type": "application/x-www-form-urlencoded"
             }
-        });
-    });
+        }));
 
     const response = await page.goto('https://localhost:8443/cas/oidc/oidcPushAuthorize');
     const responseBody = await response.text();
@@ -46,13 +45,16 @@ const assert = require('assert');
     }
 
     let code = await cas.assertParameter(page, "code");
-    console.log(`Current code is ${code}`);
+    await cas.log(`Current code is ${code}`);
     const accessTokenUrl = `https://localhost:8443/cas/oidc/token?grant_type=authorization_code`
         + `&client_id=client&client_secret=secret&redirect_uri=https://apereo.github.io&code=${code}`;
-    await cas.goto(page, accessTokenUrl);
-    await page.waitForTimeout(3000);
-    let content = await cas.textContent(page, "body");
-    const payload = JSON.parse(content);
+    let payload = await cas.doPost(accessTokenUrl, "", {
+        'Content-Type': "application/json"
+    }, res => {
+        return res.data;
+    }, error => {
+        throw `Operation failed to obtain access token: ${error}`;
+    });
     assert(payload.access_token != null);
     assert(payload.token_type != null);
     assert(payload.expires_in != null);
@@ -72,7 +74,7 @@ const assert = require('assert');
     assert(decoded["name"] !== null);
 
     let profileUrl = `https://localhost:8443/cas/oidc/profile?access_token=${payload.access_token }`;
-    console.log(`Calling user profile ${profileUrl}`);
+    await cas.log(`Calling user profile ${profileUrl}`);
 
     await cas.doPost(profileUrl, "", {
         'Content-Type': "application/json"

@@ -2,7 +2,6 @@ package org.apereo.cas.services.web;
 
 import org.apereo.cas.BaseThymeleafTests;
 import org.apereo.cas.validation.CasProtocolViewFactory;
-
 import lombok.val;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -14,16 +13,11 @@ import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
-import org.springframework.mock.web.MockServletContext;
 import org.springframework.web.servlet.View;
-import org.springframework.webflow.context.servlet.ServletExternalContext;
-import org.springframework.webflow.test.MockRequestContext;
 import org.thymeleaf.spring6.view.AbstractThymeleafView;
 import org.thymeleaf.spring6.view.ThymeleafViewResolver;
-
 import java.util.Locale;
 import java.util.Map;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -51,16 +45,14 @@ class CasThymeleafViewResolverConfigurerTests {
     private ThemeViewResolverFactory themeViewResolverFactory;
 
     @Test
-    void verifyOperation() throws Exception {
+    void verifyOperation() throws Throwable {
         val view = thymeleafViewResolver.resolveViewName("testTemplate", Locale.ENGLISH);
         assertNotNull(view);
         assertTrue(((AbstractThymeleafView) view).getStaticVariables().containsKey("cas"));
         assertTrue(((AbstractThymeleafView) view).getStaticVariables().containsKey("casProperties"));
 
-        val context = new MockRequestContext();
         val request = new MockHttpServletRequest();
         val response = new MockHttpServletResponse();
-        context.setExternalContext(new ServletExternalContext(new MockServletContext(), request, response));
 
         view.render(Map.of(), request, response);
         val body = response.getContentAsString();
@@ -68,7 +60,7 @@ class CasThymeleafViewResolverConfigurerTests {
     }
 
     @Test
-    void verifyDirectView() throws Exception {
+    void verifyDirectView() throws Throwable {
         val resolver = themeViewResolverFactory.create("cas-theme-default");
         val view = resolver.resolveViewName("oneCustomView", Locale.ENGLISH);
         assertNotNull(view);

@@ -2,12 +2,12 @@
   "dependencies": "oidc,jpa-ticket-registry",
 
   "properties": [
-    "--cas.audit.engine.enabled=false",
+    "--cas.audit.engine.enabled=true",
     
     "--cas.server.name=https://localhost:8443",
     "--cas.server.prefix=${cas.server.name}/cas",
 
-    "--cas.logout.remove-descendant-tickets=true",
+    "--cas.ticket.track-descendant-tickets=true",
 
     "--cas.authn.oauth.code.time-to-kill-in-seconds=60",
     "--cas.authn.oauth.code.number-of-uses=10",

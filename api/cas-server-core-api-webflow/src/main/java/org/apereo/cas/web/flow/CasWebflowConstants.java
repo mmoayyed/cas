@@ -190,6 +190,11 @@ public interface CasWebflowConstants {
     String TRANSITION_ID_ERROR = "error";
 
     /**
+     * The transition state 'continue'.
+     */
+    String TRANSITION_ID_CONTINUE = "continue";
+
+    /**
      * The transition state 'restore'.
      */
     String TRANSITION_ID_RESTORE = "restore";
@@ -286,6 +291,12 @@ public interface CasWebflowConstants {
      * The transition state 'success'.
      */
     String TRANSITION_ID_SUCCESS = "success";
+
+
+    /**
+     * The transition state 'failure'.
+     */
+    String TRANSITION_ID_FAILURE = "failure";
 
     /**
      * The transition state 'generate'.
@@ -547,6 +558,11 @@ public interface CasWebflowConstants {
      * The state 'myAccountProfile'.
      */
     String STATE_ID_MY_ACCOUNT_PROFILE_VIEW = "myAccountProfile";
+
+    /**
+     * The state 'googleAccountProfileRegistrationFinalized'.
+     */
+    String STATE_ID_MY_ACCOUNT_PROFILE_GOOGLE_REGISTRATION_FINALIZED = "googleAccountProfileRegistrationFinalized";
 
     /**
      * The state 'duoUniversalPromptPrepareValidate'.
@@ -876,9 +892,13 @@ public interface CasWebflowConstants {
     String STATE_ID_MFA_CHECK_BYPASS = "mfaCheckBypass";
 
     /**
-     * State if for MFA composite events.
+     * State id for MFA composite events.
      */
     String STATE_ID_MFA_COMPOSITE = "mfa-composite";
+    /**
+     * State id that decides whether mfa composite should activate.
+     */
+    String STATE_ID_MFA_COMPOSITE_SELECTION = "compositeMfaProviderSelectionCheck";
 
     /**
      * State that can be used by MFA providers that offer preAuth endpoints.
@@ -1056,6 +1076,10 @@ public interface CasWebflowConstants {
      * State id 'viewRegistrationWebAuthn'.
      */
     String STATE_ID_WEBAUTHN_VIEW_REGISTRATION = "viewRegistrationWebAuthn";
+    /**
+     * State id 'checkRiskVerificationToken'.
+     */
+    String STATE_ID_RISK_AUTHENTICATION_TOKEN_CHECK = "checkRiskVerificationToken";
 
     /**
      * State id 'validateWebAuthnToken'.
@@ -1262,6 +1286,20 @@ public interface CasWebflowConstants {
      */
     String ACTION_ID_ACCOUNT_UNLOCK_PREPARE = "accountUnlockStatusPrepareAction";
 
+    /**
+     * Action id 'googleAccountProfileRegistrationAction'.
+     */
+    String ACTION_ID_ACCOUNT_PROFILE_GOOGLE_MFA_REGISTRATION = "googleAccountProfileRegistrationAction";
+
+    /**
+     * Action id 'googleAccountProfileRegistrationAction'.
+     */
+    String ACTION_ID_ACCOUNT_PROFILE_GOOGLE_MFA_DEVICE_PROVIDER = "googleAccountDeviceProviderAction";
+
+    /**
+     * Action id 'googleAccountProfileRegistrationAction'.
+     */
+    String ACTION_ID_ACCOUNT_PROFILE_GOOGLE_MFA_PREPARE = "googleAccountProfilePrepareAction";
 
     /**
      * Action id 'delegatedAuthenticationClientCredentialSelectionFinalizeAction'.
@@ -1301,6 +1339,10 @@ public interface CasWebflowConstants {
      * Action id 'multifactorProviderSelectedAction'.
      */
     String ACTION_ID_MULTIFACTOR_PROVIDER_SELECTED = "multifactorProviderSelectedAction";
+    /**
+     * Action id 'compositeMfaProviderSelectionAction'.
+     */
+    String ACTION_ID_MFA_COMPOSITE_SELECTION = "compositeMfaProviderSelectionAction";
 
     /**
      * Action id 'injectResponseHeadersAction'.
@@ -1679,11 +1721,6 @@ public interface CasWebflowConstants {
     String ACTION_ID_CHECK_WEB_AUTHENTICATION_REQUEST = "checkWebAuthenticationRequestAction";
 
     /**
-     * Action id 'prepareDuoWebLoginFormAction .
-     */
-    String ACTION_ID_PREPARE_DUO_WEB_LOGIN_FORM = "prepareDuoWebLoginFormAction";
-
-    /**
      * Action id 'duoAuthenticationWebflowAction .
      */
     String ACTION_ID_DUO_AUTHENTICATION_WEBFLOW = "duoAuthenticationWebflowAction";
@@ -1727,6 +1764,25 @@ public interface CasWebflowConstants {
      * Action id 'webAuthnStartAuthenticationAction .
      */
     String ACTION_ID_WEBAUTHN_START_AUTHENTICATION = "webAuthnStartAuthenticationAction";
+    /**
+     * Action id 'webAuthnPopulateCsrfTokenAction .
+     */
+    String ACTION_ID_WEBAUTHN_POPULATE_CSRF_TOKEN = "webAuthnPopulateCsrfTokenAction";
+
+    /**
+     * Action id 'webAuthnAccountProfileRegistrationAction .
+     */
+    String ACTION_ID_ACCOUNT_PROFILE_WEBAUTHN_REGISTRATION = "webAuthnAccountProfileRegistrationAction";
+
+    /**
+     * Action id 'webAuthnAccountProfilePrepareAction'.
+     */
+    String ACTION_ID_ACCOUNT_PROFILE_WEBAUTHN_MFA_PREPARE = "webAuthnAccountProfilePrepareAction";
+
+    /**
+     * Action id 'webAuthnAccountProfileRegistrationAction .
+     */
+    String ACTION_ID_ACCOUNT_PROFILE_WEBAUTHN_MFA_DEVICE_PROVIDER = "webAuthnDeviceProviderAction";
 
     /**
      * Action id 'webAuthnAuthenticationWebflowAction .
@@ -1799,16 +1855,6 @@ public interface CasWebflowConstants {
      * Action id 'mfaSimpleMultifactorSendTokenAction'.
      */
     String ACTION_ID_MFA_SIMPLE_SEND_TOKEN = "mfaSimpleMultifactorSendTokenAction";
-    /**
-     * Action id 'authyAuthenticationWebflowAction'.
-     */
-    String ACTION_ID_AUTHY_AUTHENTICATION = "authyAuthenticationWebflowAction";
-
-    /**
-     * Action id 'authyAuthenticationRegistrationWebflowAction'.
-     */
-    String ACTION_ID_AUTHY_REGISTRATION = "authyAuthenticationRegistrationWebflowAction";
-
     /**
      * Action id 'loadAccountRegistrationPropertiesAction'.
      */
@@ -1901,9 +1947,9 @@ public interface CasWebflowConstants {
     String ACTION_ID_PASSWORD_RESET_VALIDATE_TOKEN = "validatePasswordResetTokenAction";
 
     /**
-     * Action id 'remoteAddressCheck'.
+     * Action id 'remoteAuthenticationCheck'.
      */
-    String ACTION_ID_REMOTE_AUTHENTICATION_ADDRESS_CHECK = "remoteAddressCheck";
+    String ACTION_ID_REMOTE_AUTHENTICATION_ADDRESS_CHECK = "remoteAuthenticationCheck";
 
     /**
      * Action id 'basicAuthenticationAction'.
@@ -2042,7 +2088,10 @@ public interface CasWebflowConstants {
      * Action id 'baseSpnegoClientAction'.
      */
     String ACTION_ID_SPNEGO_CLIENT_BASE = "baseSpnegoClientAction";
-
+    /**
+     * Action id 'riskAuthenticationTokenCheckAction'.
+     */
+    String ACTION_ID_RISK_AUTHENTICATION_TOKEN_CHECK = "riskAuthenticationCheckTokenAction";
     /**
      * The action id 'spnego'.
      */
@@ -2051,4 +2100,10 @@ public interface CasWebflowConstants {
      * The action id 'syncopePrincipalProvisionerAction'.
      */
     String ACTION_ID_SYNCOPE_PRINCIPAL_PROVISIONER_ACTION = "syncopePrincipalProvisionerAction";
+
+    /**
+     * The action id 'oktaPrincipalProvisionerAction'.
+     */
+    String ACTION_ID_OKTA_PRINCIPAL_PROVISIONER_ACTION = "oktaPrincipalProvisionerAction";
+
 }

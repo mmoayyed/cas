@@ -2,11 +2,9 @@ package org.apereo.cas.config;
 
 import org.apereo.cas.adaptors.duo.DuoSecurityHealthIndicator;
 import org.apereo.cas.adaptors.duo.DuoSecurityUserAccount;
-import org.apereo.cas.adaptors.duo.authn.BasicDuoSecurityAuthenticationService;
 import org.apereo.cas.adaptors.duo.authn.DefaultDuoSecurityMultifactorAuthenticationProvider;
 import org.apereo.cas.adaptors.duo.authn.DuoSecurityAuthenticationHandler;
 import org.apereo.cas.adaptors.duo.authn.DuoSecurityAuthenticationService;
-import org.apereo.cas.adaptors.duo.authn.DuoSecurityCredential;
 import org.apereo.cas.adaptors.duo.authn.DuoSecurityDirectCredential;
 import org.apereo.cas.adaptors.duo.authn.DuoSecurityMultifactorAuthenticationProvider;
 import org.apereo.cas.adaptors.duo.authn.UniversalPromptDuoSecurityAuthenticationService;
@@ -15,10 +13,10 @@ import org.apereo.cas.adaptors.duo.web.DuoSecurityPingEndpoint;
 import org.apereo.cas.adaptors.duo.web.DuoSecurityUserAccountStatusEndpoint;
 import org.apereo.cas.adaptors.duo.web.flow.DuoSecurityMultifactorWebflowConfigurer;
 import org.apereo.cas.adaptors.duo.web.flow.action.DuoSecurityDetermineUserAccountAction;
-import org.apereo.cas.adaptors.duo.web.flow.action.DuoSecurityPrepareWebLoginFormAction;
 import org.apereo.cas.authentication.AuthenticationEventExecutionPlanConfigurer;
 import org.apereo.cas.authentication.AuthenticationMetaDataPopulator;
 import org.apereo.cas.authentication.MultifactorAuthenticationFailureModeEvaluator;
+import org.apereo.cas.authentication.MultifactorAuthenticationHandler;
 import org.apereo.cas.authentication.MultifactorAuthenticationPrincipalResolver;
 import org.apereo.cas.authentication.MultifactorAuthenticationProvider;
 import org.apereo.cas.authentication.MultifactorAuthenticationUtils;
@@ -48,6 +46,7 @@ import org.apereo.cas.util.spring.boot.ConditionalOnFeatureEnabled;
 import org.apereo.cas.web.flow.CasWebflowConfigurer;
 import org.apereo.cas.web.flow.CasWebflowConstants;
 import org.apereo.cas.web.flow.CasWebflowExecutionPlanConfigurer;
+import org.apereo.cas.web.flow.actions.ConsumerExecutionAction;
 import org.apereo.cas.web.flow.actions.WebflowActionBeanSupplier;
 import org.apereo.cas.web.flow.configurer.AbstractCasWebflowConfigurer;
 import org.apereo.cas.web.flow.configurer.CasMultifactorWebflowCustomizer;
@@ -78,7 +77,7 @@ import org.springframework.core.annotation.AnnotationAwareOrderComparator;
 import org.springframework.webflow.definition.registry.FlowDefinitionRegistry;
 import org.springframework.webflow.engine.builder.support.FlowBuilderServices;
 import org.springframework.webflow.execution.Action;
-import java.net.URL;
+import java.net.URI;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -107,7 +106,7 @@ public class DuoSecurityAuthenticationEventExecutionPlanConfiguration {
     public static class DuoSecurityAuthenticationEventExecutionConfiguration {
         private static BeanContainer<AuthenticationMetaDataPopulator> duoAuthenticationMetaDataPopulator(
             final ConfigurableApplicationContext applicationContext,
-            final DuoSecurityAuthenticationHandler authenticationHandler,
+            final MultifactorAuthenticationHandler authenticationHandler,
             final CasConfigurationProperties casProperties) {
             return BeanSupplier.of(BeanContainer.class)
                 .when(DuoSecurityAuthenticationService.CONDITION.given(applicationContext.getEnvironment()))
@@ -129,7 +128,7 @@ public class DuoSecurityAuthenticationEventExecutionPlanConfiguration {
         @Bean
         @ConditionalOnMissingBean(name = "duoAuthenticationHandlers")
         @DependsOn("duoMultifactorAuthenticationProviders")
-        public BeanContainer<DuoSecurityAuthenticationHandler> duoAuthenticationHandlers(
+        public BeanContainer<MultifactorAuthenticationHandler> duoAuthenticationHandlers(
             final ConfigurableApplicationContext applicationContext,
             final List<MultifactorAuthenticationPrincipalResolver> resolvers,
             final CasConfigurationProperties casProperties,
@@ -165,7 +164,7 @@ public class DuoSecurityAuthenticationEventExecutionPlanConfiguration {
         public AuthenticationEventExecutionPlanConfigurer duoSecurityAuthenticationEventExecutionPlanConfigurer(
             final ConfigurableApplicationContext applicationContext,
             final CasConfigurationProperties casProperties,
-            @Qualifier("duoAuthenticationHandlers") final BeanContainer<DuoSecurityAuthenticationHandler> duoAuthenticationHandlers) {
+            @Qualifier("duoAuthenticationHandlers") final BeanContainer<MultifactorAuthenticationHandler> duoAuthenticationHandlers) {
             return BeanSupplier.of(AuthenticationEventExecutionPlanConfigurer.class)
                 .when(DuoSecurityAuthenticationService.CONDITION.given(applicationContext.getEnvironment()))
                 .supply(() -> plan -> {
@@ -174,8 +173,7 @@ public class DuoSecurityAuthenticationEventExecutionPlanConfiguration {
                         val populators = duoAuthenticationMetaDataPopulator(applicationContext, dh, casProperties);
                         plan.registerAuthenticationMetadataPopulators(populators.toList());
                     });
-                    plan.registerAuthenticationHandlerResolver(new ByCredentialTypeAuthenticationHandlerResolver(
-                        DuoSecurityCredential.class, DuoSecurityDirectCredential.class));
+                    plan.registerAuthenticationHandlerResolver(new ByCredentialTypeAuthenticationHandlerResolver(DuoSecurityDirectCredential.class));
                 })
                 .otherwiseProxy()
                 .get();
@@ -228,7 +226,7 @@ public class DuoSecurityAuthenticationEventExecutionPlanConfiguration {
             final ConfigurableApplicationContext applicationContext,
             final CasConfigurationProperties casProperties,
             final List<MultifactorAuthenticationPrincipalResolver> multifactorAuthenticationPrincipalResolvers,
-            @Qualifier("httpClient") final HttpClient httpClient,
+            @Qualifier(HttpClient.BEAN_NAME_HTTPCLIENT) final HttpClient httpClient,
             @Qualifier("duoSecurityBypassEvaluator") final ChainingMultifactorAuthenticationProviderBypassEvaluator duoSecurityBypassEvaluator,
             @Qualifier("failureModeEvaluator") final MultifactorAuthenticationFailureModeEvaluator failureModeEvaluator) {
 
@@ -284,20 +282,16 @@ public class DuoSecurityAuthenticationEventExecutionPlanConfiguration {
                     .expireAfterWrite(Duration.ofSeconds(USER_ACCOUNT_CACHE_EXPIRATION_SECONDS))
                     .<String, DuoSecurityUserAccount>build();
 
-                if (StringUtils.isBlank(properties.getDuoApplicationKey())) {
-                    LOGGER.trace("Activating universal prompt authentication service for duo security");
-                    val resolver = SpringExpressionLanguageValueResolver.getInstance();
-                    val duoClient = applicationContext.getBeanProvider(Client.class)
-                        .getIfAvailable(Unchecked.supplier(() ->
-                            new Client.Builder(
-                                resolver.resolve(properties.getDuoIntegrationKey()),
-                                resolver.resolve(properties.getDuoSecretKey()),
-                                resolver.resolve(properties.getDuoApiHost()),
-                                casProperties.getServer().getLoginUrl()).build()));
-                    return new UniversalPromptDuoSecurityAuthenticationService(properties, httpClient, duoClient,
-                        multifactorAuthenticationPrincipalResolvers, cache);
-                }
-                return new BasicDuoSecurityAuthenticationService(properties, httpClient,
+                LOGGER.trace("Activating universal prompt authentication service for duo security");
+                val resolver = SpringExpressionLanguageValueResolver.getInstance();
+                val duoClient = applicationContext.getBeanProvider(Client.class)
+                    .getIfAvailable(Unchecked.supplier(() ->
+                        new Client.Builder(
+                            resolver.resolve(properties.getDuoIntegrationKey()),
+                            resolver.resolve(properties.getDuoSecretKey()),
+                            resolver.resolve(properties.getDuoApiHost()),
+                            casProperties.getServer().getLoginUrl()).build()));
+                return new UniversalPromptDuoSecurityAuthenticationService(properties, httpClient, duoClient,
                     multifactorAuthenticationPrincipalResolvers, cache);
             });
         }
@@ -341,25 +335,6 @@ public class DuoSecurityAuthenticationEventExecutionPlanConfiguration {
                 .get();
         }
 
-        @Bean
-        @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
-        @ConditionalOnMissingBean(name = CasWebflowConstants.ACTION_ID_PREPARE_DUO_WEB_LOGIN_FORM)
-        public Action prepareDuoWebLoginFormAction(
-            final CasConfigurationProperties casProperties,
-            final ConfigurableApplicationContext applicationContext) {
-            return WebflowActionBeanSupplier.builder()
-                .withApplicationContext(applicationContext)
-                .withProperties(casProperties)
-                .withAction(() -> BeanSupplier.of(Action.class)
-                    .when(DuoSecurityAuthenticationService.CONDITION.given(applicationContext.getEnvironment()))
-                    .supply(DuoSecurityPrepareWebLoginFormAction::new)
-                    .otherwiseProxy()
-                    .get())
-                .withId(CasWebflowConstants.ACTION_ID_PREPARE_DUO_WEB_LOGIN_FORM)
-                .build()
-                .get();
-        }
-
         @ConditionalOnMissingBean(name = CasWebflowConstants.ACTION_ID_DETERMINE_DUO_USER_ACCOUNT)
         @Bean
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
@@ -373,7 +348,7 @@ public class DuoSecurityAuthenticationEventExecutionPlanConfiguration {
                 .withAction(() -> BeanSupplier.of(Action.class)
                     .when(DuoSecurityAuthenticationService.CONDITION.given(applicationContext.getEnvironment()))
                     .supply(() -> new DuoSecurityDetermineUserAccountAction(casProperties, servicesManager))
-                    .otherwiseProxy()
+                    .otherwise(() -> ConsumerExecutionAction.NONE)
                     .get())
                 .withId(CasWebflowConstants.ACTION_ID_DETERMINE_DUO_USER_ACCOUNT)
                 .build()
@@ -390,7 +365,7 @@ public class DuoSecurityAuthenticationEventExecutionPlanConfiguration {
             return plan -> casProperties.getAuthn().getMfa().getDuo().stream()
                 .filter(duo -> StringUtils.isNotBlank(duo.getRegistration().getRegistrationUrl()))
                 .forEach(duo -> {
-                    val serviceId = FunctionUtils.doUnchecked(() -> new URL(duo.getRegistration().getRegistrationUrl()).getHost());
+                    val serviceId = FunctionUtils.doUnchecked(() -> new URI(duo.getRegistration().getRegistrationUrl()).toURL().getHost());
                     val service = new CasRegisteredService();
                     service.setId(RandomUtils.nextLong());
                     service.setEvaluationOrder(Ordered.HIGHEST_PRECEDENCE);

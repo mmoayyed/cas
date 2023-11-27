@@ -2,7 +2,6 @@ package org.apereo.cas.util.function;
 
 import org.apereo.cas.ticket.InvalidTicketException;
 import org.apereo.cas.util.LoggingUtils;
-
 import lombok.experimental.UtilityClass;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
@@ -12,10 +11,11 @@ import org.jooq.lambda.fi.util.function.CheckedConsumer;
 import org.jooq.lambda.fi.util.function.CheckedFunction;
 import org.jooq.lambda.fi.util.function.CheckedSupplier;
 import org.springframework.retry.RetryCallback;
+import org.springframework.retry.RetryContext;
+import org.springframework.retry.RetryListener;
 import org.springframework.retry.backoff.FixedBackOffPolicy;
 import org.springframework.retry.policy.SimpleRetryPolicy;
 import org.springframework.retry.support.RetryTemplate;
-
 import java.util.HashMap;
 import java.util.List;
 import java.util.function.Consumer;
@@ -178,6 +178,19 @@ public class FunctionUtils {
     }
 
     /**
+     * Do if not null supplier.
+     *
+     * @param <R>          the type parameter
+     * @param input        the input
+     * @param trueFunction the true function
+     * @return the value from the supplier or null
+     */
+    public static <R> R doIfNotNull(final Object input,
+                                    final CheckedSupplier<R> trueFunction) {
+        return doIfNotNull(input, trueFunction, () -> null).get();
+    }
+
+    /**
      * Supply if not null supplier.
      *
      * @param <R>           the type parameter
@@ -187,7 +200,7 @@ public class FunctionUtils {
      * @return the supplier
      */
     public static <R> Supplier<R> doIfNotNull(final Object input,
-                                              final Supplier<R> trueFunction,
+                                              final CheckedSupplier<R> trueFunction,
                                               final Supplier<R> falseFunction) {
         return () -> {
             try {
@@ -445,7 +458,7 @@ public class FunctionUtils {
      * @param params   the params
      */
     public static void doUnchecked(final CheckedConsumer<Object> consumer, final Object... params) {
-        Unchecked.consumer(s -> consumer.accept(params)).accept(null);
+        Unchecked.consumer(cons -> consumer.accept(params)).accept(null);
     }
 
     /**
@@ -454,8 +467,9 @@ public class FunctionUtils {
      * @param <T>      the type parameter
      * @param callback the callback
      * @return the t
+     * @throws Exception the exception
      */
-    public static <T> T doAndRetry(final RetryCallback<T, Exception> callback) {
+    public static <T> T doAndRetry(final RetryCallback<T, Exception> callback) throws Exception {
         return doAndRetry(List.of(), callback);
     }
 
@@ -466,9 +480,10 @@ public class FunctionUtils {
      * @param clazzes  the classified clazzes
      * @param callback the callback
      * @return the t
+     * @throws Exception the exception
      */
     public static <T> T doAndRetry(final List<Class<? extends Throwable>> clazzes,
-                                   final RetryCallback<T, Exception> callback) {
+                                   final RetryCallback<T, Exception> callback) throws Exception {
         val retryTemplate = new RetryTemplate();
         retryTemplate.setBackOffPolicy(new FixedBackOffPolicy());
 
@@ -477,9 +492,17 @@ public class FunctionUtils {
         classified.put(Throwable.class, Boolean.TRUE);
         clazzes.forEach(clz -> classified.put(clz, Boolean.TRUE));
 
-        retryTemplate.setRetryPolicy(new SimpleRetryPolicy(SimpleRetryPolicy.DEFAULT_MAX_ATTEMPTS, classified, true));
+        val retryPolicy = new SimpleRetryPolicy(SimpleRetryPolicy.DEFAULT_MAX_ATTEMPTS, classified, true);
+        retryTemplate.setRetryPolicy(retryPolicy);
         retryTemplate.setThrowLastExceptionOnExhausted(true);
-        return Unchecked.supplier(() -> retryTemplate.execute(callback)).get();
+        retryTemplate.registerListener(new RetryListener() {
+            @Override
+            public boolean open(final RetryContext context, final RetryCallback __) {
+                context.setAttribute("retry.maxAttempts", retryPolicy.getMaxAttempts());
+                return RetryListener.super.open(context, __);
+            }
+        });
+        return retryTemplate.execute(callback);
     }
 
     /**
@@ -487,9 +510,24 @@ public class FunctionUtils {
      *
      * @param value the value
      * @return the value
+     * @throws Throwable the throwable
      */
-    public static String throwIfBlank(final String value) {
+    public static String throwIfBlank(final String value) throws Throwable {
         throwIf(StringUtils.isBlank(value), () -> new IllegalArgumentException("Value cannot be empty or blank"));
+        return value;
+    }
+
+    /**
+     * Throw if null.
+     *
+     * @param <T>     the type parameter
+     * @param value   the value
+     * @param handler the handler
+     * @return the t
+     * @throws Throwable the throwable
+     */
+    public static <T> T throwIfNull(final T value, final CheckedSupplier<Throwable> handler) throws Throwable {
+        throwIf(value == null, handler);
         return value;
     }
 
@@ -498,9 +536,10 @@ public class FunctionUtils {
      *
      * @param condition the condition
      * @param throwable the throwable
+     * @throws Throwable the throwable
      */
     public static void throwIf(final boolean condition,
-                               final Supplier<? extends RuntimeException> throwable) {
+                               final CheckedSupplier<? extends Throwable> throwable) throws Throwable {
         if (condition) {
             throw throwable.get();
         }

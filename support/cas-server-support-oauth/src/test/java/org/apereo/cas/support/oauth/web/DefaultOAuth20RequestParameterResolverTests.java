@@ -6,7 +6,6 @@ import org.apereo.cas.support.oauth.OAuth20Constants;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.PlainJWT;
 import lombok.val;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.pac4j.jee.context.JEEContext;
@@ -41,13 +40,8 @@ class DefaultOAuth20RequestParameterResolverTests extends AbstractOAuth20Tests {
         return request;
     }
 
-    @BeforeEach
-    public void onSetUp() {
-        servicesManager.deleteAll();
-    }
-
     @Test
-    void verifyPlainJwtWithoutClientId() {
+    void verifyPlainJwtWithoutClientId() throws Throwable {
         val request = getJwtRequest();
         val response = new MockHttpServletResponse();
         val context = new JEEContext(request, response);
@@ -58,7 +52,7 @@ class DefaultOAuth20RequestParameterResolverTests extends AbstractOAuth20Tests {
     }
 
     @Test
-    void verifyPlainJwtWithClientId() {
+    void verifyPlainJwtWithClientId() throws Throwable {
         val request = getJwtRequest();
 
         val registeredService = getRegisteredService(UUID.randomUUID().toString(), "secret");
@@ -73,5 +67,25 @@ class DefaultOAuth20RequestParameterResolverTests extends AbstractOAuth20Tests {
         assertTrue(scope.get().contains("client2"));
     }
 
+    @Test
+    void verifyParameterIsOnQueryString() {
+        val request = new MockHttpServletRequest();
+        request.setQueryString("client_id=myid&client_secret=mysecret");
+        request.setParameter("client_id", "myid");
+        request.setParameter("client_secret", "mysecret");
+        val response = new MockHttpServletResponse();
+        val context = new JEEContext(request, response);
+        assertTrue(oauthRequestParameterResolver.isParameterOnQueryString(context, OAuth20Constants.CLIENT_SECRET));
+    }
 
+    @Test
+    void verifyParameterIsNotOnQueryString() {
+        val request = new MockHttpServletRequest();
+        request.setQueryString("client_id=myid");
+        request.setParameter("client_id", "myid");
+        request.setParameter("client_secret", "mysecret");
+        val response = new MockHttpServletResponse();
+        val context = new JEEContext(request, response);
+        assertFalse(oauthRequestParameterResolver.isParameterOnQueryString(context, OAuth20Constants.CLIENT_SECRET));
+    }
 }

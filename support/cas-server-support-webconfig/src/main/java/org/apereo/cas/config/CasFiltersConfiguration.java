@@ -12,12 +12,9 @@ import org.apereo.cas.util.spring.beans.BeanCondition;
 import org.apereo.cas.util.spring.beans.BeanSupplier;
 import org.apereo.cas.util.spring.boot.ConditionalOnFeatureEnabled;
 import org.apereo.cas.web.support.ArgumentExtractor;
-import org.apereo.cas.web.support.AuthenticationCredentialsThreadLocalBinderClearingFilter;
-import org.apereo.cas.web.support.filters.AbstractSecurityFilter;
 import org.apereo.cas.web.support.filters.AddResponseHeadersFilter;
 import org.apereo.cas.web.support.filters.RequestParameterPolicyEnforcementFilter;
 import org.apereo.cas.web.support.filters.ResponseHeadersEnforcementFilter;
-
 import lombok.val;
 import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -36,7 +33,6 @@ import org.springframework.context.annotation.ScopedProxyMode;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.filter.CharacterEncodingFilter;
 import org.springframework.web.filter.CorsFilter;
-
 import java.util.HashMap;
 
 /**
@@ -65,18 +61,6 @@ public class CasFiltersConfiguration {
             bean.setAsyncSupported(true);
             return bean;
         }
-
-        @Bean
-        @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
-        public FilterRegistrationBean<AuthenticationCredentialsThreadLocalBinderClearingFilter> currentCredentialsAndAuthenticationClearingFilter() {
-            val bean = new FilterRegistrationBean<AuthenticationCredentialsThreadLocalBinderClearingFilter>();
-            bean.setFilter(new AuthenticationCredentialsThreadLocalBinderClearingFilter());
-            bean.setUrlPatterns(CollectionUtils.wrap("/*"));
-            bean.setName("currentCredentialsAndAuthenticationClearingFilter");
-            bean.setAsyncSupported(true);
-            return bean;
-        }
-
     }
 
     @Configuration(value = "CasFiltersResponseHeadersConfiguration", proxyBeanMethods = false)
@@ -100,15 +84,20 @@ public class CasFiltersConfiguration {
         @Bean
         public FilterRegistrationBean<RegisteredServiceResponseHeadersEnforcementFilter> responseHeadersSecurityFilter(
             final CasConfigurationProperties casProperties,
-            @Qualifier(ArgumentExtractor.BEAN_NAME) final ObjectProvider<ArgumentExtractor> argumentExtractor,
-            @Qualifier(ServicesManager.BEAN_NAME) final ObjectProvider<ServicesManager> servicesManager,
-            @Qualifier(AuditableExecution.AUDITABLE_EXECUTION_REGISTERED_SERVICE_ACCESS) final ObjectProvider<AuditableExecution> registeredServiceAccessStrategyEnforcer,
-            @Qualifier(AuthenticationServiceSelectionPlan.BEAN_NAME) final ObjectProvider<AuthenticationServiceSelectionPlan> authenticationRequestServiceSelectionStrategies) {
+            @Qualifier(ArgumentExtractor.BEAN_NAME)
+            final ObjectProvider<ArgumentExtractor> argumentExtractor,
+            @Qualifier(ServicesManager.BEAN_NAME)
+            final ObjectProvider<ServicesManager> servicesManager,
+            @Qualifier(AuditableExecution.AUDITABLE_EXECUTION_REGISTERED_SERVICE_ACCESS)
+            final ObjectProvider<AuditableExecution> registeredServiceAccessStrategyEnforcer,
+            @Qualifier(AuthenticationServiceSelectionPlan.BEAN_NAME)
+            final ObjectProvider<AuthenticationServiceSelectionPlan> authenticationRequestServiceSelectionStrategies) {
             val header = casProperties.getHttpWebRequest().getHeader();
             val initParams = new HashMap<String, String>();
             initParams.put(ResponseHeadersEnforcementFilter.INIT_PARAM_ENABLE_CACHE_CONTROL, BooleanUtils.toStringTrueFalse(header.isCache()));
             initParams.put(ResponseHeadersEnforcementFilter.INIT_PARAM_ENABLE_XCONTENT_OPTIONS, BooleanUtils.toStringTrueFalse(header.isXcontent()));
             initParams.put(ResponseHeadersEnforcementFilter.INIT_PARAM_ENABLE_STRICT_TRANSPORT_SECURITY, BooleanUtils.toStringTrueFalse(header.isHsts()));
+            initParams.put(ResponseHeadersEnforcementFilter.INIT_PARAM_ENABLE_STRICT_TRANSPORT_SECURITY_OPTIONS, header.getHstsOptions());
             initParams.put(ResponseHeadersEnforcementFilter.INIT_PARAM_ENABLE_STRICT_XFRAME_OPTIONS, BooleanUtils.toStringTrueFalse(header.isXframe()));
             initParams.put(ResponseHeadersEnforcementFilter.INIT_PARAM_STRICT_XFRAME_OPTIONS, header.getXframeOptions());
             initParams.put(ResponseHeadersEnforcementFilter.INIT_PARAM_ENABLE_XSS_PROTECTION, BooleanUtils.toStringTrueFalse(header.isXss()));
@@ -118,9 +107,10 @@ public class CasFiltersConfiguration {
                 initParams.put(ResponseHeadersEnforcementFilter.INIT_PARAM_CONTENT_SECURITY_POLICY, header.getContentSecurityPolicy());
             }
             val bean = new FilterRegistrationBean<RegisteredServiceResponseHeadersEnforcementFilter>();
-            bean.setFilter(new RegisteredServiceResponseHeadersEnforcementFilter(servicesManager,
+            val filter = new RegisteredServiceResponseHeadersEnforcementFilter(servicesManager,
                 argumentExtractor, authenticationRequestServiceSelectionStrategies,
-                registeredServiceAccessStrategyEnforcer));
+                registeredServiceAccessStrategyEnforcer);
+            bean.setFilter(filter);
             bean.setUrlPatterns(CollectionUtils.wrap("/*"));
             bean.setInitParameters(initParams);
             bean.setName("responseHeadersSecurityFilter");
@@ -145,7 +135,6 @@ public class CasFiltersConfiguration {
                 BooleanUtils.toStringTrueFalse(httpWebRequest.isAllowMultiValueParameters()));
             initParams.put(RequestParameterPolicyEnforcementFilter.ONLY_POST_PARAMETERS,
                 httpWebRequest.getOnlyPostParams());
-            initParams.put(AbstractSecurityFilter.THROW_ON_ERROR, Boolean.TRUE.toString());
 
             if (StringUtils.isNotBlank(httpWebRequest.getPatternToBlock())) {
                 initParams.put(RequestParameterPolicyEnforcementFilter.PATTERN_TO_BLOCK,

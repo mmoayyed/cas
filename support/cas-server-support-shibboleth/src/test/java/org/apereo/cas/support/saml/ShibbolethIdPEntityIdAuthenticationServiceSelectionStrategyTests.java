@@ -1,6 +1,7 @@
 package org.apereo.cas.support.saml;
 
 import org.apereo.cas.authentication.AuthenticationServiceSelectionStrategy;
+import org.apereo.cas.authentication.principal.Service;
 import org.apereo.cas.config.CasCookieConfiguration;
 import org.apereo.cas.config.CasCoreAuthenticationConfiguration;
 import org.apereo.cas.config.CasCoreAuthenticationPrincipalConfiguration;
@@ -21,12 +22,12 @@ import org.apereo.cas.config.CasWebApplicationServiceFactoryConfiguration;
 import org.apereo.cas.config.ExternalShibbolethIdPAuthenticationServiceSelectionStrategyConfiguration;
 import org.apereo.cas.services.RegisteredService;
 import org.apereo.cas.services.RegisteredServiceTestUtils;
-
 import lombok.val;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.boot.autoconfigure.web.servlet.WebMvcAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.cloud.autoconfigure.RefreshAutoConfiguration;
@@ -39,10 +40,8 @@ import org.springframework.webflow.context.ExternalContextHolder;
 import org.springframework.webflow.context.servlet.ServletExternalContext;
 import org.springframework.webflow.execution.RequestContextHolder;
 import org.springframework.webflow.test.MockRequestContext;
-
 import java.util.ArrayList;
 import java.util.List;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -53,6 +52,7 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 @SpringBootTest(classes = {
     RefreshAutoConfiguration.class,
+    WebMvcAutoConfiguration.class,
     CasWebApplicationServiceFactoryConfiguration.class,
     ShibbolethIdPEntityIdAuthenticationServiceSelectionStrategyTests.ShibbolethServicesTestConfiguration.class,
     CasCoreNotificationsConfiguration.class,
@@ -72,7 +72,7 @@ import static org.junit.jupiter.api.Assertions.*;
     CasCoreAuthenticationSupportConfiguration.class,
     CasCoreConfiguration.class,
     ExternalShibbolethIdPAuthenticationServiceSelectionStrategyConfiguration.class
-})
+}, properties = "cas.authn.shib-idp.server-url=https://sso.shibboleth.org/idp/Authn/External")
 @Tag("SAML")
 class ShibbolethIdPEntityIdAuthenticationServiceSelectionStrategyTests {
     @Autowired
@@ -80,7 +80,17 @@ class ShibbolethIdPEntityIdAuthenticationServiceSelectionStrategyTests {
     private AuthenticationServiceSelectionStrategy shibbolethIdPEntityIdAuthenticationServiceSelectionStrategy;
 
     @Test
-    void verifyServiceNotFound() {
+    void verifyServiceAttribute() throws Throwable {
+        val svc = RegisteredServiceTestUtils.getService("https://sso.shibboleth.org/idp/Authn/External");
+        val entityId = "https://service.example.com";
+        svc.getAttributes().put(SamlProtocolConstants.PARAMETER_ENTITY_ID, List.of(entityId));
+        assertTrue(shibbolethIdPEntityIdAuthenticationServiceSelectionStrategy.supports(svc));
+        val result = shibbolethIdPEntityIdAuthenticationServiceSelectionStrategy.resolveServiceFrom(svc);
+        assertEquals(entityId, result.getId());
+    }
+
+    @Test
+    void verifyServiceNotFound() throws Throwable {
         val svc = RegisteredServiceTestUtils.getService("https://www.example.org?param1=value1");
         val result = shibbolethIdPEntityIdAuthenticationServiceSelectionStrategy.resolveServiceFrom(svc);
         assertEquals(svc.getId(), result.getId());
@@ -88,7 +98,7 @@ class ShibbolethIdPEntityIdAuthenticationServiceSelectionStrategyTests {
     }
 
     @Test
-    void verifyServiceFound() {
+    void verifyServiceFound() throws Throwable {
         val svc = RegisteredServiceTestUtils.getService("https://www.example.org?entityId=https://idp.example.org");
         val result = shibbolethIdPEntityIdAuthenticationServiceSelectionStrategy.resolveServiceFrom(svc);
         assertEquals("https://idp.example.org", result.getId());
@@ -96,16 +106,17 @@ class ShibbolethIdPEntityIdAuthenticationServiceSelectionStrategyTests {
     }
 
     @Test
-    void verifyServiceFoundEncoded() {
+    void verifyServiceFoundEncoded() throws Throwable {
         val serviceUrl = "https%3A%2F%2Fidp.example.com%2Fidp%2FAuthn%2FExtCas%3Fconversation%3De1s1&entityId=https%3A%2F%2Fservice.example.com";
         val svc = RegisteredServiceTestUtils.getService(
             "https://cas.example.com/login?service=" + serviceUrl);
         val result = shibbolethIdPEntityIdAuthenticationServiceSelectionStrategy.resolveServiceFrom(svc);
         assertEquals("https://service.example.com", result.getId());
+        assertEquals(svc.getOriginalUrl(), result.getAttributes().get(Service.class.getName()).get(0).toString());
     }
 
     @Test
-    void verifyQueryStrings() {
+    void verifyQueryStrings() throws Throwable {
         val svc = RegisteredServiceTestUtils.getService("https://www.example.org?name=value");
         val context = new MockRequestContext();
 
@@ -129,10 +140,10 @@ class ShibbolethIdPEntityIdAuthenticationServiceSelectionStrategyTests {
     static class ShibbolethServicesTestConfiguration {
         @Bean
         public List inMemoryRegisteredServices() {
-            val l = new ArrayList<RegisteredService>();
-            l.add(RegisteredServiceTestUtils.getRegisteredService("https://service.example.com"));
-            l.add(RegisteredServiceTestUtils.getRegisteredService("https://idp.example.org"));
-            return l;
+            val services = new ArrayList<RegisteredService>();
+            services.add(RegisteredServiceTestUtils.getRegisteredService("https://service.example.com"));
+            services.add(RegisteredServiceTestUtils.getRegisteredService("https://idp.example.org"));
+            return services;
         }
     }
 }

@@ -1,6 +1,7 @@
 package org.apereo.cas.web.flow.actions.logout;
 
 import org.apereo.cas.authentication.principal.Principal;
+import org.apereo.cas.pac4j.client.DelegatedIdentityProviders;
 import org.apereo.cas.web.flow.DelegationWebflowUtils;
 import org.apereo.cas.web.flow.actions.BaseCasWebflowAction;
 import org.apereo.cas.web.support.WebUtils;
@@ -9,7 +10,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.pac4j.core.client.Client;
-import org.pac4j.core.client.Clients;
 import org.pac4j.core.context.CallContext;
 import org.pac4j.core.context.session.SessionStore;
 import org.pac4j.core.exception.http.HttpAction;
@@ -39,9 +39,9 @@ import java.util.Optional;
 @Slf4j
 @RequiredArgsConstructor
 public class DelegatedAuthenticationClientLogoutAction extends BaseCasWebflowAction {
-    private final Clients clients;
+    protected final DelegatedIdentityProviders identityProviders;
 
-    private final SessionStore sessionStore;
+    protected final SessionStore sessionStore;
 
     @Override
     protected Event doPreExecute(final RequestContext requestContext) {
@@ -50,9 +50,7 @@ public class DelegatedAuthenticationClientLogoutAction extends BaseCasWebflowAct
         val context = new JEEContext(request, response);
 
         val currentProfile = findCurrentProfile(context);
-        val clientResult = currentProfile == null
-            ? Optional.<Client>empty()
-            : clients.findClient(currentProfile.getClientName());
+        val clientResult = findCurrentClient(currentProfile);
         if (clientResult.isPresent()) {
             val client = clientResult.get();
             LOGGER.debug("Handling logout for delegated authentication client [{}]", client);
@@ -63,15 +61,13 @@ public class DelegatedAuthenticationClientLogoutAction extends BaseCasWebflowAct
     }
 
     @Override
-    protected Event doExecute(final RequestContext requestContext) {
+    protected Event doExecuteInternal(final RequestContext requestContext) {
         val request = WebUtils.getHttpServletRequestFromExternalWebflowContext(requestContext);
         val response = WebUtils.getHttpServletResponseFromExternalWebflowContext(requestContext);
         val context = new JEEContext(request, response);
 
         val currentProfile = findCurrentProfile(context);
-        val clientResult = currentProfile == null
-            ? Optional.<Client>empty()
-            : clients.findClient(currentProfile.getClientName());
+        val clientResult = findCurrentClient(currentProfile);
         if (clientResult.isPresent()) {
             val client = clientResult.get();
             LOGGER.trace("Located client [{}]", client);
@@ -97,15 +93,15 @@ public class DelegatedAuthenticationClientLogoutAction extends BaseCasWebflowAct
         return null;
     }
 
-    /**
-     * Finds the current profile from the context.
-     *
-     * @param webContext A web context (request + response).
-     * @return The common profile active.
-     */
-    private UserProfile findCurrentProfile(final JEEContext webContext) {
+    protected UserProfile findCurrentProfile(final JEEContext webContext) {
         val pm = new ProfileManager(webContext, this.sessionStore);
         val profile = pm.getProfile();
         return profile.orElse(null);
+    }
+
+    protected Optional<Client> findCurrentClient(final UserProfile currentProfile) {
+        return currentProfile == null
+                ? Optional.empty()
+                : identityProviders.findClient(currentProfile.getClientName());
     }
 }

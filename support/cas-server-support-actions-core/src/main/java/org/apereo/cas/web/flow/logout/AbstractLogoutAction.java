@@ -8,13 +8,10 @@ import org.apereo.cas.web.cookie.CasCookieBuilder;
 import org.apereo.cas.web.flow.actions.BaseCasWebflowAction;
 import org.apereo.cas.web.support.ArgumentExtractor;
 import org.apereo.cas.web.support.WebUtils;
-
 import lombok.RequiredArgsConstructor;
 import lombok.val;
 import org.springframework.webflow.execution.Event;
 import org.springframework.webflow.execution.RequestContext;
-
-import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.util.Optional;
 
@@ -63,7 +60,7 @@ public abstract class AbstractLogoutAction extends BaseCasWebflowAction {
     protected final CasConfigurationProperties casProperties;
 
     @Override
-    public Event doExecute(final RequestContext context) {
+    protected Event doExecuteInternal(final RequestContext context) {
         val request = WebUtils.getHttpServletRequestFromExternalWebflowContext(context);
         val response = WebUtils.getHttpServletResponseFromExternalWebflowContext(context);
         preventCaching(response);
@@ -71,23 +68,14 @@ public abstract class AbstractLogoutAction extends BaseCasWebflowAction {
         Optional.ofNullable(argumentExtractor.extractService(request))
             .filter(service -> {
                 val registeredService = servicesManager.findServiceBy(service);
-                return registeredService != null && registeredService.getAccessStrategy().isServiceAccessAllowed();
+                return registeredService != null && registeredService.getAccessStrategy().isServiceAccessAllowed(registeredService, service);
             })
             .ifPresent(service -> WebUtils.putServiceIntoFlowScope(context, service));
 
-        return doInternalExecute(request, response, context);
+        return doInternalExecute(context);
     }
 
-    /**
-     * Execute the logout action after invalidating the cache.
-     *
-     * @param request  the HTTP request.
-     * @param response the HTTP response.
-     * @param context  the webflow context.
-     * @return the event triggered by this actions.
-     */
-    protected abstract Event doInternalExecute(HttpServletRequest request, HttpServletResponse response,
-                                               RequestContext context);
+    protected abstract Event doInternalExecute(RequestContext context);
 
     /**
      * Prevent caching by adding the appropriate headers.

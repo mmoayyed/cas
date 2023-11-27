@@ -6,14 +6,14 @@ const cas = require('../../cas.js');
     const browser = await puppeteer.launch(cas.browserOptions());
     const page = await cas.newPage(browser);
     
-    await cas.goto(page, "https://localhost:8443/cas/login?locale=en");
+    await cas.gotoLogin(page);
     await page.waitForTimeout(1000);
 
     let pswd = await page.$('#password');
     assert(pswd == null);
 
     await cas.type(page,'#username', "user3+casuser");
-    await page.keyboard.press('Enter');
+    await cas.pressEnter(page);
     await page.waitForNavigation();
     await page.waitForTimeout(3000);
     await cas.assertInnerText(page, "#login h3", "Provide Token");

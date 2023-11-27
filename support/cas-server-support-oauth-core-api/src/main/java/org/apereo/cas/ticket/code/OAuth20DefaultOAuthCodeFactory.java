@@ -12,9 +12,11 @@ import org.apereo.cas.ticket.ExpirationPolicyBuilder;
 import org.apereo.cas.ticket.Ticket;
 import org.apereo.cas.ticket.TicketGrantingTicket;
 import org.apereo.cas.ticket.UniqueTicketIdGenerator;
+import org.apereo.cas.ticket.tracking.TicketTrackingPolicy;
 import org.apereo.cas.util.crypto.CipherExecutor;
 import org.apereo.cas.util.function.FunctionUtils;
 
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
@@ -38,10 +40,8 @@ public class OAuth20DefaultOAuthCodeFactory implements OAuth20CodeFactory {
      */
     protected final UniqueTicketIdGenerator oAuthCodeIdGenerator;
 
-    /**
-     * ExpirationPolicy for tokens.
-     */
-    protected final ExpirationPolicyBuilder<OAuth20Code> expirationPolicy;
+    @Getter
+    protected final ExpirationPolicyBuilder<OAuth20Code> expirationPolicyBuilder;
 
     /**
      * Services manager.
@@ -53,6 +53,8 @@ public class OAuth20DefaultOAuthCodeFactory implements OAuth20CodeFactory {
      */
     protected final CipherExecutor<String, String> cipherExecutor;
 
+    protected final TicketTrackingPolicy descendantTicketsTrackingPolicy;
+
     @Override
     public OAuth20Code create(final Service service,
                               final Authentication authentication,
@@ -63,7 +65,7 @@ public class OAuth20DefaultOAuthCodeFactory implements OAuth20CodeFactory {
                               final String clientId,
                               final Map<String, Map<String, Object>> requestClaims,
                               final OAuth20ResponseTypes responseType,
-                              final OAuth20GrantTypes grantType) {
+                              final OAuth20GrantTypes grantType) throws Throwable {
 
         val expirationPolicyToUse = determineExpirationPolicyForService(clientId);
         val codeId = oAuthCodeIdGenerator.getNewTicketId(OAuth20Code.PREFIX);
@@ -79,9 +81,9 @@ public class OAuth20DefaultOAuthCodeFactory implements OAuth20CodeFactory {
             expirationPolicyToUse, ticketGrantingTicket, scopes,
             codeChallenge, codeChallengeMethod, clientId,
             requestClaims, responseType, grantType);
-        if (ticketGrantingTicket != null) {
-            ticketGrantingTicket.getDescendantTickets().add(oauthCode.getId());
-        }
+
+        descendantTicketsTrackingPolicy.trackTicket(ticketGrantingTicket, oauthCode);
+
         return oauthCode;
     }
 
@@ -100,6 +102,6 @@ public class OAuth20DefaultOAuthCodeFactory implements OAuth20CodeFactory {
                 return new OAuth20CodeExpirationPolicy(count, Beans.newDuration(ttl).getSeconds());
             }
         }
-        return this.expirationPolicy.buildTicketExpirationPolicy();
+        return this.expirationPolicyBuilder.buildTicketExpirationPolicy();
     }
 }

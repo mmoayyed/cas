@@ -43,7 +43,9 @@ import org.apereo.cas.config.CasThemesConfiguration;
 import org.apereo.cas.config.CasThrottlingConfiguration;
 import org.apereo.cas.config.CasThymeleafConfiguration;
 import org.apereo.cas.config.CasWebApplicationServiceFactoryConfiguration;
+import org.apereo.cas.config.CasWebSecurityConfiguration;
 import org.apereo.cas.config.CasWebflowContextConfiguration;
+import org.apereo.cas.config.OidcAuditConfiguration;
 import org.apereo.cas.config.OidcComponentSerializationConfiguration;
 import org.apereo.cas.config.OidcConfiguration;
 import org.apereo.cas.config.OidcEndpointsConfiguration;
@@ -95,14 +97,12 @@ import org.apereo.cas.ticket.refreshtoken.OAuth20RefreshToken;
 import org.apereo.cas.ticket.registry.TicketRegistry;
 import org.apereo.cas.token.JwtBuilder;
 import org.apereo.cas.util.CollectionUtils;
-import org.apereo.cas.util.HttpRequestUtils;
 import org.apereo.cas.util.RandomUtils;
 import org.apereo.cas.util.crypto.CipherExecutor;
-import org.apereo.cas.util.spring.ApplicationContextProvider;
+import org.apereo.cas.util.http.HttpRequestUtils;
 import org.apereo.cas.util.spring.CasEventListener;
 import org.apereo.cas.web.cookie.CasCookieBuilder;
 import org.apereo.cas.web.flow.CasWebflowConstants;
-
 import com.github.benmanes.caffeine.cache.LoadingCache;
 import lombok.val;
 import org.apache.commons.lang3.StringUtils;
@@ -116,20 +116,22 @@ import org.pac4j.core.context.session.SessionStore;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.SpringBootConfiguration;
+import org.springframework.boot.actuate.autoconfigure.endpoint.EndpointAutoConfiguration;
+import org.springframework.boot.actuate.autoconfigure.endpoint.web.WebEndpointAutoConfiguration;
 import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration;
+import org.springframework.boot.autoconfigure.web.reactive.function.client.WebClientAutoConfiguration;
+import org.springframework.boot.autoconfigure.web.servlet.DispatcherServletAutoConfiguration;
+import org.springframework.boot.autoconfigure.web.servlet.ServletWebServerFactoryAutoConfiguration;
 import org.springframework.boot.autoconfigure.web.servlet.WebMvcAutoConfiguration;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.cloud.autoconfigure.RefreshAutoConfiguration;
-import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Import;
-import org.springframework.context.support.StaticApplicationContext;
-import org.springframework.core.io.ResourceLoader;
 import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.web.context.ConfigurableWebApplicationContext;
 import org.springframework.web.servlet.HandlerInterceptor;
 import org.springframework.webflow.execution.Action;
-
 import java.io.Serializable;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
@@ -139,7 +141,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
-
 import static org.mockito.Mockito.*;
 
 /**
@@ -152,6 +153,12 @@ import static org.mockito.Mockito.*;
     properties = {
         "spring.main.allow-bean-definition-overriding=true",
         "spring.mvc.pathmatch.matching-strategy=ant-path-matcher",
+
+        "cas.audit.slf4j.use-single-line=true",
+        
+        "cas.server.name=https://sso.example.org/",
+        "cas.server.prefix=https://sso.example.org/cas",
+        
         "cas.authn.oidc.core.issuer=https://sso.example.org/cas/oidc",
         "cas.authn.oidc.jwks.file-system.jwks-file=classpath:keystore.jwks"
     })
@@ -187,14 +194,13 @@ public abstract class AbstractOidcTests {
     @Qualifier("singleLogoutServiceLogoutUrlBuilder")
     protected SingleLogoutServiceLogoutUrlBuilder singleLogoutServiceLogoutUrlBuilder;
 
-    protected ConfigurableApplicationContext applicationContext;
-
     @Autowired
-    protected ResourceLoader resourceLoader;
+    protected ConfigurableWebApplicationContext applicationContext;
 
     @Autowired
     @Qualifier("oauthDistributedSessionStore")
     protected SessionStore oauthDistributedSessionStore;
+    
     @Autowired
     @Qualifier("oauthInterceptor")
     protected HandlerInterceptor oauthInterceptor;
@@ -280,7 +286,7 @@ public abstract class AbstractOidcTests {
 
     @Autowired
     @Qualifier("oidcDefaultJsonWebKeystoreCache")
-    protected LoadingCache<OidcJsonWebKeyCacheKey, Optional<JsonWebKeySet>> oidcDefaultJsonWebKeystoreCache;
+    protected LoadingCache<OidcJsonWebKeyCacheKey, JsonWebKeySet> oidcDefaultJsonWebKeystoreCache;
 
     @Autowired
     @Qualifier("oidcTokenSigningAndEncryptionService")
@@ -421,15 +427,7 @@ public abstract class AbstractOidcTests {
     }
 
     @BeforeEach
-    public void initialize() throws Exception {
-        this.applicationContext = new StaticApplicationContext();
-        applicationContext.refresh();
-        ApplicationContextProvider.registerBeanIntoApplicationContext(applicationContext, casProperties,
-            CasConfigurationProperties.class.getSimpleName());
-        ApplicationContextProvider.registerBeanIntoApplicationContext(applicationContext, oidcAttributeToScopeClaimMapper,
-            OidcAttributeToScopeClaimMapper.DEFAULT_BEAN_NAME);
-        ApplicationContextProvider.holdApplicationContext(applicationContext);
-
+    public void initialize() throws Throwable {
         servicesManager.save(getOidcRegisteredService());
         ticketRegistry.deleteAll();
     }
@@ -459,19 +457,19 @@ public abstract class AbstractOidcTests {
         return claims;
     }
 
-    protected OAuth20AccessToken getAccessToken(final Principal principal) throws Exception {
+    protected OAuth20AccessToken getAccessToken(final Principal principal) throws Throwable {
         return getAccessToken(principal, StringUtils.EMPTY, "clientid");
     }
 
-    protected OAuth20AccessToken getAccessToken() throws Exception {
+    protected OAuth20AccessToken getAccessToken() throws Throwable {
         return getAccessToken(StringUtils.EMPTY, "clientid");
     }
 
-    protected OAuth20AccessToken getAccessToken(final String clientId) throws Exception {
+    protected OAuth20AccessToken getAccessToken(final String clientId) throws Throwable {
         return getAccessToken(StringUtils.EMPTY, clientId);
     }
 
-    protected OAuth20AccessToken getAccessToken(final String idToken, final String clientId) throws Exception {
+    protected OAuth20AccessToken getAccessToken(final String idToken, final String clientId) throws Throwable {
         val principal = RegisteredServiceTestUtils.getPrincipal("casuser", CollectionUtils.wrap("email", List.of("casuser@example.org")));
         return getAccessToken(principal, idToken, clientId);
     }
@@ -479,7 +477,7 @@ public abstract class AbstractOidcTests {
     protected OAuth20AccessToken getAccessToken(
         final Principal principal,
         final String idToken,
-        final String clientId) throws Exception {
+        final String clientId) throws Throwable {
         val code = addCode(principal, getOidcRegisteredService());
 
         val accessToken = mock(OAuth20AccessToken.class);
@@ -500,7 +498,7 @@ public abstract class AbstractOidcTests {
 
 
     protected OAuth20Code addCode(final Principal principal,
-                                  final OAuthRegisteredService registeredService) throws Exception {
+                                  final OAuthRegisteredService registeredService) throws Throwable {
         val tgt = new MockTicketGrantingTicket("casuser");
         val authentication = RegisteredServiceTestUtils.getAuthentication(principal);
         val factory = new WebApplicationServiceFactory();
@@ -516,7 +514,12 @@ public abstract class AbstractOidcTests {
     @ImportAutoConfiguration({
         RefreshAutoConfiguration.class,
         SecurityAutoConfiguration.class,
-        WebMvcAutoConfiguration.class
+        WebMvcAutoConfiguration.class,
+        WebEndpointAutoConfiguration.class,
+        EndpointAutoConfiguration.class,
+        WebClientAutoConfiguration.class,
+        ServletWebServerFactoryAutoConfiguration.class,
+        DispatcherServletAutoConfiguration.class
     })
     @SpringBootConfiguration
     @Import({
@@ -560,11 +563,14 @@ public abstract class AbstractOidcTests {
         OidcLogoutConfiguration.class,
         OidcThrottleConfiguration.class,
         OidcComponentSerializationConfiguration.class,
+        OidcAuditConfiguration.class,
         CasOAuth20Configuration.class,
         CasOAuth20ProtocolTicketCatalogConfiguration.class,
         CasOAuth20EndpointsConfiguration.class,
         CasOAuth20ThrottleConfiguration.class,
-        CasOAuth20AuthenticationServiceSelectionStrategyConfiguration.class
+        CasOAuth20AuthenticationServiceSelectionStrategyConfiguration.class,
+
+        CasWebSecurityConfiguration.class
     })
     public static class SharedTestConfiguration {
     }

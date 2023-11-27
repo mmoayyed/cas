@@ -25,13 +25,13 @@ class ChainingAWSCredentialsProviderTests {
     }
 
     @Test
-    void verifyInstance() throws Exception {
+    void verifyInstance() throws Throwable {
         val path = File.createTempFile("props", ".txt").getCanonicalPath();
         val p = (AwsCredentialsProviderChain) ChainingAWSCredentialsProvider.getInstance("accesskey", "secretKey",
             "profilePath", path);
         val credentials = p.resolveCredentials();
         assertNotNull(credentials);
-        assertTrue(credentials instanceof AwsBasicCredentials);
+        assertInstanceOf(AwsBasicCredentials.class, credentials);
         assertNotNull(ChainingAWSCredentialsProvider.getInstance());
     }
 }

@@ -11,6 +11,7 @@ import lombok.val;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
+import java.net.URI;
 import java.net.URL;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -30,16 +31,16 @@ class YubiKeyMultifactorAuthenticationProviderTests extends BaseAbstractMultifac
         val client = mock(YubicoClient.class);
         when(client.getWsapiUrls()).thenReturn(new String[]{"http://localhost:1234"});
         val http = mock(HttpClient.class);
-        when(http.sendMessageToEndPoint(any(URL.class))).thenReturn(new HttpMessage(new URL("http://localhost:1234"), "message"));
+        when(http.sendMessageToEndPoint(any(URL.class))).thenReturn(new HttpMessage(new URI("http://localhost:1234").toURL(), "message"));
         return new YubiKeyMultifactorAuthenticationProvider(client, http);
     }
 
     @Test
-    void verifyFails() throws Exception {
+    void verifyFails() throws Throwable {
         val client = mock(YubicoClient.class);
         when(client.getWsapiUrls()).thenThrow(new RuntimeException());
         val http = mock(HttpClient.class);
-        when(http.sendMessageToEndPoint(any(URL.class))).thenReturn(new HttpMessage(new URL("http://localhost:1234"), "message"));
+        when(http.sendMessageToEndPoint(any(URL.class))).thenReturn(new HttpMessage(new URI("http://localhost:1234").toURL(), "message"));
         val provider = new YubiKeyMultifactorAuthenticationProvider(client, http);
         val service = MultifactorAuthenticationTestUtils.getRegisteredService();
         assertFalse(provider.isAvailable(service));

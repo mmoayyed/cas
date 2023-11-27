@@ -7,6 +7,7 @@ import org.apereo.cas.util.junit.EnabledIfListeningOnPort;
 
 import com.redis.lettucemod.search.Field;
 import io.lettuce.core.ReadFrom;
+import io.lettuce.core.RedisConnectionException;
 import lombok.val;
 import org.apache.commons.lang3.StringUtils;
 import org.junit.jupiter.api.Tag;
@@ -27,7 +28,7 @@ import static org.junit.jupiter.api.Assertions.*;
 @EnabledIfListeningOnPort(port = 6379)
 class RedisObjectFactoryTests {
     @Test
-    void verifyRedisSearchCommandSupported() {
+    void verifyRedisSearchCommandSupported() throws Throwable {
         val props = new BaseRedisProperties();
         props.setHost("localhost");
         props.setPort(6379);
@@ -44,7 +45,7 @@ class RedisObjectFactoryTests {
 
 
     @Test
-    void verifyConnection() {
+    void verifyConnection() throws Throwable {
         val props = new BaseRedisProperties();
         props.setHost("localhost");
         props.setPort(6379);
@@ -57,7 +58,28 @@ class RedisObjectFactoryTests {
     }
 
     @Test
-    public void verifyConnectionURI() {
+    void verifyConnectionWithUsernamePassword() throws Throwable {
+        val props = new BaseRedisProperties();
+        props.setHost("localhost");
+        props.setPort(16389);
+        props.setUsername("default");
+        props.setPassword("pAssw0rd123");
+        val connection = RedisObjectFactory.newRedisModulesCommands(props);
+        assertNotNull(connection);
+    }
+
+    @Test
+    void verifyConnectionWithPassword() throws Throwable {
+        val props = new BaseRedisProperties();
+        props.setHost("localhost");
+        props.setPort(16389);
+        props.setUsername(null);
+        props.setPassword("pAssw0rd123");
+        assertThrows(RedisConnectionException.class, () -> RedisObjectFactory.newRedisModulesCommands(props));
+    }
+
+    @Test
+    void verifyConnectionURI() throws Throwable {
         val props = new BaseRedisProperties();
         props.setUri("redis://localhost:6379");
         val connection = RedisObjectFactory.newRedisConnectionFactory(props, true, CasSSLContext.disabled());
@@ -65,7 +87,7 @@ class RedisObjectFactoryTests {
     }
 
     @Test
-    void verifyClusterConnection() {
+    void verifyClusterConnection() throws Throwable {
         val props = new BaseRedisProperties();
         props.getCluster().getNodes().add(new RedisClusterNodeProperties()
             .setType("master")
@@ -97,7 +119,7 @@ class RedisObjectFactoryTests {
     }
 
     @Test
-    void verifyNonDefaultClientConnectionOptions() {
+    void verifyNonDefaultClientConnectionOptions() throws Throwable {
         val props = new BaseRedisProperties();
         props.getCluster().getNodes().add(new RedisClusterNodeProperties()
             .setType("master")

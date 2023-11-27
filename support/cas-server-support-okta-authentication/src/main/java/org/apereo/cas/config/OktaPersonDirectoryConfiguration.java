@@ -2,6 +2,7 @@ package org.apereo.cas.config;
 
 import org.apereo.cas.configuration.CasConfigurationProperties;
 import org.apereo.cas.configuration.features.CasFeatureModule;
+import org.apereo.cas.okta.OktaConfigurationFactory;
 import org.apereo.cas.okta.OktaPersonAttributeDao;
 import org.apereo.cas.persondir.PersonDirectoryAttributeRepositoryPlanConfigurer;
 import org.apereo.cas.util.CollectionUtils;
@@ -67,7 +68,7 @@ public class OktaPersonDirectoryConfiguration {
                 val dao = new OktaPersonAttributeDao(oktaPersonDirectoryClient);
                 dao.setUsernameAttributeProvider(new SimpleUsernameAttributeProvider(properties.getUsernameAttribute()));
                 dao.setOrder(properties.getOrder());
-                FunctionUtils.doIfNotNull(properties.getId(), dao::setId);
+                FunctionUtils.doIfNotNull(properties.getId(), id -> dao.setId(id));
                 return BeanContainer.of(CollectionUtils.wrapList(dao));
             })
             .otherwise(BeanContainer::empty)

@@ -1,15 +1,12 @@
 package org.apereo.cas.support.pac4j;
 
-import org.apereo.cas.support.pac4j.authentication.clients.DelegatedClientFactory;
-import org.apereo.cas.support.pac4j.authentication.clients.RefreshableDelegatedClients;
-
+import org.apereo.cas.pac4j.client.DelegatedIdentityProviderFactory;
+import org.apereo.cas.support.pac4j.authentication.clients.RefreshableDelegatedIdentityProviders;
 import lombok.val;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.pac4j.cas.client.CasClient;
-
 import java.util.List;
-
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
@@ -22,10 +19,10 @@ import static org.mockito.Mockito.*;
 @Tag("Delegation")
 class RefreshableDelegatedClientsTests {
     @Test
-    void verifyOperation() {
-        val delegatedFactory = mock(DelegatedClientFactory.class);
+    void verifyOperation() throws Throwable {
+        val delegatedFactory = mock(DelegatedIdentityProviderFactory.class);
         when(delegatedFactory.build()).thenReturn(List.of());
-        val refreshableClients = new RefreshableDelegatedClients("http://localhost:8080/cas", delegatedFactory);
+        val refreshableClients = new RefreshableDelegatedIdentityProviders("http://localhost:8080/cas", delegatedFactory);
         assertTrue(refreshableClients.findAllClients().isEmpty());
         val client = new CasClient();
         when(delegatedFactory.build()).thenReturn(List.of(client));

@@ -28,7 +28,6 @@ import org.apereo.cas.config.CoreSamlConfiguration;
 import org.apereo.cas.config.WsFedAuthenticationEventExecutionPlanConfiguration;
 import org.apereo.cas.config.WsFederationAuthenticationConfiguration;
 import org.apereo.cas.config.WsFederationAuthenticationWebflowConfiguration;
-
 import org.springframework.boot.SpringBootConfiguration;
 import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 import org.springframework.boot.autoconfigure.aop.AopAutoConfiguration;

@@ -23,7 +23,7 @@ import static org.mockito.Mockito.*;
 @Tag("AuthenticationMetadata")
 class MultifactorAuthenticationProviderMetadataPopulatorTests {
     @Test
-    void verifyOperation() throws Exception {
+    void verifyOperation() throws Throwable {
         val provider = mock(MultifactorAuthenticationProvider.class);
         when(provider.getFailureMode()).thenReturn(MultifactorAuthenticationProviderFailureModes.PHANTOM);
         when(provider.getId()).thenReturn("mfa-dummy");
@@ -40,6 +40,6 @@ class MultifactorAuthenticationProviderMetadataPopulatorTests {
         populator.populateAttributes(builder, CoreAuthenticationTestUtils.getAuthenticationTransactionFactory()
             .newTransaction(new UsernamePasswordCredential()));
         val authn = builder.build();
-        assertTrue(authn.getAttributes().containsKey("contextClass"));
+        assertTrue(authn.containsAttribute("contextClass"));
     }
 }

@@ -25,16 +25,16 @@ import static org.mockito.Mockito.*;
 class RegisteredServiceAccessStrategyUtilsTests {
 
     @Test
-    void verifyExpired() {
+    void verifyExpired() throws Throwable {
         val service = RegisteredServiceTestUtils.getRegisteredService();
         service.setExpirationPolicy(new DefaultRegisteredServiceExpirationPolicy(false,
             LocalDate.now(ZoneOffset.UTC).minusDays(1)));
         assertThrows(UnauthorizedServiceException.class, () ->
-            RegisteredServiceAccessStrategyUtils.ensureServiceAccessIsAllowed(RegisteredServiceTestUtils.getService().getId(), service));
+            RegisteredServiceAccessStrategyUtils.ensureServiceAccessIsAllowed(RegisteredServiceTestUtils.getService(), service));
     }
 
     @Test
-    void verifySsoAccess() {
+    void verifySsoAccess() throws Throwable {
         val service = RegisteredServiceTestUtils.getRegisteredService();
         service.setAccessStrategy(new DefaultRegisteredServiceAccessStrategy(true, false));
         val tgt = mock(TicketGrantingTicket.class);
@@ -45,7 +45,7 @@ class RegisteredServiceAccessStrategyUtilsTests {
     }
 
     @Test
-    void verifyPrincipalAccess() {
+    void verifyPrincipalAccess() throws Throwable {
         val service = RegisteredServiceTestUtils.getRegisteredService();
         val authentication = RegisteredServiceTestUtils.getAuthentication();
         assertThrows(PrincipalException.class, () ->

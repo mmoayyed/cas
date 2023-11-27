@@ -1,6 +1,12 @@
+plugins {
+    id 'com.gradle.enterprise' version "${gradleEnterprisePluginVersion}"
+    id 'com.gradle.common-custom-user-data-gradle-plugin' version "${gradleCommonUserDataPluginVersion}"
+}
+
 ext.isCiServer = System.getenv().containsKey("CI")
 ext.buildCacheUser = System.getenv("GRADLE_BUILDCACHE_USER")
 ext.buildCachePsw = System.getenv("GRADLE_BUILDCACHE_PSW")
+ext.gradleEnterpriseAccessKey = System.getenv("GRADLE_ENTERPRISE_ACCESS_KEY")
 ext.githubPackageRegistryUser = System.getenv("GH_PACKAGE_REGISTRY_USER")
 ext.githubPackageRegistryPassword = System.getenv("GH_PACKAGE_REGISTRY_TOKEN")
 
@@ -17,6 +23,19 @@ buildCache {
             username = buildCacheUser
             password = buildCachePsw
         }
+    }
+}
+
+gradleEnterprise {
+    server = 'https://develocity.apereo.org/'
+    allowUntrustedServer = false
+    // accessKey = gradleEnterpriseAccessKey
+    buildScan {
+        publishIfAuthenticated()
+        capture {
+            taskInputFiles = true
+        }
+        uploadInBackground = !isCiServer
     }
 }
 
@@ -69,6 +88,10 @@ dependencyResolutionManagement {
         maven {
             url "https://repository.apache.org/content/repositories/snapshots"
             mavenContent { snapshotsOnly() }
+        }
+        maven {
+            url "https://repository.apache.org/content/repositories/releases"
+            mavenContent { releasesOnly() }
         }
         maven {
             url "https://oss.sonatype.org/content/repositories/releases"
@@ -211,8 +234,6 @@ include "support:cas-server-support-aup-mongo"
 include "support:cas-server-support-aup-redis"
 include "support:cas-server-support-aup-rest"
 include "support:cas-server-support-aup-webflow"
-include "support:cas-server-support-authy"
-include "support:cas-server-support-authy-core"
 include "support:cas-server-support-aws"
 include "support:cas-server-support-aws-cognito-authentication"
 include "support:cas-server-support-aws-s3-service-registry"
@@ -255,6 +276,7 @@ include "support:cas-server-support-consul-client"
 include "support:cas-server-support-cosmosdb-core"
 include "support:cas-server-support-cosmosdb-service-registry"
 include "support:cas-server-support-cosmosdb-ticket-registry"
+include "support:cas-server-support-discovery-profile-core"
 include "support:cas-server-support-discovery-profile"
 include "support:cas-server-support-duo"
 include "support:cas-server-support-duo-core"
@@ -350,6 +372,7 @@ include "support:cas-server-support-mongo-service-registry"
 include "support:cas-server-support-mongo-ticket-registry"
 include "support:cas-server-support-native"
 include "support:cas-server-support-notifications-fcm"
+include "support:cas-server-support-notifications-slack"
 include "support:cas-server-support-oauth"
 include "support:cas-server-support-oauth-api"
 include "support:cas-server-support-oauth-core-api"
@@ -368,7 +391,6 @@ include "support:cas-server-support-oidc-services"
 include "support:cas-server-support-okta-authentication"
 include "support:cas-server-support-otp-mfa"
 include "support:cas-server-support-otp-mfa-core"
-include "support:cas-server-support-pac4j"
 include "support:cas-server-support-pac4j-api"
 include "support:cas-server-support-pac4j-core"
 include "support:cas-server-support-pac4j-core-clients"
@@ -380,6 +402,7 @@ include "support:cas-server-support-passwordless-jpa"
 include "support:cas-server-support-passwordless-ldap"
 include "support:cas-server-support-passwordless-mongo"
 include "support:cas-server-support-passwordless-webflow"
+include "support:cas-server-support-permitio"
 include "support:cas-server-support-person-directory-core"
 include "support:cas-server-support-person-directory"
 include "support:cas-server-support-pm"
@@ -447,7 +470,6 @@ include "support:cas-server-support-sms-clickatell"
 include "support:cas-server-support-sms-smsmode"
 include "support:cas-server-support-sms-nexmo"
 include "support:cas-server-support-sms-textmagic"
-include "support:cas-server-support-sms-twilio"
 include "support:cas-server-support-soap-authentication"
 include "support:cas-server-support-spnego"
 include "support:cas-server-support-spnego-webflow"
@@ -478,6 +500,8 @@ include "support:cas-server-support-token-core-api"
 include "support:cas-server-support-token-core"
 include "support:cas-server-support-token-tickets"
 include "support:cas-server-support-token-webflow"
+include "support:cas-server-support-tracing-otel"
+include "support:cas-server-support-tracing-zipkin"
 include "support:cas-server-support-trusted"
 include "support:cas-server-support-trusted-mfa"
 include "support:cas-server-support-trusted-mfa-core"
@@ -487,6 +511,7 @@ include "support:cas-server-support-trusted-mfa-redis"
 include "support:cas-server-support-trusted-mfa-rest"
 include "support:cas-server-support-trusted-mfa-dynamodb"
 include "support:cas-server-support-trusted-webflow"
+include "support:cas-server-support-twilio"
 include "support:cas-server-support-validation"
 include "support:cas-server-support-validation-core"
 include "support:cas-server-support-webauthn"

@@ -1,17 +1,12 @@
 package org.apereo.cas.util.spring;
 
 import org.apereo.cas.authentication.MultifactorAuthenticationPrincipalResolver;
-import org.apereo.cas.authentication.attribute.AttributeDefinitionStore;
-import org.apereo.cas.authentication.principal.PrincipalAttributesRepositoryCache;
-import org.apereo.cas.authentication.principal.PrincipalResolver;
-import org.apereo.cas.authentication.principal.RegisteredServicePrincipalAttributesRepository;
 import org.apereo.cas.configuration.CasConfigurationProperties;
+import org.apereo.cas.util.function.FunctionUtils;
 import org.apereo.cas.util.scripting.ExecutableCompiledGroovyScript;
 import org.apereo.cas.util.scripting.ScriptResourceCacheManager;
 import org.apereo.cas.util.text.MessageSanitizer;
-import lombok.Synchronized;
 import lombok.val;
-import org.apereo.services.persondir.IPersonAttributeDao;
 import org.springframework.beans.factory.annotation.AutowiredAnnotationBeanPostProcessor;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
@@ -30,15 +25,15 @@ import java.util.Optional;
  * @since 3.0.0.
  */
 public class ApplicationContextProvider implements ApplicationContextAware {
-    private static ApplicationContext CONTEXT;
+    private static ApplicationContext APPLICATION_CONTEXT;
 
     public static ApplicationContext getApplicationContext() {
-        return CONTEXT;
+        return APPLICATION_CONTEXT;
     }
 
     @Override
     public void setApplicationContext(@Nonnull final ApplicationContext context) {
-        CONTEXT = context;
+        APPLICATION_CONTEXT = context;
     }
 
     /**
@@ -61,7 +56,7 @@ public class ApplicationContextProvider implements ApplicationContextAware {
      * @return the multifactor authentication principal resolvers
      */
     public static List<MultifactorAuthenticationPrincipalResolver> getMultifactorAuthenticationPrincipalResolvers() {
-        val resolvers = new ArrayList<>(CONTEXT.getBeansOfType(MultifactorAuthenticationPrincipalResolver.class).values());
+        val resolvers = new ArrayList<>(APPLICATION_CONTEXT.getBeansOfType(MultifactorAuthenticationPrincipalResolver.class).values());
         AnnotationAwareOrderComparator.sort(resolvers);
         return resolvers;
     }
@@ -72,7 +67,7 @@ public class ApplicationContextProvider implements ApplicationContextAware {
      * @param ctx the ctx
      */
     public static void holdApplicationContext(final ApplicationContext ctx) {
-        CONTEXT = ctx;
+        APPLICATION_CONTEXT = ctx;
     }
 
     /**
@@ -103,7 +98,6 @@ public class ApplicationContextProvider implements ApplicationContextAware {
      * @param beanId             the bean id
      * @return the t
      */
-    @Synchronized
     public static <T> T registerBeanIntoApplicationContext(final ConfigurableApplicationContext applicationContext,
                                                            final T beanInstance, final String beanId) {
         val beanFactory = applicationContext.getBeanFactory();
@@ -122,20 +116,8 @@ public class ApplicationContextProvider implements ApplicationContextAware {
      * @return the cas properties
      */
     public static Optional<CasConfigurationProperties> getCasConfigurationProperties() {
-        if (CONTEXT != null) {
-            return Optional.of(CONTEXT.getBean(CasConfigurationProperties.class));
-        }
-        return Optional.empty();
-    }
-
-    /**
-     * Gets attribute repository.
-     *
-     * @return the attribute repository
-     */
-    public static Optional<IPersonAttributeDao> getAttributeRepository() {
-        if (CONTEXT != null) {
-            return Optional.of(CONTEXT.getBean(PrincipalResolver.BEAN_NAME_ATTRIBUTE_REPOSITORY, IPersonAttributeDao.class));
+        if (APPLICATION_CONTEXT != null) {
+            return Optional.of(APPLICATION_CONTEXT.getBean(CasConfigurationProperties.class));
         }
         return Optional.empty();
     }
@@ -146,7 +128,7 @@ public class ApplicationContextProvider implements ApplicationContextAware {
      * @return the configurable application context
      */
     public static ConfigurableApplicationContext getConfigurableApplicationContext() {
-        return (ConfigurableApplicationContext) CONTEXT;
+        return (ConfigurableApplicationContext) APPLICATION_CONTEXT;
     }
 
     /**
@@ -155,48 +137,7 @@ public class ApplicationContextProvider implements ApplicationContextAware {
      * @return the script resource cache manager
      */
     public static Optional<ScriptResourceCacheManager<String, ExecutableCompiledGroovyScript>> getScriptResourceCacheManager() {
-        if (CONTEXT != null && CONTEXT.containsBean(ScriptResourceCacheManager.BEAN_NAME)) {
-            return Optional.of(CONTEXT.getBean(ScriptResourceCacheManager.BEAN_NAME, ScriptResourceCacheManager.class));
-        }
-        return Optional.empty();
-    }
-
-    /**
-     * Gets attribute definition store.
-     *
-     * @return the attribute definition store
-     */
-    public static Optional<AttributeDefinitionStore> getAttributeDefinitionStore() {
-        if (CONTEXT != null && CONTEXT.containsBean(AttributeDefinitionStore.BEAN_NAME)) {
-            return Optional.of(CONTEXT.getBean(AttributeDefinitionStore.BEAN_NAME, AttributeDefinitionStore.class));
-        }
-        return Optional.empty();
-    }
-
-    /**
-     * Gets principal attributes repository.
-     *
-     * @return the principal attributes repository
-     */
-    public static Optional<RegisteredServicePrincipalAttributesRepository> getPrincipalAttributesRepository() {
-        if (CONTEXT != null && CONTEXT.containsBean(PrincipalResolver.BEAN_NAME_GLOBAL_PRINCIPAL_ATTRIBUTE_REPOSITORY)) {
-            return Optional.of(CONTEXT.getBean(PrincipalResolver.BEAN_NAME_GLOBAL_PRINCIPAL_ATTRIBUTE_REPOSITORY,
-                RegisteredServicePrincipalAttributesRepository.class));
-        }
-        return Optional.empty();
-    }
-
-    /**
-     * Gets principal attributes repository cache.
-     *
-     * @return the principal attributes repository cache
-     */
-    public static Optional<PrincipalAttributesRepositoryCache> getPrincipalAttributesRepositoryCache() {
-        if (CONTEXT != null && CONTEXT.containsBean(PrincipalAttributesRepositoryCache.DEFAULT_BEAN_NAME)) {
-            return Optional.of(CONTEXT.getBean(PrincipalAttributesRepositoryCache.DEFAULT_BEAN_NAME,
-                PrincipalAttributesRepositoryCache.class));
-        }
-        return Optional.empty();
+        return (Optional) getBean(ScriptResourceCacheManager.BEAN_NAME, ScriptResourceCacheManager.class);
     }
 
     /**
@@ -205,9 +146,28 @@ public class ApplicationContextProvider implements ApplicationContextAware {
      * @return the message sanitizer
      */
     public static Optional<MessageSanitizer> getMessageSanitizer() {
-        if (CONTEXT != null && CONTEXT.containsBean(MessageSanitizer.BEAN_NAME)) {
-            return Optional.of(CONTEXT.getBean(MessageSanitizer.BEAN_NAME, MessageSanitizer.class));
-        }
-        return Optional.empty();
+        return getBean(MessageSanitizer.BEAN_NAME, MessageSanitizer.class);
+    }
+
+    private static <T> Optional<T> getBean(final String name, final Class<T> clazz) {
+        return getBean(APPLICATION_CONTEXT, name, clazz);
+    }
+
+    /**
+     * Gets bean.
+     *
+     * @param <T>                the type parameter
+     * @param applicationContext the application context
+     * @param name               the name
+     * @param clazz              the clazz
+     * @return the bean
+     */
+    public static <T> Optional<T> getBean(final ApplicationContext applicationContext, final String name, final Class<T> clazz) {
+        return FunctionUtils.doAndHandle(() -> {
+            if (applicationContext != null && applicationContext.containsBean(name)) {
+                return Optional.of(applicationContext.getBean(name, clazz));
+            }
+            return Optional.<T>empty();
+        }, e -> Optional.<T>empty()).get();
     }
 }

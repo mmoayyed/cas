@@ -6,6 +6,7 @@ import org.apereo.cas.support.saml.web.idp.profile.builders.SamlProfileBuilderCo
 import org.apereo.cas.support.saml.web.idp.profile.builders.SamlProfileObjectBuilder;
 
 import lombok.val;
+import org.hibernate.AssertionFailure;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.opensaml.saml.common.xml.SAMLConstants;
@@ -31,8 +32,9 @@ class SamlProfileSamlRegisteredServiceAttributeBuilderTests extends BaseSamlIdPC
     @Autowired
     @Qualifier("samlProfileSamlAttributeStatementBuilder")
     private SamlProfileObjectBuilder<AttributeStatement> samlProfileSamlAttributeStatementBuilder;
+    
     @Test
-    void verifyNoEncryption() throws Exception {
+    void verifyNoEncryption() throws Throwable {
         val service = getSamlRegisteredServiceForTestShib();
         service.setEncryptAttributes(true);
 
@@ -44,7 +46,8 @@ class SamlProfileSamlRegisteredServiceAttributeBuilderTests extends BaseSamlIdPC
         service2.setEncryptionOptional(true);
 
         val adaptor = SamlRegisteredServiceMetadataAdaptor
-            .get(samlRegisteredServiceCachingMetadataResolver, service, service.getServiceId()).get();
+            .get(samlRegisteredServiceCachingMetadataResolver, service, service.getServiceId())
+            .orElseThrow(() -> new AssertionFailure("Unable to locate metadata adaptor for " + service.getServiceId()));
 
         val buildContext = SamlProfileBuilderContext.builder()
             .samlRequest(getAuthnRequestFor(service))
@@ -62,13 +65,14 @@ class SamlProfileSamlRegisteredServiceAttributeBuilderTests extends BaseSamlIdPC
     }
 
     @Test
-    void verifyEncryptionDisabledIfAssertionEncrypted() throws Exception {
+    void verifyEncryptionDisabledIfAssertionEncrypted() throws Throwable {
         val service = getSamlRegisteredServiceForTestShib();
         service.setEncryptAttributes(true);
         service.setEncryptAssertions(true);
 
         val adaptor = SamlRegisteredServiceMetadataAdaptor
-            .get(samlRegisteredServiceCachingMetadataResolver, service, service.getServiceId()).get();
+            .get(samlRegisteredServiceCachingMetadataResolver, service, service.getServiceId())
+            .orElseThrow(() -> new AssertionFailure("Unable to locate metadata adaptor for " + service.getServiceId()));
 
         val buildContext = SamlProfileBuilderContext.builder()
             .samlRequest(getAuthnRequestFor(service))
@@ -87,12 +91,13 @@ class SamlProfileSamlRegisteredServiceAttributeBuilderTests extends BaseSamlIdPC
     }
 
     @Test
-    void verifyEncryptionForAllUndefined() throws Exception {
+    void verifyEncryptionForAllUndefined() throws Throwable {
         val service = getSamlRegisteredServiceForTestShib();
         service.setEncryptAttributes(true);
 
         val adaptor = SamlRegisteredServiceMetadataAdaptor
-            .get(samlRegisteredServiceCachingMetadataResolver, service, service.getServiceId()).get();
+            .get(samlRegisteredServiceCachingMetadataResolver, service, service.getServiceId())
+            .orElseThrow(() -> new AssertionFailure("Unable to locate metadata adaptor for " + service.getServiceId()));
         val buildContext = SamlProfileBuilderContext.builder()
             .samlRequest(getAuthnRequestFor(service))
             .httpRequest(new MockHttpServletRequest())
@@ -110,12 +115,13 @@ class SamlProfileSamlRegisteredServiceAttributeBuilderTests extends BaseSamlIdPC
     }
 
     @Test
-    void verifyEncryptionForAll() throws Exception {
+    void verifyEncryptionForAll() throws Throwable {
         val service = getSamlRegisteredServiceForTestShib();
         service.setEncryptAttributes(true);
         service.getEncryptableAttributes().add("*");
 
-        val adaptor = SamlRegisteredServiceMetadataAdaptor.get(samlRegisteredServiceCachingMetadataResolver, service, service.getServiceId()).get();
+        val adaptor = SamlRegisteredServiceMetadataAdaptor.get(samlRegisteredServiceCachingMetadataResolver, service, service.getServiceId())
+            .orElseThrow(() -> new AssertionFailure("Unable to locate metadata adaptor for " + service.getServiceId()));
         val buildContext = SamlProfileBuilderContext.builder()
             .samlRequest(getAuthnRequestFor(service))
             .httpRequest(new MockHttpServletRequest())
@@ -133,12 +139,13 @@ class SamlProfileSamlRegisteredServiceAttributeBuilderTests extends BaseSamlIdPC
     }
 
     @Test
-    void verifyEncryptionForSome() throws Exception {
+    void verifyEncryptionForSome() throws Throwable {
         val service = getSamlRegisteredServiceForTestShib();
         service.setEncryptAttributes(true);
         service.getEncryptableAttributes().add("uid");
 
-        val adaptor = SamlRegisteredServiceMetadataAdaptor.get(samlRegisteredServiceCachingMetadataResolver, service, service.getServiceId()).get();
+        val adaptor = SamlRegisteredServiceMetadataAdaptor.get(samlRegisteredServiceCachingMetadataResolver, service, service.getServiceId())
+            .orElseThrow(() -> new AssertionFailure("Unable to locate metadata adaptor for " + service.getServiceId()));
         val buildContext = SamlProfileBuilderContext.builder()
             .samlRequest(getAuthnRequestFor(service))
             .httpRequest(new MockHttpServletRequest())

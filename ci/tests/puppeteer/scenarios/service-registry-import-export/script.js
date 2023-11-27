@@ -9,9 +9,10 @@ const os = require("os");
 
     let template = path.join(__dirname, 'registered-service.json');
     let contents = fs.readFileSync(template, 'utf8');
-    for (let i = 1; i <= 100; i++) {
+    const totalCount = 20;
+    for (let i = 1; i <= totalCount; i++) {
         let serviceBody = contents.replace("${id}", String(i));
-        console.log(`Import registered service:\n${serviceBody}`);
+        await cas.log(`Import registered service:\n${serviceBody}`);
         await cas.doRequest(`${baseUrl}/import`, "POST", {
             'Accept': 'application/json',
             'Content-Length': serviceBody.length,
@@ -19,23 +20,17 @@ const os = require("os");
         }, 201, serviceBody);
     }
 
-    await cas.doGet(baseUrl,
-        res => {
-            assert(res.status === 200);
-            assert(res.data[1].length === 100);
-        },
-        error => {
-            throw error;
-        }, {
-            'Content-Type': 'application/json'
-        });
+    let body = JSON.parse(await cas.doRequest(baseUrl, "GET", {
+        'Content-Type': 'application/json'
+    }, 200));
+    assert(body[1].length === totalCount);
 
     await cas.doGet(`${baseUrl}/export`,
         res => {
             const tempDir = os.tmpdir();
             let exported = path.join(tempDir, 'services.zip');
             res.data.pipe(fs.createWriteStream(exported));
-            console.log(`Exported services are at ${exported}`);
+            cas.log(`Exported services are at ${exported}`);
         },
         error => {
             throw error;

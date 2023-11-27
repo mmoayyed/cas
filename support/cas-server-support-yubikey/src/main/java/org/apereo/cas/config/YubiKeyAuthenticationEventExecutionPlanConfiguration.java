@@ -1,6 +1,8 @@
 package org.apereo.cas.config;
 
+import org.apereo.cas.adaptors.yubikey.AcceptAllYubiKeyAccountValidator;
 import org.apereo.cas.adaptors.yubikey.DefaultYubiKeyAccountValidator;
+import org.apereo.cas.adaptors.yubikey.DenyAllYubiKeyAccountValidator;
 import org.apereo.cas.adaptors.yubikey.YubiKeyAccount;
 import org.apereo.cas.adaptors.yubikey.YubiKeyAccountRegistry;
 import org.apereo.cas.adaptors.yubikey.YubiKeyAccountValidator;
@@ -139,9 +141,15 @@ public class YubiKeyAuthenticationEventExecutionPlanConfiguration {
     @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
     @ConditionalOnMissingBean(name = "yubiKeyAccountValidator")
     public YubiKeyAccountValidator yubiKeyAccountValidator(
+        final CasConfigurationProperties casProperties,
         @Qualifier("yubicoClient")
         final YubicoClient yubicoClient) {
-        return new DefaultYubiKeyAccountValidator(yubicoClient);
+        val yubi = casProperties.getAuthn().getMfa().getYubikey();
+        return switch (yubi.getValidator()) {
+            case SKIP -> new AcceptAllYubiKeyAccountValidator();
+            case REJECT -> new DenyAllYubiKeyAccountValidator();
+            case VERIFY -> new DefaultYubiKeyAccountValidator(yubicoClient);
+        };
     }
 
     @Bean
@@ -185,7 +193,7 @@ public class YubiKeyAuthenticationEventExecutionPlanConfiguration {
         LOGGER.warn("All credentials are considered eligible for YubiKey authentication. "
                     + "Consider providing an account registry implementation via [{}]",
             YubiKeyAccountRegistry.class.getName());
-        val registry = new OpenYubiKeyAccountRegistry(new DefaultYubiKeyAccountValidator(yubicoClient));
+        val registry = new OpenYubiKeyAccountRegistry(yubiKeyAccountValidator);
         registry.setCipherExecutor(yubikeyAccountCipherExecutor);
         return registry;
     }
@@ -200,26 +208,27 @@ public class YubiKeyAuthenticationEventExecutionPlanConfiguration {
         return new YubiKeyAccountRegistryEndpoint(casProperties, yubiKeyAccountRegistry);
     }
 
+    @ConditionalOnMissingBean(name = "yubikeyMultifactorAuthenticationProvider")
     @Bean
     @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
     public MultifactorAuthenticationProvider yubikeyMultifactorAuthenticationProvider(
         final CasConfigurationProperties casProperties,
         @Qualifier("yubicoClient")
         final YubicoClient yubicoClient,
-        @Qualifier("httpClient")
+        @Qualifier(HttpClient.BEAN_NAME_HTTPCLIENT)
         final HttpClient httpClient,
         @Qualifier("yubikeyBypassEvaluator")
         final MultifactorAuthenticationProviderBypassEvaluator yubikeyBypassEvaluator,
         @Qualifier("failureModeEvaluator")
         final MultifactorAuthenticationFailureModeEvaluator failureModeEvaluator) {
         val yubi = casProperties.getAuthn().getMfa().getYubikey();
-        val p = new YubiKeyMultifactorAuthenticationProvider(yubicoClient, httpClient);
-        p.setBypassEvaluator(yubikeyBypassEvaluator);
-        p.setFailureMode(yubi.getFailureMode());
-        p.setFailureModeEvaluator(failureModeEvaluator);
-        p.setOrder(yubi.getRank());
-        p.setId(yubi.getId());
-        return p;
+        val provider = new YubiKeyMultifactorAuthenticationProvider(yubicoClient, httpClient);
+        provider.setBypassEvaluator(yubikeyBypassEvaluator);
+        provider.setFailureMode(yubi.getFailureMode());
+        provider.setFailureModeEvaluator(failureModeEvaluator);
+        provider.setOrder(yubi.getRank());
+        provider.setId(yubi.getId());
+        return provider;
     }
 
     @ConditionalOnMissingBean(name = "yubikeyAuthenticationEventExecutionPlanConfigurer")

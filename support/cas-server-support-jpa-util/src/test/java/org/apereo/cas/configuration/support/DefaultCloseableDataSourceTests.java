@@ -20,14 +20,14 @@ import static org.junit.jupiter.api.Assertions.*;
 @Tag("Hibernate")
 class DefaultCloseableDataSourceTests {
     @Test
-    void verifyOperation() {
+    void verifyOperation() throws Throwable {
         val props = new Jpa()
             .setDriverClass("org.hsqldb.jdbcDriver")
             .setUser("sa")
             .setUrl("jdbc:hsqldb:mem:cas");
 
         val ds = JpaBeans.newDataSource(props);
-        assertTrue(ds.targetDataSource() instanceof Closeable);
+        assertInstanceOf(Closeable.class, ds.targetDataSource());
         assertDoesNotThrow(() -> {
             ds.close();
             ds.destroy();

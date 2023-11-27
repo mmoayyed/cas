@@ -50,7 +50,7 @@ class OAuth20TokenAuthorizationResponseBuilderTests extends AbstractOAuth20Tests
         assertEquals(expectedParamValue,
             params
                 .get(paramName)
-                .get(0),
+                .getFirst(),
             () -> "Expected unchanged " + paramName + "  param");
     }
 
@@ -73,7 +73,7 @@ class OAuth20TokenAuthorizationResponseBuilderTests extends AbstractOAuth20Tests
     }
 
     @Test
-    void verifyUnchangedStateAndNonceParameter() throws Exception {
+    void verifyUnchangedStateAndNonceParameter() throws Throwable {
         assertEquals(Ordered.LOWEST_PRECEDENCE, oauthAuthorizationCodeResponseBuilder.getOrder());
 
         val registeredService = getRegisteredService("example", CLIENT_SECRET, new LinkedHashSet<>());
@@ -98,7 +98,7 @@ class OAuth20TokenAuthorizationResponseBuilderTests extends AbstractOAuth20Tests
             .redirectUri("https://oauth.example.org")
             .build();
         val modelAndView = oauthTokenResponseBuilder.build(holder);
-        assertTrue(modelAndView.getView() instanceof RedirectView, "Expected RedirectView");
+        assertInstanceOf(RedirectView.class, modelAndView.getView(), "Expected RedirectView");
         assertTrue(modelAndView.getModel().isEmpty());
 
         val redirectUrl = ((AbstractUrlBasedView) modelAndView.getView()).getUrl();

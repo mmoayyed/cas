@@ -45,16 +45,14 @@ import static org.junit.jupiter.api.Assertions.*;
  * @since 6.1.0
  */
 @Tag("OIDC")
-@TestPropertySource(properties =
-    "cas.authn.oauth.code.time-to-kill-in-seconds=60"
-)
+@TestPropertySource(properties = "cas.authn.oauth.code.time-to-kill-in-seconds=60")
 class OidcJwtAuthenticatorHMacTests extends AbstractOidcTests {
     @Autowired
     @Qualifier("oidcJwtClientProvider")
     private OAuth20AuthenticationClientProvider oidcJwtClientProvider;
 
     @Test
-    void verifyBadAlgAction() throws Exception {
+    void verifyBadAlgAction() throws Throwable {
         val auth = getAuthenticator();
 
         val request = new MockHttpServletRequest();
@@ -62,28 +60,29 @@ class OidcJwtAuthenticatorHMacTests extends AbstractOidcTests {
         val context = new JEEContext(request, response);
 
         val registeredService = getOidcRegisteredService();
+        servicesManager.save(registeredService);
+
         val claims = getClaims(registeredService.getClientId(),
             oidcIssuerService.determineIssuer(Optional.of(registeredService)),
             registeredService.getClientId(), registeredService.getClientId());
-
         val keyGen = KeyPairGenerator.getInstance("RSA");
         val pair = keyGen.generateKeyPair();
-        val priv = pair.getPrivate();
+        val privateKey = pair.getPrivate();
 
-        val jwt = EncodingUtils.signJwsRSASha512(priv, claims.toJson().getBytes(StandardCharsets.UTF_8), Map.of());
+        val jwt = EncodingUtils.signJwsRSASha512(privateKey, claims.toJson().getBytes(StandardCharsets.UTF_8), Map.of());
         val credentials = getCredentials(request, OAuth20Constants.CLIENT_ASSERTION_TYPE_JWT_BEARER,
             new String(jwt, StandardCharsets.UTF_8), registeredService.getClientId());
-        auth.validate(new CallContext(context, JEESessionStore.INSTANCE), credentials);
+        auth.validate(new CallContext(context, new JEESessionStore()), credentials);
         assertNull(credentials.getUserProfile());
     }
 
     private Authenticator getAuthenticator() {
-        val c = (BaseClient) oidcJwtClientProvider.createClient();
-        return c.getAuthenticator();
+        val client = (BaseClient) oidcJwtClientProvider.createClient();
+        return client.getAuthenticator();
     }
 
     @Test
-    void verifyAction() throws Exception {
+    void verifyAction() throws Throwable {
         val auth = getAuthenticator();
 
         val request = new MockHttpServletRequest();
@@ -104,12 +103,12 @@ class OidcJwtAuthenticatorHMacTests extends AbstractOidcTests {
 
         val credentials = getCredentials(request, OAuth20Constants.CLIENT_ASSERTION_TYPE_JWT_BEARER,
             new String(jwt, StandardCharsets.UTF_8), registeredService.getClientId());
-        auth.validate(new CallContext(context, JEESessionStore.INSTANCE), credentials);
+        auth.validate(new CallContext(context, new JEESessionStore()), credentials);
         assertNotNull(credentials.getUserProfile());
     }
 
     @Test
-    void verifyDisabledServiceAction() throws Exception {
+    void verifyDisabledServiceAction() throws Throwable {
         val auth = getAuthenticator();
 
         val request = new MockHttpServletRequest();
@@ -117,7 +116,7 @@ class OidcJwtAuthenticatorHMacTests extends AbstractOidcTests {
         val context = new JEEContext(request, response);
 
         val audience = casProperties.getServer().getPrefix().concat('/'
-                                                                    + OidcConstants.BASE_OIDC_URL + '/' + OidcConstants.ACCESS_TOKEN_URL);
+            + OidcConstants.BASE_OIDC_URL + '/' + OidcConstants.ACCESS_TOKEN_URL);
         val registeredService = getOidcRegisteredService(UUID.randomUUID().toString());
         registeredService.setAccessStrategy(new DefaultRegisteredServiceAccessStrategy().setEnabled(false));
         servicesManager.save(registeredService);
@@ -131,12 +130,12 @@ class OidcJwtAuthenticatorHMacTests extends AbstractOidcTests {
 
         val credentials = getCredentials(request, OAuth20Constants.CLIENT_ASSERTION_TYPE_JWT_BEARER,
             new String(jwt, StandardCharsets.UTF_8), registeredService.getClientId());
-        auth.validate(new CallContext(context, JEESessionStore.INSTANCE), credentials);
+        auth.validate(new CallContext(context, new JEESessionStore()), credentials);
         assertNull(credentials.getUserProfile());
     }
 
     @Test
-    void verifyNoUserAction() throws Exception {
+    void verifyNoUserAction() throws Throwable {
         val auth = getAuthenticator();
 
         val request = new MockHttpServletRequest();
@@ -145,12 +144,12 @@ class OidcJwtAuthenticatorHMacTests extends AbstractOidcTests {
 
         val registeredService = getOidcRegisteredService();
         val credentials = getCredentials(request, "unknown", "----", registeredService.getClientId());
-        auth.validate(new CallContext(context, JEESessionStore.INSTANCE), credentials);
+        auth.validate(new CallContext(context, new JEESessionStore()), credentials);
         assertNull(credentials.getUserProfile());
     }
 
     @Test
-    void verifyBadJwt() throws Exception {
+    void verifyBadJwt() throws Throwable {
         val auth = getAuthenticator();
 
         val request = new MockHttpServletRequest();
@@ -160,13 +159,13 @@ class OidcJwtAuthenticatorHMacTests extends AbstractOidcTests {
         val registeredService = getOidcRegisteredService();
         val credentials = getCredentials(request, OAuth20Constants.CLIENT_ASSERTION_TYPE_JWT_BEARER,
             "----", registeredService.getClientId());
-        auth.validate(new CallContext(context, JEESessionStore.INSTANCE), credentials);
+        auth.validate(new CallContext(context, new JEESessionStore()), credentials);
         assertNull(credentials.getUserProfile());
     }
 
     private UsernamePasswordCredentials getCredentials(final MockHttpServletRequest request,
                                                        final String uid, final String password,
-                                                       final String clientId) throws Exception {
+                                                       final String clientId) throws Throwable {
         val credentials = new UsernamePasswordCredentials(uid, password);
         val code = defaultOAuthCodeFactory.create(RegisteredServiceTestUtils.getService(),
             RegisteredServiceTestUtils.getAuthentication(),

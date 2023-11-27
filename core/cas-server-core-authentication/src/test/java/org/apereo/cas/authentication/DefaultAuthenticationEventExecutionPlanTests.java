@@ -20,6 +20,10 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.cloud.autoconfigure.RefreshAutoConfiguration;
+import org.springframework.context.ConfigurableApplicationContext;
 
 import java.util.List;
 import java.util.Set;
@@ -34,6 +38,7 @@ import static org.mockito.Mockito.*;
  * @since 6.3.0
  */
 @Tag("Authentication")
+@SpringBootTest(classes = RefreshAutoConfiguration.class)
 class DefaultAuthenticationEventExecutionPlanTests {
     @Mock
     private ServicesManager servicesManager;
@@ -41,13 +46,16 @@ class DefaultAuthenticationEventExecutionPlanTests {
     @Mock
     private AttributeDefinitionStore attributeDefinitionStore;
 
+    @Autowired
+    private ConfigurableApplicationContext applicationContext;
+    
     @BeforeEach
     public void before() throws Exception {
         MockitoAnnotations.openMocks(this).close();
     }
 
     @Test
-    void verifyDuplicateHandlers() throws Exception {
+    void verifyDuplicateHandlers() throws Throwable {
         val h1 = new AcceptUsersAuthenticationHandler("Handler1");
         val h2 = new AcceptUsersAuthenticationHandler(h1.getName());
         assertEquals(h1, h2);
@@ -60,7 +68,7 @@ class DefaultAuthenticationEventExecutionPlanTests {
     }
 
     @Test
-    void verifyOperation() {
+    void verifyOperation() throws Throwable {
         val context = PrincipalResolutionContext.builder()
             .servicesManager(servicesManager)
             .attributeDefinitionStore(attributeDefinitionStore)
@@ -70,6 +78,7 @@ class DefaultAuthenticationEventExecutionPlanTests {
             .principalNameTransformer(formUserId -> formUserId)
             .useCurrentPrincipalId(false)
             .resolveAttributes(true)
+            .applicationContext(applicationContext)
             .attributeMerger(CoreAuthenticationUtils.getAttributeMerger(PrincipalAttributesCoreProperties.MergingStrategyTypes.REPLACE))
             .activeAttributeRepositoryIdentifiers(CollectionUtils.wrapSet(IPersonAttributeDao.WILDCARD))
             .build();
@@ -88,7 +97,7 @@ class DefaultAuthenticationEventExecutionPlanTests {
     }
 
     @Test
-    void verifyMismatchedCount() {
+    void verifyMismatchedCount() throws Throwable {
         val plan = new DefaultAuthenticationEventExecutionPlan();
         plan.registerAuthenticationHandlersWithPrincipalResolver(List.of(new SimpleTestUsernamePasswordAuthenticationHandler()), List.of());
         assertTrue(plan.getAuthenticationHandlers().isEmpty());
@@ -96,7 +105,7 @@ class DefaultAuthenticationEventExecutionPlanTests {
 
 
     @Test
-    void verifyNoHandlerResolves() {
+    void verifyNoHandlerResolves() throws Throwable {
         val transaction = CoreAuthenticationTestUtils.getAuthenticationTransactionFactory()
             .newTransaction(CoreAuthenticationTestUtils.getWebApplicationService(), mock(Credential.class));
         val plan = new DefaultAuthenticationEventExecutionPlan();
@@ -105,7 +114,7 @@ class DefaultAuthenticationEventExecutionPlanTests {
 
 
     @Test
-    void verifyDefaults() {
+    void verifyDefaults() throws Throwable {
         val input = mock(AuthenticationEventExecutionPlan.class);
         when(input.getAuthenticationHandlers()).thenReturn(Set.of());
         when(input.getAuthenticationHandlersBy(any())).thenCallRealMethod();

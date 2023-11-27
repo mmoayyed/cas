@@ -1,6 +1,7 @@
 package org.apereo.cas.web.report;
 
 import org.apereo.cas.authentication.AuthenticationEventExecutionPlan;
+import org.apereo.cas.authentication.AuthenticationHandler;
 import org.apereo.cas.configuration.CasConfigurationProperties;
 import org.apereo.cas.web.BaseCasActuatorEndpoint;
 
@@ -50,7 +51,7 @@ public class RegisteredAuthenticationHandlersEndpoint extends BaseCasActuatorEnd
     public Collection<AuthenticationHandlerDetails> handle() {
         return this.authenticationEventExecutionPlan.getObject().getAuthenticationHandlers()
             .stream()
-            .map(handler -> AuthenticationHandlerDetails.builder().name(handler.getName()).order(handler.getOrder()).build())
+            .map(RegisteredAuthenticationHandlersEndpoint::buildHandlerDetails)
             .sorted(Comparator.comparing(AuthenticationHandlerDetails::getOrder))
             .collect(Collectors.toList());
     }
@@ -69,20 +70,33 @@ public class RegisteredAuthenticationHandlersEndpoint extends BaseCasActuatorEnd
             .stream()
             .filter(authnHandler -> authnHandler.getName().equalsIgnoreCase(name))
             .findFirst()
-            .map(handler -> AuthenticationHandlerDetails.builder().name(handler.getName()).order(handler.getOrder()).build())
+            .map(RegisteredAuthenticationHandlersEndpoint::buildHandlerDetails)
             .orElse(null);
+    }
+
+    private static AuthenticationHandlerDetails buildHandlerDetails(final AuthenticationHandler handler) {
+        return AuthenticationHandlerDetails.builder()
+            .name(handler.getName())
+            .type(handler.getClass().getName())
+            .order(handler.getOrder())
+            .state(handler.getState().name())
+            .build();
     }
 
     @SuperBuilder
     @Getter
     @SuppressWarnings("UnusedMethod")
-    private static final class AuthenticationHandlerDetails implements Serializable {
+    public static final class AuthenticationHandlerDetails implements Serializable {
         @Serial
         private static final long serialVersionUID = 6755362844006190415L;
 
         private final String name;
 
+        private final String type;
+
         private final Integer order;
+
+        private final String state;
     }
 
 }

@@ -19,6 +19,7 @@ import org.apereo.cas.ticket.expiration.HardTimeoutExpirationPolicy;
 import org.apereo.cas.util.CollectionUtils;
 import org.apereo.cas.util.crypto.CipherExecutor;
 
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
@@ -42,10 +43,8 @@ public class DefaultTicketGrantingTicketFactory implements TicketGrantingTicketF
      */
     protected final UniqueTicketIdGenerator ticketGrantingTicketUniqueTicketIdGenerator;
 
-    /**
-     * Expiration policy for ticket granting tickets.
-     */
-    protected final ExpirationPolicyBuilder<TicketGrantingTicket> ticketGrantingTicketExpirationPolicy;
+    @Getter
+    protected final ExpirationPolicyBuilder<TicketGrantingTicket> expirationPolicyBuilder;
 
     /**
      * The ticket cipher, if any.
@@ -59,8 +58,7 @@ public class DefaultTicketGrantingTicketFactory implements TicketGrantingTicketF
 
     @Override
     public <T extends TicketGrantingTicket> T create(final Authentication authentication,
-                                                     final Service service,
-                                                     final Class<T> clazz) {
+                                                     final Service service, final Class<T> clazz) throws Throwable {
         val tgtId = produceTicketIdentifier(authentication);
         return produceTicket(authentication, tgtId, service, clazz);
     }
@@ -74,7 +72,7 @@ public class DefaultTicketGrantingTicketFactory implements TicketGrantingTicketF
                                                                final String tgtId,
                                                                final Service service,
                                                                final Class<T> clazz) {
-        val expirationPolicy = getTicketGrantingTicketExpirationPolicy(service, authentication);
+        val expirationPolicy = getExpirationPolicyBuilder(service, authentication);
         val result = new TicketGrantingTicketImpl(tgtId, authentication, expirationPolicy.orElseThrow());
         if (!clazz.isAssignableFrom(result.getClass())) {
             throw new ClassCastException("Result [" + result + "] is of type " + result.getClass() + " when we were expecting " + clazz);
@@ -82,8 +80,8 @@ public class DefaultTicketGrantingTicketFactory implements TicketGrantingTicketF
         return (T) result;
     }
 
-    protected Optional<ExpirationPolicy> getTicketGrantingTicketExpirationPolicy(final Service service,
-                                                                                 final Authentication authentication) {
+    protected Optional<ExpirationPolicy> getExpirationPolicyBuilder(final Service service,
+                                                                    final Authentication authentication) {
         val allAttributes = CoreAuthenticationUtils.mergeAttributes(authentication.getAttributes(), authentication.getPrincipal().getAttributes());
         if (allAttributes.containsKey(AuthenticationManager.AUTHENTICATION_SESSION_TIMEOUT_ATTRIBUTE)) {
             val timeout = CollectionUtils.firstElement(allAttributes.get(AuthenticationManager.AUTHENTICATION_SESSION_TIMEOUT_ATTRIBUTE))
@@ -99,10 +97,10 @@ public class DefaultTicketGrantingTicketFactory implements TicketGrantingTicketF
         return Optional.ofNullable(servicesManager.findServiceBy(service))
             .map(RegisteredService::getTicketGrantingTicketExpirationPolicy)
             .flatMap(RegisteredServiceTicketGrantingTicketExpirationPolicy::toExpirationPolicy)
-            .or(() -> Optional.of(ticketGrantingTicketExpirationPolicy.buildTicketExpirationPolicy()));
+            .or(() -> Optional.of(expirationPolicyBuilder.buildTicketExpirationPolicy()));
     }
 
-    protected String produceTicketIdentifier(final Authentication authentication) {
+    protected String produceTicketIdentifier(final Authentication authentication) throws Throwable {
         var tgtId = ticketGrantingTicketUniqueTicketIdGenerator.getNewTicketId(TicketGrantingTicket.PREFIX);
         if (cipherExecutor != null && cipherExecutor.isEnabled()) {
             LOGGER.trace("Attempting to encode ticket-granting ticket [{}]", tgtId);

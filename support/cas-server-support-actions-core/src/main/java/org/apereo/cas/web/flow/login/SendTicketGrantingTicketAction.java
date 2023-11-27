@@ -9,7 +9,6 @@ import org.apereo.cas.web.flow.SingleSignOnParticipationStrategy;
 import org.apereo.cas.web.flow.actions.BaseCasWebflowAction;
 import org.apereo.cas.web.support.WebUtils;
 import org.apereo.cas.web.support.gen.CookieRetrievingCookieGenerator;
-
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -42,7 +41,7 @@ public class SendTicketGrantingTicketAction extends BaseCasWebflowAction {
     private final ApplicationContext applicationContext;
 
     @Override
-    protected Event doExecute(final RequestContext context) throws Exception {
+    protected Event doExecuteInternal(final RequestContext context) throws Throwable {
         val ticketGrantingTicketId = WebUtils.getTicketGrantingTicketId(context);
         val ticketGrantingTicketValueFromCookie = WebUtils.getTicketGrantingTicketIdFrom(context.getFlowScope());
 
@@ -56,15 +55,15 @@ public class SendTicketGrantingTicketAction extends BaseCasWebflowAction {
             .build();
         if (WebUtils.isAuthenticatingAtPublicWorkstation(context)) {
             LOGGER.info("Authentication is at a public workstation. SSO cookie will not be generated");
-        } else if (this.singleSignOnParticipationStrategy.supports(ssoRequest)) {
+        } else if (singleSignOnParticipationStrategy.supports(ssoRequest)) {
             val createCookie = singleSignOnParticipationStrategy.isCreateCookieOnRenewedAuthentication(ssoRequest) == TriStateBoolean.TRUE
-                               || singleSignOnParticipationStrategy.isParticipating(ssoRequest);
+                || singleSignOnParticipationStrategy.isParticipating(ssoRequest);
             if (createCookie) {
                 LOGGER.debug("Setting ticket-granting cookie for current session linked to [{}].", ticketGrantingTicketId);
                 createSingleSignOnCookie(context, ticketGrantingTicketId);
             } else {
                 LOGGER.info("Authentication session is renewed but CAS is not configured to create the SSO session. "
-                            + "SSO cookie will not be generated. Subsequent requests will be challenged for credentials.");
+                    + "SSO cookie will not be generated. Subsequent requests will be challenged for credentials.");
             }
         }
 

@@ -1,7 +1,14 @@
 package org.apereo.cas.trusted.authentication.storage;
 
 import org.apereo.cas.config.CasCoreAuditConfiguration;
+import org.apereo.cas.config.CasCoreAuthenticationPrincipalConfiguration;
+import org.apereo.cas.config.CasCoreConfiguration;
+import org.apereo.cas.config.CasCoreNotificationsConfiguration;
+import org.apereo.cas.config.CasCoreServicesConfiguration;
+import org.apereo.cas.config.CasCoreTicketsConfiguration;
+import org.apereo.cas.config.CasCoreTicketsSerializationConfiguration;
 import org.apereo.cas.config.CasCoreUtilConfiguration;
+import org.apereo.cas.config.CasCoreWebConfiguration;
 import org.apereo.cas.config.MultifactorAuthnTrustConfiguration;
 import org.apereo.cas.config.MultifactorAuthnTrustedDeviceFingerprintConfiguration;
 import org.apereo.cas.config.RestMultifactorAuthenticationTrustConfiguration;
@@ -24,6 +31,7 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.boot.autoconfigure.web.servlet.WebMvcAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.cloud.autoconfigure.RefreshAutoConfiguration;
 import org.springframework.core.io.ByteArrayResource;
@@ -51,6 +59,14 @@ import static org.junit.jupiter.api.Assertions.*;
     MultifactorAuthnTrustConfiguration.class,
     CasCoreAuditConfiguration.class,
     CasCoreUtilConfiguration.class,
+    CasCoreConfiguration.class,
+    CasCoreServicesConfiguration.class,
+    CasCoreTicketsConfiguration.class,
+    CasCoreTicketsSerializationConfiguration.class,
+    CasCoreAuthenticationPrincipalConfiguration.class,
+    CasCoreWebConfiguration.class,
+    CasCoreNotificationsConfiguration.class,
+    WebMvcAutoConfiguration.class,
     RefreshAutoConfiguration.class
 },
     properties = {
@@ -81,7 +97,7 @@ class RestMultifactorAuthenticationTrustStorageTests {
     }
 
     @Test
-    void verifyRemovalByKey() throws Exception {
+    void verifyRemovalByKey() throws Throwable {
         val r = MultifactorAuthenticationTrustRecord.newInstance("casuser", "geography", "fingerprint");
         val data = MAPPER.writeValueAsString(CollectionUtils.wrap(r));
         try (val webServer = new MockWebServer(9297,
@@ -92,7 +108,7 @@ class RestMultifactorAuthenticationTrustStorageTests {
     }
 
     @Test
-    void verifyRemovalByDate() {
+    void verifyRemovalByDate() throws Throwable {
         try (val webServer = new MockWebServer(9297,
             new ByteArrayResource(StringUtils.EMPTY.getBytes(StandardCharsets.UTF_8), "REST Output"), MediaType.APPLICATION_JSON_VALUE)) {
             webServer.start();
@@ -101,7 +117,7 @@ class RestMultifactorAuthenticationTrustStorageTests {
     }
 
     @Test
-    void verifyFetchRecords() throws Exception {
+    void verifyFetchRecords() throws Throwable {
         val r = MultifactorAuthenticationTrustRecord.newInstance("casuser", "geography", "fingerprint");
         val data = MAPPER.writeValueAsString(CollectionUtils.wrap(r));
         try (val webServer = new MockWebServer(9297,
@@ -116,7 +132,7 @@ class RestMultifactorAuthenticationTrustStorageTests {
     }
 
     @Test
-    void verifySetAnExpireByKey() throws Exception {
+    void verifySetAnExpireByKey() throws Throwable {
         val r =
             MultifactorAuthenticationTrustRecord.newInstance("casuser", "geography", "fingerprint");
         val data = MAPPER.writeValueAsString(CollectionUtils.wrap(r));
@@ -131,7 +147,7 @@ class RestMultifactorAuthenticationTrustStorageTests {
     }
 
     @Test
-    void verifyExpireByDate() throws Exception {
+    void verifyExpireByDate() throws Throwable {
         val r = MultifactorAuthenticationTrustRecord.newInstance("castest", "geography", "fingerprint");
         r.setRecordDate(ZonedDateTime.now(ZoneOffset.UTC).truncatedTo(ChronoUnit.SECONDS).minusDays(2));
 

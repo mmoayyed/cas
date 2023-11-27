@@ -4,21 +4,20 @@ import org.apereo.cas.authentication.principal.PrincipalResolver;
 import org.apereo.cas.syncope.BaseSyncopeTests;
 import org.apereo.cas.util.junit.EnabledIfListeningOnPort;
 import org.apereo.cas.util.spring.beans.BeanContainer;
-
 import lombok.val;
 import org.apereo.services.persondir.IPersonAttributeDao;
 import org.apereo.services.persondir.IPersonAttributeDaoFilter;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.HttpStatus;
-
 import java.util.List;
 import java.util.Map;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -42,14 +41,13 @@ class SyncopePersonAttributeDaoTests {
         })
     @Nested
     @EnabledIfListeningOnPort(port = 18080)
-    @SuppressWarnings("ClassCanBeStatic")
     class SyncopeCoreServerTests extends BaseSyncopeTests {
         @Autowired
         @Qualifier(PrincipalResolver.BEAN_NAME_ATTRIBUTE_REPOSITORY)
         private IPersonAttributeDao attributeRepository;
 
         @Test
-        void verifyUserIsFound() {
+        void verifyUserIsFound() throws Throwable {
             var found = attributeRepository.getPeople(Map.of("username", List.of("syncopecas")));
             assertFalse(found.iterator().next().getAttributes().isEmpty());
             var people = attributeRepository.getPeople(Map.of("username", List.of("syncopecas")),
@@ -58,7 +56,7 @@ class SyncopePersonAttributeDaoTests {
         }
 
         @Test
-        void verifyUserAttributeMappings() {
+        void verifyUserAttributeMappings() throws Throwable {
             val found = attributeRepository.getPeople(Map.of("username", List.of("syncopecas")));
             val attributes = found.iterator().next().getAttributes();
             assertFalse(attributes.isEmpty());
@@ -78,7 +76,7 @@ class SyncopePersonAttributeDaoTests {
             "cas.authn.attribute-repository.syncope.search-filter=username=={user}"
         })
     @Nested
-    @SuppressWarnings("ClassCanBeStatic")
+    @Execution(ExecutionMode.SAME_THREAD)
     class MockSyncopePersonTests extends BaseSyncopeTests {
         @Autowired
         @Qualifier("syncopePersonAttributeDaos")
@@ -89,7 +87,7 @@ class SyncopePersonAttributeDaoTests {
         private IPersonAttributeDao attributeRepository;
 
         @Test
-        void verifyUserIsFound() throws Exception {
+        void verifyUserIsFound() throws Throwable {
             val result = MAPPER.createObjectNode();
             result.putArray("result").add(user());
             try (val webserver = startMockSever(result, HttpStatus.OK, 8095)) {
@@ -104,7 +102,7 @@ class SyncopePersonAttributeDaoTests {
         }
 
         @Test
-        void verifyUserIsNotFound() throws Exception {
+        void verifyUserIsNotFound() throws Throwable {
             val result = MAPPER.createObjectNode();
             result.putArray("result");
             try (val webserver = startMockSever(result, HttpStatus.OK, 8095)) {
@@ -115,7 +113,7 @@ class SyncopePersonAttributeDaoTests {
         }
 
         @Test
-        void verifySyncopeDown() throws Exception {
+        void verifySyncopeDown() throws Throwable {
             val result = MAPPER.createObjectNode();
             result.putArray("result").add(user());
             try (val webserver = startMockSever(result, HttpStatus.INTERNAL_SERVER_ERROR, 8095)) {

@@ -7,7 +7,6 @@ import org.apereo.cas.config.CasCoreRestConfiguration;
 import org.apereo.cas.util.junit.EnabledIfListeningOnPort;
 import org.apereo.cas.util.spring.ApplicationContextProvider;
 import org.apereo.cas.web.report.AbstractCasEndpointTests;
-
 import lombok.val;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -22,9 +21,7 @@ import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.util.LinkedMultiValueMap;
-
 import java.util.List;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -59,7 +56,6 @@ class AmazonSecurityTokenServiceEndpointTests {
         "cas.amazon-sts.principal-attribute-value=^un[A-Z]known.*",
         "cas.authn.attribute-repository.stub.attributes.groupMembership=some-value"
     })
-    @SuppressWarnings("ClassCanBeStatic")
     class WithMissingAuthorizationAttributeValues extends BaseAmazonSecurityTokenServiceEndpointTests {
         @Autowired
         @Qualifier("awsSecurityTokenServiceEndpoint")
@@ -75,12 +71,12 @@ class AmazonSecurityTokenServiceEndpointTests {
         }
 
         @Test
-        void verifyAuthzFails() {
+        void verifyAuthzFails() throws Throwable {
             val request = new MockHttpServletRequest();
             val body = new LinkedMultiValueMap<String, String>();
             body.put("username", List.of("casuser"));
             body.put("password", List.of("resusac"));
-            val status = awsSecurityTokenServiceEndpoint.fetchCredentials("PT15S", null,
+            val status = awsSecurityTokenServiceEndpoint.fetchCredentials(null,
                 null, null, null, body, request, new MockHttpServletResponse());
             assertEquals(HttpStatus.UNAUTHORIZED, status.getStatusCode());
         }
@@ -89,7 +85,6 @@ class AmazonSecurityTokenServiceEndpointTests {
     @Nested
     @Tag("AmazonWebServices")
     @TestPropertySource(properties = "cas.amazon-sts.principal-attribute-name=unknown")
-    @SuppressWarnings("ClassCanBeStatic")
     class WithMissingAuthorizationAttributes extends BaseAmazonSecurityTokenServiceEndpointTests {
         @Autowired
         @Qualifier("awsSecurityTokenServiceEndpoint")
@@ -105,12 +100,12 @@ class AmazonSecurityTokenServiceEndpointTests {
         }
 
         @Test
-        void verifyAuthzFails() {
+        void verifyAuthzFails() throws Throwable {
             val request = new MockHttpServletRequest();
             val body = new LinkedMultiValueMap<String, String>();
             body.put("username", List.of("casuser"));
             body.put("password", List.of("resusac"));
-            val status = awsSecurityTokenServiceEndpoint.fetchCredentials("PT15S", null, null,
+            val status = awsSecurityTokenServiceEndpoint.fetchCredentials(null, null,
                 null, null, body, request, new MockHttpServletResponse());
             assertEquals(HttpStatus.UNAUTHORIZED, status.getStatusCode());
         }
@@ -122,7 +117,6 @@ class AmazonSecurityTokenServiceEndpointTests {
         "cas.amazon-sts.principal-attribute-name=",
         "cas.amazon-sts.principal-attribute-value="
     })
-    @SuppressWarnings("ClassCanBeStatic")
     class WithoutAuthorizationAttributes extends BaseAmazonSecurityTokenServiceEndpointTests {
         @Autowired
         @Qualifier("awsSecurityTokenServiceEndpoint")
@@ -138,57 +132,56 @@ class AmazonSecurityTokenServiceEndpointTests {
         }
 
         @Test
-        void verifyOperation() {
+        void verifyOperation() throws Throwable {
             val request = new MockHttpServletRequest();
 
             val body = new LinkedMultiValueMap<String, String>();
             body.put("username", List.of("casuser"));
             body.put("password", List.of("resusac"));
 
-            val credentials = awsSecurityTokenServiceEndpoint.fetchCredentials("PT15S", null, null,
+            val credentials = awsSecurityTokenServiceEndpoint.fetchCredentials(null, null,
                 null, null, body, request, new MockHttpServletResponse());
             assertEquals(HttpStatus.OK, credentials.getStatusCode());
         }
 
         @Test
-        void verifyContextValidationFails() {
+        void verifyContextValidationFails() throws Throwable {
             val request = new MockHttpServletRequest();
 
             val body = new LinkedMultiValueMap<String, String>();
             body.put("username", List.of("test1234"));
             body.put("password", List.of("4321tset"));
 
-            val status = awsSecurityTokenServiceEndpoint.fetchCredentials("PT15S", null,
+            val status = awsSecurityTokenServiceEndpoint.fetchCredentials(null,
                 null, null, null, body, request, new MockHttpServletResponse());
             assertEquals(HttpStatus.UNAUTHORIZED, status.getStatusCode());
         }
 
         @Test
-        void verifyNoCredentials() {
+        void verifyNoCredentials() throws Throwable {
             val request = new MockHttpServletRequest();
             val body = new LinkedMultiValueMap<String, String>();
-            val status = awsSecurityTokenServiceEndpoint.fetchCredentials("PT15S", null,
+            val status = awsSecurityTokenServiceEndpoint.fetchCredentials(null,
                 null, null, null, body, request, new MockHttpServletResponse());
             assertEquals(HttpStatus.UNAUTHORIZED, status.getStatusCode());
         }
 
         @Test
-        void verifyFailsAuthN() {
+        void verifyFailsAuthN() throws Throwable {
             val request = new MockHttpServletRequest();
 
             val body = new LinkedMultiValueMap<String, String>();
             body.put("username", List.of("casuser"));
             body.put("password", List.of("bad-password"));
 
-            val status = awsSecurityTokenServiceEndpoint.fetchCredentials("PT15S", null,
+            val status = awsSecurityTokenServiceEndpoint.fetchCredentials(null,
                 null, null, null, body, request, new MockHttpServletResponse());
             assertEquals(HttpStatus.UNAUTHORIZED, status.getStatusCode());
         }
     }
-    
+
     @Nested
     @Tag("AmazonWebServices")
-    @SuppressWarnings("ClassCanBeStatic")
     @TestPropertySource(properties = {
         "cas.amazon-sts.principal-attribute-name=awsroles",
         "cas.amazon-sts.principal-attribute-value=.+",
@@ -210,12 +203,12 @@ class AmazonSecurityTokenServiceEndpointTests {
         }
 
         @Test
-        void verifyOperation() {
+        void verifyOperation() throws Throwable {
             val request = new MockHttpServletRequest();
             val body = new LinkedMultiValueMap<String, String>();
             body.put("username", List.of("casuser"));
             body.put("password", List.of("resusac"));
-            val credentials = awsSecurityTokenServiceEndpoint.fetchCredentials("PT15S", null,
+            val credentials = awsSecurityTokenServiceEndpoint.fetchCredentials(null,
                 null, null, null, body, request, new MockHttpServletResponse());
             assertEquals(HttpStatus.OK, credentials.getStatusCode());
         }
@@ -223,7 +216,6 @@ class AmazonSecurityTokenServiceEndpointTests {
 
     @Nested
     @Tag("AmazonWebServices")
-    @SuppressWarnings("ClassCanBeStatic")
     @TestPropertySource(properties = {
         "cas.amazon-sts.principal-attribute-name=awsroles",
         "cas.amazon-sts.principal-attribute-value=arn.+",
@@ -245,26 +237,26 @@ class AmazonSecurityTokenServiceEndpointTests {
         }
 
         @Test
-        void verifyOperation() {
+        void verifyOperation() throws Throwable {
             val request = new MockHttpServletRequest();
             val body = new LinkedMultiValueMap<String, String>();
             body.put("username", List.of("casuser"));
             body.put("password", List.of("resusac"));
-            val credentials = awsSecurityTokenServiceEndpoint.fetchCredentials("PT15S", null,
+            val credentials = awsSecurityTokenServiceEndpoint.fetchCredentials(null,
                 null, null, null, body, request, new MockHttpServletResponse());
             assertEquals(HttpStatus.UNAUTHORIZED, credentials.getStatusCode());
         }
 
         @Test
-        void verifySpecificUnknownRoleOperation() {
+        void verifySpecificUnknownRoleOperation() throws Throwable {
             val request = new MockHttpServletRequest();
             val body = new LinkedMultiValueMap<String, String>();
             body.put("username", List.of("casuser"));
             body.put("password", List.of("resusac"));
-            val credentials = awsSecurityTokenServiceEndpoint.fetchCredentials("PT15S", null,
+            val credentials = awsSecurityTokenServiceEndpoint.fetchCredentials(null,
                 null, null, "this-is-unknown-role", body, request, new MockHttpServletResponse());
             assertEquals(HttpStatus.UNAUTHORIZED, credentials.getStatusCode());
         }
     }
-    
+
 }

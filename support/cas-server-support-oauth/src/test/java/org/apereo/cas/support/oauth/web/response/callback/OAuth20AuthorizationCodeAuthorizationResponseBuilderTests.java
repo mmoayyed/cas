@@ -35,7 +35,7 @@ class OAuth20AuthorizationCodeAuthorizationResponseBuilderTests extends Abstract
     private static final String NONCE = UUID.randomUUID().toString();
 
     @Test
-    void verifyOperation() throws Exception {
+    void verifyOperation() throws Throwable {
         val registeredService = getRegisteredService("example", CLIENT_SECRET, new LinkedHashSet<>());
         servicesManager.save(registeredService);
 
@@ -55,7 +55,7 @@ class OAuth20AuthorizationCodeAuthorizationResponseBuilderTests extends Abstract
             .build();
 
         val mv = oauthAuthorizationCodeResponseBuilder.build(holder);
-        assertTrue(mv.getView() instanceof RedirectView);
+        assertInstanceOf(RedirectView.class, mv.getView());
         assertTrue(mv.getModel().containsKey(OAuth20Constants.CODE));
         assertTrue(mv.getModel().containsKey(OAuth20Constants.STATE));
         assertTrue(mv.getModel().containsKey(OAuth20Constants.NONCE));

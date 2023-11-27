@@ -42,6 +42,8 @@ public class OAuthRegisteredService extends BaseWebBasedRegisteredService {
 
     private boolean jwtAccessToken;
 
+    private String jwtAccessTokenSigningAlg;
+
     private Set<String> audience = new HashSet<>();
     
     private RegisteredServiceOAuthCodeExpirationPolicy codeExpirationPolicy;
@@ -67,7 +69,19 @@ public class OAuthRegisteredService extends BaseWebBasedRegisteredService {
     private String introspectionEncryptedResponseAlg;
 
     private String introspectionEncryptedResponseEncoding;
-    
+
+    private String tokenEndpointAuthenticationMethod;
+
+    private String tlsClientAuthSubjectDn;
+
+    private String tlsClientAuthSanDns;
+
+    private String tlsClientAuthSanUri;
+
+    private String tlsClientAuthSanIp;
+
+    private String tlsClientAuthSanEmail;
+
     @JsonIgnore
     @Override
     public String getFriendlyName() {

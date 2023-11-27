@@ -1,8 +1,8 @@
 package org.apereo.cas.web.flow;
 
+import org.apereo.cas.util.MockRequestContext;
 import org.apereo.cas.util.MockWebServer;
 import org.apereo.cas.util.serialization.JacksonObjectMapperFactory;
-
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.val;
 import org.junit.jupiter.api.Nested;
@@ -11,18 +11,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.core.io.ByteArrayResource;
-import org.springframework.mock.web.MockHttpServletRequest;
-import org.springframework.mock.web.MockHttpServletResponse;
-import org.springframework.mock.web.MockServletContext;
 import org.springframework.test.context.TestPropertySource;
-import org.springframework.webflow.context.ExternalContextHolder;
-import org.springframework.webflow.context.servlet.ServletExternalContext;
 import org.springframework.webflow.execution.Action;
-import org.springframework.webflow.execution.RequestContextHolder;
-import org.springframework.webflow.test.MockRequestContext;
-
 import java.util.Map;
-
 import static java.nio.charset.StandardCharsets.*;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.http.HttpStatus.*;
@@ -39,26 +30,19 @@ class RenderLoginActionTests {
         .defaultTypingEnabled(true).build().toObjectMapper();
 
     @Nested
-    @SuppressWarnings("ClassCanBeStatic")
     class DefaultTests extends AbstractWebflowActionsTests {
         @Autowired
         @Qualifier(CasWebflowConstants.ACTION_ID_RENDER_LOGIN_FORM)
         private Action renderLoginAction;
 
         @Test
-        void verifyNoRender() throws Exception {
-            val context = new MockRequestContext();
-            val request = new MockHttpServletRequest();
-            val response = new MockHttpServletResponse();
-            context.setExternalContext(new ServletExternalContext(new MockServletContext(), request, response));
-            RequestContextHolder.setRequestContext(context);
-            ExternalContextHolder.setExternalContext(context.getExternalContext());
+        void verifyNoRender() throws Throwable {
+            val context = MockRequestContext.create(applicationContext);
             assertNull(renderLoginAction.execute(context));
         }
     }
 
     @Nested
-    @SuppressWarnings("ClassCanBeStatic")
     @TestPropertySource(properties = "cas.webflow.login-decorator.groovy.location=classpath:/GroovyLoginWebflowDecorator.groovy")
     class GroovyRendererTests extends AbstractWebflowActionsTests {
         @Autowired
@@ -66,20 +50,14 @@ class RenderLoginActionTests {
         private Action renderLoginAction;
 
         @Test
-        void verifyGroovyRender() throws Exception {
-            val context = new MockRequestContext();
-            val request = new MockHttpServletRequest();
-            val response = new MockHttpServletResponse();
-            context.setExternalContext(new ServletExternalContext(new MockServletContext(), request, response));
-            RequestContextHolder.setRequestContext(context);
-            ExternalContextHolder.setExternalContext(context.getExternalContext());
+        void verifyGroovyRender() throws Throwable {
+            val context = MockRequestContext.create(applicationContext);
             assertNull(renderLoginAction.execute(context));
             assertNotNull(context.getFlowScope().get("decoration"));
         }
     }
 
     @Nested
-    @SuppressWarnings("ClassCanBeStatic")
     @TestPropertySource(properties = "cas.webflow.login-decorator.rest.url=http://localhost:1234")
     class RestfulRendererTests extends AbstractWebflowActionsTests {
         @Autowired
@@ -87,13 +65,8 @@ class RenderLoginActionTests {
         private Action renderLoginAction;
 
         @Test
-        void verifyRestfulRender() throws Exception {
-            val context = new MockRequestContext();
-            val request = new MockHttpServletRequest();
-            val response = new MockHttpServletResponse();
-            context.setExternalContext(new ServletExternalContext(new MockServletContext(), request, response));
-            RequestContextHolder.setRequestContext(context);
-            ExternalContextHolder.setExternalContext(context.getExternalContext());
+        void verifyRestfulRender() throws Throwable {
+            val context = MockRequestContext.create(applicationContext);
 
             val entity = MAPPER.writeValueAsString(Map.of("key", "value"));
             try (val webServer = new MockWebServer(1234,

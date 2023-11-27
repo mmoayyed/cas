@@ -21,8 +21,6 @@ import javax.security.auth.login.FailedLoginException;
 
 import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
-import java.util.LinkedHashSet;
-import java.util.Optional;
 
 import static org.apereo.cas.util.junit.Assertions.*;
 import static org.junit.jupiter.api.Assertions.*;
@@ -33,7 +31,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * @author Misagh Moayyed
  * @since 5.2.0
  */
-@Tag("RestfulApiAuthentication")
+@Tag("AuthenticationPolicy")
 class RestfulAuthenticationPolicyTests {
     private static void assertPolicyFails(final int port, final HttpStatus status,
                                           final Class<? extends Throwable> exceptionClass) {
@@ -47,13 +45,12 @@ class RestfulAuthenticationPolicyTests {
             props.setUrl("http://localhost:" + port);
             val policy = new RestfulAuthenticationPolicy(props);
             assertThrowsWithRootCause(GeneralSecurityException.class, exceptionClass,
-                () -> policy.isSatisfiedBy(CoreAuthenticationTestUtils.getAuthentication("casuser"),
-                    new LinkedHashSet<>(), applicationContext, Optional.empty()));
+                () -> policy.isSatisfiedBy(CoreAuthenticationTestUtils.getAuthentication("casuser"), applicationContext));
         }
     }
 
     @Test
-    void verifyAllowedOperation() throws Exception {
+    void verifyAllowedOperation() throws Throwable {
         val applicationContext = new StaticApplicationContext();
         applicationContext.refresh();
 
@@ -63,13 +60,12 @@ class RestfulAuthenticationPolicyTests {
             val props = new RestAuthenticationPolicyProperties();
             props.setUrl("http://localhost:9200");
             val policy = new RestfulAuthenticationPolicy(props);
-            assertTrue(policy.isSatisfiedBy(CoreAuthenticationTestUtils.getAuthentication("casuser"),
-                new LinkedHashSet<>(), applicationContext, Optional.empty()).isSuccess());
+            assertTrue(policy.isSatisfiedBy(CoreAuthenticationTestUtils.getAuthentication("casuser"), applicationContext).isSuccess());
         }
     }
 
     @Test
-    void verifyStatusCodeUnAuthz() {
+    void verifyStatusCodeUnAuthz() throws Throwable {
         assertPolicyFails(9201, HttpStatus.UNAUTHORIZED, FailedLoginException.class);
         assertPolicyFails(9202, HttpStatus.LOCKED, AccountLockedException.class);
         assertPolicyFails(9203, HttpStatus.METHOD_NOT_ALLOWED, AccountDisabledException.class);

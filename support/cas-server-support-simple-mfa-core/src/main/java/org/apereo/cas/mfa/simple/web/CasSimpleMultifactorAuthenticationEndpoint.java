@@ -14,7 +14,6 @@ import org.apereo.cas.mfa.simple.validation.CasSimpleMultifactorAuthenticationSe
 import org.apereo.cas.util.EncodingUtils;
 import org.apereo.cas.util.function.FunctionUtils;
 import org.apereo.cas.web.BaseCasActuatorEndpoint;
-
 import com.google.common.base.Splitter;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -25,7 +24,7 @@ import org.springframework.boot.actuate.endpoint.web.annotation.RestControllerEn
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestParam;
 
@@ -53,7 +52,7 @@ public class CasSimpleMultifactorAuthenticationEndpoint extends BaseCasActuatorE
      * @param authorization the authorization
      * @return the response entity
      */
-    @PostMapping(produces = MediaType.APPLICATION_JSON_VALUE)
+    @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
     @Operation(summary = "Generate simple multifactor authentication token",
         parameters = {
             @Parameter(name = "credential", required = true, description = "Credential header in base64 encoding to carry the user"),
@@ -72,7 +71,7 @@ public class CasSimpleMultifactorAuthenticationEndpoint extends BaseCasActuatorE
         }, e -> ResponseEntity.badRequest().body("Invalid or unauthenticated request")).get();
     }
 
-    protected MultifactorAuthenticationTokenResponse generateToken(final Credential credential, final Service givenService) {
+    protected MultifactorAuthenticationTokenResponse generateToken(final Credential credential, final Service givenService) throws Throwable {
         val authnSupport = applicationContext.getBean(AuthenticationSystemSupport.BEAN_NAME, AuthenticationSystemSupport.class);
         return authnSupport.handleInitialAuthenticationTransaction(givenService, credential)
             .getInitialAuthentication()
@@ -88,10 +87,11 @@ public class CasSimpleMultifactorAuthenticationEndpoint extends BaseCasActuatorE
 
     protected Credential extractCredential(final String base64Credentials) {
         val basicAuthCredentials = Splitter.on(':').splitToList(EncodingUtils.decodeBase64ToString(base64Credentials));
-        return new UsernamePasswordCredential(basicAuthCredentials.get(0), basicAuthCredentials.get(1));
+        return new UsernamePasswordCredential(basicAuthCredentials.getFirst(), basicAuthCredentials.get(1));
     }
 
-    protected CasSimpleMultifactorAuthenticationTicket createAndStoreToken(final Service givenService, final Authentication authentication) throws Exception {
+    protected CasSimpleMultifactorAuthenticationTicket createAndStoreToken(final Service givenService,
+                                                                           final Authentication authentication) throws Throwable {
         val principal = authentication.getPrincipal();
         val mfaService = applicationContext.getBean(CasSimpleMultifactorAuthenticationService.BEAN_NAME, CasSimpleMultifactorAuthenticationService.class);
         val token = mfaService.generate(principal, givenService);

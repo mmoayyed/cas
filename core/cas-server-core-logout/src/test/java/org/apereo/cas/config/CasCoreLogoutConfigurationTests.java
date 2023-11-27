@@ -1,11 +1,11 @@
 package org.apereo.cas.config;
 
 import org.apereo.cas.logout.LogoutManager;
-import org.apereo.cas.logout.SingleLogoutExecutionRequest;
+import org.apereo.cas.logout.slo.SingleLogoutExecutionRequest;
 import org.apereo.cas.mock.MockTicketGrantingTicket;
 import org.apereo.cas.services.RegisteredServiceTestUtils;
 import org.apereo.cas.services.ServicesManager;
-import org.apereo.cas.ticket.ServiceTicketSessionTrackingPolicy;
+import org.apereo.cas.ticket.tracking.TicketTrackingPolicy;
 import org.apereo.cas.web.CasWebSecurityConfigurer;
 
 import lombok.val;
@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.boot.autoconfigure.web.servlet.WebMvcAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.cloud.autoconfigure.RefreshAutoConfiguration;
 import org.springframework.mock.web.MockHttpServletRequest;
@@ -31,6 +32,7 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 @SpringBootTest(classes = {
     RefreshAutoConfiguration.class,
+    WebMvcAutoConfiguration.class,
     CasCoreAuthenticationServiceSelectionStrategyConfiguration.class,
     CasCoreServicesConfiguration.class,
     CasCoreTicketsConfiguration.class,
@@ -45,17 +47,16 @@ import static org.junit.jupiter.api.Assertions.*;
     CasCookieConfiguration.class,
     CasCoreConfiguration.class,
     CasCoreNotificationsConfiguration.class,
-    CasPersonDirectoryTestConfiguration.class,
     CasCoreAuthenticationConfiguration.class,
     CasCoreAuthenticationSupportConfiguration.class,
     CasCoreAuthenticationPrincipalConfiguration.class,
     CasCoreLogoutConfiguration.class
-}, properties = "cas.logout.remove-descendant-tickets=true")
+}, properties = "cas.ticket.track-descendant-tickets=true")
 @Tag("CasConfiguration")
 class CasCoreLogoutConfigurationTests {
     @Autowired
-    @Qualifier(ServiceTicketSessionTrackingPolicy.BEAN_NAME)
-    private ServiceTicketSessionTrackingPolicy serviceTicketSessionTrackingPolicy;
+    @Qualifier(TicketTrackingPolicy.BEAN_NAME_SERVICE_TICKET_TRACKING)
+    private TicketTrackingPolicy serviceTicketSessionTrackingPolicy;
 
     @Autowired
     @Qualifier(LogoutManager.DEFAULT_BEAN_NAME)
@@ -70,7 +71,7 @@ class CasCoreLogoutConfigurationTests {
     private CasWebSecurityConfigurer<Void> casProtocolEndpointConfigurer;
 
     @Test
-    void verifyOperation() {
+    void verifyOperation() throws Throwable {
         val service = RegisteredServiceTestUtils.getService(UUID.randomUUID().toString());
         val registeredService = RegisteredServiceTestUtils.getRegisteredService(service.getId());
         servicesManager.save(registeredService);

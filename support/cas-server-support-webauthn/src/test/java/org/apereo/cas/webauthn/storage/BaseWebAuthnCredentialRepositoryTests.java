@@ -44,7 +44,7 @@ public abstract class BaseWebAuthnCredentialRepositoryTests {
     protected CasConfigurationProperties casProperties;
 
     @Autowired
-    @Qualifier("webAuthnCredentialRepository")
+    @Qualifier(WebAuthnCredentialRepository.BEAN_NAME)
     protected WebAuthnCredentialRepository webAuthnCredentialRepository;
 
     @Autowired
@@ -67,7 +67,7 @@ public abstract class BaseWebAuthnCredentialRepositoryTests {
     }
 
     @Test
-    protected void verifyOperation() throws Exception {
+    protected void verifyOperation() throws Throwable {
         val id = getUsername();
         val registration = getCredentialRegistration(id.toLowerCase(Locale.ENGLISH));
 

@@ -25,7 +25,7 @@ class AmazonDynamoDbClientFactoryTests {
     }
 
     @Test
-    void verifyClientCreation() {
+    void verifyClientCreation() throws Throwable {
         val factory = new AmazonDynamoDbClientFactory();
         val properties = new AuditDynamoDbProperties();
         properties.setRegion(Region.US_EAST_1.id());
@@ -34,12 +34,12 @@ class AmazonDynamoDbClientFactoryTests {
     }
 
     @Test
-    void verifyDax() {
+    void verifyDax() throws Throwable {
         val factory = new AmazonDynamoDbClientFactory();
         val properties = new AuditDynamoDbProperties();
         properties.setRegion(Region.US_EAST_1.id());
         properties.getDax().setUrl("dax://example.fake.us-east-1.amazonaws.com");
         val client = factory.createAmazonDynamoDb(properties);
-        assertTrue(client instanceof ClusterDaxClient);
+        assertInstanceOf(ClusterDaxClient.class, client);
     }
 }

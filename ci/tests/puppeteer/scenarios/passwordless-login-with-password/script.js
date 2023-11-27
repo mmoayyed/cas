@@ -7,13 +7,13 @@ const cas = require('../../cas.js');
     const browser = await puppeteer.launch(cas.browserOptions());
     const page = await cas.newPage(browser);
     
-    await cas.goto(page, "https://localhost:8443/cas/login?locale=en");
+    await cas.gotoLogin(page);
 
     let pswd = await page.$('#password');
     assert(pswd == null);
 
     await cas.type(page,'#username', "casuser");
-    await page.keyboard.press('Enter');
+    await cas.pressEnter(page);
     await page.waitForNavigation();
 
     await page.waitForTimeout(2000);
@@ -22,7 +22,7 @@ const cas = require('../../cas.js');
     await cas.assertVisibility(page, '#password');
 
     await cas.type(page,'#password', "Mellon");
-    await page.keyboard.press('Enter');
+    await cas.pressEnter(page);
     await page.waitForNavigation();
 
     await page.waitForTimeout(2000);

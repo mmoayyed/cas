@@ -1,6 +1,8 @@
 package org.apereo.cas.pm;
 
 import org.apereo.cas.config.CasCoreAuditConfiguration;
+import org.apereo.cas.config.CasCoreAuthenticationPrincipalConfiguration;
+import org.apereo.cas.config.CasCoreConfiguration;
 import org.apereo.cas.config.CasCoreNotificationsConfiguration;
 import org.apereo.cas.config.CasCoreServicesConfiguration;
 import org.apereo.cas.config.CasCoreTicketCatalogConfiguration;
@@ -10,16 +12,15 @@ import org.apereo.cas.config.CasCoreTicketsSerializationConfiguration;
 import org.apereo.cas.config.CasCoreUtilConfiguration;
 import org.apereo.cas.config.CasCoreWebConfiguration;
 import org.apereo.cas.config.PasswordManagementConfiguration;
-
 import lombok.val;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.mail.MailSenderAutoConfiguration;
+import org.springframework.boot.autoconfigure.web.servlet.WebMvcAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.cloud.autoconfigure.RefreshAutoConfiguration;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -30,8 +31,11 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 @SpringBootTest(classes = {
     RefreshAutoConfiguration.class,
+    WebMvcAutoConfiguration.class,
     PasswordManagementConfiguration.class,
     MailSenderAutoConfiguration.class,
+    CasCoreConfiguration.class,
+    CasCoreAuthenticationPrincipalConfiguration.class,
     CasCoreNotificationsConfiguration.class,
     CasCoreTicketsConfiguration.class,
     CasCoreTicketCatalogConfiguration.class,
@@ -49,7 +53,7 @@ import static org.junit.jupiter.api.Assertions.*;
 @Tag("PasswordOps")
 class DefaultPasswordValidationServiceTests {
     @Autowired
-    @Qualifier("passwordValidationService")
+    @Qualifier(PasswordValidationService.BEAN_NAME)
     private PasswordValidationService passwordValidationService;
 
     @Autowired
@@ -57,7 +61,7 @@ class DefaultPasswordValidationServiceTests {
     private PasswordHistoryService passwordHistoryService;
 
     @Test
-    void verifyReuseOldPassword() {
+    void verifyReuseOldPassword() throws Throwable {
         val request = new PasswordChangeRequest("casuser", "current-psw".toCharArray(), "123456".toCharArray(), "123456".toCharArray());
         assertFalse(passwordValidationService.isValid(request));
         request.setPassword("This!$P@$$".toCharArray());
@@ -66,7 +70,7 @@ class DefaultPasswordValidationServiceTests {
     }
 
     @Test
-    void verifyValidity() {
+    void verifyValidity() throws Throwable {
         assertFalse(passwordValidationService.isValid(
             new PasswordChangeRequest("casuser", "current-psw".toCharArray(), null, null)));
         assertFalse(passwordValidationService.isValid(

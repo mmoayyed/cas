@@ -44,11 +44,11 @@ public class OidcImplicitIdTokenAuthorizationResponseBuilder<T extends OidcConfi
         final AccessTokenRequestContext holder,
         final OAuth20AccessToken accessToken,
         final List<NameValuePair> params,
-        final OAuth20RefreshToken refreshToken) throws Exception {
+        final OAuth20RefreshToken refreshToken) throws Throwable {
         val idToken = configurationContext.getIdTokenGeneratorService().generate(accessToken,
             holder.getUserProfile(), OAuth20ResponseTypes.ID_TOKEN, holder.getGrantType(), holder.getRegisteredService());
         LOGGER.debug("Generated id token [{}]", idToken);
-        params.add(new BasicNameValuePair(OidcConstants.ID_TOKEN, idToken));
+        params.add(new BasicNameValuePair(OidcConstants.ID_TOKEN, idToken.token()));
         return super.buildCallbackUrlResponseType(holder, accessToken, params, refreshToken);
     }
 }

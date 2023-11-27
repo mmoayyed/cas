@@ -25,7 +25,7 @@ import static org.mockito.Mockito.*;
 @Tag("UMA")
 class UmaRequestingPartyClaimsCollectionEndpointControllerTests extends BaseUmaEndpointControllerTests {
     @Test
-    void verifyOp() throws Exception {
+    void verifyOp() throws Throwable {
         val id = UUID.randomUUID().toString();
         val service = getRegisteredService(id, "secret");
         servicesManager.save(service);
@@ -40,7 +40,7 @@ class UmaRequestingPartyClaimsCollectionEndpointControllerTests extends BaseUmaE
         val view = umaRequestingPartyClaimsCollectionEndpointController.getClaims(id,
             service.getServiceId(), ticketId,
             "state", results.getLeft(), results.getMiddle());
-        assertTrue(view instanceof RedirectView);
+        assertInstanceOf(RedirectView.class, view);
     }
 
     private static UmaPermissionTicket getUmaPermissionTicket(final String ticketId) {
@@ -54,7 +54,7 @@ class UmaRequestingPartyClaimsCollectionEndpointControllerTests extends BaseUmaE
     }
 
     @Test
-    void verifyInvalidRedirect() throws Exception {
+    void verifyInvalidRedirect() throws Throwable {
         val id = UUID.randomUUID().toString();
         val service = getRegisteredService(id, "secret");
         servicesManager.save(service);
@@ -72,7 +72,7 @@ class UmaRequestingPartyClaimsCollectionEndpointControllerTests extends BaseUmaE
     }
 
     @Test
-    void verifyInvalidTicket() throws Exception {
+    void verifyInvalidTicket() throws Throwable {
         val id = UUID.randomUUID().toString();
         val service = getRegisteredService(id, "secret");
         servicesManager.save(service);

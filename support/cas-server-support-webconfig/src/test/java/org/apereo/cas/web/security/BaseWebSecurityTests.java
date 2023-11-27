@@ -1,9 +1,8 @@
 package org.apereo.cas.web.security;
 
 import org.apereo.cas.config.CasCoreWebConfiguration;
-import org.apereo.cas.config.CasWebAppSecurityConfiguration;
 import org.apereo.cas.config.CasWebApplicationServiceFactoryConfiguration;
-
+import org.apereo.cas.config.CasWebSecurityConfiguration;
 import org.springframework.boot.SpringBootConfiguration;
 import org.springframework.boot.actuate.autoconfigure.beans.BeansEndpointAutoConfiguration;
 import org.springframework.boot.actuate.autoconfigure.condition.ConditionsReportEndpointAutoConfiguration;
@@ -40,10 +39,10 @@ public abstract class BaseWebSecurityTests {
         EnvironmentEndpointAutoConfiguration.class,
         HealthEndpointAutoConfiguration.class,
         ConditionsReportEndpointAutoConfiguration.class,
-        WebMvcAutoConfiguration.class,
         WebEndpointAutoConfiguration.class,
         AopAutoConfiguration.class,
         RefreshAutoConfiguration.class,
+        WebMvcAutoConfiguration.class,
         ServletWebServerFactoryAutoConfiguration.class,
         DispatcherServletAutoConfiguration.class,
         WebMvcEndpointManagementContextConfiguration.class
@@ -52,7 +51,7 @@ public abstract class BaseWebSecurityTests {
     @Import({
         CasWebApplicationServiceFactoryConfiguration.class,
         CasCoreWebConfiguration.class,
-        CasWebAppSecurityConfiguration.class
+        CasWebSecurityConfiguration.class
     })
     public static class SharedTestConfiguration {
     }

@@ -2,9 +2,9 @@ package org.apereo.cas.ticket;
 
 import org.apereo.cas.authentication.Authentication;
 import org.apereo.cas.authentication.principal.Service;
+import org.apereo.cas.ticket.tracking.TicketTrackingPolicy;
 
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
-
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
@@ -28,6 +28,10 @@ public interface TicketGrantingTicket extends TicketGrantingTicketAwareTicket {
 
     /**
      * Grant a ServiceTicket for a specific service.
+     * <p>The state of the ticket is affected by this operation and the
+     * ticket will be considered used. The state update subsequently may
+     * impact the ticket expiration policy in that, depending on the policy
+     * configuration, the ticket may be considered expired.
      *
      * @param id                 The unique identifier for this ticket.
      * @param service            The service for which we are granting a ticket
@@ -40,7 +44,7 @@ public interface TicketGrantingTicket extends TicketGrantingTicketAwareTicket {
                                      Service service,
                                      ExpirationPolicy expirationPolicy,
                                      boolean credentialProvided,
-                                     ServiceTicketSessionTrackingPolicy trackingPolicy);
+                                     TicketTrackingPolicy trackingPolicy);
 
     /**
      * Gets proxy granting tickets created by this TGT.
@@ -97,4 +101,11 @@ public interface TicketGrantingTicket extends TicketGrantingTicketAwareTicket {
     default Collection<String> getDescendantTickets() {
         return new HashSet<>(0);
     }
+
+    /**
+     * Keeps track of authenticated service per their session id.
+     *
+     * @return authenticated services.
+     */
+    Map<String, Service> getServices();
 }

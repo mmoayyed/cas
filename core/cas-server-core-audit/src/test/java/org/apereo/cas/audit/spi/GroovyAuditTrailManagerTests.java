@@ -2,8 +2,6 @@ package org.apereo.cas.audit.spi;
 
 import org.apereo.cas.authentication.adaptive.geo.GeoLocationResponse;
 import org.apereo.cas.authentication.adaptive.geo.GeoLocationService;
-import org.apereo.cas.config.CasCoreAuditConfiguration;
-import org.apereo.cas.config.CasCoreUtilConfiguration;
 import org.apereo.cas.configuration.CasConfigurationProperties;
 import lombok.val;
 import org.apereo.inspektr.audit.AuditActionContext;
@@ -16,7 +14,6 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.cloud.autoconfigure.RefreshAutoConfiguration;
 import org.springframework.context.annotation.Bean;
 import java.time.Clock;
 import java.time.LocalDateTime;
@@ -31,9 +28,7 @@ import static org.mockito.Mockito.*;
  */
 @Tag("Audits")
 @SpringBootTest(classes = {
-    RefreshAutoConfiguration.class,
-    CasCoreUtilConfiguration.class,
-    CasCoreAuditConfiguration.class,
+    BaseAuditConfigurationTests.SharedTestConfiguration.class,
     GroovyAuditTrailManagerTests.GroovyAuditTrailManagerTestConfiguration.class
 },
     properties = {
@@ -48,7 +43,7 @@ class GroovyAuditTrailManagerTests {
     private AuditTrailManager auditTrailManager;
 
     @Test
-    void verifyOperation() {
+    void verifyOperation() throws Throwable {
         val ctx = new AuditActionContext("casuser",
             "TEST", "TEST", "CAS", LocalDateTime.now(Clock.systemUTC()),
             new ClientInfo("1.2.3.4", "1.2.3.4", UUID.randomUUID().toString(), "London"));

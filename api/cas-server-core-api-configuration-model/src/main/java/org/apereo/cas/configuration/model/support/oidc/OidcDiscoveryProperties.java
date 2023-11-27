@@ -9,6 +9,7 @@ import java.io.Serial;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Stream;
 
 /**
@@ -47,6 +48,11 @@ public class OidcDiscoveryProperties implements Serializable {
      * parameter in the authorization response.
      */
     private boolean authorizationResponseIssuerParameterSupported;
+
+    /**
+     * Boolean value indicating server support for mutual-TLS client certificate-bound access tokens. 
+     */
+    private boolean tlsClientCertificateBoundAccessTokens;
 
     /**
      * Boolean parameter indicating
@@ -193,7 +199,7 @@ public class OidcDiscoveryProperties implements Serializable {
      * List of client authentication methods supported by token endpoint.
      */
     private List<String> tokenEndpointAuthMethodsSupported =
-        Stream.of("client_secret_basic", "client_secret_post", "client_secret_jwt", "private_key_jwt").toList();
+        Stream.of("client_secret_basic", "client_secret_post", "client_secret_jwt", "private_key_jwt", "tls_client_auth").toList();
 
     /**
      * List of PKCE code challenge methods supported.
@@ -203,6 +209,10 @@ public class OidcDiscoveryProperties implements Serializable {
     /**
      * List of ACR values supported.
      * This discovery element contains a list of the supported acr values supported by this server.
+     * Support for authentication context class references is implemented in form of {@code acr_values} as part of the original
+     * authorization request, which is mostly taken into account by
+     * the multifactor authentication features of CAS.
+     * Once successful, {@code acr} and {@code amr} values are passed back to the relying party as part of the id token.
      */
     private List<String> acrValuesSupported = new ArrayList<>();
 
@@ -228,4 +238,46 @@ public class OidcDiscoveryProperties implements Serializable {
     private List<String> requestObjectEncryptionEncodingValuesSupported = Stream.of("A128CBC-HS256",
         "A192CBC-HS384", "A256CBC-HS512",
         "A128GCM", "A192GCM", "A256GCM").toList();
+
+    /**
+     * Boolean value indicating support for verified_claims, i.e., the OpenID Connect for Identity Assurance extension.
+     */
+    private boolean verifiedClaimsSupported = true;
+
+    /**
+     * Set containing all supported trust frameworks. This array must have at least one member.
+     */
+    private Set<String> trustFrameworksSupported;
+
+    /**
+     * Set containing all types of identity evidence the OP uses. This array may have zero or more members.
+     */
+    private Set<String> evidenceSupported;
+
+    /**
+     * Needed when {@link #evidenceSupported} contains {@code document} or {@code id_document}.
+     * Set containing all identity document types utilized by the CAS for identity verification.
+     */
+    private Set<String> documentsSupported;
+
+    /**
+     * Set containing the validation methods the CAS supports.
+     */
+    private Set<String> documentsValidationMethodsSupported;
+
+    /**
+     * Set containing the verification methods the CAS supports.
+     */
+    private Set<String> documentsVerificationMethodsSupported;
+
+    /**
+     * Needed when evidence_supported contains {@code electronicrecord}. Set containing all
+     * electronic record types the CAS supports.
+     */
+    private Set<String> electronicRecordsSupported;
+
+    /**
+     * List of the supported verified claims.
+     */
+    private Set<String> claimsInVerifiedClaimsSupported;
 }

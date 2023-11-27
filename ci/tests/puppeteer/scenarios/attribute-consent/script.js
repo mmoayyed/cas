@@ -9,10 +9,10 @@ const os = require("os");
     const browser = await puppeteer.launch(cas.browserOptions());
     const page = await cas.newPage(browser);
 
-    await cas.goto(page, "https://localhost:8443/cas/login");
+    await cas.gotoLogin(page);
     await cas.loginWith(page);
 
-    await cas.goto(page, "https://localhost:8443/cas/login?service=https://example.org");
+    await cas.gotoLogin(page, "https://example.org");
     await cas.assertTextContent(page, '#content h2', "Attribute Consent");
     await cas.assertTextContent(page, "#appTitle", "The following attributes will be released to [https://example.org]:");
     await cas.assertTextContent(page, "#first-name", "first-name");
@@ -47,33 +47,33 @@ const os = require("os");
     await cas.click(page, "#confirm");
     await page.waitForNavigation();
     await cas.assertTicketParameter(page);
-    
+
     const baseUrl = "https://localhost:8443/cas/actuator/attributeConsent";
     const url = `${baseUrl}/casuser`;
-    console.log(`Trying ${url}`);
+    await cas.log(`Trying ${url}`);
     let response = await cas.goto(page, url);
-    console.log(`${response.status()} ${response.statusText()}`);
+    await cas.log(`${response.status()} ${response.statusText()}`);
     assert(response.ok());
-    
+
     let template = path.join(__dirname, 'consent-record.json');
     let body = fs.readFileSync(template, 'utf8');
-    console.log(`Import consent record:\n${body}`);
+    await cas.log(`Import consent record:\n${body}`);
     await cas.doRequest(`${baseUrl}/import`, "POST", {
         'Accept': 'application/json',
         'Content-Length': body.length,
         'Content-Type': 'application/json'
     }, 201, body);
-    
+
     await cas.doGet(`${baseUrl}/export`,
-    res => {
-        const tempDir = os.tmpdir();
-        let exported = path.join(tempDir, 'consent.zip');
-        res.data.pipe(fs.createWriteStream(exported));
-        console.log(`Exported consent records are at ${exported}`);
-    },
-    error => {
-        throw error;
-    }, {}, "stream");
+        async res => {
+            const tempDir = os.tmpdir();
+            let exported = path.join(tempDir, 'consent.zip');
+            res.data.pipe(fs.createWriteStream(exported));
+            cas.log(`Exported consent records are at ${exported}`);
+        },
+        async error => {
+            throw error;
+        }, {}, "stream");
 
     await cas.doRequest(`${baseUrl}/casuser/1`, "DELETE");
     await cas.doRequest(`${baseUrl}/casuser`, "DELETE");

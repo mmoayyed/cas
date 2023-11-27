@@ -2,9 +2,9 @@ package org.apereo.cas.web.flow;
 
 import org.apereo.cas.CasProtocolConstants;
 import org.apereo.cas.services.RegisteredServiceTestUtils;
+import org.apereo.cas.util.MockRequestContext;
 import org.apereo.cas.web.BaseDelegatedAuthenticationTests;
 import org.apereo.cas.web.cookie.CasCookieBuilder;
-
 import lombok.val;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -14,15 +14,10 @@ import org.pac4j.jee.context.JEEContext;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
-import org.springframework.mock.web.MockServletContext;
 import org.springframework.test.context.TestPropertySource;
-import org.springframework.webflow.context.ExternalContextHolder;
-import org.springframework.webflow.context.servlet.ServletExternalContext;
-import org.springframework.webflow.execution.RequestContextHolder;
-import org.springframework.webflow.test.MockRequestContext;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -36,7 +31,6 @@ class DefaultDelegatedClientIdentityProviderConfigurationProducerTests {
 
     @SpringBootTest(classes = BaseDelegatedAuthenticationTests.SharedTestConfiguration.class,
         properties = "cas.authn.pac4j.cookie.enabled=true")
-    @SuppressWarnings("ClassCanBeStatic")
     public abstract class BaseDelegatedClientIdentityProviderConfigurationProducerTests {
         @Autowired
         @Qualifier(DelegatedClientIdentityProviderConfigurationProducer.BEAN_NAME)
@@ -45,6 +39,13 @@ class DefaultDelegatedClientIdentityProviderConfigurationProducerTests {
         @Autowired
         @Qualifier("delegatedAuthenticationCookieGenerator")
         protected CasCookieBuilder delegatedAuthenticationCookieGenerator;
+
+        @Autowired
+        @Qualifier("delegatedAuthenticationCasWebflowLoginContextProvider")
+        protected CasWebflowLoginContextProvider delegatedAuthenticationCasWebflowLoginContextProvider;
+
+        @Autowired
+        protected ConfigurableApplicationContext applicationContext;
 
         protected JEEContext context;
 
@@ -55,31 +56,27 @@ class DefaultDelegatedClientIdentityProviderConfigurationProducerTests {
         protected MockHttpServletResponse httpServletResponse;
 
         @BeforeEach
-        public void setup() {
+        public void setup() throws Exception {
+            requestContext = MockRequestContext.create(applicationContext);
+            httpServletResponse = requestContext.getHttpServletResponse();
+            httpServletRequest = requestContext.getHttpServletRequest();
             val service = RegisteredServiceTestUtils.getService();
-            httpServletResponse = new MockHttpServletResponse();
-            httpServletRequest = new MockHttpServletRequest();
-            httpServletRequest.addParameter(CasProtocolConstants.PARAMETER_SERVICE, service.getId());
+            requestContext.setParameter(CasProtocolConstants.PARAMETER_SERVICE, service.getId());
             context = new JEEContext(httpServletRequest, httpServletResponse);
-
-            requestContext = new MockRequestContext();
-            requestContext.setExternalContext(new ServletExternalContext(new MockServletContext(),
-                context.getNativeRequest(), context.getNativeResponse()));
-            RequestContextHolder.setRequestContext(requestContext);
-            ExternalContextHolder.setExternalContext(requestContext.getExternalContext());
         }
 
         @Test
-        void verifyOperation() {
+        void verifyOperation() throws Throwable {
             delegatedAuthenticationCookieGenerator.addCookie(context.getNativeRequest(),
                 context.getNativeResponse(), "SAML2Client");
             val results = delegatedClientIdentityProviderConfigurationProducer.produce(requestContext);
             assertFalse(results.isEmpty());
             assertNotNull(DelegationWebflowUtils.getDelegatedAuthenticationProviderPrimary(requestContext));
+            assertFalse(delegatedAuthenticationCasWebflowLoginContextProvider.isLoginFormViewable(requestContext));
         }
 
         @Test
-        void verifyProduceFailingClient() {
+        void verifyProduceFailingClient() throws Throwable {
             delegatedAuthenticationCookieGenerator.addCookie(context.getNativeRequest(),
                 context.getNativeResponse(), "FailingClient");
             val results = delegatedClientIdentityProviderConfigurationProducer.produce(requestContext);
@@ -88,16 +85,14 @@ class DefaultDelegatedClientIdentityProviderConfigurationProducerTests {
     }
 
     @Nested
-    @SuppressWarnings("ClassCanBeStatic")
     class MenuSelectionTests extends BaseDelegatedClientIdentityProviderConfigurationProducerTests {
     }
 
     @Nested
-    @SuppressWarnings("ClassCanBeStatic")
     @TestPropertySource(properties = "cas.authn.pac4j.core.discovery-selection.selection-type=DYNAMIC")
     class DynamicSelectionTests extends BaseDelegatedClientIdentityProviderConfigurationProducerTests {
         @Test
-        void verifySelectionOperation() {
+        void verifySelectionOperation() throws Throwable {
             val results = delegatedClientIdentityProviderConfigurationProducer.produce(requestContext);
             assertFalse(results.isEmpty());
             assertTrue(DelegationWebflowUtils.isDelegatedAuthenticationDynamicProviderSelection(requestContext));

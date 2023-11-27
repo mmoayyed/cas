@@ -1,31 +1,29 @@
 package org.apereo.cas.web.support;
 
+import org.apereo.cas.CasProtocolConstants;
 import org.apereo.cas.authentication.CoreAuthenticationTestUtils;
 import org.apereo.cas.authentication.OneTimeTokenAccount;
 import org.apereo.cas.authentication.credential.OneTimeTokenCredential;
 import org.apereo.cas.authentication.credential.UsernamePasswordCredential;
+import org.apereo.cas.authentication.principal.WebApplicationServiceFactory;
 import org.apereo.cas.configuration.model.support.captcha.GoogleRecaptchaProperties;
 import org.apereo.cas.ticket.TicketGrantingTicket;
 import org.apereo.cas.ticket.registry.TicketRegistrySupport;
-import org.apereo.cas.util.MockServletContext;
+import org.apereo.cas.util.MockRequestContext;
+import org.apereo.cas.util.http.HttpRequestUtils;
 import org.apereo.cas.web.flow.CasWebflowConstants;
 import lombok.val;
 import org.apache.commons.lang3.StringUtils;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockHttpServletRequest;
-import org.springframework.mock.web.MockHttpServletResponse;
-import org.springframework.webflow.context.servlet.ServletExternalContext;
 import org.springframework.webflow.engine.Flow;
 import org.springframework.webflow.test.MockFlowExecutionContext;
 import org.springframework.webflow.test.MockFlowSession;
-import org.springframework.webflow.test.MockRequestContext;
-
 import java.io.Serializable;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
@@ -39,11 +37,8 @@ import static org.mockito.Mockito.*;
 class WebUtilsTests {
 
     @Test
-    void verifyOperation() {
-        val context = new MockRequestContext();
-        val request = new MockHttpServletRequest();
-        val response = new MockHttpServletResponse();
-        context.setExternalContext(new ServletExternalContext(new MockServletContext(), request, response));
+    void verifyOperation() throws Throwable {
+        val context = MockRequestContext.create();
         val flow = new Flow("mockFlow");
         val flowSession = new MockFlowSession(flow);
         flowSession.setParent(new MockFlowSession(flow));
@@ -56,9 +51,9 @@ class WebUtilsTests {
         assertNull(WebUtils.getLogoutRedirectUrl(context, String.class));
 
         assertNull(WebUtils.getHttpServletRequestUserAgentFromRequestContext(context));
-        assertNull(WebUtils.getHttpServletRequestUserAgentFromRequestContext(request));
+        assertNull(WebUtils.getHttpServletRequestUserAgentFromRequestContext(context.getHttpServletRequest()));
         assertNull(WebUtils.getAuthenticationResult(context));
-        assertNull(WebUtils.getHttpServletRequestGeoLocationFromRequestContext());
+        assertFalse(WebUtils.getHttpServletRequestGeoLocationFromRequestContext().isValid());
         assertNull(WebUtils.getAcceptableUsagePolicyTermsFromFlowScope(context, Object.class));
         assertFalse(WebUtils.hasSurrogateAuthenticationRequest(context));
 
@@ -67,8 +62,8 @@ class WebUtilsTests {
         assertNotNull(WebUtils.produceErrorView("error-view", new IllegalArgumentException()));
         assertNotNull(WebUtils.getHttpRequestFullUrl(context));
 
-        request.setQueryString("param=value");
-        assertNotNull(WebUtils.getHttpRequestFullUrl(request));
+        context.getHttpServletRequest().setQueryString("param=value");
+        assertNotNull(WebUtils.getHttpRequestFullUrl(context.getHttpServletRequest()));
         assertFalse(WebUtils.isGraphicalUserAuthenticationEnabled(context));
         assertNull(WebUtils.getAvailableAuthenticationHandleNames(context));
 
@@ -109,7 +104,7 @@ class WebUtilsTests {
         assertNull(WebUtils.getTicketGrantingTicket(context));
         assertThrows(IllegalArgumentException.class, () -> WebUtils.getPrincipalFromRequestContext(context, null));
 
-        request.addParameter(CasWebflowConstants.ATTRIBUTE_PUBLIC_WORKSTATION, "true");
+        context.setParameter(CasWebflowConstants.ATTRIBUTE_PUBLIC_WORKSTATION, "true");
         WebUtils.putPublicWorkstationToFlowIfRequestParameterPresent(context);
         assertTrue(WebUtils.isAuthenticatingAtPublicWorkstation(context));
 
@@ -124,4 +119,15 @@ class WebUtilsTests {
         WebUtils.putLogoutPostData(context, data);
         assertEquals(data, WebUtils.getLogoutPostData(context));
     }
+
+    @Test
+    void verifyFindService() throws Throwable {
+        val casArgumentExtractor = new DefaultArgumentExtractor(new WebApplicationServiceFactory());
+        val request = new MockHttpServletRequest();
+        request.setParameter(CasProtocolConstants.PARAMETER_SERVICE, "test");
+        val service = HttpRequestUtils.getService(List.of(casArgumentExtractor), request);
+        assertNotNull(service);
+        assertEquals("test", service.getId());
+    }
+    
 }

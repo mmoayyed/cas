@@ -28,6 +28,7 @@ import org.apereo.cas.web.cookie.CasCookieBuilder;
 import org.apereo.cas.web.report.AuditLogEndpoint;
 import org.apereo.cas.web.report.CasFeaturesEndpoint;
 import org.apereo.cas.web.report.CasInfoEndpointContributor;
+import org.apereo.cas.web.report.CasPersonDirectoryEndpoint;
 import org.apereo.cas.web.report.CasProtocolValidationEndpoint;
 import org.apereo.cas.web.report.CasReleaseAttributesReportEndpoint;
 import org.apereo.cas.web.report.CasResolveAttributesReportEndpoint;
@@ -41,9 +42,11 @@ import org.apereo.cas.web.report.SingleSignOnSessionsEndpoint;
 import org.apereo.cas.web.report.SpringWebflowEndpoint;
 import org.apereo.cas.web.report.StatisticsEndpoint;
 import org.apereo.cas.web.report.TicketExpirationPoliciesEndpoint;
-
+import org.apereo.cas.web.report.TicketRegistryEndpoint;
 import lombok.val;
+import org.apereo.services.persondir.IPersonAttributeDao;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.actuate.autoconfigure.endpoint.condition.ConditionalOnAvailableEndpoint;
 import org.springframework.boot.actuate.info.InfoContributor;
@@ -58,7 +61,6 @@ import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.ScopedProxyMode;
-
 import java.util.List;
 
 /**
@@ -90,6 +92,7 @@ public class CasReportsConfiguration {
         @ConditionalOnAvailableEndpoint
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
         public CasReleaseAttributesReportEndpoint releaseAttributesReportEndpoint(
+            final ConfigurableApplicationContext applicationContext,
             @Qualifier(PrincipalResolver.BEAN_NAME_PRINCIPAL_RESOLVER)
             final ObjectProvider<PrincipalResolver> defaultPrincipalResolver,
             @Qualifier(WebApplicationService.BEAN_NAME_FACTORY)
@@ -101,7 +104,8 @@ public class CasReportsConfiguration {
             @Qualifier(ServicesManager.BEAN_NAME)
             final ObjectProvider<ServicesManager> servicesManager,
             final CasConfigurationProperties casProperties) {
-            return new CasReleaseAttributesReportEndpoint(casProperties,
+            return new CasReleaseAttributesReportEndpoint(
+                casProperties, applicationContext,
                 servicesManager, authenticationSystemSupport,
                 webApplicationServiceFactory, principalFactory, defaultPrincipalResolver);
         }
@@ -198,6 +202,17 @@ public class CasReportsConfiguration {
         @Bean
         @ConditionalOnAvailableEndpoint
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
+        public CasPersonDirectoryEndpoint casPersonDirectoryEndpoint(
+            @Autowired
+            @Qualifier("cachingAttributeRepository")
+            final ObjectProvider<IPersonAttributeDao> cachingAttributeRepository,
+            final CasConfigurationProperties casProperties) {
+            return new CasPersonDirectoryEndpoint(casProperties, cachingAttributeRepository);
+        }
+        
+        @Bean
+        @ConditionalOnAvailableEndpoint
+        @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
         public SpringWebflowEndpoint springWebflowEndpoint(final CasConfigurationProperties casProperties,
                                                            final ConfigurableApplicationContext applicationContext) {
             return new SpringWebflowEndpoint(casProperties, applicationContext);
@@ -289,6 +304,18 @@ public class CasReportsConfiguration {
             final List<ExpirationPolicyBuilder> builders) {
             return new TicketExpirationPoliciesEndpoint(casProperties, builders,
                 servicesManager, webApplicationServiceFactory);
+        }
+
+        @Bean
+        @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
+        @ConditionalOnAvailableEndpoint
+        public TicketRegistryEndpoint ticketRegistryEndpoint(
+            final CasConfigurationProperties casProperties,
+            @Qualifier(TicketRegistrySupport.BEAN_NAME)
+            final ObjectProvider<TicketRegistrySupport> ticketRegistrySupport,
+            @Qualifier(TicketRegistry.BEAN_NAME)
+            final ObjectProvider<TicketRegistry> ticketRegistry) {
+            return new TicketRegistryEndpoint(casProperties, ticketRegistry, ticketRegistrySupport);
         }
 
         @Bean

@@ -18,6 +18,14 @@ public interface OidcIdTokenClaimCollector {
     String BEAN_NAME = "oidcIdTokenClaimCollector";
 
     /**
+     * Conclude jwt claims.
+     *
+     * @param claims the claims
+     */
+    default void conclude(final JwtClaims claims) {
+    }
+
+    /**
      * Default system behavior when collecting id token claims.
      *
      * @return the oidc id token claim collector
@@ -25,7 +33,7 @@ public interface OidcIdTokenClaimCollector {
     static OidcIdTokenClaimCollector defaultCollector() {
         return (claims, name, values) -> {
             if (values.size() == 1) {
-                claims.setClaim(name, values.get(0));
+                claims.setClaim(name, values.getFirst());
             } else if (values.size() > 1) {
                 claims.setClaim(name, values);
             }

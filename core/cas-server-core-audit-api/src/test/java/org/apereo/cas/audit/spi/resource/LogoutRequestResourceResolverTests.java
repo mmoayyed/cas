@@ -1,7 +1,7 @@
 package org.apereo.cas.audit.spi.resource;
 
 import org.apereo.cas.authentication.AuthenticationException;
-import org.apereo.cas.logout.SingleLogoutExecutionRequest;
+import org.apereo.cas.logout.slo.SingleLogoutExecutionRequest;
 import org.apereo.cas.ticket.TicketGrantingTicket;
 import lombok.val;
 import org.apereo.inspektr.audit.spi.AuditResourceResolver;
@@ -24,7 +24,7 @@ class LogoutRequestResourceResolverTests {
     private static final String TGT_ID = "TGT-0";
 
     @Test
-    void verifyLogoutRequest() {
+    void verifyLogoutRequest() throws Throwable {
         val resolver = getResolver();
         val jp = mock(JoinPoint.class);
         val tgt = mock(TicketGrantingTicket.class);
@@ -34,7 +34,7 @@ class LogoutRequestResourceResolverTests {
     }
 
     @Test
-    void verifyException() {
+    void verifyException() throws Throwable {
         val resolver = getResolver();
         val jp = mock(JoinPoint.class);
         val tgt = mock(TicketGrantingTicket.class);

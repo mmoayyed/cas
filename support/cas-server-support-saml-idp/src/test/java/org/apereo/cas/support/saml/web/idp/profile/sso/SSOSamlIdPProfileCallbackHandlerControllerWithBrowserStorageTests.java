@@ -10,7 +10,7 @@ import org.apereo.cas.support.saml.idp.SamlIdPSessionManager;
 import org.apereo.cas.support.saml.services.SamlRegisteredService;
 import org.apereo.cas.support.saml.util.Saml20HexRandomIdGenerator;
 import org.apereo.cas.ticket.ServiceTicket;
-import org.apereo.cas.ticket.ServiceTicketSessionTrackingPolicy;
+import org.apereo.cas.ticket.tracking.TicketTrackingPolicy;
 import org.apereo.cas.web.BrowserSessionStorage;
 import org.apereo.cas.web.flow.CasWebflowConstants;
 import lombok.val;
@@ -64,7 +64,7 @@ class SSOSamlIdPProfileCallbackHandlerControllerWithBrowserStorageTests extends 
     }
 
     @Test
-    void verifyReadFromStorage() throws Exception {
+    void verifyReadFromStorage() throws Throwable {
         val request = new MockHttpServletRequest();
         val response = new MockHttpServletResponse();
 
@@ -79,7 +79,7 @@ class SSOSamlIdPProfileCallbackHandlerControllerWithBrowserStorageTests extends 
     }
 
     @Test
-    void verifyResumeFromStorage() throws Exception {
+    void verifyResumeFromStorage() throws Throwable {
         val request = new MockHttpServletRequest();
         val response = new MockHttpServletResponse();
 
@@ -100,7 +100,7 @@ class SSOSamlIdPProfileCallbackHandlerControllerWithBrowserStorageTests extends 
     }
 
     private void storeAuthnRequest(final MockHttpServletRequest request, final MockHttpServletResponse response,
-                                   final AuthnRequest authnRequest) throws Exception {
+                                   final AuthnRequest authnRequest) throws Throwable {
         val context = new MessageContext();
         context.setMessage(authnRequest);
         request.addParameter(SamlIdPConstants.AUTHN_REQUEST_ID, authnRequest.getID());
@@ -121,10 +121,10 @@ class SSOSamlIdPProfileCallbackHandlerControllerWithBrowserStorageTests extends 
         return authnRequest;
     }
 
-    private ServiceTicket getServiceTicket() throws Exception {
+    private ServiceTicket getServiceTicket() throws Throwable {
         val tgt = new MockTicketGrantingTicket(UUID.randomUUID().toString());
         ticketRegistry.addTicket(tgt);
-        val trackingPolicy = mock(ServiceTicketSessionTrackingPolicy.class);
+        val trackingPolicy = mock(TicketTrackingPolicy.class);
         val ticketService = RegisteredServiceTestUtils.getService(samlRegisteredService.getServiceId());
         ticketService.getAttributes().put(SamlProtocolConstants.PARAMETER_ENTITY_ID, List.of(samlRegisteredService.getServiceId()));
         val st1 = tgt.grantServiceTicket(ticketService, trackingPolicy);

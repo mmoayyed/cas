@@ -3,6 +3,7 @@ package org.apereo.cas.web.flow;
 import org.apereo.cas.authentication.CoreAuthenticationTestUtils;
 import org.apereo.cas.configuration.CasConfigurationProperties;
 import org.apereo.cas.support.wsfederation.web.WsFederationNavigationController;
+import org.apereo.cas.util.MockRequestContext;
 import org.apereo.cas.web.support.WebUtils;
 
 import lombok.val;
@@ -13,13 +14,9 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.web.ServerProperties;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.http.HttpStatus;
-import org.springframework.mock.web.MockHttpServletRequest;
-import org.springframework.mock.web.MockHttpServletResponse;
-import org.springframework.mock.web.MockServletContext;
-import org.springframework.webflow.context.servlet.ServletExternalContext;
 import org.springframework.webflow.execution.Action;
-import org.springframework.webflow.test.MockRequestContext;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -54,17 +51,17 @@ class WsFederationClientRedirectActionTests {
     @Autowired
     private ServerProperties serverProperties;
 
+    @Autowired
+    private ConfigurableApplicationContext applicationContext;
+
     @Test
-    void verifyRequestOperation() throws Exception {
-        val context = new MockRequestContext();
-        val request = new MockHttpServletRequest();
-        val response = new MockHttpServletResponse();
-        context.setExternalContext(new ServletExternalContext(new MockServletContext(), request, response));
+    void verifyRequestOperation() throws Throwable {
+        val context = MockRequestContext.create(applicationContext);
         WebUtils.putServiceIntoFlowScope(context, CoreAuthenticationTestUtils.getWebApplicationService());
         wsFederationAction.execute(context);
         wsFederationRedirectAction.execute(context);
-        assertEquals(HttpStatus.FOUND.value(), response.getStatus());
-        assertTrue(response.getHeader("Location").startsWith(
+        assertEquals(HttpStatus.FOUND.value(), context.getHttpServletResponse().getStatus());
+        assertTrue(context.getHttpServletResponse().getHeader("Location").startsWith(
             serverProperties.getServlet().getContextPath() + WsFederationNavigationController.ENDPOINT_REDIRECT));
     }
 }

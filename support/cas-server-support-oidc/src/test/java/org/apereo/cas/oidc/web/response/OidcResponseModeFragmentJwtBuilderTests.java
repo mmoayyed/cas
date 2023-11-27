@@ -23,28 +23,28 @@ import static org.junit.jupiter.api.Assertions.*;
 @Tag("OIDC")
 class OidcResponseModeFragmentJwtBuilderTests extends AbstractOidcTests {
     @Test
-    void verifyResponseModeForService() throws Exception {
+    void verifyResponseModeForService() throws Throwable {
         val registeredService = getOidcRegisteredService("client");
         servicesManager.save(registeredService);
         val builder = oauthResponseModeFactory.getBuilder(registeredService, OAuth20ResponseModeTypes.FRAGMENT_JWT);
         assertNotNull(builder);
         val mv = builder.build(registeredService, "https://apereo.github.io",
             Map.of("code", "123456", "state", "abcdef"));
-        assertTrue(mv.getView() instanceof RedirectView);
+        assertInstanceOf(RedirectView.class, mv.getView());
         val view = (RedirectView) mv.getView();
         val urlBuilder = new URIBuilder(view.getUrl());
         assertTrue(urlBuilder.getFragment().startsWith("response="));
     }
 
     @Test
-    void verifyResponseModeForDefault() throws Exception {
+    void verifyResponseModeForDefault() throws Throwable {
         val registeredService = getOidcRegisteredService("client").setJwks(StringUtils.EMPTY);
         servicesManager.save(registeredService);
         val builder = oauthResponseModeFactory.getBuilder(registeredService, OAuth20ResponseModeTypes.FRAGMENT_JWT);
         assertNotNull(builder);
         val mv = builder.build(registeredService, "https://apereo.github.io",
             Map.of("code", "123456", "state", "abcdef"));
-        assertTrue(mv.getView() instanceof RedirectView);
+        assertInstanceOf(RedirectView.class, mv.getView());
         val view = (RedirectView) mv.getView();
         val urlBuilder = new URIBuilder(view.getUrl());
         assertTrue(urlBuilder.getFragment().startsWith("response="));

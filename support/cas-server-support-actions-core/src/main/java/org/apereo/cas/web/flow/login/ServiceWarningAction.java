@@ -4,6 +4,7 @@ import org.apereo.cas.CentralAuthenticationService;
 import org.apereo.cas.authentication.AuthenticationException;
 import org.apereo.cas.authentication.AuthenticationResult;
 import org.apereo.cas.authentication.AuthenticationSystemSupport;
+import org.apereo.cas.authentication.Credential;
 import org.apereo.cas.authentication.PrincipalElectionStrategy;
 import org.apereo.cas.authentication.principal.Service;
 import org.apereo.cas.ticket.InvalidTicketException;
@@ -12,6 +13,7 @@ import org.apereo.cas.ticket.registry.TicketRegistrySupport;
 import org.apereo.cas.util.function.FunctionUtils;
 import org.apereo.cas.web.cookie.CasCookieBuilder;
 import org.apereo.cas.web.flow.CasWebflowConstants;
+import org.apereo.cas.web.flow.CasWebflowCredentialProvider;
 import org.apereo.cas.web.flow.actions.BaseCasWebflowAction;
 import org.apereo.cas.web.support.WebUtils;
 
@@ -19,6 +21,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.val;
 import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.jooq.lambda.Unchecked;
 import org.springframework.core.annotation.AnnotationAwareOrderComparator;
 import org.springframework.webflow.execution.Event;
 import org.springframework.webflow.execution.RequestContext;
@@ -53,21 +56,22 @@ public class ServiceWarningAction extends BaseCasWebflowAction {
 
     private final List<ServiceTicketGeneratorAuthority> serviceTicketAuthorities;
 
-    @Override
-    protected Event doExecute(final RequestContext requestContext) {
-        val request = WebUtils.getHttpServletRequestFromExternalWebflowContext(requestContext);
+    private final CasWebflowCredentialProvider casWebflowCredentialProvider;
 
+    @Override
+    protected Event doExecuteInternal(final RequestContext requestContext) throws Throwable {
+        val request = WebUtils.getHttpServletRequestFromExternalWebflowContext(requestContext);
         val service = WebUtils.getService(requestContext);
         val ticketGrantingTicket = WebUtils.getTicketGrantingTicketId(requestContext);
         FunctionUtils.throwIf(StringUtils.isBlank(ticketGrantingTicket),
             () -> new InvalidTicketException(new AuthenticationException("No ticket-granting ticket could be found in the context"), ticketGrantingTicket));
         val authentication = ticketRegistrySupport.getAuthenticationFrom(ticketGrantingTicket);
-        FunctionUtils.throwIf(authentication == null,
+        FunctionUtils.throwIfNull(authentication,
             () -> new InvalidTicketException(new AuthenticationException("No authentication found for ticket " + ticketGrantingTicket), ticketGrantingTicket));
-
-        val credential = WebUtils.getCredential(requestContext);
-        val authenticationResultBuilder = authenticationSystemSupport.establishAuthenticationContextFromInitial(authentication, credential);
-        val authenticationResult = authenticationResultBuilder.build(principalElectionStrategy, service);
+        val credentials = casWebflowCredentialProvider.extract(requestContext);
+        val authenticationResultBuilder = authenticationSystemSupport.establishAuthenticationContextFromInitial(
+            authentication, credentials.toArray(credentials.toArray(new Credential[0])));
+        val authenticationResult = FunctionUtils.doUnchecked(() -> authenticationResultBuilder.build(principalElectionStrategy, service));
         grantServiceTicket(authenticationResult, service, requestContext);
 
         if (request.getParameterMap().containsKey(PARAMETER_NAME_IGNORE_WARNING)) {
@@ -87,10 +91,10 @@ public class ServiceWarningAction extends BaseCasWebflowAction {
             .sorted(AnnotationAwareOrderComparator.INSTANCE)
             .filter(auth -> auth.supports(authenticationResult, service))
             .findFirst()
-            .ifPresent(auth -> {
+            .ifPresent(Unchecked.consumer(auth -> {
                 val ticketGrantingTicket = WebUtils.getTicketGrantingTicketId(requestContext);
                 val serviceTicketId = centralAuthenticationService.grantServiceTicket(ticketGrantingTicket, service, authenticationResult);
                 WebUtils.putServiceTicketInRequestScope(requestContext, serviceTicketId);
-            });
+            }));
     }
 }

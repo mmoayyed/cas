@@ -79,14 +79,14 @@ public class OidcServerDiscoverySettingsFactory implements FactoryBean<OidcServe
         discovery.setRequirePushedAuthorizationRequests(discoveryConfig.isRequirePushedAuthorizationRequests());
         discovery.setRequestParameterSupported(discoveryConfig.isRequestParameterSupported());
         discovery.setRequestUriParameterSupported(discoveryConfig.isRequestUriParameterSupported());
-        discovery.setRequestObjectSigningAlgValuesSupported(
-            new LinkedHashSet<>(discoveryConfig.getRequestObjectSigningAlgValuesSupported()));
-        discovery.setRequestObjectEncryptionAlgValuesSupported(
-            new LinkedHashSet<>(discoveryConfig.getRequestObjectEncryptionAlgValuesSupported()));
+        discovery.setRequestObjectSigningAlgValuesSupported(new LinkedHashSet<>(discoveryConfig.getRequestObjectSigningAlgValuesSupported()));
+        discovery.setRequestObjectEncryptionAlgValuesSupported(new LinkedHashSet<>(discoveryConfig.getRequestObjectEncryptionAlgValuesSupported()));
         discovery.setRequestObjectEncryptionEncodingValuesSupported(
             new LinkedHashSet<>(discoveryConfig.getRequestObjectEncryptionEncodingValuesSupported()));
-        discovery.setAuthorizationResponseIssuerParameterSupported(
-            discoveryConfig.isAuthorizationResponseIssuerParameterSupported());
+
+        discovery.setAuthorizationResponseIssuerParameterSupported(discoveryConfig.isAuthorizationResponseIssuerParameterSupported());
+        discovery.setTlsClientCertificateBoundAccessTokens(discoveryConfig.isTlsClientCertificateBoundAccessTokens());
+
         discovery.setAcrValuesSupported(new LinkedHashSet<>(discoveryConfig.getAcrValuesSupported()));
         if (discoveryConfig.getAcrValuesSupported().isEmpty()) {
             val providers = MultifactorAuthenticationUtils.getAvailableMultifactorAuthenticationProviders(applicationContext)
@@ -96,6 +96,16 @@ public class OidcServerDiscoverySettingsFactory implements FactoryBean<OidcServe
                 .collect(Collectors.toSet());
             discovery.setAcrValuesSupported(providers);
         }
+
+        discovery.setVerifiedClaimsSupported(discoveryConfig.isVerifiedClaimsSupported());
+        discovery.setTrustFrameworksSupported(discoveryConfig.getTrustFrameworksSupported());
+        discovery.setEvidenceSupported(discoveryConfig.getEvidenceSupported());
+        discovery.setDocumentsSupported(discoveryConfig.getDocumentsSupported());
+        discovery.setDocumentsValidationMethodsSupported(discoveryConfig.getDocumentsValidationMethodsSupported());
+        discovery.setDocumentsVerificationMethodsSupported(discoveryConfig.getDocumentsVerificationMethodsSupported());
+        discovery.setElectronicRecordsSupported(discoveryConfig.getElectronicRecordsSupported());
+        discovery.setClaimsInVerifiedClaimsSupported(discoveryConfig.getClaimsInVerifiedClaimsSupported());
+        
         return discovery;
     }
 

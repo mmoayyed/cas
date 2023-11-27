@@ -6,7 +6,7 @@ const path = require('path');
     const browser = await puppeteer.launch(cas.browserOptions());
     const page = await cas.newPage(browser);
 
-    await cas.goto(page, "https://localhost:8443/cas/login");
+    await cas.gotoLogin(page);
     await page.waitForTimeout(2000);
     await cas.click(page, "li #SAML2Client");
     await page.waitForNavigation();
@@ -18,7 +18,7 @@ const path = require('path');
     await cas.assertVisibility(page, '#mfa-gauth');
     await cas.assertVisibility(page, '#mfa-yubikey');
 
-    await cas.removeDirectory(path.join(__dirname, '/saml-md'));
+    await cas.removeDirectoryOrFile(path.join(__dirname, '/saml-md'));
     await browser.close();
 })();
 

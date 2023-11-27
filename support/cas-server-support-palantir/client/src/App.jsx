@@ -4,27 +4,31 @@ import {
     createBrowserRouter,
     RouterProvider,
 } from "react-router-dom";
-
+import { SnackbarProvider } from 'notistack';
 import { store } from './store/store';
 import CasThemeProvider from './theme/CasThemeProvider';
-import Layout from './Layout';
 
-import { dashboardRoutes } from './dashboard/routes';
+import { routes } from './views/Routes';
 
-import { API_PATH } from './App.constant';
+import { API_PATH, APP_PATH } from './App.constant';
 
-const router = createBrowserRouter([
-    ...dashboardRoutes
-]);
+
+const router = createBrowserRouter(
+    [
+        ...routes
+    ],
+    {
+        basename: `/${APP_PATH}`
+    }
+);
 
 function App() {
     return (
         <Provider store={store}>
             <CasThemeProvider>
-                <Layout>
-                    { API_PATH }
+                <SnackbarProvider>
                     <RouterProvider router={router} />
-                </Layout>
+                </SnackbarProvider>
             </CasThemeProvider>
         </Provider>
     )

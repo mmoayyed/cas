@@ -2,18 +2,14 @@ package org.apereo.cas.rest.factory;
 
 import org.apereo.cas.authentication.Credential;
 import org.apereo.cas.authentication.credential.UsernamePasswordCredential;
-import org.apereo.cas.authentication.metadata.BasicCredentialMetadata;
 import org.apereo.cas.util.CollectionUtils;
-
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.util.MultiValueMap;
-
 import jakarta.servlet.http.HttpServletRequest;
-
 import java.util.ArrayList;
 import java.util.List;
 
@@ -30,7 +26,7 @@ public class UsernamePasswordRestHttpRequestCredentialFactory implements RestHtt
     private int order = Integer.MIN_VALUE;
 
     @Override
-    public List<Credential> fromRequest(final HttpServletRequest request, final MultiValueMap<String, String> requestBody) {
+    public List<Credential> fromRequest(final HttpServletRequest request, final MultiValueMap<String, String> requestBody) throws Throwable {
         if (requestBody == null || requestBody.isEmpty()) {
             LOGGER.debug("Skipping [{}] because the requestBody is null or empty", getClass().getSimpleName());
             return new ArrayList<>(0);
@@ -42,7 +38,7 @@ public class UsernamePasswordRestHttpRequestCredentialFactory implements RestHtt
             return new ArrayList<>(0);
         }
         val credential = new UsernamePasswordCredential(username, password);
-        credential.setCredentialMetadata(new BasicCredentialMetadata(credential));
+        prepareCredential(request, credential);
         return CollectionUtils.wrap(credential);
     }
 }

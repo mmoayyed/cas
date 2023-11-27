@@ -5,6 +5,7 @@ import org.apereo.cas.ticket.ExpirationPolicyBuilder;
 import org.apereo.cas.ticket.Ticket;
 import org.apereo.cas.ticket.UniqueTicketIdGenerator;
 
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.val;
 import org.apache.commons.lang3.StringUtils;
@@ -21,12 +22,14 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class DefaultCasSimpleMultifactorAuthenticationTicketFactory implements CasSimpleMultifactorAuthenticationTicketFactory {
 
+    @Getter
     private final ExpirationPolicyBuilder expirationPolicyBuilder;
 
     private final UniqueTicketIdGenerator ticketIdGenerator;
 
     @Override
-    public CasSimpleMultifactorAuthenticationTicket create(final Service service, final Map<String, Serializable> properties) {
+    public CasSimpleMultifactorAuthenticationTicket create(final Service service,
+                                                           final Map<String, Serializable> properties) throws Throwable {
         val id = ticketIdGenerator.getNewTicketId(CasSimpleMultifactorAuthenticationTicket.PREFIX);
         return create(id, service, properties);
     }

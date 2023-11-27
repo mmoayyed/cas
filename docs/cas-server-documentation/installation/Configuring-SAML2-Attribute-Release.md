@@ -128,13 +128,7 @@ import org.apereo.cas.support.saml.services.*
 import org.apereo.cas.support.saml.*
 
 Map<String, Object> run(final Object... args) {
-    def attributes = args[0]
-    def service = args[1]
-    def resolver = args[2]
-    def facade = args[3]
-    def entityDescriptor = args[4]
-    def applicationContext = args[5]
-    def logger = args[6]
+    def (attributes,service,resolver,facade,entityDescriptor,applicationContext,logger) = args
     ...
     return null;
 }
@@ -160,14 +154,7 @@ import org.apereo.cas.support.saml.services.*
 import org.apereo.cas.support.saml.*
 
 def run(final Object... args) {
-    def attributes = args[0]
-    def service = args[1]
-    def resolver = args[2]
-    def facade = args[3]
-    def entityDescriptor = args[4]
-    def applicationContext = args[5]
-    def logger = args[6]
-
+    def (attributes,service,resolver,facade,entityDescriptor,applicationContext,logger) = args
     if (entityDescriptor.entityId == "TestingSAMLApplication") {
       return [username:["something"], another:"attribute"]
     }
@@ -296,6 +283,82 @@ the attribute release policy explicitly is evaluated for the final attribute rel
 ```
 
 The `useFriendlyName` allows the filter to compare the requested attribute’s friendly name with the resolved attribute.
+
+{% endtab %}
+
+
+{% tab saml2attrrel Anonymous Access %}
+
+A specific attribute release policy is available to release the [attribute bundles](https://refeds.org/category/anonymous)
+to service providers that contain the entity attribute value `https://refeds.org/category/anonymous`:
+
+```json
+{
+  "@class": "org.apereo.cas.support.saml.services.SamlRegisteredService",
+  "serviceId": "entity-ids-allowed-via-regex",
+  "name": "SAML",
+  "id": 10,
+  "metadataLocation": "path/to/incommon/metadata.xml",
+  "attributeReleasePolicy": {
+    "@class": "org.apereo.cas.services.ChainingAttributeReleasePolicy",
+    "policies": [ "java.util.ArrayList",
+      [
+         {"@class": "org.apereo.cas.support.saml.services.AnonymousAccessAttributeReleasePolicy"}
+      ]
+    ]
+  }
+}
+```
+
+{% endtab %}
+
+{% tab saml2attrrel Pseudonymous Access %}
+
+A specific attribute release policy is available to release the [attribute bundles](https://refeds.org/category/pseudonymous)
+to service providers that contain the entity attribute value `https://refeds.org/category/pseudonymous`:
+
+```json
+{
+  "@class": "org.apereo.cas.support.saml.services.SamlRegisteredService",
+  "serviceId": "entity-ids-allowed-via-regex",
+  "name": "SAML",
+  "id": 10,
+  "metadataLocation": "path/to/incommon/metadata.xml",
+  "attributeReleasePolicy": {
+    "@class": "org.apereo.cas.services.ChainingAttributeReleasePolicy",
+    "policies": [ "java.util.ArrayList",
+      [
+         {"@class": "org.apereo.cas.support.saml.services.PseudonymousAccessAttributeReleasePolicy"}
+      ]
+    ]
+  }
+}
+```
+
+{% endtab %}
+
+{% tab saml2attrrel Personalized Access %}
+
+A specific attribute release policy is available to release the [attribute bundles](https://refeds.org/category/personalized)
+to service providers that contain the entity attribute value `https://refeds.org/category/personalized`:
+
+```json
+{
+  "@class": "org.apereo.cas.support.saml.services.SamlRegisteredService",
+  "serviceId": "entity-ids-allowed-via-regex",
+  "name": "SAML",
+  "id": 10,
+  "metadataLocation": "path/to/incommon/metadata.xml",
+  "attributeReleasePolicy": {
+    "@class": "org.apereo.cas.services.ChainingAttributeReleasePolicy",
+    "policies": [ "java.util.ArrayList",
+      [
+         {"@class": "org.apereo.cas.support.saml.services.PersonalizedAccessAttributeReleasePolicy"}
+      ]
+    ]
+  }
+}
+```
 
 {% endtab %}
 

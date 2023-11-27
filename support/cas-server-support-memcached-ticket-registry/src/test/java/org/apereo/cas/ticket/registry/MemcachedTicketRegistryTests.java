@@ -19,6 +19,7 @@ import org.apereo.cas.support.oauth.OAuth20ResponseTypes;
 import org.apereo.cas.ticket.TicketGrantingTicket;
 import org.apereo.cas.ticket.code.OAuth20Code;
 import org.apereo.cas.ticket.code.OAuth20DefaultOAuthCodeFactory;
+import org.apereo.cas.ticket.tracking.TicketTrackingPolicy;
 import org.apereo.cas.util.CollectionUtils;
 import org.apereo.cas.util.DefaultUniqueTicketIdGenerator;
 import org.apereo.cas.util.crypto.CipherExecutor;
@@ -96,7 +97,7 @@ class MemcachedTicketRegistryTests extends BaseTicketRegistryTests {
     }
 
     @RepeatedTest(1)
-    public void verifyCreatePgt() throws Exception {
+    void verifyCreatePgt() throws Throwable {
         val tgt = new MockTicketGrantingTicket("casuser");
         newTicketRegistry.addTicket(tgt);
         val service = RegisteredServiceTestUtils.getService();
@@ -112,9 +113,10 @@ class MemcachedTicketRegistryTests extends BaseTicketRegistryTests {
     }
 
     @RepeatedTest(2)
-    public void verifyOAuthCodeIsAddedToMemcached() throws Exception {
+    void verifyOAuthCodeIsAddedToMemcached() throws Throwable {
         val factory = new OAuth20DefaultOAuthCodeFactory(new DefaultUniqueTicketIdGenerator(),
-            neverExpiresExpirationPolicyBuilder(), servicesManager, CipherExecutor.noOpOfStringToString());
+            neverExpiresExpirationPolicyBuilder(), servicesManager, CipherExecutor.noOpOfStringToString(),
+            TicketTrackingPolicy.noOp());
         val code = factory.create(RegisteredServiceTestUtils.getService(),
             CoreAuthenticationTestUtils.getAuthentication(),
             new MockTicketGrantingTicket("casuser"),
@@ -128,7 +130,7 @@ class MemcachedTicketRegistryTests extends BaseTicketRegistryTests {
     }
 
     @RepeatedTest(1)
-    public void verifyFailures() throws Exception {
+    void verifyFailures() throws Throwable {
         val pool = mock(ObjectPool.class);
         val registry = new MemcachedTicketRegistry(CipherExecutor.noOp(), ticketSerializationManager, ticketCatalog, pool);
         assertNotNull(registry.updateTicket(new MockTicketGrantingTicket("casuser")));

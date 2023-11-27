@@ -28,12 +28,12 @@ public class DelegatedAuthenticationIdentityProviderFinalizeLogoutAction extends
     private final DelegatedClientAuthenticationConfigurationContext configContext;
 
     @Override
-    protected Event doExecute(final RequestContext requestContext) throws Exception {
+    protected Event doExecuteInternal(final RequestContext requestContext) throws Exception {
         val request = WebUtils.getHttpServletRequestFromExternalWebflowContext(requestContext);
         val response = WebUtils.getHttpServletResponseFromExternalWebflowContext(requestContext);
         val webContext = new JEEContext(request, response);
         val clientName = configContext.getDelegatedClientNameExtractor().extract(webContext).orElse(StringUtils.EMPTY);
-        val client = configContext.getClients().findClient(clientName).orElseThrow();
+        val client = configContext.getIdentityProviders().findClient(clientName).orElseThrow();
         LOGGER.debug("Received logout request from [{}]", client.getName());
 
         val redirectUrl = configContext.getCasProperties().getLogout().getRedirectParameter()

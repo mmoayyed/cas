@@ -1,7 +1,6 @@
 package org.apereo.cas.logout.slo;
 
 import org.apereo.cas.authentication.principal.WebApplicationService;
-import org.apereo.cas.logout.SingleLogoutExecutionRequest;
 
 import lombok.val;
 import org.junit.jupiter.api.Tag;
@@ -24,7 +23,7 @@ import static org.mockito.Mockito.*;
 class SingleLogoutServiceMessageHandlerTests {
 
     @Test
-    void verifyOperation() {
+    void verifyOperation() throws Throwable {
         val handler = new SingleLogoutServiceMessageHandler() {
             @Override
             public Collection<SingleLogoutRequestContext> handle(final WebApplicationService singleLogoutService,

@@ -1,6 +1,5 @@
 package org.apereo.cas.adaptors.duo.web.flow;
 
-import org.apereo.cas.adaptors.duo.authn.DuoSecurityCredential;
 import org.apereo.cas.configuration.CasConfigurationProperties;
 import org.apereo.cas.configuration.model.support.mfa.duo.DuoSecurityMultifactorAuthenticationProperties;
 import org.apereo.cas.trusted.web.flow.AbstractMultifactorTrustedDeviceWebflowConfigurer;
@@ -9,10 +8,8 @@ import org.apereo.cas.web.BrowserSessionStorage;
 import org.apereo.cas.web.flow.CasWebflowConstants;
 import org.apereo.cas.web.flow.configurer.CasMultifactorWebflowCustomizer;
 import org.apereo.cas.web.flow.configurer.DynamicFlowModelBuilder;
-
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.webflow.config.FlowDefinitionRegistryBuilder;
@@ -23,16 +20,12 @@ import org.springframework.webflow.engine.builder.support.FlowBuilderServices;
 import org.springframework.webflow.engine.model.AbstractActionModel;
 import org.springframework.webflow.engine.model.AbstractStateModel;
 import org.springframework.webflow.engine.model.ActionStateModel;
-import org.springframework.webflow.engine.model.BinderModel;
-import org.springframework.webflow.engine.model.BindingModel;
 import org.springframework.webflow.engine.model.EndStateModel;
 import org.springframework.webflow.engine.model.EvaluateModel;
 import org.springframework.webflow.engine.model.SetModel;
 import org.springframework.webflow.engine.model.TransitionModel;
-import org.springframework.webflow.engine.model.VarModel;
 import org.springframework.webflow.engine.model.ViewStateModel;
 import org.springframework.webflow.engine.model.builder.DefaultFlowModelHolder;
-
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
@@ -90,15 +83,9 @@ public class DuoSecurityMultifactorWebflowConfigurer extends AbstractMultifactor
 
     private FlowDefinitionRegistry buildDuoFlowRegistry(final DuoSecurityMultifactorAuthenticationProperties properties) {
         val modelBuilder = new DynamicFlowModelBuilder();
-
-        createDuoFlowVariables(modelBuilder);
         createDuoFlowStartActions(modelBuilder);
-        createDuoFlowStates(modelBuilder, properties);
-
-        if (StringUtils.isBlank(properties.getDuoApplicationKey())) {
-            createDuoFlowUniversalPromptActions(getLoginFlow());
-        }
-
+        createDuoFlowStates(modelBuilder);
+        createDuoFlowUniversalPromptActions(getLoginFlow());
         return createDuoFlowDefinitionRegistry(properties, modelBuilder);
     }
 
@@ -121,17 +108,16 @@ public class DuoSecurityMultifactorWebflowConfigurer extends AbstractMultifactor
         setStartState(flow, actionState);
     }
 
-    private FlowDefinitionRegistry createDuoFlowDefinitionRegistry(final DuoSecurityMultifactorAuthenticationProperties p,
+    private FlowDefinitionRegistry createDuoFlowDefinitionRegistry(final DuoSecurityMultifactorAuthenticationProperties properties,
                                                                    final DynamicFlowModelBuilder modelBuilder) {
         val holder = new DefaultFlowModelHolder(modelBuilder);
         val flowBuilder = new FlowModelFlowBuilder(holder);
         val builder = new FlowDefinitionRegistryBuilder(applicationContext, flowBuilderServices);
-        builder.addFlowBuilder(flowBuilder, p.getId());
+        builder.addFlowBuilder(flowBuilder, properties.getId());
         return builder.build();
     }
 
-    private static void createDuoFlowStates(final DynamicFlowModelBuilder modelBuilder,
-                                            final DuoSecurityMultifactorAuthenticationProperties properties) {
+    private static void createDuoFlowStates(final DynamicFlowModelBuilder modelBuilder) {
         val states = new ArrayList<AbstractStateModel>();
 
         createDuoInitializeLoginAction(states);
@@ -139,12 +125,7 @@ public class DuoSecurityMultifactorWebflowConfigurer extends AbstractMultifactor
         createDuoDetermineRequestAction(states);
         createDuoDoNonWebAuthenticationAction(states);
         createDuoFinalizeAuthenticationAction(states);
-
-        if (StringUtils.isBlank(properties.getDuoApplicationKey())) {
-            createDuoUniversalPromptLoginViewState(states);
-        } else {
-            createDuoLoginViewState(states);
-        }
+        createDuoUniversalPromptLoginViewState(states);
         createDuoAuthenticationWebflowAction(states);
         createDuoRedirectToRegistrationAction(states);
         createDuoSuccessEndState(states);
@@ -227,34 +208,6 @@ public class DuoSecurityMultifactorWebflowConfigurer extends AbstractMultifactor
 
         actModel.setTransitions(trans);
         states.add(actModel);
-    }
-
-    private static void createDuoLoginViewState(final List<AbstractStateModel> states) {
-        val viewState = new ViewStateModel(CasWebflowConstants.STATE_ID_VIEW_LOGIN_FORM_DUO);
-        viewState.setView("duo-security/casDuoLoginView");
-        viewState.setModel(CasWebflowConstants.VAR_ID_CREDENTIAL);
-        val bm = new BinderModel();
-        val bindings = new LinkedList<BindingModel>();
-        val bme = new BindingModel("signedDuoResponse", null, null);
-        bindings.add(bme);
-        bm.setBindings(bindings);
-        viewState.setBinder(bm);
-
-        val actions = new LinkedList<AbstractActionModel>();
-        actions.add(new EvaluateModel(CasWebflowConstants.ACTION_ID_PREPARE_DUO_WEB_LOGIN_FORM));
-        viewState.setOnEntryActions(actions);
-
-        val trans = new LinkedList<TransitionModel>();
-        val transModel = new TransitionModel();
-        transModel.setOn(CasWebflowConstants.TRANSITION_ID_SUBMIT);
-        transModel.setTo(CasWebflowConstants.STATE_ID_REAL_SUBMIT);
-        transModel.setBind(Boolean.TRUE.toString());
-        transModel.setValidate(Boolean.FALSE.toString());
-
-        trans.add(transModel);
-        viewState.setTransitions(trans);
-        states.add(viewState);
-
     }
 
     private static void createDuoFinalizeAuthenticationAction(final List<AbstractStateModel> states) {
@@ -374,11 +327,5 @@ public class DuoSecurityMultifactorWebflowConfigurer extends AbstractMultifactor
         val starts = new ArrayList<AbstractActionModel>(1);
         starts.add(new EvaluateModel(CasWebflowConstants.ACTION_ID_INITIAL_FLOW_SETUP));
         modelBuilder.setOnStartActions(starts);
-    }
-
-    private static void createDuoFlowVariables(final DynamicFlowModelBuilder modelBuilder) {
-        val vars = new ArrayList<VarModel>(1);
-        vars.add(new VarModel(CasWebflowConstants.VAR_ID_CREDENTIAL, DuoSecurityCredential.class.getName()));
-        modelBuilder.setVars(vars);
     }
 }

@@ -89,8 +89,7 @@ import java.util.*
 import org.apereo.cas.authentication.*
 
 Map run(final Object... args) {
-    def attributes = args[0]
-    def logger = args[1]
+    def (attributes,logger) = args
     logger.warn("Mutating attributes {}", attributes)
     return [upn: ["CASUser"]]
 }
@@ -151,8 +150,8 @@ To enable additional logging, configure the log4j configuration file to add the 
 ```xml
 ...
 <Logger name="org.apereo.cas.support.wsfederation" level="debug" additivity="false">
-    <AppenderRef ref="console"/>
-    <AppenderRef ref="file"/>
+    <AppenderRef ref="casConsole"/>
+    <AppenderRef ref="casFile"/>
 </Logger>
 ...
 ```

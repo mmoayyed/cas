@@ -20,12 +20,12 @@ import org.apereo.cas.config.CasCoreWebConfiguration;
 import org.apereo.cas.config.CasCoreWebflowConfiguration;
 import org.apereo.cas.config.CasMultifactorAuthenticationWebflowConfiguration;
 import org.apereo.cas.config.CasPersonDirectoryConfiguration;
+import org.apereo.cas.config.CasPersonDirectoryStubConfiguration;
 import org.apereo.cas.config.CasRegisteredServicesTestConfiguration;
 import org.apereo.cas.config.CasWebApplicationServiceFactoryConfiguration;
 import org.apereo.cas.config.CasWebflowContextConfiguration;
 import org.apereo.cas.config.QRAuthenticationConfiguration;
 import org.apereo.cas.config.TokenCoreConfiguration;
-
 import org.springframework.boot.SpringBootConfiguration;
 import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 import org.springframework.boot.autoconfigure.aop.AopAutoConfiguration;
@@ -71,6 +71,7 @@ public abstract class BaseQRAuthenticationTokenValidatorServiceTests {
         CasWebApplicationServiceFactoryConfiguration.class,
         CasCoreUtilConfiguration.class,
         CasPersonDirectoryConfiguration.class,
+        CasPersonDirectoryStubConfiguration.class,
         CasCoreNotificationsConfiguration.class
     })
     public static class SharedTestConfiguration {

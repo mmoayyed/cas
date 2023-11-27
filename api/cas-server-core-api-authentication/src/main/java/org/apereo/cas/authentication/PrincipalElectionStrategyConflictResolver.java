@@ -17,12 +17,17 @@ import java.util.Map;
 public interface PrincipalElectionStrategyConflictResolver {
 
     /**
+     * Default bean name.
+     */
+    String BEAN_NAME = "defaultPrincipalElectionStrategyConflictResolver";
+
+    /**
      * Pick the last principal in the chain of principals resolved.
      *
      * @return the principal election strategy conflict resolver
      */
     static PrincipalElectionStrategyConflictResolver last() {
-        return (principals, attributes) -> principals.get(principals.size() - 1).getId();
+        return (principals, attributes) -> principals.getLast().getId();
     }
 
     /**
@@ -31,7 +36,7 @@ public interface PrincipalElectionStrategyConflictResolver {
      * @return the principal election strategy conflict resolver
      */
     static PrincipalElectionStrategyConflictResolver first() {
-        return (principals, attributes) -> principals.get(0).getId();
+        return (principals, attributes) -> principals.getFirst().getId();
     }
 
     /**

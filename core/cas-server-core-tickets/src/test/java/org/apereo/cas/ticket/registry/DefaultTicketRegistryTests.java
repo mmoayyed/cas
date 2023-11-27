@@ -7,13 +7,10 @@ import org.apereo.cas.ticket.DefaultTicketCatalog;
 import org.apereo.cas.ticket.Ticket;
 import org.apereo.cas.ticket.serialization.TicketSerializationManager;
 import org.apereo.cas.util.cipher.DefaultTicketCipherExecutor;
-
 import lombok.val;
 import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Tag;
-
 import java.util.UUID;
-
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
@@ -33,7 +30,7 @@ class DefaultTicketRegistryTests extends BaseTicketRegistryTests {
     }
 
     @RepeatedTest(1)
-    public void verifyCountsUnknown() {
+    void verifyCountsUnknown() throws Throwable {
         val registry = mock(DefaultTicketRegistry.class);
         when(registry.stream()).thenThrow(IllegalArgumentException.class);
         when(registry.sessionCount()).thenCallRealMethod();
@@ -43,7 +40,7 @@ class DefaultTicketRegistryTests extends BaseTicketRegistryTests {
     }
 
     @RepeatedTest(1)
-    public void verifyCountForPrincipal() throws Exception {
+    void verifyCountForPrincipal() throws Throwable {
         val user = UUID.randomUUID().toString();
         val tgt = new MockTicketGrantingTicket(user);
         val st = new MockServiceTicket("ST-123456", RegisteredServiceTestUtils.getService(), tgt);
@@ -53,11 +50,12 @@ class DefaultTicketRegistryTests extends BaseTicketRegistryTests {
 
         val count = registry.countSessionsFor(user);
         assertEquals(1, count);
+        assertEquals(0, registry.query(TicketRegistryQueryCriteria.builder().build()).size());
     }
 
 
     @RepeatedTest(1)
-    public void verifyEncodeFails() throws Exception {
+    void verifyEncodeFails() throws Throwable {
         val cipher = new DefaultTicketCipherExecutor(null, null,
             "AES", 512, 16, "webflow");
         val reg = new DefaultTicketRegistry(cipher, mock(TicketSerializationManager.class), new DefaultTicketCatalog());

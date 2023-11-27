@@ -24,6 +24,7 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.StringReader;
+import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.Arrays;
@@ -80,7 +81,7 @@ public class ResourceUtils {
      * that is picked up by the GraalVM native image.
      *
      * @param resource the resource
-     * @return the boolean
+     * @return true/false
      */
     public boolean isEmbeddedResource(final String resource) {
         val lowerCase = resource.toLowerCase(Locale.ENGLISH);
@@ -238,9 +239,6 @@ public class ResourceUtils {
                 return resource;
             }
 
-            val url = extractArchiveURL(resource.getURL());
-            val file = getFile(url);
-
             val destination = new File(FileUtils.getTempDirectory(), Objects.requireNonNull(resource.getFilename()));
             if (isDirectory) {
                 LOGGER.trace("Creating resource directory [{}]", destination);
@@ -251,6 +249,8 @@ public class ResourceUtils {
                 FileUtils.forceDelete(destination);
             }
 
+            val url = extractUrlFromResource(resource);
+            val file = getFile(StringUtils.substringBefore(url.toExternalForm(), "/!"));
             LOGGER.trace("Processing file [{}]", file);
             try (val jFile = new JarFile(file)) {
                 val e = jFile.entries();
@@ -277,6 +277,11 @@ public class ResourceUtils {
         } catch (final Exception e) {
             throw new RuntimeException(e);
         }
+    }
+
+    private static URL extractUrlFromResource(final Resource resource) throws IOException {
+        val nestedUrl = StringUtils.replace(resource.getURL().toExternalForm(), "nested:", "file:");
+        return extractArchiveURL(toURL(nestedUrl));
     }
 
 
@@ -352,8 +357,9 @@ public class ResourceUtils {
      *
      * @param artifact the artifact
      * @return the resource
+     * @throws Throwable the throwable
      */
-    public static Resource toFileSystemResource(final File artifact) {
+    public static Resource toFileSystemResource(final File artifact) throws Throwable {
         val canonicalPath = FunctionUtils.doUnchecked(artifact::getCanonicalPath);
         FunctionUtils.throwIf(artifact.exists() && !artifact.canRead(),
             () -> new IllegalArgumentException("Resource " + canonicalPath + " is not readable."));

@@ -30,7 +30,6 @@ import org.apereo.cas.config.RadiusMultifactorConfiguration;
 import org.apereo.cas.config.RadiusTokenAuthenticationComponentSerializationConfiguration;
 import org.apereo.cas.config.RadiusTokenAuthenticationEventExecutionPlanConfiguration;
 import org.apereo.cas.config.RadiusTokenAuthenticationMultifactorProviderBypassConfiguration;
-
 import org.springframework.boot.SpringBootConfiguration;
 import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 import org.springframework.boot.autoconfigure.aop.AopAutoConfiguration;

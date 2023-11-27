@@ -76,7 +76,7 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.context.annotation.ScopedProxyMode;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
-import java.net.URL;
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -192,7 +192,7 @@ public class SamlIdPMetadataConfiguration {
             final CasConfigurationProperties casProperties,
             @Qualifier(OpenSamlConfigBean.DEFAULT_BEAN_NAME)
             final OpenSamlConfigBean openSamlConfigBean,
-            @Qualifier("httpClient")
+            @Qualifier(HttpClient.BEAN_NAME_HTTPCLIENT)
             final HttpClient httpClient) {
             return new MetadataQueryProtocolMetadataResolver(httpClient, casProperties.getAuthn().getSamlIdp(), openSamlConfigBean);
         }
@@ -227,7 +227,7 @@ public class SamlIdPMetadataConfiguration {
             final CasConfigurationProperties casProperties,
             @Qualifier(OpenSamlConfigBean.DEFAULT_BEAN_NAME)
             final OpenSamlConfigBean openSamlConfigBean,
-            @Qualifier("httpClient")
+            @Qualifier(HttpClient.BEAN_NAME_HTTPCLIENT)
             final HttpClient httpClient) {
             return new UrlResourceMetadataResolver(httpClient, casProperties.getAuthn().getSamlIdp(), openSamlConfigBean);
         }
@@ -322,7 +322,7 @@ public class SamlIdPMetadataConfiguration {
         public SamlIdPCertificateAndKeyWriter samlSelfSignedCertificateWriter(
             final CasConfigurationProperties casProperties) throws Exception {
             val properties = casProperties.getAuthn().getSamlIdp().getMetadata().getCore();
-            val url = new URL(casProperties.getServer().getPrefix());
+            val url = new URI(casProperties.getServer().getPrefix());
             val generator = new DefaultSamlIdPCertificateAndKeyWriter(url.getHost());
             generator.setUriSubjectAltNames(CollectionUtils.wrap(url.getHost().concat("/idp/metadata")));
             properties.setCertificateAlgorithm(properties.getCertificateAlgorithm());
@@ -376,7 +376,7 @@ public class SamlIdPMetadataConfiguration {
         public CacheLoader<SamlRegisteredServiceCacheKey, CachedMetadataResolverResult> chainingMetadataResolverCacheLoader(
             @Qualifier("samlRegisteredServiceMetadataResolvers")
             final SamlRegisteredServiceMetadataResolutionPlan samlRegisteredServiceMetadataResolvers,
-            @Qualifier("httpClient")
+            @Qualifier(HttpClient.BEAN_NAME_HTTPCLIENT)
             final HttpClient httpClient,
             @Qualifier(OpenSamlConfigBean.DEFAULT_BEAN_NAME)
             final OpenSamlConfigBean openSamlConfigBean) {

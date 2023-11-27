@@ -15,7 +15,6 @@ import org.apereo.cas.config.CasCoreTicketsConfiguration;
 import org.apereo.cas.config.CasCoreTicketsSerializationConfiguration;
 import org.apereo.cas.config.CasCoreUtilConfiguration;
 import org.apereo.cas.config.CasCoreWebConfiguration;
-import org.apereo.cas.config.CasPersonDirectoryTestConfiguration;
 import org.apereo.cas.config.CasWebApplicationServiceFactoryConfiguration;
 import org.apereo.cas.services.ServicesManager;
 import org.apereo.cas.util.spring.beans.BeanContainer;
@@ -31,6 +30,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.boot.autoconfigure.web.servlet.WebMvcAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.cloud.autoconfigure.RefreshAutoConfiguration;
@@ -54,11 +54,11 @@ import static org.mockito.Mockito.*;
 @Tag("AuthenticationHandler")
 @SpringBootTest(classes = {
     RefreshAutoConfiguration.class,
+    WebMvcAutoConfiguration.class,
     JaasAuthenticationHandlersConfigurationTests.JaasAuthenticationHandlersConfigurationTestConfiguration.class,
     CasCoreWebConfiguration.class,
     CasCoreHttpConfiguration.class,
     CasCoreUtilConfiguration.class,
-    CasPersonDirectoryTestConfiguration.class,
     CasCoreTicketCatalogConfiguration.class,
     CasCoreTicketsSerializationConfiguration.class,
     CasCoreTicketsConfiguration.class,
@@ -85,7 +85,7 @@ class JaasAuthenticationHandlersConfigurationTests {
     private BeanContainer<PrincipalResolver> jaasPersonDirectoryPrincipalResolvers;
 
     @Test
-    void verifyOperation() {
+    void verifyOperation() throws Throwable {
         assertFalse(jaasAuthenticationHandlers.isEmpty());
         assertFalse(jaasPersonDirectoryPrincipalResolvers.isEmpty());
     }

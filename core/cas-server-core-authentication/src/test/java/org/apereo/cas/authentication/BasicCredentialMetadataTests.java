@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
 import java.io.File;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -27,11 +28,13 @@ class BasicCredentialMetadataTests {
         .defaultTypingEnabled(true).build().toObjectMapper();
 
     @Test
-    void verifySerializeABasicCredentialMetaDataToJson() throws Exception {
-        val credentialMetaDataWritten = new BasicCredentialMetadata(new UsernamePasswordCredential());
-        MAPPER.writeValue(JSON_FILE, credentialMetaDataWritten);
+    void verifySerializeABasicCredentialMetaDataToJson() throws Throwable {
+        val cmd = new BasicCredentialMetadata(new UsernamePasswordCredential());
+        cmd.putProperty("key", "value").putProperties(Map.of("one", "two"));
+        assertTrue(cmd.containsProperty("one"));
+        MAPPER.writeValue(JSON_FILE, cmd);
         val credentialMetaDataRead = MAPPER.readValue(JSON_FILE, BasicCredentialMetadata.class);
-        assertEquals(credentialMetaDataWritten, credentialMetaDataRead);
+        assertEquals(cmd, credentialMetaDataRead);
     }
 }
 

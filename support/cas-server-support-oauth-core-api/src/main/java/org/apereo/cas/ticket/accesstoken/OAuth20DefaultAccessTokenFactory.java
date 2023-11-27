@@ -13,6 +13,7 @@ import org.apereo.cas.ticket.ExpirationPolicyBuilder;
 import org.apereo.cas.ticket.Ticket;
 import org.apereo.cas.ticket.TicketGrantingTicket;
 import org.apereo.cas.ticket.UniqueTicketIdGenerator;
+import org.apereo.cas.ticket.tracking.TicketTrackingPolicy;
 import org.apereo.cas.token.JwtBuilder;
 import org.apereo.cas.util.DefaultUniqueTicketIdGenerator;
 
@@ -42,7 +43,7 @@ public class OAuth20DefaultAccessTokenFactory implements OAuth20AccessTokenFacto
     /**
      * ExpirationPolicy for refresh tokens.
      */
-    protected final ExpirationPolicyBuilder<OAuth20AccessToken> expirationPolicy;
+    protected final ExpirationPolicyBuilder<OAuth20AccessToken> expirationPolicyBuilder;
 
     /**
      * JWT builder instance.
@@ -54,10 +55,13 @@ public class OAuth20DefaultAccessTokenFactory implements OAuth20AccessTokenFacto
      */
     protected final ServicesManager servicesManager;
 
-    public OAuth20DefaultAccessTokenFactory(final ExpirationPolicyBuilder<OAuth20AccessToken> expirationPolicy,
+    protected final TicketTrackingPolicy descendantTicketsTrackingPolicy;
+
+    public OAuth20DefaultAccessTokenFactory(final ExpirationPolicyBuilder<OAuth20AccessToken> expirationPolicyBuilder,
                                             final JwtBuilder jwtBuilder,
-                                            final ServicesManager servicesManager) {
-        this(new DefaultUniqueTicketIdGenerator(), expirationPolicy, jwtBuilder, servicesManager);
+                                            final ServicesManager servicesManager,
+                                            final TicketTrackingPolicy descendantTicketsTrackingPolicy) {
+        this(new DefaultUniqueTicketIdGenerator(), expirationPolicyBuilder, jwtBuilder, servicesManager, descendantTicketsTrackingPolicy);
     }
 
     @Override
@@ -69,7 +73,7 @@ public class OAuth20DefaultAccessTokenFactory implements OAuth20AccessTokenFacto
                                      final String clientId,
                                      final Map<String, Map<String, Object>> requestClaims,
                                      final OAuth20ResponseTypes responseType,
-                                     final OAuth20GrantTypes grantType) {
+                                     final OAuth20GrantTypes grantType) throws Throwable {
         val registeredService = OAuth20Utils.getRegisteredOAuthServiceByClientId(jwtBuilder.getServicesManager(), clientId);
         val expirationPolicyToUse = determineExpirationPolicyForService(registeredService);
         val accessTokenId = generateAccessTokenId(service, authentication);
@@ -77,13 +81,13 @@ public class OAuth20DefaultAccessTokenFactory implements OAuth20AccessTokenFacto
         val at = new OAuth20DefaultAccessToken(accessTokenId, service, authentication,
             expirationPolicyToUse, ticketGrantingTicket, token, scopes,
             clientId, requestClaims, responseType, grantType);
-        if (ticketGrantingTicket != null) {
-            ticketGrantingTicket.getDescendantTickets().add(at.getId());
-        }
+
+        descendantTicketsTrackingPolicy.trackTicket(ticketGrantingTicket, at);
+
         return at;
     }
 
-    protected String generateAccessTokenId(final Service service, final Authentication authentication) {
+    protected String generateAccessTokenId(final Service service, final Authentication authentication) throws Throwable {
         return this.accessTokenIdGenerator.getNewTicketId(OAuth20AccessToken.PREFIX);
     }
 
@@ -109,6 +113,6 @@ public class OAuth20DefaultAccessTokenFactory implements OAuth20AccessTokenFacto
                     Beans.newDuration(ttl).getSeconds());
             }
         }
-        return this.expirationPolicy.buildTicketExpirationPolicy();
+        return this.expirationPolicyBuilder.buildTicketExpirationPolicy();
     }
 }

@@ -28,7 +28,6 @@ import org.apereo.cas.config.CasRemoteAuthenticationConfiguration;
 import org.apereo.cas.config.CasThemesConfiguration;
 import org.apereo.cas.config.CasWebApplicationServiceFactoryConfiguration;
 import org.apereo.cas.config.CasWebflowContextConfiguration;
-
 import org.springframework.boot.SpringBootConfiguration;
 import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 import org.springframework.boot.autoconfigure.aop.AopAutoConfiguration;

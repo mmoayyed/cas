@@ -3,20 +3,19 @@ const cas = require('../../cas.js');
 
 (async () => {
 
-    let params = "client_id=client&";
-    params += "client_secret=secret&";
-    params += "grant_type=client_credentials&";
+    let params = "grant_type=client_credentials&";
     params += "scope=openid";
 
     let url = `https://localhost:8443/cas/oidc/token?${params}`;
-    console.log(`Calling ${url}`);
+    await cas.log(`Calling ${url}`);
 
     let accessToken = null;
     let refreshToken = null;
     await cas.doPost(url, "", {
-        'Content-Type': "application/json"
+        'Content-Type': "application/json",
+        'Authorization': 'Basic ' + btoa('client:secret')
     }, res => {
-        console.log(res.data);
+        cas.log(res.data);
         assert(res.data.access_token !== null);
         assert(res.data.refresh_token !== null);
 
@@ -33,9 +32,9 @@ async function introspect(token) {
     let value = `client:secret`;
     let buff = Buffer.alloc(value.length, value);
     let authzHeader = `Basic ${buff.toString('base64')}`;
-    console.log(`Authorization header: ${authzHeader}`);
+    await cas.log(`Authorization header: ${authzHeader}`);
 
-    console.log(`Introspecting token ${token}`);
+    await cas.log(`Introspecting token ${token}`);
     await cas.doGet(`https://localhost:8443/cas/oidc/introspect?token=${token}`,
         res => {
             assert(res.data.active === true);
@@ -51,7 +50,7 @@ async function introspect(token) {
             'Content-Type': 'application/json'
         });
 
-    console.log(`Introspecting token ${token} as JWT`);
+    await cas.log(`Introspecting token ${token} as JWT`);
     let jwt = await cas.doGet(`https://localhost:8443/cas/oidc/introspect?token=${token}`,
         res => res.data, error => {
             throw `Introspection operation failed: ${error}`;

@@ -11,6 +11,7 @@ import org.apereo.cas.authentication.principal.PrincipalFactory;
 import org.apereo.cas.authentication.principal.PrincipalFactoryUtils;
 import org.apereo.cas.authentication.principal.PrincipalNameTransformerUtils;
 import org.apereo.cas.authentication.principal.PrincipalResolver;
+import org.apereo.cas.authentication.principal.resolvers.PersonDirectoryPrincipalResolver;
 import org.apereo.cas.authentication.principal.resolvers.ProxyingPrincipalResolver;
 import org.apereo.cas.authentication.support.password.PasswordEncoderUtils;
 import org.apereo.cas.authentication.support.password.PasswordPolicyContext;
@@ -154,15 +155,15 @@ public class CasCoreAuthenticationHandlersConfiguration {
             @Qualifier("acceptUsersPrincipalFactory") final PrincipalFactory acceptUsersPrincipalFactory,
             @Qualifier("acceptPasswordPolicyConfiguration") final PasswordPolicyContext acceptPasswordPolicyConfiguration) {
             val props = casProperties.getAuthn().getAccept();
-            val h = new AcceptUsersAuthenticationHandler(props.getName(),
+            val handler = new AcceptUsersAuthenticationHandler(props.getName(),
                 servicesManager, acceptUsersPrincipalFactory, props.getOrder(), getParsedUsers(casProperties));
-            h.setState(props.getState());
-            h.setPasswordEncoder(PasswordEncoderUtils.newPasswordEncoder(props.getPasswordEncoder(), applicationContext));
-            h.setPasswordPolicyConfiguration(acceptPasswordPolicyConfiguration);
-            h.setCredentialSelectionPredicate(CoreAuthenticationUtils.newCredentialSelectionPredicate(props.getCredentialCriteria()));
-            h.setPrincipalNameTransformer(PrincipalNameTransformerUtils.newPrincipalNameTransformer(props.getPrincipalTransformation()));
+            handler.setState(props.getState());
+            handler.setPasswordEncoder(PasswordEncoderUtils.newPasswordEncoder(props.getPasswordEncoder(), applicationContext));
+            handler.setPasswordPolicyConfiguration(acceptPasswordPolicyConfiguration);
+            handler.setCredentialSelectionPredicate(CoreAuthenticationUtils.newCredentialSelectionPredicate(props.getCredentialCriteria()));
+            handler.setPrincipalNameTransformer(PrincipalNameTransformerUtils.newPrincipalNameTransformer(props.getPrincipalTransformation()));
             val passwordPolicy = props.getPasswordPolicy();
-            h.setPasswordPolicyHandlingStrategy(CoreAuthenticationUtils.newPasswordPolicyHandlingStrategy(passwordPolicy, applicationContext));
+            handler.setPasswordPolicyHandlingStrategy(CoreAuthenticationUtils.newPasswordPolicyHandlingStrategy(passwordPolicy, applicationContext));
             if (passwordPolicy.isEnabled()) {
                 val cfg = new PasswordPolicyContext(passwordPolicy);
                 if (passwordPolicy.isAccountStateHandlingEnabled()) {
@@ -170,9 +171,9 @@ public class CasCoreAuthenticationHandlersConfiguration {
                 } else {
                     LOGGER.debug("Handling account states is disabled via CAS configuration");
                 }
-                h.setPasswordPolicyConfiguration(cfg);
+                handler.setPasswordPolicyConfiguration(cfg);
             }
-            return h;
+            return handler;
         }
 
         @ConditionalOnMissingBean(name = "acceptUsersPrincipalFactory")
@@ -205,6 +206,7 @@ public class CasCoreAuthenticationHandlersConfiguration {
         @ConditionalOnMissingBean(name = "jaasPersonDirectoryPrincipalResolvers")
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
         public BeanContainer<PrincipalResolver> jaasPersonDirectoryPrincipalResolvers(
+            final ConfigurableApplicationContext applicationContext,
             @Qualifier(AttributeDefinitionStore.BEAN_NAME)
             final AttributeDefinitionStore attributeDefinitionStore,
             @Qualifier(ServicesManager.BEAN_NAME)
@@ -219,7 +221,7 @@ public class CasCoreAuthenticationHandlersConfiguration {
                 .map(jaas -> {
                     val jaasPrincipal = jaas.getPrincipal();
                     var attributeMerger = CoreAuthenticationUtils.getAttributeMerger(casProperties.getAuthn().getAttributeRepository().getCore().getMerger());
-                    return CoreAuthenticationUtils.newPersonDirectoryPrincipalResolver(jaasPrincipalFactory,
+                    return PersonDirectoryPrincipalResolver.newPersonDirectoryPrincipalResolver(applicationContext, jaasPrincipalFactory,
                         attributeRepository, attributeMerger, servicesManager, attributeDefinitionStore, jaasPrincipal, personDirectory);
                 })
                 .collect(Collectors.toList()));

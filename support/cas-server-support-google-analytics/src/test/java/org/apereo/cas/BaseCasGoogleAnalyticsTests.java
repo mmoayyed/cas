@@ -25,7 +25,6 @@ import org.apereo.cas.config.CasPersonDirectoryTestConfiguration;
 import org.apereo.cas.config.CasRegisteredServicesTestConfiguration;
 import org.apereo.cas.config.CasWebApplicationServiceFactoryConfiguration;
 import org.apereo.cas.config.CasWebflowContextConfiguration;
-
 import org.springframework.boot.SpringBootConfiguration;
 import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 import org.springframework.boot.autoconfigure.aop.AopAutoConfiguration;

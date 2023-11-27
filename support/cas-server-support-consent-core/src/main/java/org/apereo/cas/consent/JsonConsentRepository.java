@@ -46,7 +46,7 @@ public class JsonConsentRepository extends BaseConsentRepository implements Disp
         setConsentDecisions(readDecisionsFromJsonResource());
         if (ResourceUtils.isFile(this.jsonResource)) {
             this.watcherService = new FileWatcherService(resource.getFile(),
-                Unchecked.consumer(file -> setConsentDecisions(readDecisionsFromJsonResource())));
+                Unchecked.consumer(__ -> setConsentDecisions(readDecisionsFromJsonResource())));
             this.watcherService.start(getClass().getSimpleName());
         }
     }
@@ -57,28 +57,28 @@ public class JsonConsentRepository extends BaseConsentRepository implements Disp
     }
 
     @Override
-    public ConsentDecision storeConsentDecision(final ConsentDecision decision) {
+    public ConsentDecision storeConsentDecision(final ConsentDecision decision) throws Throwable {
         val result = super.storeConsentDecision(decision);
         writeAccountToJsonResource();
         return result;
     }
 
     @Override
-    public boolean deleteConsentDecision(final long decisionId, final String principal) {
+    public boolean deleteConsentDecision(final long decisionId, final String principal) throws Throwable {
         val result = super.deleteConsentDecision(decisionId, principal);
         writeAccountToJsonResource();
         return result;
     }
 
     @Override
-    public boolean deleteConsentDecisions(final String principal) {
+    public boolean deleteConsentDecisions(final String principal) throws Throwable {
         val result = super.deleteConsentDecisions(principal);
         writeAccountToJsonResource();
         return result;
     }
 
     @Override
-    public void deleteAll() {
+    public void deleteAll() throws Throwable {
         super.deleteAll();
         writeAccountToJsonResource();
     }

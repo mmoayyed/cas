@@ -30,7 +30,6 @@ import org.apereo.cas.config.CasWebApplicationServiceFactoryConfiguration;
 import org.apereo.cas.config.CasWebflowContextConfiguration;
 import org.apereo.cas.config.PasswordlessAuthenticationConfiguration;
 import org.apereo.cas.configuration.CasConfigurationProperties;
-
 import org.springframework.boot.SpringBootConfiguration;
 import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 import org.springframework.boot.autoconfigure.aop.AopAutoConfiguration;

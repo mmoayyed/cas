@@ -4,11 +4,10 @@ import org.apereo.cas.authentication.CoreAuthenticationTestUtils;
 import org.apereo.cas.services.BaseWebBasedRegisteredService;
 import org.apereo.cas.services.DefaultRegisteredServiceWebflowInterruptPolicy;
 import org.apereo.cas.services.RegisteredServiceTestUtils;
+import org.apereo.cas.util.MockRequestContext;
 import lombok.val;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
-import org.springframework.webflow.test.MockRequestContext;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -20,9 +19,9 @@ import static org.junit.jupiter.api.Assertions.*;
 @Tag("Attributes")
 class RegexAttributeInterruptInquirerTests {
     @Test
-    void verifyResponseCanBeFoundFromAttributes() {
-        val q = new RegexAttributeInterruptInquirer("member..", "CA.|system");
-        val response = q.inquire(CoreAuthenticationTestUtils.getAuthentication("casuser"),
+    void verifyResponseCanBeFoundFromAttributes() throws Throwable {
+        val inquirer = new RegexAttributeInterruptInquirer("member..", "CA.|system");
+        val response = inquirer.inquire(CoreAuthenticationTestUtils.getAuthentication("casuser"),
             CoreAuthenticationTestUtils.getRegisteredService(),
             CoreAuthenticationTestUtils.getService(),
             CoreAuthenticationTestUtils.getCredentialsWithSameUsernameAndPassword(),
@@ -34,11 +33,11 @@ class RegexAttributeInterruptInquirerTests {
     }
 
     @Test
-    void verifyInterruptSkippedWithServicePolicy() {
-        val q = new RegexAttributeInterruptInquirer("member..", "CA.|system");
+    void verifyInterruptSkippedWithServicePolicy() throws Throwable {
+        val inquirer = new RegexAttributeInterruptInquirer("member..", "CA.|system");
         val registeredService = (BaseWebBasedRegisteredService) RegisteredServiceTestUtils.getRegisteredService();
         registeredService.setWebflowInterruptPolicy(new DefaultRegisteredServiceWebflowInterruptPolicy().setEnabled(false));
-        val response = q.inquire(CoreAuthenticationTestUtils.getAuthentication("casuser"),
+        val response = inquirer.inquire(CoreAuthenticationTestUtils.getAuthentication("casuser"),
             registeredService,
             CoreAuthenticationTestUtils.getService(),
             CoreAuthenticationTestUtils.getCredentialsWithSameUsernameAndPassword(),

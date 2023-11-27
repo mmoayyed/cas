@@ -14,6 +14,7 @@ import java.io.Serial;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -48,7 +49,7 @@ public class DefaultAuthenticationResultBuilder implements AuthenticationResultB
      */
     private static Principal getPrimaryPrincipal(final PrincipalElectionStrategy principalElectionStrategy,
                                                  final Set<Authentication> authentications,
-                                                 final Map<String, List<Object>> principalAttributes) {
+                                                 final Map<String, List<Object>> principalAttributes) throws Throwable {
         return principalElectionStrategy.nominate(new LinkedHashSet<>(authentications), principalAttributes);
     }
 
@@ -87,18 +88,18 @@ public class DefaultAuthenticationResultBuilder implements AuthenticationResultB
 
     @Override
     @CanIgnoreReturnValue
-    public AuthenticationResultBuilder collect(final Credential credential) {
-        Optional.ofNullable(credential).ifPresent(providedCredentials::add);
+    public AuthenticationResultBuilder collect(final Credential... credential) {
+        providedCredentials.addAll(Arrays.asList(credential));
         return this;
     }
 
     @Override
-    public AuthenticationResult build(final PrincipalElectionStrategy principalElectionStrategy) {
+    public AuthenticationResult build(final PrincipalElectionStrategy principalElectionStrategy) throws Throwable {
         return build(principalElectionStrategy, null);
     }
 
     @Override
-    public AuthenticationResult build(final PrincipalElectionStrategy principalElectionStrategy, final Service service) {
+    public AuthenticationResult build(final PrincipalElectionStrategy principalElectionStrategy, final Service service) throws Throwable {
         val authentication = buildAuthentication(principalElectionStrategy);
         if (authentication == null) {
             LOGGER.info("Authentication result cannot be produced because no authentication is recorded into in the chain. Returning null");
@@ -110,27 +111,12 @@ public class DefaultAuthenticationResultBuilder implements AuthenticationResultB
         return res;
     }
 
-    /**
-     * Merge authentication attributes.
-     *
-     * @param authenticationAttributes the authentication attributes
-     * @param merger                   the merger
-     * @param authn                    the authn
-     */
     protected void mergeAuthenticationAttributes(final Map<String, List<Object>> authenticationAttributes,
-                                                 final IAttributeMerger merger,
-                                                 final Authentication authn) {
+                                                 final IAttributeMerger merger, final Authentication authn) {
         authenticationAttributes.putAll(CoreAuthenticationUtils.mergeAttributes(authenticationAttributes, authn.getAttributes(), merger));
         LOGGER.debug("Finalized authentication attributes [{}] for inclusion in this authentication result", authenticationAttributes);
     }
 
-    /**
-     * Merge principal attributes.
-     *
-     * @param principalAttributes the principal attributes
-     * @param merger              the merger
-     * @param authn               the authn
-     */
     protected void mergePrincipalAttributes(final Map<String, List<Object>> principalAttributes,
                                             final IAttributeMerger merger,
                                             final Authentication authn) {
@@ -166,7 +152,7 @@ public class DefaultAuthenticationResultBuilder implements AuthenticationResultB
         return this.authentications.isEmpty();
     }
 
-    private Authentication buildAuthentication(final PrincipalElectionStrategy principalElectionStrategy) {
+    private Authentication buildAuthentication(final PrincipalElectionStrategy principalElectionStrategy) throws Throwable {
         if (isEmpty()) {
             LOGGER.warn("No authentication event has been recorded; CAS cannot finalize the authentication result");
             return null;

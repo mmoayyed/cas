@@ -10,7 +10,6 @@ import org.apereo.cas.util.spring.ApplicationContextProvider;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.google.common.collect.Maps;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.Setter;
@@ -18,6 +17,7 @@ import lombok.ToString;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.apache.commons.lang3.tuple.Pair;
+import org.jooq.lambda.Unchecked;
 
 import java.io.Serial;
 import java.util.ArrayList;
@@ -73,7 +73,7 @@ public abstract class BaseOidcScopeAttributeReleasePolicy extends AbstractRegist
 
     protected Pair<String, Object> mapClaimToAttribute(final String claim,
                                                        final RegisteredServiceAttributeReleasePolicyContext context,
-                                                       final Map<String, List<Object>> resolvedAttributes) {
+                                                       final Map<String, List<Object>> resolvedAttributes) throws Throwable {
         val mappedClaimResult = getMappedClaim(claim, context);
         if (mappedClaimResult.isPresent()) {
             val mappedAttr = mappedClaimResult.get();
@@ -128,7 +128,7 @@ public abstract class BaseOidcScopeAttributeReleasePolicy extends AbstractRegist
         val resolvedAttributes = new TreeMap<String, List<Object>>(String.CASE_INSENSITIVE_ORDER);
         resolvedAttributes.putAll(attributes);
 
-        val attributesToRelease = Maps.<String, List<Object>>newHashMapWithExpectedSize(attributes.size());
+        val attributesToRelease = new HashMap<String, List<Object>>(attributes.size());
         LOGGER.debug("Attempting to map and filter claims based on resolved attributes [{}]", resolvedAttributes);
 
         val properties = applicationContext.getBean(CasConfigurationProperties.class);
@@ -142,7 +142,7 @@ public abstract class BaseOidcScopeAttributeReleasePolicy extends AbstractRegist
 
         allowedClaims
             .stream()
-            .map(claim -> mapClaimToAttribute(claim, context, resolvedAttributes))
+            .map(Unchecked.function(claim -> mapClaimToAttribute(claim, context, resolvedAttributes)))
             .filter(p -> Objects.nonNull(p.getValue()))
             .forEach(p -> attributesToRelease.put(p.getKey(), CollectionUtils.toCollection(p.getValue(), ArrayList.class)));
         return attributesToRelease;

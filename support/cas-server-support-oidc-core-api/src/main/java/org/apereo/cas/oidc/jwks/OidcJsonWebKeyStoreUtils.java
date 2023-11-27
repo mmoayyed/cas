@@ -8,7 +8,6 @@ import org.apereo.cas.util.LoggingUtils;
 import org.apereo.cas.util.ResourceUtils;
 import org.apereo.cas.util.function.FunctionUtils;
 import org.apereo.cas.util.spring.SpringExpressionLanguageValueResolver;
-
 import lombok.experimental.UtilityClass;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
@@ -27,7 +26,6 @@ import org.jose4j.keys.EllipticCurves;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.ResourceLoader;
-
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
 import java.security.spec.ECParameterSpec;
@@ -55,24 +53,24 @@ public class OidcJsonWebKeyStoreUtils {
     /**
      * Gets json web key set.
      *
-     * @param service        the service
+     * @param oidcRegisteredService        the service
      * @param resourceLoader the resource loader
      * @param usage          the usage
      * @return the json web key set
      */
-    public static Optional<JsonWebKeySet> getJsonWebKeySet(final OidcRegisteredService service,
+    public static Optional<JsonWebKeySet> getJsonWebKeySet(final OidcRegisteredService oidcRegisteredService,
                                                            final ResourceLoader resourceLoader,
                                                            final Optional<OidcJsonWebKeyUsage> usage) {
         return FunctionUtils.doAndHandle(
                 () -> {
-                    val serviceJwks = SpringExpressionLanguageValueResolver.getInstance().resolve(service.getJwks());
+                    val serviceJwks = SpringExpressionLanguageValueResolver.getInstance().resolve(oidcRegisteredService.getJwks());
                     LOGGER.trace("Loading JSON web key from [{}]", serviceJwks);
-                    val resource = getJsonWebKeySetResource(service, resourceLoader);
+                    val resource = getJsonWebKeySetResource(oidcRegisteredService, resourceLoader);
                     if (resource == null) {
-                        LOGGER.debug("No JSON web keys or keystore resource could be found for [{}]", service.getServiceId());
+                        LOGGER.debug("No JSON web keys or keystore resource could be found for [{}]", oidcRegisteredService.getServiceId());
                         return Optional.empty();
                     }
-                    val requestedKid = Optional.ofNullable(service.getJwksKeyId());
+                    val requestedKid = Optional.ofNullable(oidcRegisteredService.getJwksKeyId());
                     return buildJsonWebKeySet(resource, requestedKid, usage);
                 },
                 (CheckedFunction<Throwable, Optional<JsonWebKeySet>>) throwable -> {
@@ -250,27 +248,27 @@ public class OidcJsonWebKeyStoreUtils {
         final RegisteredService registeredService,
         final OidcRegisteredServiceJwtCipherExecutor cipherExecutor,
         final boolean fallbackToDefault) {
-        val oidcRegisteredService = OidcRegisteredService.class.cast(registeredService);
+        val oidcRegisteredService = (OidcRegisteredService) registeredService;
         val issuer = cipherExecutor.getOidcIssuerService().determineIssuer(Optional.of(oidcRegisteredService));
         LOGGER.trace("Using issuer [{}] to determine JWKS from default keystore cache", issuer);
-        var jwks = Objects.requireNonNull(cipherExecutor.getRegisteredServiceJsonWebKeystoreCache().get(
+        val serviceJsonWebKeys = Objects.requireNonNull(cipherExecutor.getRegisteredServiceJsonWebKeystoreCache().get(
             new OidcJsonWebKeyCacheKey(oidcRegisteredService, OidcJsonWebKeyUsage.SIGNING)));
-        if (jwks.isPresent()) {
-            val jsonWebKey = jwks.get();
+        if (serviceJsonWebKeys.isPresent()) {
+            val jsonWebKey = serviceJsonWebKeys.get();
             LOGGER.debug("Found JSON web key to sign the token: [{}]", jsonWebKey);
             val keys = jsonWebKey.getJsonWebKeys().stream()
                 .filter(key -> key.getKey() != null).collect(Collectors.toList());
             return Optional.of(new JsonWebKeySet(keys));
         }
         if (fallbackToDefault) {
-            jwks = Objects.requireNonNull(cipherExecutor.getDefaultJsonWebKeystoreCache().get(
-                new OidcJsonWebKeyCacheKey(issuer, OidcJsonWebKeyUsage.SIGNING)));
-            if (jwks.isEmpty()) {
-                LOGGER.warn("No [{}] key could be found for issuer [{}]", OidcJsonWebKeyUsage.SIGNING, issuer);
-                return Optional.empty();
+            val cacheKey = new OidcJsonWebKeyCacheKey(issuer, OidcJsonWebKeyUsage.SIGNING);
+            val defaultJsonWebKeys = cipherExecutor.getDefaultJsonWebKeystoreCache().get(cacheKey);
+            if (defaultJsonWebKeys != null) {
+                return Optional.of(defaultJsonWebKeys);
             }
         }
-        return jwks;
+        LOGGER.warn("No [{}] key could be found for issuer [{}]", OidcJsonWebKeyUsage.SIGNING, issuer);
+        return Optional.empty();
     }
 
     /**
@@ -282,7 +280,7 @@ public class OidcJsonWebKeyStoreUtils {
      */
     public static Optional<JsonWebKeySet> fetchJsonWebKeySetForEncryption(final RegisteredService registeredService,
                                                                           final OidcRegisteredServiceJwtCipherExecutor cipherExecutor) {
-        val oidcRegisteredService = OidcRegisteredService.class.cast(registeredService);
+        val oidcRegisteredService = (OidcRegisteredService) registeredService;
         val jwks = Objects.requireNonNull(cipherExecutor.getRegisteredServiceJsonWebKeystoreCache().get(
             new OidcJsonWebKeyCacheKey(oidcRegisteredService, OidcJsonWebKeyUsage.ENCRYPTION)));
         if (jwks.isEmpty()) {

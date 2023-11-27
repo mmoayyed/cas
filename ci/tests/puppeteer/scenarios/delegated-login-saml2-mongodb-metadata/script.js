@@ -7,7 +7,7 @@ const assert = require('assert');
     const browser = await puppeteer.launch(cas.browserOptions());
     const page = await cas.newPage(browser);
 
-    await cas.goto(page, "https://localhost:8443/cas/login?locale=en");
+    await cas.gotoLogin(page);
     await page.waitForTimeout(2000);
 
     await cas.assertVisibility(page, '#loginProviders');
@@ -24,16 +24,16 @@ const assert = require('assert');
     await cas.assertInnerText(page, '#content div h2', "Log In Successful");
     await cas.assertCookie(page, true, "Pac4jCookie");
 
-    console.log("Testing auto-redirection via configured cookie...");
-    await cas.goto(page, "https://localhost:8443/cas/logout");
+    await cas.log("Testing auto-redirection via configured cookie...");
+    await cas.gotoLogout(page);
     await page.waitForTimeout(3000);
-    await cas.goto(page, "https://localhost:8443/cas/login");
+    await cas.gotoLogin(page);
     await page.waitForTimeout(2000);
-    let url = await page.url();
-    console.log(`Page url: ${url}`);
+    await cas.logPage(page);
     await page.waitForTimeout(3000);
+    let url = await page.url();
     assert(url.startsWith("http://localhost:9443/simplesaml/"));
-    await cas.removeDirectory(path.join(__dirname, '/saml-md'));
+    await cas.removeDirectoryOrFile(path.join(__dirname, '/saml-md'));
     await browser.close();
 })();
 

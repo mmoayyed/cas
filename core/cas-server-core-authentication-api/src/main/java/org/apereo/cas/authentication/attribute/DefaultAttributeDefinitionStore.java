@@ -1,11 +1,13 @@
 package org.apereo.cas.authentication.attribute;
 
+import org.apereo.cas.authentication.principal.Principal;
+import org.apereo.cas.authentication.principal.Service;
+import org.apereo.cas.services.RegisteredService;
 import org.apereo.cas.util.LoggingUtils;
 import org.apereo.cas.util.ResourceUtils;
 import org.apereo.cas.util.function.FunctionUtils;
 import org.apereo.cas.util.io.FileWatcherService;
 import org.apereo.cas.util.serialization.JacksonObjectMapperFactory;
-
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
@@ -22,15 +24,17 @@ import org.jooq.lambda.Unchecked;
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
-
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.TreeMap;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
 
@@ -48,7 +52,7 @@ public class DefaultAttributeDefinitionStore implements AttributeDefinitionStore
     private static final ObjectMapper MAPPER = JacksonObjectMapperFactory.builder()
         .defaultTypingEnabled(true).build().toObjectMapper();
 
-    private final Map<String, AttributeDefinition> attributeDefinitions = new TreeMap<>();
+    private final Map<String, AttributeDefinition> attributeDefinitions = Collections.synchronizedMap(new ConcurrentHashMap<>());
 
     private FileWatcherService storeWatcherService;
 
@@ -68,32 +72,32 @@ public class DefaultAttributeDefinitionStore implements AttributeDefinitionStore
         }
     }
 
-    public DefaultAttributeDefinitionStore(final AttributeDefinition... defns) {
-        Arrays.stream(defns).forEach(this::registerAttributeDefinition);
+    public DefaultAttributeDefinitionStore(final AttributeDefinition... definitions) {
+        Arrays.stream(definitions).forEach(this::registerAttributeDefinition);
     }
 
-    private static String getAttributeDefinitionKey(final String key, final AttributeDefinition defn) {
-        if (StringUtils.isNotBlank(defn.getKey()) && !StringUtils.equalsIgnoreCase(defn.getKey(), key)) {
+    private static String getAttributeDefinitionKey(final String key, final AttributeDefinition definition) {
+        if (StringUtils.isNotBlank(definition.getKey()) && !StringUtils.equalsIgnoreCase(definition.getKey(), key)) {
             LOGGER.warn("Attribute definition contains a key property [{}] that differs from its registering key [{}]. "
-                        + "This is likely due to misconfiguration of the attribute definition, and CAS will use the key property [{}] "
-                        + "to register the attribute definition in the attribute store", defn.getKey(), key, defn.getKey());
-            return defn.getKey();
+                + "This is likely due to misconfiguration of the attribute definition, and CAS will use the key property [{}] "
+                + "to register the attribute definition in the attribute store", definition.getKey(), key, definition.getKey());
+            return definition.getKey();
         }
         return key;
     }
 
     @Override
     @CanIgnoreReturnValue
-    public AttributeDefinitionStore registerAttributeDefinition(final AttributeDefinition defn) {
-        return registerAttributeDefinition(defn.getKey(), defn);
+    public AttributeDefinitionStore registerAttributeDefinition(final AttributeDefinition definition) {
+        return registerAttributeDefinition(definition.getKey(), definition);
     }
 
     @Override
     @CanIgnoreReturnValue
-    public AttributeDefinitionStore registerAttributeDefinition(final String key, final AttributeDefinition defn) {
-        LOGGER.trace("Registering attribute definition [{}] by key [{}]", defn, key);
-        val keyToUse = getAttributeDefinitionKey(key, defn);
-        attributeDefinitions.putIfAbsent(keyToUse, defn);
+    public AttributeDefinitionStore registerAttributeDefinition(final String key, final AttributeDefinition definition) {
+        LOGGER.trace("Registering attribute definition [{}] by key [{}]", definition, key);
+        val keyToUse = getAttributeDefinitionKey(key, definition);
+        attributeDefinitions.putIfAbsent(keyToUse, definition);
         return this;
     }
 
@@ -103,12 +107,22 @@ public class DefaultAttributeDefinitionStore implements AttributeDefinitionStore
         LOGGER.debug("Removing attribute definition by key [{}]", key);
 
         if (this.attributeDefinitions.containsKey(key)) {
-            val defn = this.attributeDefinitions.remove(key);
-            LOGGER.debug("Attribute definition [{}] has been removed from the definition store", defn);
+            val definition = this.attributeDefinitions.remove(key);
+            LOGGER.debug("Attribute definition [{}] has been removed from the definition store", definition);
         } else {
             LOGGER.debug("Attribute definition with the registered key [{}] was not found and the store was not altered", key);
         }
         return this;
+    }
+
+    @Override
+    public Optional<AttributeDefinition> locateAttributeDefinitionByName(final String name) {
+        return attributeDefinitions
+            .values()
+            .stream()
+            .filter(entry -> StringUtils.isNotBlank(entry.getName()))
+            .filter(entry -> entry.getName().equalsIgnoreCase(name))
+            .findFirst();
     }
 
     @Override
@@ -132,7 +146,7 @@ public class DefaultAttributeDefinitionStore implements AttributeDefinitionStore
         return attributeDefinitions.values()
             .stream()
             .filter(predicate)
-            .map(defn -> (T) defn)
+            .map(definition -> (T) definition)
             .findFirst();
     }
 
@@ -146,8 +160,50 @@ public class DefaultAttributeDefinitionStore implements AttributeDefinitionStore
         return attributeDefinitions
             .values()
             .stream()
-            .filter(defn -> type.isAssignableFrom(defn.getClass()))
+            .filter(definition -> type.isAssignableFrom(definition.getClass()))
             .map(type::cast);
+    }
+
+    @Override
+    public Map<String, List<Object>> resolveAttributeValues(final Collection<String> attributeDefinitions,
+                                                            final Map<String, List<Object>> availableAttributes,
+                                                            final Principal principal,
+                                                            final RegisteredService registeredService,
+                                                            final Service service) {
+        val finalAttributes = new LinkedHashMap<String, List<Object>>(attributeDefinitions.size());
+        attributeDefinitions.forEach(entry -> locateAttributeDefinition(entry).ifPresentOrElse(definition -> {
+            val attributeValues = determineValuesForAttributeDefinition(availableAttributes, entry, definition);
+            LOGGER.trace("Resolving attribute [{}] from attribute definition store with values [{}]", entry, attributeValues);
+            val attributeDefinitionResolutionContext = AttributeDefinitionResolutionContext.builder()
+                .attributeValues(attributeValues)
+                .principal(principal)
+                .registeredService(registeredService)
+                .service(service)
+                .attributes(availableAttributes)
+                .scope(this.scope)
+                .build();
+            val result = resolveAttributeValues(entry, attributeDefinitionResolutionContext);
+            if (result.isPresent()) {
+                val resolvedValues = result.get().getValue();
+                if (resolvedValues.isEmpty()) {
+                    LOGGER.debug("Unable to produce or determine attributes values for attribute definition [{}]", definition);
+                } else {
+                    LOGGER.trace("Resolving attribute [{}] based on attribute definition [{}]", entry, definition);
+                    val attributeKeys = org.springframework.util.StringUtils.commaDelimitedListToSet(
+                        StringUtils.defaultIfBlank(definition.getName(), entry));
+
+                    attributeKeys.forEach(key -> {
+                        LOGGER.trace("Determined attribute name to be [{}] with values [{}]", key, resolvedValues);
+                        finalAttributes.put(key, resolvedValues);
+                    });
+                }
+            }
+        }, () -> {
+            LOGGER.trace("Using already-resolved attribute name/value, as no attribute definition was found for [{}]", entry);
+            finalAttributes.put(entry, availableAttributes.get(entry));
+        }));
+        LOGGER.trace("Final collection of attributes resolved from attribute definition store is [{}]", finalAttributes);
+        return finalAttributes;
     }
 
     @Override
@@ -155,12 +211,10 @@ public class DefaultAttributeDefinitionStore implements AttributeDefinitionStore
         final String key,
         final AttributeDefinitionResolutionContext context) {
         val result = locateAttributeDefinition(key);
-        return result
-            .map(definition -> {
-                val currentValues = definition.resolveAttributeValues(context.withScope(this.scope));
-                return Optional.of(Pair.of(definition, currentValues));
-            })
-            .orElseGet(Optional::empty);
+        return result.flatMap(definition -> FunctionUtils.doUnchecked(() -> {
+            val currentValues = definition.resolveAttributeValues(context.withScope(this.scope));
+            return Optional.of(Pair.of(definition, currentValues));
+        }));
     }
 
     @Override
@@ -184,8 +238,8 @@ public class DefaultAttributeDefinitionStore implements AttributeDefinitionStore
 
     @Override
     @CanIgnoreReturnValue
-    public AttributeDefinitionStore importStore(final AttributeDefinitionStore samlStore) {
-        samlStore.getAttributeDefinitions().forEach(this::registerAttributeDefinition);
+    public AttributeDefinitionStore importStore(final AttributeDefinitionStore definitionStore) {
+        definitionStore.getAttributeDefinitions().forEach(this::registerAttributeDefinition);
         return this;
     }
 
@@ -201,6 +255,16 @@ public class DefaultAttributeDefinitionStore implements AttributeDefinitionStore
         close();
     }
 
+    private static List<Object> determineValuesForAttributeDefinition(final Map<String, List<Object>> attributes,
+                                                                      final String entry,
+                                                                      final AttributeDefinition definition) {
+        val attributeKey = StringUtils.defaultIfBlank(definition.getAttribute(), entry);
+        if (attributes.containsKey(attributeKey)) {
+            return attributes.get(attributeKey);
+        }
+        return new ArrayList<>(0);
+    }
+    
     private void loadAttributeDefinitionsFromInputStream(final Resource resource) {
         try {
             LOGGER.trace("Loading attribute definitions from [{}]", resource);

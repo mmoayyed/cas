@@ -18,6 +18,7 @@ import org.apereo.cas.ticket.code.OAuth20Code;
 import org.apereo.cas.ticket.code.OAuth20DefaultOAuthCodeFactory;
 import org.apereo.cas.ticket.expiration.NeverExpiresExpirationPolicy;
 import org.apereo.cas.ticket.refreshtoken.OAuth20DefaultRefreshTokenFactory;
+import org.apereo.cas.ticket.tracking.TicketTrackingPolicy;
 import org.apereo.cas.token.JwtBuilder;
 import org.apereo.cas.util.CollectionUtils;
 import org.apereo.cas.util.DefaultUniqueTicketIdGenerator;
@@ -89,7 +90,7 @@ class DynamoDbTicketRegistryTests extends BaseTicketRegistryTests {
     private ServicesManager servicesManager;
 
     @RepeatedTest(2)
-    public void verifyOAuthCodeCanBeAdded() throws Exception {
+    void verifyOAuthCodeCanBeAdded() throws Throwable {
         val code = createOAuthCode();
         newTicketRegistry.addTicket(code);
         assertSame(1, newTicketRegistry.deleteTicket(code.getId()), "Wrong ticket count");
@@ -97,11 +98,12 @@ class DynamoDbTicketRegistryTests extends BaseTicketRegistryTests {
     }
 
     @RepeatedTest(2)
-    public void verifyAccessTokenCanBeAdded() throws Exception {
+    void verifyAccessTokenCanBeAdded() throws Throwable {
         val code = createOAuthCode();
         val jwtBuilder = new JwtBuilder(CipherExecutor.noOpOfSerializableToString(),
             servicesManager, RegisteredServiceCipherExecutor.noOp(), casProperties);
-        val token = new OAuth20DefaultAccessTokenFactory(neverExpiresExpirationPolicyBuilder(), jwtBuilder, servicesManager)
+        val token = new OAuth20DefaultAccessTokenFactory(neverExpiresExpirationPolicyBuilder(), jwtBuilder,
+                servicesManager, TicketTrackingPolicy.noOp())
             .create(RegisteredServiceTestUtils.getService(),
                 RegisteredServiceTestUtils.getAuthentication(), new MockTicketGrantingTicket("casuser"),
                 CollectionUtils.wrapSet("1", "2"), code.getId(), "clientId1234567", new HashMap<>(),
@@ -112,8 +114,9 @@ class DynamoDbTicketRegistryTests extends BaseTicketRegistryTests {
     }
 
     @RepeatedTest(2)
-    public void verifyRefreshTokenCanBeAdded() throws Exception {
-        val token = new OAuth20DefaultRefreshTokenFactory(neverExpiresExpirationPolicyBuilder(), servicesManager)
+    void verifyRefreshTokenCanBeAdded() throws Throwable {
+        val token = new OAuth20DefaultRefreshTokenFactory(neverExpiresExpirationPolicyBuilder(),
+                servicesManager, TicketTrackingPolicy.noOp())
             .create(RegisteredServiceTestUtils.getService(),
                 RegisteredServiceTestUtils.getAuthentication(), new MockTicketGrantingTicket("casuser"),
                 CollectionUtils.wrapSet("1", "2"),
@@ -125,7 +128,7 @@ class DynamoDbTicketRegistryTests extends BaseTicketRegistryTests {
     }
 
     @RepeatedTest(2)
-    public void verifyLargeDataset() throws Exception {
+    void verifyLargeDataset() throws Throwable {
         val ticketGrantingTicketToAdd = Stream.generate(() -> {
                 val tgtId = new TicketGrantingTicketIdGenerator(10, StringUtils.EMPTY)
                     .getNewTicketId(TicketGrantingTicket.PREFIX);
@@ -142,9 +145,10 @@ class DynamoDbTicketRegistryTests extends BaseTicketRegistryTests {
         assertTrue(time <= 20);
     }
 
-    private OAuth20Code createOAuthCode() {
+    private OAuth20Code createOAuthCode() throws Throwable {
         return new OAuth20DefaultOAuthCodeFactory(new DefaultUniqueTicketIdGenerator(),
-            neverExpiresExpirationPolicyBuilder(), servicesManager, CipherExecutor.noOpOfStringToString())
+            neverExpiresExpirationPolicyBuilder(), servicesManager, CipherExecutor.noOpOfStringToString(),
+            TicketTrackingPolicy.noOp())
             .create(RegisteredServiceTestUtils.getService(),
                 RegisteredServiceTestUtils.getAuthentication(), new MockTicketGrantingTicket("casuser"),
                 CollectionUtils.wrapSet("1", "2"), "code-challenge",

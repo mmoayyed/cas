@@ -21,6 +21,7 @@ import org.apereo.cas.config.CasCoreWebConfiguration;
 import org.apereo.cas.config.CasCoreWebflowConfiguration;
 import org.apereo.cas.config.CasMultifactorAuthenticationWebflowConfiguration;
 import org.apereo.cas.config.CasPersonDirectoryConfiguration;
+import org.apereo.cas.config.CasPersonDirectoryStubConfiguration;
 import org.apereo.cas.config.CasRegisteredServicesTestConfiguration;
 import org.apereo.cas.config.CasSimpleMultifactorAuthenticationComponentSerializationConfiguration;
 import org.apereo.cas.config.CasSimpleMultifactorAuthenticationConfiguration;
@@ -38,7 +39,6 @@ import org.apereo.cas.notifications.push.NotificationSender;
 import org.apereo.cas.notifications.push.NotificationSenderExecutionPlanConfigurer;
 import org.apereo.cas.notifications.sms.MockSmsSender;
 import org.apereo.cas.notifications.sms.SmsSender;
-
 import org.springframework.boot.SpringBootConfiguration;
 import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 import org.springframework.boot.autoconfigure.aop.AopAutoConfiguration;
@@ -99,6 +99,7 @@ public abstract class BaseCasSimpleMultifactorAuthenticationTests {
         CasCoreAuthenticationPrincipalConfiguration.class,
         CasCoreAuthenticationServiceSelectionStrategyConfiguration.class,
         CasPersonDirectoryConfiguration.class,
+        CasPersonDirectoryStubConfiguration.class,
         CasCoreAuditConfiguration.class,
         CasCoreUtilConfiguration.class
     })
@@ -110,7 +111,7 @@ public abstract class BaseCasSimpleMultifactorAuthenticationTests {
     public static class CasSimpleMultifactorTestConfiguration implements NotificationSenderExecutionPlanConfigurer {
         @Bean
         public SmsSender smsSender() {
-            return new MockSmsSender();
+            return MockSmsSender.INSTANCE;
         }
 
         @Override

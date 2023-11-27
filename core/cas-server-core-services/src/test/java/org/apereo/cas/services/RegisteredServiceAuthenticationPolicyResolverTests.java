@@ -101,7 +101,7 @@ class RegisteredServiceAuthenticationPolicyResolverTests {
     }
 
     @Test
-    void checkAnyPolicy() {
+    void checkAnyPolicy() throws Throwable {
         val resolver = new RegisteredServiceAuthenticationPolicyResolver(this.servicesManager,
             new DefaultAuthenticationServiceSelectionPlan(new DefaultAuthenticationServiceSelectionStrategy()));
 
@@ -110,11 +110,11 @@ class RegisteredServiceAuthenticationPolicyResolverTests {
 
         val policies = resolver.resolve(transaction);
         assertEquals(1, policies.size());
-        assertTrue(policies.iterator().next() instanceof AtLeastOneCredentialValidatedAuthenticationPolicy);
+        assertInstanceOf(AtLeastOneCredentialValidatedAuthenticationPolicy.class, policies.iterator().next());
     }
 
     @Test
-    void checkAllPolicy() {
+    void checkAllPolicy() throws Throwable {
         val resolver = new RegisteredServiceAuthenticationPolicyResolver(this.servicesManager,
             new DefaultAuthenticationServiceSelectionPlan(new DefaultAuthenticationServiceSelectionStrategy()));
 
@@ -123,11 +123,11 @@ class RegisteredServiceAuthenticationPolicyResolverTests {
 
         val policies = resolver.resolve(transaction);
         assertEquals(1, policies.size());
-        assertTrue(policies.iterator().next() instanceof AllAuthenticationHandlersSucceededAuthenticationPolicy);
+        assertInstanceOf(AllAuthenticationHandlersSucceededAuthenticationPolicy.class, policies.iterator().next());
     }
 
     @Test
-    void checkDefaultPolicy() {
+    void checkDefaultPolicy() throws Throwable {
         val resolver = new RegisteredServiceAuthenticationPolicyResolver(this.servicesManager,
             new DefaultAuthenticationServiceSelectionPlan(new DefaultAuthenticationServiceSelectionStrategy()));
         val service = RegisteredServiceTestUtils.getService("serviceid2");
@@ -144,7 +144,7 @@ class RegisteredServiceAuthenticationPolicyResolverTests {
     }
 
     @Test
-    void checkNotPreventedPolicy() {
+    void checkNotPreventedPolicy() throws Throwable {
         val resolver = new RegisteredServiceAuthenticationPolicyResolver(this.servicesManager,
             new DefaultAuthenticationServiceSelectionPlan(new DefaultAuthenticationServiceSelectionStrategy()));
 
@@ -153,11 +153,11 @@ class RegisteredServiceAuthenticationPolicyResolverTests {
 
         val policies = resolver.resolve(transaction);
         assertEquals(1, policies.size());
-        assertTrue(policies.iterator().next() instanceof NotPreventedAuthenticationPolicy);
+        assertInstanceOf(NotPreventedAuthenticationPolicy.class, policies.iterator().next());
     }
 
     @Test
-    void checkGroovyPolicy() {
+    void checkGroovyPolicy() throws Throwable {
         val resolver = new RegisteredServiceAuthenticationPolicyResolver(this.servicesManager,
             new DefaultAuthenticationServiceSelectionPlan(new DefaultAuthenticationServiceSelectionStrategy()));
 
@@ -166,11 +166,11 @@ class RegisteredServiceAuthenticationPolicyResolverTests {
 
         val policies = resolver.resolve(transaction);
         assertEquals(1, policies.size());
-        assertTrue(policies.iterator().next() instanceof GroovyScriptAuthenticationPolicy);
+        assertInstanceOf(GroovyScriptAuthenticationPolicy.class, policies.iterator().next());
     }
 
     @Test
-    void checkDisabledPolicy() {
+    void checkDisabledPolicy() throws Throwable {
         val resolver = new RegisteredServiceAuthenticationPolicyResolver(this.servicesManager,
             new DefaultAuthenticationServiceSelectionPlan(new DefaultAuthenticationServiceSelectionStrategy()));
         val transaction = CoreAuthenticationTestUtils.getAuthenticationTransactionFactory().newTransaction(RegisteredServiceTestUtils.getService("not-found-service"),
@@ -179,14 +179,14 @@ class RegisteredServiceAuthenticationPolicyResolverTests {
     }
 
     @Test
-    void checkRestPolicy() {
+    void checkRestPolicy() throws Throwable {
         val resolver = new RegisteredServiceAuthenticationPolicyResolver(this.servicesManager,
             new DefaultAuthenticationServiceSelectionPlan(new DefaultAuthenticationServiceSelectionStrategy()));
         val transaction = CoreAuthenticationTestUtils.getAuthenticationTransactionFactory().newTransaction(RegisteredServiceTestUtils.getService("serviceid6"),
             RegisteredServiceTestUtils.getCredentialsWithSameUsernameAndPassword("casuser"));
         val policies = resolver.resolve(transaction);
         assertEquals(1, policies.size());
-        assertTrue(policies.iterator().next() instanceof RestfulAuthenticationPolicy);
+        assertInstanceOf(RestfulAuthenticationPolicy.class, policies.iterator().next());
     }
 
 }

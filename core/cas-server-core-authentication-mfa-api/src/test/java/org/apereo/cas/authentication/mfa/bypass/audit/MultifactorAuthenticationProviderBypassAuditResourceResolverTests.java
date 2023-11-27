@@ -1,5 +1,6 @@
 package org.apereo.cas.authentication.mfa.bypass.audit;
 
+import org.apereo.cas.authentication.bypass.AlwaysAllowMultifactorAuthenticationProviderBypassEvaluator;
 import org.apereo.cas.authentication.bypass.audit.MultifactorAuthenticationProviderBypassAuditResourceResolver;
 import org.apereo.cas.authentication.mfa.MultifactorAuthenticationTestUtils;
 import org.apereo.cas.authentication.mfa.TestMultifactorAuthenticationProvider;
@@ -24,7 +25,7 @@ import static org.mockito.Mockito.*;
 class MultifactorAuthenticationProviderBypassAuditResourceResolverTests {
 
     @Test
-    void verifyOperation() {
+    void verifyOperation() throws Throwable {
         val applicationContext = new StaticApplicationContext();
         applicationContext.refresh();
 
@@ -36,7 +37,7 @@ class MultifactorAuthenticationProviderBypassAuditResourceResolverTests {
             TestMultifactorAuthenticationProvider.registerProviderIntoApplicationContext(applicationContext)
         };
         when(jp.getArgs()).thenReturn(args);
-        when(jp.getTarget()).thenReturn("TargetObject");
+        when(jp.getTarget()).thenReturn(AlwaysAllowMultifactorAuthenticationProviderBypassEvaluator.getInstance());
         val outcome = resolver.resolveFrom(jp, new Object());
         assertTrue(outcome.length > 0);
         assertNotNull(resolver.resolveFrom(jp, new RuntimeException("failed")));
@@ -46,7 +47,7 @@ class MultifactorAuthenticationProviderBypassAuditResourceResolverTests {
     }
 
     @Test
-    void verifyJsonOperation() {
+    void verifyJsonOperation() throws Throwable {
         val applicationContext = new StaticApplicationContext();
         applicationContext.refresh();
 
@@ -60,7 +61,7 @@ class MultifactorAuthenticationProviderBypassAuditResourceResolverTests {
             TestMultifactorAuthenticationProvider.registerProviderIntoApplicationContext(applicationContext)
         };
         when(jp.getArgs()).thenReturn(args);
-        when(jp.getTarget()).thenReturn("TargetObject");
+        when(jp.getTarget()).thenReturn(AlwaysAllowMultifactorAuthenticationProviderBypassEvaluator.getInstance());
         val outcome = resolver.resolveFrom(jp, new Object());
         assertTrue(outcome.length > 0);
         assertNotNull(resolver.resolveFrom(jp, new RuntimeException("failed")));

@@ -49,25 +49,25 @@ class OAuthRegisteredServiceTests {
 
     @Test
     void checkSaveMethod() {
-        val r = new OAuthRegisteredService();
-        r.setName("checkSaveMethod");
-        r.setServiceId("testId");
-        r.setTheme("theme");
-        r.setDescription("description");
-        r.setClientId("clientid");
-        r.setServiceId("secret");
-        r.setBypassApprovalPrompt(true);
-        val r2 = this.dao.save(r);
-        assertTrue(r2 instanceof OAuthRegisteredService);
+        val registeredService = new OAuthRegisteredService();
+        registeredService.setName("checkSaveMethod");
+        registeredService.setServiceId("testId");
+        registeredService.setTheme("theme");
+        registeredService.setDescription("description");
+        registeredService.setClientId("clientid");
+        registeredService.setServiceId("secret");
+        registeredService.setBypassApprovalPrompt(true);
+        val r2 = this.dao.save(registeredService);
+        assertInstanceOf(OAuthRegisteredService.class, r2);
         this.dao.load();
         val r3 = this.dao.findServiceById(r2.getId());
-        assertTrue(r3 instanceof OAuthRegisteredService);
-        assertEquals(r, r2);
+        assertInstanceOf(OAuthRegisteredService.class, r3);
+        assertEquals(registeredService, r2);
         assertEquals(r2, r3);
     }
 
     @Test
-    void verifySerializeOAuthRegisteredServiceToJson() {
+    void verifySerializeOAuthRegisteredServiceToJson() throws Throwable {
         val serviceWritten = new OAuthRegisteredService();
         serviceWritten.setName("checkSaveMethod");
         serviceWritten.setServiceId("testId");

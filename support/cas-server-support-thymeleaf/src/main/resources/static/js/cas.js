@@ -168,5 +168,12 @@ function resourceLoadedSuccessfully() {
             jqueryReady();
         }
     });
+}
 
+function autoHideElement(id, timeout = 1500) {
+    let elementToFadeOut = document.getElementById(id);
+    function hideElement() {
+        $(elementToFadeOut).fadeOut(500);
+    }
+    setTimeout(hideElement, timeout);
 }

@@ -31,7 +31,7 @@ class OAuth20InvalidAuthorizationResponseBuilderTests extends AbstractOAuth20Tes
     private OAuth20InvalidAuthorizationResponseBuilder oauthInvalidAuthorizationBuilder;
 
     @Test
-    void verifyRequestWithoutCallback() throws Exception {
+    void verifyRequestWithoutCallback() throws Throwable {
         val request = new MockHttpServletRequest();
         val response = new MockHttpServletResponse();
 
@@ -49,7 +49,7 @@ class OAuth20InvalidAuthorizationResponseBuilderTests extends AbstractOAuth20Tes
     }
 
     @Test
-    void verifyRequestWithCallbackAndDescription() throws Exception {
+    void verifyRequestWithCallbackAndDescription() throws Throwable {
         val service = addRegisteredService();
         val request = new MockHttpServletRequest();
         request.addParameter(OAuth20Constants.CLIENT_ID, service.getClientId());
@@ -65,7 +65,7 @@ class OAuth20InvalidAuthorizationResponseBuilderTests extends AbstractOAuth20Tes
         assertTrue(oauthInvalidAuthorizationBuilder.supports(context));
 
         val mv = oauthInvalidAuthorizationBuilder.build(context);
-        assertTrue(mv.getView() instanceof RedirectView);
+        assertInstanceOf(RedirectView.class, mv.getView());
         val mvView = (RedirectView) mv.getView();
         assertEquals("https://github.com/apereo/cas", mvView.getUrl());
         assertTrue(mv.getModel().containsKey(OAuth20Constants.ERROR));
@@ -79,7 +79,7 @@ class OAuth20InvalidAuthorizationResponseBuilderTests extends AbstractOAuth20Tes
     }
 
     @Test
-    void verifyRequestWithCallbackWithoutDescription() throws Exception {
+    void verifyRequestWithCallbackWithoutDescription() throws Throwable {
         val service = addRegisteredService();
         val request = new MockHttpServletRequest();
         request.addParameter(OAuth20Constants.CLIENT_ID, service.getClientId());

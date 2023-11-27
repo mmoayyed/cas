@@ -11,7 +11,7 @@ import org.apereo.cas.audit.AuditTrailRecordResolutionPlanConfigurer;
 import org.apereo.cas.audit.spi.plan.DefaultAuditTrailExecutionPlan;
 import org.apereo.cas.audit.spi.plan.DefaultAuditTrailRecordResolutionPlan;
 import org.apereo.cas.audit.spi.principal.ChainingAuditPrincipalIdProvider;
-import org.apereo.cas.audit.spi.principal.ThreadLocalAuditPrincipalResolver;
+import org.apereo.cas.audit.spi.principal.DefaultAuditPrincipalResolver;
 import org.apereo.cas.audit.spi.resource.CredentialsAsFirstParameterResourceResolver;
 import org.apereo.cas.audit.spi.resource.LogoutRequestResourceResolver;
 import org.apereo.cas.audit.spi.resource.ProtocolSpecificationValidationAuditResourceResolver;
@@ -19,6 +19,7 @@ import org.apereo.cas.audit.spi.resource.ServiceAccessEnforcementAuditResourceRe
 import org.apereo.cas.audit.spi.resource.ServiceAuditResourceResolver;
 import org.apereo.cas.audit.spi.resource.TicketAsFirstParameterResourceResolver;
 import org.apereo.cas.audit.spi.resource.TicketValidationResourceResolver;
+import org.apereo.cas.authentication.AuthenticationServiceSelectionPlan;
 import org.apereo.cas.configuration.CasConfigurationProperties;
 import org.apereo.cas.configuration.features.CasFeatureModule;
 import org.apereo.cas.util.CollectionUtils;
@@ -41,7 +42,6 @@ import org.apereo.inspektr.audit.spi.support.MessageBundleAwareResourceResolver;
 import org.apereo.inspektr.audit.spi.support.NullableReturnValueAuditResourceResolver;
 import org.apereo.inspektr.audit.spi.support.ObjectCreationAuditActionResolver;
 import org.apereo.inspektr.audit.spi.support.ShortenedReturnValueAsStringAuditResourceResolver;
-import org.apereo.inspektr.audit.support.AbstractStringAuditTrailManager;
 import org.apereo.inspektr.audit.support.GroovyAuditTrailManager;
 import org.apereo.inspektr.audit.support.Slf4jLoggingAuditTrailManager;
 import org.apereo.inspektr.common.spi.ClientInfoResolver;
@@ -62,6 +62,7 @@ import org.springframework.context.annotation.EnableAspectJAutoProxy;
 import org.springframework.context.annotation.ScopedProxyMode;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.AnnotationAwareOrderComparator;
+import org.springframework.util.StringUtils;
 
 import java.util.Arrays;
 import java.util.List;
@@ -90,7 +91,7 @@ public class CasCoreAuditConfiguration {
         public PrincipalResolver auditablePrincipalResolver(
             @Qualifier("auditPrincipalIdProvider")
             final AuditPrincipalIdProvider auditPrincipalIdProvider) {
-            return new ThreadLocalAuditPrincipalResolver(auditPrincipalIdProvider);
+            return new DefaultAuditPrincipalResolver(auditPrincipalIdProvider);
         }
 
         @ConditionalOnMissingBean(name = "auditPrincipalIdProvider")
@@ -108,8 +109,11 @@ public class CasCoreAuditConfiguration {
         @Bean
         @ConditionalOnMissingBean(name = "credentialsAsFirstParameterResourceResolver")
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
-        public AuditResourceResolver credentialsAsFirstParameterResourceResolver(final CasConfigurationProperties casProperties) {
-            return new CredentialsAsFirstParameterResourceResolver(casProperties.getAudit().getEngine());
+        public AuditResourceResolver credentialsAsFirstParameterResourceResolver(
+            @Qualifier(AuthenticationServiceSelectionPlan.BEAN_NAME)
+            final AuthenticationServiceSelectionPlan authenticationServiceSelectionPlan,
+            final CasConfigurationProperties casProperties) {
+            return new CredentialsAsFirstParameterResourceResolver(authenticationServiceSelectionPlan, casProperties.getAudit().getEngine());
         }
 
         @Bean
@@ -123,19 +127,24 @@ public class CasCoreAuditConfiguration {
         @ConditionalOnMissingBean(name = "ticketResourceResolver")
         @Bean
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
-        public AuditResourceResolver ticketResourceResolver(final CasConfigurationProperties casProperties) {
-            return new TicketAsFirstParameterResourceResolver(casProperties.getAudit().getEngine());
+        public AuditResourceResolver ticketResourceResolver(
+            @Qualifier(AuthenticationServiceSelectionPlan.BEAN_NAME)
+            final AuthenticationServiceSelectionPlan authenticationServiceSelectionPlan,
+            final CasConfigurationProperties casProperties) {
+            return new TicketAsFirstParameterResourceResolver(authenticationServiceSelectionPlan, casProperties.getAudit().getEngine());
         }
 
         @ConditionalOnMissingBean(name = "ticketValidationResourceResolver")
         @Bean
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
         public AuditResourceResolver ticketValidationResourceResolver(
+            @Qualifier(AuthenticationServiceSelectionPlan.BEAN_NAME)
+            final AuthenticationServiceSelectionPlan authenticationServiceSelectionPlan,
             @Qualifier("ticketResourceResolver")
             final AuditResourceResolver ticketResourceResolver,
             final CasConfigurationProperties casProperties) {
             if (casProperties.getAudit().getEngine().isIncludeValidationAssertion()) {
-                return new TicketValidationResourceResolver(casProperties.getAudit().getEngine());
+                return new TicketValidationResourceResolver(authenticationServiceSelectionPlan, casProperties.getAudit().getEngine());
             }
             return ticketResourceResolver;
         }
@@ -157,8 +166,11 @@ public class CasCoreAuditConfiguration {
         @ConditionalOnMissingBean(name = "serviceAuditResourceResolver")
         @Bean
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
-        public AuditResourceResolver serviceAuditResourceResolver(final CasConfigurationProperties casProperties) {
-            return new ServiceAuditResourceResolver(casProperties.getAudit().getEngine());
+        public AuditResourceResolver serviceAuditResourceResolver(
+            @Qualifier(AuthenticationServiceSelectionPlan.BEAN_NAME)
+            final AuthenticationServiceSelectionPlan authenticationServiceSelectionPlan,
+            final CasConfigurationProperties casProperties) {
+            return new ServiceAuditResourceResolver(authenticationServiceSelectionPlan, casProperties.getAudit().getEngine());
         }
 
         @ConditionalOnMissingBean(name = "returnValueResourceResolver")
@@ -184,8 +196,11 @@ public class CasCoreAuditConfiguration {
         @ConditionalOnMissingBean(name = "serviceAccessEnforcementAuditResourceResolver")
         @Bean
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
-        public AuditResourceResolver serviceAccessEnforcementAuditResourceResolver(final CasConfigurationProperties casProperties) {
-            return new ServiceAccessEnforcementAuditResourceResolver(casProperties.getAudit().getEngine());
+        public AuditResourceResolver serviceAccessEnforcementAuditResourceResolver(
+            @Qualifier(AuthenticationServiceSelectionPlan.BEAN_NAME)
+            final AuthenticationServiceSelectionPlan authenticationServiceSelectionPlan,
+            final CasConfigurationProperties casProperties) {
+            return new ServiceAccessEnforcementAuditResourceResolver(authenticationServiceSelectionPlan, casProperties.getAudit().getEngine());
         }
 
         @ConditionalOnMissingBean(name = "logoutRequestResourceResolver")
@@ -293,7 +308,7 @@ public class CasCoreAuditConfiguration {
             final CasConfigurationProperties casProperties) {
 
             val audit = casProperties.getAudit().getEngine();
-            val auditFormat = AbstractStringAuditTrailManager.AuditFormats.valueOf(audit.getAuditFormat().name());
+            val auditFormat = AuditTrailManager.AuditFormats.valueOf(audit.getAuditFormat().name());
             val aspect = new AuditTrailManagementAspect(
                 audit.getAppCode(),
                 auditablePrincipalResolver,
@@ -495,7 +510,7 @@ public class CasCoreAuditConfiguration {
                     manager.setUseSingleLine(slf4j.isUseSingleLine());
                     manager.setEntrySeparator(slf4j.getSinglelineSeparator());
                     if (!slf4j.getAuditableFields().isEmpty()) {
-                        val fields = org.springframework.util.StringUtils.commaDelimitedListToSet(slf4j.getAuditableFields())
+                        val fields = StringUtils.commaDelimitedListToSet(slf4j.getAuditableFields())
                             .stream()
                             .map(field -> AuditTrailManager.AuditableFields.valueOf(field.toUpperCase(Locale.ENGLISH)))
                             .toList();

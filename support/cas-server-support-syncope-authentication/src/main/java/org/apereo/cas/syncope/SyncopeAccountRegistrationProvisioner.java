@@ -6,9 +6,10 @@ import org.apereo.cas.acct.provision.AccountRegistrationProvisioner;
 import org.apereo.cas.authentication.credential.UsernamePasswordCredential;
 import org.apereo.cas.configuration.model.support.syncope.SyncopeAccountManagementRegistrationProvisioningProperties;
 import org.apereo.cas.util.CollectionUtils;
-import org.apereo.cas.util.HttpUtils;
+import org.apereo.cas.util.http.HttpExecutionRequest;
+import org.apereo.cas.util.http.HttpUtils;
 import org.apereo.cas.util.serialization.JacksonObjectMapperFactory;
-
+import org.apereo.cas.util.spring.SpringExpressionLanguageValueResolver;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Splitter;
@@ -23,7 +24,6 @@ import org.jooq.lambda.Unchecked;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
-
 import java.util.Map;
 import java.util.Objects;
 
@@ -58,7 +58,7 @@ public class SyncopeAccountRegistrationProvisioner implements AccountRegistratio
                                                       final String domain) throws Exception {
         HttpResponse response = null;
         try {
-            val syncopeRestUrl = StringUtils.appendIfMissing(properties.getUrl(), "/rest/users");
+            val syncopeRestUrl = StringUtils.appendIfMissing(SpringExpressionLanguageValueResolver.getInstance().resolve(properties.getUrl()), "/rest/users");
             val headers = CollectionUtils.<String, String>wrap("X-Syncope-Domain", domain,
                 "Accept", MediaType.APPLICATION_JSON_VALUE,
                 "Content-Type", MediaType.APPLICATION_JSON_VALUE);
@@ -66,8 +66,8 @@ public class SyncopeAccountRegistrationProvisioner implements AccountRegistratio
 
             val entity = MAPPER.writeValueAsString(SyncopeUtils.convertToUserCreateEntity(request.getProperties(),
                 new UsernamePasswordCredential(request.getUsername(), request.getPassword()), getSyncopeRealm(request)));
-              
-            val exec = HttpUtils.HttpExecutionRequest.builder()
+
+            val exec = HttpExecutionRequest.builder()
                 .method(HttpMethod.POST)
                 .url(syncopeRestUrl)
                 .basicAuthUsername(properties.getBasicAuthUsername())
@@ -94,6 +94,6 @@ public class SyncopeAccountRegistrationProvisioner implements AccountRegistratio
     }
 
     protected String getSyncopeRealm(final AccountRegistrationRequest request) {
-        return StringUtils.defaultString(request.getProperty("realm", String.class), properties.getRealm());
+        return StringUtils.defaultIfBlank(request.getProperty("realm", String.class), properties.getRealm());
     }
 }

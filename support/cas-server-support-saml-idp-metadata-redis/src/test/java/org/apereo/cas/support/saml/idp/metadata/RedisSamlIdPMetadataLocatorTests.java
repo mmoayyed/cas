@@ -41,13 +41,13 @@ class RedisSamlIdPMetadataLocatorTests extends BaseRedisSamlMetadataTests {
     @BeforeEach
     public void setup() {
         val key = RedisSamlIdPMetadataLocator.CAS_PREFIX + '*';
-        try (val keys = redisSamlIdPMetadataTemplate.scan(key, 0)) {
+        try (val keys = redisSamlIdPMetadataTemplate.scan(key, 0L)) {
             redisSamlIdPMetadataTemplate.delete(keys.collect(Collectors.toSet()));
         }
     }
 
     @Test
-    void verifySigningKeyWithoutService() {
+    void verifySigningKeyWithoutService() throws Throwable {
         assertNotNull(redisSamlIdPMetadataTemplate);
         val resource = samlIdPMetadataLocator.resolveSigningKey(Optional.empty());
         assertNotNull(resource);

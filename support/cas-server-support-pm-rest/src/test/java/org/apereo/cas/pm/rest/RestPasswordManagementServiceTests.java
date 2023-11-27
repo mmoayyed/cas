@@ -2,6 +2,8 @@ package org.apereo.cas.pm.rest;
 
 import org.apereo.cas.authentication.CoreAuthenticationTestUtils;
 import org.apereo.cas.config.CasCoreAuditConfiguration;
+import org.apereo.cas.config.CasCoreAuthenticationPrincipalConfiguration;
+import org.apereo.cas.config.CasCoreConfiguration;
 import org.apereo.cas.config.CasCoreNotificationsConfiguration;
 import org.apereo.cas.config.CasCoreServicesConfiguration;
 import org.apereo.cas.config.CasCoreTicketCatalogConfiguration;
@@ -19,7 +21,6 @@ import org.apereo.cas.pm.PasswordManagementQuery;
 import org.apereo.cas.pm.PasswordManagementService;
 import org.apereo.cas.util.MockWebServer;
 import org.apereo.cas.util.crypto.CipherExecutor;
-
 import lombok.val;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Tag;
@@ -31,6 +32,7 @@ import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 import org.springframework.boot.autoconfigure.aop.AopAutoConfiguration;
 import org.springframework.boot.autoconfigure.mail.MailSenderAutoConfiguration;
 import org.springframework.boot.autoconfigure.web.client.RestTemplateAutoConfiguration;
+import org.springframework.boot.autoconfigure.web.servlet.WebMvcAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.cloud.autoconfigure.RefreshAutoConfiguration;
 import org.springframework.context.annotation.Import;
@@ -38,9 +40,7 @@ import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.web.client.RestTemplate;
-
 import java.nio.charset.StandardCharsets;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -51,10 +51,10 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 @Tag("RestfulApi")
 class RestPasswordManagementServiceTests {
-
     @ImportAutoConfiguration({
         MailSenderAutoConfiguration.class,
         AopAutoConfiguration.class,
+        WebMvcAutoConfiguration.class,
         RefreshAutoConfiguration.class
     })
     @SpringBootConfiguration
@@ -62,10 +62,12 @@ class RestPasswordManagementServiceTests {
         RestPasswordManagementConfiguration.class,
         PasswordManagementConfiguration.class,
         RestTemplateAutoConfiguration.class,
+        CasCoreConfiguration.class,
         CasCoreTicketsConfiguration.class,
         CasCoreTicketCatalogConfiguration.class,
         CasCoreTicketsSerializationConfiguration.class,
         CasCoreTicketIdGeneratorsConfiguration.class,
+        CasCoreAuthenticationPrincipalConfiguration.class,
         CasCoreServicesConfiguration.class,
         CasCoreWebConfiguration.class,
         CasCoreNotificationsConfiguration.class,
@@ -77,14 +79,13 @@ class RestPasswordManagementServiceTests {
 
     @Nested
     @SpringBootTest(classes = SharedTestConfiguration.class)
-    @SuppressWarnings("ClassCanBeStatic")
     public class UndefinedConfigurationOperations {
         @Autowired
         @Qualifier(PasswordManagementService.DEFAULT_BEAN_NAME)
         private PasswordManagementService passwordChangeService;
 
         @Test
-        void verifyEmailFound() {
+        void verifyEmailFound() throws Throwable {
             val request = new PasswordChangeRequest("casuser", "current-psw".toCharArray(), "123456".toCharArray(), "123456".toCharArray());
             assertFalse(passwordChangeService.change(request));
             assertNull(passwordChangeService.findEmail(PasswordManagementQuery.builder().username("casuser").build()));
@@ -107,7 +108,6 @@ class RestPasswordManagementServiceTests {
             "cas.authn.pm.rest.endpoint-username=username",
             "cas.authn.pm.rest.endpoint-password=password"
         })
-    @SuppressWarnings("ClassCanBeStatic")
     public class BasicOperations {
         @Autowired
         @Qualifier(PasswordManagementService.DEFAULT_BEAN_NAME)
@@ -122,7 +122,7 @@ class RestPasswordManagementServiceTests {
         private PasswordHistoryService passwordHistoryService;
 
         @Test
-        void verifyEmailFound() {
+        void verifyEmailFound() throws Throwable {
             val data = "casuser@example.org";
             try (val webServer = new MockWebServer(9091,
                 new ByteArrayResource(data.getBytes(StandardCharsets.UTF_8), "REST Output"),
@@ -142,7 +142,7 @@ class RestPasswordManagementServiceTests {
         }
 
         @Test
-        void verifyUserFound() {
+        void verifyUserFound() throws Throwable {
             val data = "casuser";
             try (val webServer = new MockWebServer(9090,
                 new ByteArrayResource(data.getBytes(StandardCharsets.UTF_8), "REST Output"),
@@ -162,7 +162,7 @@ class RestPasswordManagementServiceTests {
         }
 
         @Test
-        void verifyPhoneFound() {
+        void verifyPhoneFound() throws Throwable {
             val data = "1234567890";
             try (val webServer = new MockWebServer(9092,
                 new ByteArrayResource(data.getBytes(StandardCharsets.UTF_8), "REST Output"),
@@ -181,7 +181,7 @@ class RestPasswordManagementServiceTests {
         }
 
         @Test
-        void verifySecurityQuestions() {
+        void verifySecurityQuestions() throws Throwable {
             val data = "{\"question1\":\"answer1\"}";
             try (val webServer = new MockWebServer(9308,
                 new ByteArrayResource(data.getBytes(StandardCharsets.UTF_8), "REST Output"),
@@ -210,7 +210,7 @@ class RestPasswordManagementServiceTests {
 
 
         @Test
-        void verifyUpdateSecurityQuestions() {
+        void verifyUpdateSecurityQuestions() throws Throwable {
             val query = PasswordManagementQuery.builder().username("casuser").build();
             query.securityQuestion("Q1", "A1");
             try (val webServer = new MockWebServer(9308, HttpStatus.OK)) {
@@ -237,7 +237,7 @@ class RestPasswordManagementServiceTests {
         }
 
         @Test
-        void verifyUnlockAccount() {
+        void verifyUnlockAccount() throws Throwable {
             try (val webServer = new MockWebServer(9308, HttpStatus.OK)) {
                 webServer.start();
                 val props = new CasConfigurationProperties();
@@ -250,7 +250,7 @@ class RestPasswordManagementServiceTests {
 
 
         @Test
-        void verifyPasswordChanged() {
+        void verifyPasswordChanged() throws Throwable {
             val data = "true";
             val request = new PasswordChangeRequest("casuser", "current-psw".toCharArray(), "123456".toCharArray(), "123456".toCharArray());
             try (val webServer = new MockWebServer(9309,

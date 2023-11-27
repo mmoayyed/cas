@@ -6,7 +6,7 @@ const assert = require("assert");
     const browser = await puppeteer.launch(cas.browserOptions());
     const page = await cas.newPage(browser);
 
-    await cas.goto(page, "https://localhost:8443/cas/login?locale=en");
+    await cas.gotoLogin(page);
     await page.focus("#username");
     await page.keyboard.press("Tab");
     await page.focus("#password");
@@ -15,13 +15,13 @@ const assert = require("assert");
     await cas.assertVisibility(page, "#usernameValidationMessage");
     await cas.assertVisibility(page, "#passwordValidationMessage");
 
-    await cas.loginWith(page, "casuser", "Mellon");
+    await cas.loginWith(page);
 
     await cas.assertCookie(page);
     await cas.assertPageTitle(page, "CAS - Central Authentication Service Log In Successful");
     await cas.assertInnerText(page, '#content div h2', "Log In Successful");
 
-    for (i = 0; i < 2; i++) {
+    for (let i = 0; i < 2; i++) {
         await cas.goto(page, "https://localhost:8443/cas/login?renew=true");
         await page.waitForTimeout(1000);
 

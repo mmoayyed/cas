@@ -4,26 +4,21 @@ import org.apereo.cas.api.PasswordlessAuthenticationRequest;
 import org.apereo.cas.api.PasswordlessTokenRepository;
 import org.apereo.cas.api.PasswordlessUserAccount;
 import org.apereo.cas.impl.token.PasswordlessAuthenticationToken;
-
+import org.apereo.cas.util.MockRequestContext;
 import lombok.val;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Import;
-import org.springframework.mock.web.MockHttpServletRequest;
-import org.springframework.mock.web.MockHttpServletResponse;
-import org.springframework.mock.web.MockServletContext;
 import org.springframework.test.context.TestPropertySource;
-import org.springframework.webflow.context.servlet.ServletExternalContext;
 import org.springframework.webflow.engine.Flow;
 import org.springframework.webflow.execution.Action;
 import org.springframework.webflow.test.MockFlowExecutionContext;
 import org.springframework.webflow.test.MockFlowSession;
-import org.springframework.webflow.test.MockRequestContext;
-
 import java.util.UUID;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -35,6 +30,7 @@ import static org.junit.jupiter.api.Assertions.*;
 @Import(BaseWebflowConfigurerTests.SharedTestConfiguration.class)
 @Tag("WebflowAuthenticationActions")
 @TestPropertySource(properties = "cas.authn.passwordless.accounts.simple.casuser=casuser@example.org")
+@Execution(ExecutionMode.SAME_THREAD)
 class AcceptPasswordlessAuthenticationActionTests extends BasePasswordlessAuthenticationActionTests {
     @Autowired
     @Qualifier(CasWebflowConstants.ACTION_ID_ACCEPT_PASSWORDLESS_AUTHN)
@@ -45,50 +41,46 @@ class AcceptPasswordlessAuthenticationActionTests extends BasePasswordlessAuthen
     private PasswordlessTokenRepository passwordlessTokenRepository;
 
     @Test
-    void verifyAction() throws Exception {
-        val exec = new MockFlowExecutionContext(new MockFlowSession(new Flow(CasWebflowConfigurer.FLOW_ID_LOGIN)));
-        val context = new MockRequestContext(exec);
+    void verifyAction() throws Throwable {
+        val flow = new Flow(CasWebflowConfigurer.FLOW_ID_LOGIN);
+        flow.setApplicationContext(applicationContext);
+        val exec = new MockFlowExecutionContext(new MockFlowSession(flow));
+        val context = MockRequestContext.create(applicationContext);
+        context.setFlowExecutionContext(exec);
 
         putAccountInto(context);
         val token = createToken();
 
-        val request = new MockHttpServletRequest();
-        request.addParameter("token", token.getToken());
-        context.setExternalContext(new ServletExternalContext(new MockServletContext(), request, new MockHttpServletResponse()));
+        context.setParameter("token", token.getToken());
+
         assertEquals(CasWebflowConstants.TRANSITION_ID_SUCCESS, acceptPasswordlessAuthenticationAction.execute(context).getId());
         assertTrue(passwordlessTokenRepository.findToken("casuser").isEmpty());
     }
 
-    private PasswordlessAuthenticationToken createToken() {
-        val passwordlessUserAccount = PasswordlessUserAccount.builder().username("casuser").build();
-        val passwordlessRequest = PasswordlessAuthenticationRequest.builder().username("casuser").build();
-        val token = passwordlessTokenRepository.createToken(passwordlessUserAccount, passwordlessRequest);
-        passwordlessTokenRepository.saveToken(passwordlessUserAccount, passwordlessRequest, token);
-        return token;
-    }
-
     @Test
-    void verifyUnknownToken() throws Exception {
-        val exec = new MockFlowExecutionContext(new MockFlowSession(new Flow(CasWebflowConfigurer.FLOW_ID_LOGIN)));
-        val context = new MockRequestContext(exec);
+    void verifyUnknownToken() throws Throwable {
+        val flow = new Flow(CasWebflowConfigurer.FLOW_ID_LOGIN);
+        flow.setApplicationContext(applicationContext);
+        val exec = new MockFlowExecutionContext(new MockFlowSession(flow));
+        val context = MockRequestContext.create(applicationContext);
+        context.setFlowExecutionContext(exec);
 
         putAccountInto(context);
         createToken();
-        
-        val request = new MockHttpServletRequest();
-        request.addParameter("token", UUID.randomUUID().toString());
 
-        context.setExternalContext(new ServletExternalContext(new MockServletContext(), request, new MockHttpServletResponse()));
+        context.setParameter("token", UUID.randomUUID().toString());
+
         assertEquals(CasWebflowConstants.TRANSITION_ID_AUTHENTICATION_FAILURE, acceptPasswordlessAuthenticationAction.execute(context).getId());
     }
 
     @Test
-    void verifyMissingTokenAction() throws Exception {
-        val exec = new MockFlowExecutionContext(new MockFlowSession(new Flow(CasWebflowConfigurer.FLOW_ID_LOGIN)));
-        val context = new MockRequestContext(exec);
-        val request = new MockHttpServletRequest();
+    void verifyMissingTokenAction() throws Throwable {
+        val flow = new Flow(CasWebflowConfigurer.FLOW_ID_LOGIN);
+        flow.setApplicationContext(applicationContext);
+        val exec = new MockFlowExecutionContext(new MockFlowSession(flow));
+        val context = MockRequestContext.create(applicationContext);
+        context.setFlowExecutionContext(exec);
 
-        context.setExternalContext(new ServletExternalContext(new MockServletContext(), request, new MockHttpServletResponse()));
         putAccountInto(context);
         assertEquals(CasWebflowConstants.TRANSITION_ID_AUTHENTICATION_FAILURE, acceptPasswordlessAuthenticationAction.execute(context).getId());
     }
@@ -102,5 +94,13 @@ class AcceptPasswordlessAuthenticationActionTests extends BasePasswordlessAuthen
             .build();
         PasswordlessWebflowUtils.putPasswordlessAuthenticationAccount(context, account);
         return account;
+    }
+
+    private PasswordlessAuthenticationToken createToken() {
+        val passwordlessUserAccount = PasswordlessUserAccount.builder().username("casuser").build();
+        val passwordlessRequest = PasswordlessAuthenticationRequest.builder().username("casuser").build();
+        val token = passwordlessTokenRepository.createToken(passwordlessUserAccount, passwordlessRequest);
+        passwordlessTokenRepository.saveToken(passwordlessUserAccount, passwordlessRequest, token);
+        return token;
     }
 }

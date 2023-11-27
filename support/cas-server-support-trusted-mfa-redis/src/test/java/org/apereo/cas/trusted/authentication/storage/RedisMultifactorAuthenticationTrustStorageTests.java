@@ -49,13 +49,13 @@ class RedisMultifactorAuthenticationTrustStorageTests extends AbstractMultifacto
     @BeforeEach
     public void setup() {
         val key = RedisMultifactorAuthenticationTrustStorage.CAS_PREFIX + '*';
-        try (val keys = redisMfaTrustedAuthnTemplate.scan(key, 0)) {
+        try (val keys = redisMfaTrustedAuthnTemplate.scan(key, 0L)) {
             redisMfaTrustedAuthnTemplate.delete(keys.collect(Collectors.toSet()));
         }
     }
 
     @Test
-    void verifySetAnExpireByKey() {
+    void verifySetAnExpireByKey() throws Throwable {
         var record = MultifactorAuthenticationTrustRecord.newInstance("casuser", "geography", "fingerprint");
         record = getMfaTrustEngine().save(record);
         assertNotNull(getMfaTrustEngine().get(record.getId()));
@@ -67,7 +67,7 @@ class RedisMultifactorAuthenticationTrustStorageTests extends AbstractMultifacto
     }
 
     @Test
-    void verifyMultipleDevicesPerUser() {
+    void verifyMultipleDevicesPerUser() throws Throwable {
         getMfaTrustEngine().save(MultifactorAuthenticationTrustRecord.newInstance("casuser", "geography", "fingerprint"));
         getMfaTrustEngine().save(MultifactorAuthenticationTrustRecord.newInstance("casuser", "geography bis", "fingerprint bis"));
         getMfaTrustEngine().save(MultifactorAuthenticationTrustRecord.newInstance("casuser2", "geography2", "fingerprint2"));
@@ -78,7 +78,7 @@ class RedisMultifactorAuthenticationTrustStorageTests extends AbstractMultifacto
 
 
     @Test
-    void verifyExpireByDate() {
+    void verifyExpireByDate() throws Throwable {
         val r = MultifactorAuthenticationTrustRecord.newInstance("castest", "geography", "fingerprint");
         val now = ZonedDateTime.now(ZoneOffset.UTC).truncatedTo(ChronoUnit.SECONDS);
         r.setRecordDate(now.minusDays(2));

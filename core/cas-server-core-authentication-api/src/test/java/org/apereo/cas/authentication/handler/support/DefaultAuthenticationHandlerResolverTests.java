@@ -9,8 +9,6 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.core.Ordered;
 
-import java.util.Set;
-
 import static java.util.Set.*;
 import static org.apereo.cas.authentication.AuthenticationHandlerResolver.*;
 import static org.junit.jupiter.api.Assertions.*;
@@ -25,7 +23,7 @@ import static org.mockito.Mockito.*;
 @Tag("AuthenticationHandler")
 class DefaultAuthenticationHandlerResolverTests {
     @Test
-    void verifyOperation() {
+    void verifyOperation() throws Throwable {
         val h1 = new SimpleTestUsernamePasswordAuthenticationHandler("h1");
         val h2 = new SimpleTestUsernamePasswordAuthenticationHandler("h2");
         h2.setState(AuthenticationHandlerStates.STANDBY);
@@ -38,8 +36,8 @@ class DefaultAuthenticationHandlerResolverTests {
     }
 
     @Test
-    void verifyNoOp() {
-        assertFalse(noOp().supports(Set.of(), mock(AuthenticationTransaction.class)));
-        assertTrue(noOp().resolve(Set.of(), mock(AuthenticationTransaction.class)).isEmpty());
+    void verifyNoOp() throws Throwable {
+        assertFalse(noOp().supports(of(), mock(AuthenticationTransaction.class)));
+        assertTrue(noOp().resolve(of(), mock(AuthenticationTransaction.class)).isEmpty());
     }
 }

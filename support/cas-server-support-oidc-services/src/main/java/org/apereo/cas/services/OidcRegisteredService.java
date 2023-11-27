@@ -5,6 +5,7 @@ import org.apereo.cas.configuration.support.ExpressionLanguageCapable;
 import org.apereo.cas.services.RegisteredServiceProperty.RegisteredServiceProperties;
 import org.apereo.cas.support.oauth.services.OAuthRegisteredService;
 
+import com.fasterxml.jackson.annotation.JacksonInject;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
@@ -38,21 +39,28 @@ public class OidcRegisteredService extends OAuthRegisteredService {
     @ExpressionLanguageCapable
     private String jwks;
 
+    @JacksonInject("jwksKeyId")
     private String jwksKeyId;
 
     @DurationCapable
     private String jwksCacheDuration;
 
-    private String tokenEndpointAuthenticationMethod = "client_secret_basic";
-
+    @JacksonInject("signIdToken")
     private boolean signIdToken = true;
 
+    @JacksonInject("encryptIdToken")
     private boolean encryptIdToken;
 
+    @JacksonInject("idTokenEncryptionOptional")
+    private boolean idTokenEncryptionOptional;
+
+    @JacksonInject("idTokenEncryptionAlg")
     private String idTokenEncryptionAlg;
 
+    @JacksonInject("idTokenSigningAlg")
     private String idTokenSigningAlg;
 
+    @JacksonInject("userInfoSigningAlg")
     private String userInfoSigningAlg;
 
     private String userInfoEncryptedResponseAlg;
@@ -79,10 +87,7 @@ public class OidcRegisteredService extends OAuthRegisteredService {
      * @return the subject type
      */
     public String getSubjectType() {
-        if (StringUtils.isBlank(this.subjectType)) {
-            return OidcSubjectTypes.PUBLIC.getType();
-        }
-        return subjectType;
+        return StringUtils.defaultIfBlank(subjectType, OidcSubjectTypes.PUBLIC.getType());
     }
 
     @JsonIgnore

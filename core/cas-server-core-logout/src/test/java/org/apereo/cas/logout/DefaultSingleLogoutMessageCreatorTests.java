@@ -1,5 +1,6 @@
 package org.apereo.cas.logout;
 
+import org.apereo.cas.logout.slo.SingleLogoutExecutionRequest;
 import org.apereo.cas.logout.slo.SingleLogoutRequestContext;
 import org.apereo.cas.mock.MockTicketGrantingTicket;
 import org.apereo.cas.services.RegisteredServiceLogoutType;
@@ -24,7 +25,7 @@ import static org.mockito.Mockito.*;
 @Tag("Logout")
 class DefaultSingleLogoutMessageCreatorTests {
     @Test
-    void verifyFrontChannel() {
+    void verifyFrontChannel() throws Throwable {
         val input = new DefaultSingleLogoutMessageCreator();
 
         val exec = SingleLogoutExecutionRequest.builder()

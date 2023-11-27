@@ -25,12 +25,12 @@ import org.apereo.cas.config.CasCoreWebConfiguration;
 import org.apereo.cas.config.CasCoreWebflowConfiguration;
 import org.apereo.cas.config.CasMultifactorAuthenticationWebflowConfiguration;
 import org.apereo.cas.config.CasPersonDirectoryConfiguration;
+import org.apereo.cas.config.CasPersonDirectoryStubConfiguration;
 import org.apereo.cas.config.CasRegisteredServicesTestConfiguration;
 import org.apereo.cas.config.CasWebApplicationServiceFactoryConfiguration;
 import org.apereo.cas.config.CasWebflowContextConfiguration;
 import org.apereo.cas.configuration.CasConfigurationProperties;
 import org.apereo.cas.services.ServicesManager;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.mail.MailSenderAutoConfiguration;
@@ -38,6 +38,7 @@ import org.springframework.boot.autoconfigure.web.servlet.WebMvcAutoConfiguratio
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.cloud.autoconfigure.RefreshAutoConfiguration;
+import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.webflow.execution.Action;
 
 /**
@@ -48,6 +49,7 @@ import org.springframework.webflow.execution.Action;
  */
 @SpringBootTest(classes = {
     RefreshAutoConfiguration.class,
+    WebMvcAutoConfiguration.class,
     MailSenderAutoConfiguration.class,
     CasConsentCoreConfiguration.class,
     CasConsentWebflowConfiguration.class,
@@ -57,6 +59,7 @@ import org.springframework.webflow.execution.Action;
     CasCoreWebflowConfiguration.class,
     CasWebflowContextConfiguration.class,
     CasPersonDirectoryConfiguration.class,
+    CasPersonDirectoryStubConfiguration.class,
     CasWebApplicationServiceFactoryConfiguration.class,
     CasCoreServicesAuthenticationConfiguration.class,
     CasCoreMultifactorAuthenticationConfiguration.class,
@@ -76,8 +79,7 @@ import org.springframework.webflow.execution.Action;
     CasCoreAuthenticationConfiguration.class,
     CasCoreAuthenticationMetadataConfiguration.class,
     CasCoreAuthenticationSupportConfiguration.class,
-    CasCoreAuthenticationServiceSelectionStrategyConfiguration.class,
-    WebMvcAutoConfiguration.class
+    CasCoreAuthenticationServiceSelectionStrategyConfiguration.class
 })
 @EnableConfigurationProperties(CasConfigurationProperties.class)
 public abstract class BaseConsentActionTests {
@@ -93,6 +95,8 @@ public abstract class BaseConsentActionTests {
     @Qualifier(ServicesManager.BEAN_NAME)
     protected ServicesManager servicesManager;
 
+    @Autowired
+    protected ConfigurableApplicationContext applicationContext;
     @Autowired
     protected CasConfigurationProperties casProperties;
 }

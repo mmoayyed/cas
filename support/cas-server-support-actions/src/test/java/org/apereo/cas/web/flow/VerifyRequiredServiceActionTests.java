@@ -6,24 +6,17 @@ import org.apereo.cas.services.RegisteredServiceProperty;
 import org.apereo.cas.services.RegisteredServiceTestUtils;
 import org.apereo.cas.ticket.registry.TicketRegistrySupport;
 import org.apereo.cas.util.CollectionUtils;
+import org.apereo.cas.util.MockRequestContext;
 import org.apereo.cas.web.flow.login.VerifyRequiredServiceAction;
 import org.apereo.cas.web.support.WebUtils;
-
 import lombok.val;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
-import org.springframework.mock.web.MockHttpServletRequest;
-import org.springframework.mock.web.MockHttpServletResponse;
-import org.springframework.mock.web.MockServletContext;
 import org.springframework.test.context.TestPropertySource;
-import org.springframework.webflow.context.servlet.ServletExternalContext;
 import org.springframework.webflow.execution.Action;
 import org.springframework.webflow.execution.repository.NoSuchFlowExecutionException;
-import org.springframework.webflow.test.MockRequestContext;
-
 import jakarta.servlet.http.Cookie;
-
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
@@ -41,42 +34,32 @@ import static org.mockito.Mockito.*;
 class VerifyRequiredServiceActionTests extends AbstractWebflowActionsTests {
 
     private Action verifyRequiredServiceAction;
-
     private MockRequestContext requestContext;
-
-    private MockHttpServletRequest httpRequest;
-
     private TicketRegistrySupport ticketRegistrySupport;
 
     @BeforeEach
-    public void onSetUp() {
-        this.ticketRegistrySupport = mock(TicketRegistrySupport.class);
-
-        this.verifyRequiredServiceAction = new VerifyRequiredServiceAction(getServicesManager(),
-            getTicketGrantingTicketCookieGenerator(),
-            casProperties, ticketRegistrySupport);
-
-        val response = new MockHttpServletResponse();
-        this.requestContext = new MockRequestContext();
-        this.httpRequest = new MockHttpServletRequest();
-        this.requestContext.setExternalContext(new ServletExternalContext(new MockServletContext(), this.httpRequest, response));
+    public void onSetUp() throws Throwable {
+        ticketRegistrySupport = mock(TicketRegistrySupport.class);
+        verifyRequiredServiceAction = new VerifyRequiredServiceAction(getServicesManager(),
+            getTicketGrantingTicketCookieGenerator(), casProperties, ticketRegistrySupport);
+        this.requestContext = MockRequestContext.create(applicationContext);
     }
 
     @Test
-    void verifySkipCheckNoService() throws Exception {
+    void verifySkipCheckNoService() throws Throwable {
         val result = verifyRequiredServiceAction.execute(this.requestContext);
         assertEquals(CasWebflowConstants.TRANSITION_ID_SUCCESS, result.getId());
     }
 
     @Test
-    void verifySkipServiceMatchesPattern() throws Exception {
+    void verifySkipServiceMatchesPattern() throws Throwable {
         WebUtils.putServiceIntoFlowScope(this.requestContext, RegisteredServiceTestUtils.getService("https://www.google.com/example"));
         val result = verifyRequiredServiceAction.execute(this.requestContext);
         assertEquals(CasWebflowConstants.TRANSITION_ID_SUCCESS, result.getId());
     }
 
     @Test
-    void verifySkipServiceByProperty() throws Exception {
+    void verifySkipServiceByProperty() throws Throwable {
         val service = RegisteredServiceTestUtils.getRegisteredService("^https://yahoo.com.+");
         service.setEvaluationOrder(1);
         service.setProperties(CollectionUtils.wrap(
@@ -89,21 +72,21 @@ class VerifyRequiredServiceActionTests extends AbstractWebflowActionsTests {
     }
 
     @Test
-    void verifySkipNoSsoServices() throws Exception {
+    void verifySkipNoSsoServices() throws Throwable {
         val service = RegisteredServiceTestUtils.getRegisteredService("^https://app1.com.+");
         getServicesManager().save(service);
         WebUtils.putServiceIntoFlowScope(this.requestContext, RegisteredServiceTestUtils.getService("https://app1.com/"));
 
         val tgt = new MockTicketGrantingTicket("casuser");
         when(ticketRegistrySupport.getTicketGrantingTicket(anyString())).thenReturn(tgt);
-        this.httpRequest.setCookies(new Cookie(casProperties.getTgc().getName(), tgt.getId()));
+        requestContext.getHttpServletRequest().setCookies(new Cookie(casProperties.getTgc().getName(), tgt.getId()));
 
         val result = verifyRequiredServiceAction.execute(this.requestContext);
         assertEquals(CasWebflowConstants.TRANSITION_ID_SUCCESS, result.getId());
     }
 
     @Test
-    void verifySkipWithSsoServicesMismatch() {
+    void verifySkipWithSsoServicesMismatch() throws Throwable {
         val service = RegisteredServiceTestUtils.getRegisteredService("^https://app2.com.+");
         getServicesManager().save(service);
         WebUtils.putServiceIntoFlowScope(this.requestContext, RegisteredServiceTestUtils.getService("https://app2.com/"));
@@ -113,13 +96,13 @@ class VerifyRequiredServiceActionTests extends AbstractWebflowActionsTests {
             serviceTicketSessionTrackingPolicy);
 
         when(ticketRegistrySupport.getTicketGrantingTicket(anyString())).thenReturn(tgt);
-        this.httpRequest.setCookies(new Cookie(casProperties.getTgc().getName(), tgt.getId()));
+        requestContext.getHttpServletRequest().setCookies(new Cookie(casProperties.getTgc().getName(), tgt.getId()));
 
         assertThrows(NoSuchFlowExecutionException.class, () -> verifyRequiredServiceAction.execute(this.requestContext));
     }
 
     @Test
-    void verifySkipWithSsoServicesMatch() {
+    void verifySkipWithSsoServicesMatch() throws Throwable {
         val service = RegisteredServiceTestUtils.getRegisteredService("^https://app2.com.+");
         getServicesManager().save(service);
         WebUtils.putServiceIntoFlowScope(this.requestContext, RegisteredServiceTestUtils.getService("https://app2.com/"));
@@ -129,7 +112,7 @@ class VerifyRequiredServiceActionTests extends AbstractWebflowActionsTests {
             serviceTicketSessionTrackingPolicy);
 
         when(ticketRegistrySupport.getTicketGrantingTicket(anyString())).thenReturn(tgt);
-        this.httpRequest.setCookies(new Cookie(casProperties.getTgc().getName(), tgt.getId()));
+        requestContext.getHttpServletRequest().setCookies(new Cookie(casProperties.getTgc().getName(), tgt.getId()));
 
         assertDoesNotThrow(() -> verifyRequiredServiceAction.execute(this.requestContext));
     }

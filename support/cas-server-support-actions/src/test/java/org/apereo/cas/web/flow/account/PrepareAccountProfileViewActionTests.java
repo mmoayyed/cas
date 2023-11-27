@@ -9,11 +9,11 @@ import org.apereo.cas.config.CasWebflowAccountProfileConfiguration;
 import org.apereo.cas.services.RegisteredServiceTestUtils;
 import org.apereo.cas.ticket.TicketGrantingTicketImpl;
 import org.apereo.cas.ticket.expiration.NeverExpiresExpirationPolicy;
+import org.apereo.cas.util.MockRequestContext;
 import org.apereo.cas.util.RandomUtils;
 import org.apereo.cas.web.flow.AbstractWebflowActionsTests;
 import org.apereo.cas.web.flow.CasWebflowConstants;
 import org.apereo.cas.web.support.WebUtils;
-
 import lombok.val;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -22,15 +22,9 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.TestPropertySource;
-import org.springframework.webflow.context.ExternalContextHolder;
 import org.springframework.webflow.execution.Action;
-import org.springframework.webflow.execution.RequestContextHolder;
-import org.springframework.webflow.test.MockExternalContext;
-import org.springframework.webflow.test.MockRequestContext;
-
 import java.util.Map;
 import java.util.UUID;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -55,7 +49,7 @@ class PrepareAccountProfileViewActionTests extends AbstractWebflowActionsTests {
     private Action prepareAccountProfileViewAction;
 
     @Test
-    void verifyOperation() throws Exception {
+    void verifyOperation() throws Throwable {
         val registeredService1 = RegisteredServiceTestUtils.getRegisteredService(UUID.randomUUID().toString(), Map.of());
         registeredService1.setEvaluationOrder(200);
         val registeredService2 = RegisteredServiceTestUtils.getRegisteredService(UUID.randomUUID().toString(), Map.of());
@@ -63,16 +57,12 @@ class PrepareAccountProfileViewActionTests extends AbstractWebflowActionsTests {
         getServicesManager().save(registeredService1);
         getServicesManager().save(registeredService2);
 
-        val context = new MockRequestContext();
+        val context = MockRequestContext.create(applicationContext);
         val tgt = new TicketGrantingTicketImpl(RandomUtils.randomAlphabetic(8),
             CoreAuthenticationTestUtils.getAuthentication(), NeverExpiresExpirationPolicy.INSTANCE);
         WebUtils.putTicketGrantingTicketInScopes(context, tgt);
         getTicketRegistry().addTicket(tgt);
-
-        context.setExternalContext(new MockExternalContext());
-        RequestContextHolder.setRequestContext(context);
-        ExternalContextHolder.setExternalContext(context.getExternalContext());
-
+        
         val result = prepareAccountProfileViewAction.execute(context);
         assertEquals(CasWebflowConstants.TRANSITION_ID_SUCCESS, result.getId());
         assertNotNull(WebUtils.getAuthorizedServices(context));
@@ -82,7 +72,7 @@ class PrepareAccountProfileViewActionTests extends AbstractWebflowActionsTests {
         assertTrue(list.indexOf(registeredService1) > list.indexOf(registeredService2));
         assertNotNull(WebUtils.getAuthentication(context));
 
-        val session = (PrepareAccountProfileViewAction.SingleSignOnSession) WebUtils.getSingleSignOnSessions(context).get(0);
+        val session = (PrepareAccountProfileViewAction.SingleSignOnSession) WebUtils.getSingleSignOnSessions(context).getFirst();
         assertNotNull(session.getAuthenticationDate());
         assertNotNull(session.getPayload());
         assertNotNull(session.getPrincipal());
