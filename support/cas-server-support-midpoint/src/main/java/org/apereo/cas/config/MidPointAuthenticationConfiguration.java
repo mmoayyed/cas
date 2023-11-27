@@ -72,11 +72,11 @@ public class MidPointAuthenticationConfiguration {
         @Qualifier("midpointAuthenticationHandlers") final BeanContainer<AuthenticationHandler> midpointAuthenticationHandlers,
         @Qualifier(PrincipalResolver.BEAN_NAME_PRINCIPAL_RESOLVER) final PrincipalResolver defaultPrincipalResolver) {
         return plan -> {
-            val midpoint = casProperties.getAuthn().getSyncope();
-            FunctionUtils.doIf(midpoint.isDefined(),
-                    __ -> midpointAuthenticationHandlers.toList().forEach(
-                        handler -> plan.registerAuthenticationHandlerWithPrincipalResolver(handler, defaultPrincipalResolver)))
-                .accept(midpoint);
+            val midpoint = casProperties.getAuthn().getMidpoint();
+            if (midpoint.isDefined()) {
+                midpointAuthenticationHandlers.toList().forEach(
+                    handler -> plan.registerAuthenticationHandlerWithPrincipalResolver(handler, defaultPrincipalResolver));
+            }
         };
     }
 

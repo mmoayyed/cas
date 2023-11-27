@@ -42,8 +42,8 @@ public class MidPointAuthenticationHandler extends AbstractUsernamePasswordAuthe
         final UsernamePasswordCredential credential, final String originalPassword)
         throws GeneralSecurityException, PreventedException {
         try {
-            val builder = RestPrismServiceBuilder.create();
-            val restService = builder.username(properties.getUsername())
+            val restService = RestPrismServiceBuilder.create()
+                .username(properties.getUsername())
                 .password(properties.getPassword())
                 .baseUrl(properties.getUrl())
                 .build();
@@ -54,7 +54,7 @@ public class MidPointAuthenticationHandler extends AbstractUsernamePasswordAuthe
                 .queryFor(UserType.class)
                 .item(namePath).eq(credential.getUsername())
                 .get();
-
+            System.out.println(result);
             return null;
         } catch (final Exception e) {
             throw new FailedLoginException("Could not authenticate account for " + credential.getUsername());

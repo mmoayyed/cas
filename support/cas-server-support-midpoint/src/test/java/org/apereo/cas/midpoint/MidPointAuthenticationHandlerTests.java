@@ -41,7 +41,7 @@ public class MidPointAuthenticationHandlerTests {
     private CasConfigurationProperties casProperties;
 
     @Test
-    void verifyHandlerPasses() throws Exception {
+    void verifyHandlerPasses() throws Throwable {
         assertNotNull(midpointAuthenticationHandlers);
         val midpointAuthenticationHandler = midpointAuthenticationHandlers.first();
         val credential = CoreAuthenticationTestUtils.getCredentialsWithDifferentUsernameAndPassword(
