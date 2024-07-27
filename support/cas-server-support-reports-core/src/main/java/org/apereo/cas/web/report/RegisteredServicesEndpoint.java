@@ -1,5 +1,6 @@
 package org.apereo.cas.web.report;
 
+import io.github.pixee.security.ZipSecurity;
 import org.apereo.cas.authentication.principal.ServiceFactory;
 import org.apereo.cas.authentication.principal.WebApplicationService;
 import org.apereo.cas.configuration.CasConfigurationProperties;
@@ -345,7 +346,7 @@ public class RegisteredServicesEndpoint extends BaseCasRestActuatorEndpoint {
     private ResponseEntity<RegisteredService> importServicesAsStream(final HttpServletRequest request) throws IOException {
         var servicesToImport = Stream.<RegisteredService>empty();
         try (val bais = new ByteArrayInputStream(IOUtils.toByteArray(request.getInputStream()));
-             val zipIn = new ZipInputStream(bais)) {
+             val zipIn = ZipSecurity.createHardenedInputStream(bais)) {
             var entry = zipIn.getNextEntry();
             while (entry != null) {
                 if (!entry.isDirectory()) {

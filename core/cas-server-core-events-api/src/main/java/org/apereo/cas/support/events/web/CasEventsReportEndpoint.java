@@ -1,5 +1,6 @@
 package org.apereo.cas.support.events.web;
 
+import io.github.pixee.security.ZipSecurity;
 import org.apereo.cas.configuration.CasConfigurationProperties;
 import org.apereo.cas.support.events.CasEventRepository;
 import org.apereo.cas.support.events.dao.CasEvent;
@@ -108,7 +109,7 @@ public class CasEventsReportEndpoint extends BaseCasRestActuatorEndpoint {
     private ResponseEntity<CasEvent> importEventsAsStream(final HttpServletRequest request) throws Throwable {
         val eventRepository = applicationContext.getBean(CasEventRepository.BEAN_NAME, CasEventRepository.class);
         try (val bais = new ByteArrayInputStream(IOUtils.toByteArray(request.getInputStream()));
-             val zipIn = new ZipInputStream(bais)) {
+             val zipIn = ZipSecurity.createHardenedInputStream(bais)) {
             var entry = zipIn.getNextEntry();
             while (entry != null) {
                 if (!entry.isDirectory()) {
