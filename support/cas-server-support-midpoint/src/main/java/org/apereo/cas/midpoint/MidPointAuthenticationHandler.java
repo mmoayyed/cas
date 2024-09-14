@@ -57,6 +57,7 @@ public class MidPointAuthenticationHandler extends AbstractUsernamePasswordAuthe
             System.out.println(result);
             return null;
         } catch (final Exception e) {
+            e.printStackTrace();
             throw new FailedLoginException("Could not authenticate account for " + credential.getUsername());
         }
     }
