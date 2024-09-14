@@ -57,6 +57,7 @@ public class RestfulServiceRegistry extends AbstractServiceRegistry {
     public RegisteredService save(final RegisteredService registeredService) {
         HttpResponse response = null;
         try {
+            registeredService.assignIdIfNecessary();
             invokeServiceRegistryListenerPreSave(registeredService);
             val entity = this.serializer.toString(registeredService);
             val exec = HttpExecutionRequest.builder()
@@ -69,8 +70,10 @@ public class RestfulServiceRegistry extends AbstractServiceRegistry {
                 .build();
             response = HttpUtils.execute(exec);
             if (response.getCode() == HttpStatus.OK.value()) {
-                val result = IOUtils.toString(((HttpEntityContainer) response).getEntity().getContent(), StandardCharsets.UTF_8);
-                return this.serializer.from(result);
+                try (val content = ((HttpEntityContainer) response).getEntity().getContent()) {
+                    val result = IOUtils.toString(content, StandardCharsets.UTF_8);
+                    return this.serializer.from(result);
+                }
             }
         } catch (final Exception e) {
             LoggingUtils.error(LOGGER, e);
@@ -135,14 +138,16 @@ public class RestfulServiceRegistry extends AbstractServiceRegistry {
                 .build();
             response = HttpUtils.execute(exec);
             if (response != null && response.getCode() == HttpStatus.OK.value()) {
-                val result = IOUtils.toString(((HttpEntityContainer) response).getEntity().getContent(), StandardCharsets.UTF_8);
-                val services = this.serializer.fromList(result);
-                services
-                    .stream()
-                    .map(this::invokeServiceRegistryListenerPostLoad)
-                    .filter(Objects::nonNull)
-                    .forEach(s -> publishEvent(new CasRegisteredServiceLoadedEvent(this, s, clientInfo)));
-                return services;
+                try (val content = ((HttpEntityContainer) response).getEntity().getContent()) {
+                    val result = IOUtils.toString(content, StandardCharsets.UTF_8);
+                    val services = this.serializer.fromList(result);
+                    services
+                            .stream()
+                            .map(this::invokeServiceRegistryListenerPostLoad)
+                            .filter(Objects::nonNull)
+                            .forEach(s -> publishEvent(new CasRegisteredServiceLoadedEvent(this, s, clientInfo)));
+                    return services;
+                }
             }
         } catch (final Exception e) {
             LoggingUtils.error(LOGGER, e);
@@ -166,8 +171,10 @@ public class RestfulServiceRegistry extends AbstractServiceRegistry {
                 .build();
             response = HttpUtils.execute(exec);
             if (response.getCode() == HttpStatus.OK.value()) {
-                val result = IOUtils.toString(((HttpEntityContainer) response).getEntity().getContent(), StandardCharsets.UTF_8);
-                return serializer.from(result);
+                try (val content = ((HttpEntityContainer) response).getEntity().getContent()) {
+                    val result = IOUtils.toString(content, StandardCharsets.UTF_8);
+                    return serializer.from(result);
+                }
             }
         } catch (final Exception e) {
             LoggingUtils.error(LOGGER, e);

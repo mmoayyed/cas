@@ -64,7 +64,6 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.actuate.autoconfigure.endpoint.condition.ConditionalOnAvailableEndpoint;
 import org.springframework.boot.actuate.autoconfigure.health.ConditionalOnEnabledHealthIndicator;
 import org.springframework.boot.actuate.health.HealthIndicator;
-import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.cloud.context.config.annotation.RefreshScope;
@@ -90,12 +89,12 @@ import java.util.Optional;
 @EnableConfigurationProperties(CasConfigurationProperties.class)
 @Slf4j
 @ConditionalOnFeatureEnabled(feature = CasFeatureModule.FeatureCatalog.SAMLIdentityProvider)
-@AutoConfiguration
-public class SamlIdPMetadataConfiguration {
+@Configuration(value = "SamlIdPMetadataConfiguration", proxyBeanMethods = false)
+class SamlIdPMetadataConfiguration {
 
     @Configuration(value = "SamlIdPMetadataEndpointConfiguration", proxyBeanMethods = false)
     @EnableConfigurationProperties(CasConfigurationProperties.class)
-    public static class SamlIdPMetadataEndpointConfiguration {
+    static class SamlIdPMetadataEndpointConfiguration {
 
         @Bean
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
@@ -136,22 +135,23 @@ public class SamlIdPMetadataConfiguration {
         public SamlRegisteredServiceCachedMetadataEndpoint samlRegisteredServiceCachedMetadataEndpoint(
             final CasConfigurationProperties casProperties,
             @Qualifier(SamlRegisteredServiceCachingMetadataResolver.BEAN_NAME)
-            final SamlRegisteredServiceCachingMetadataResolver defaultSamlRegisteredServiceCachingMetadataResolver,
+            final ObjectProvider<SamlRegisteredServiceCachingMetadataResolver> defaultSamlRegisteredServiceCachingMetadataResolver,
             @Qualifier(ServicesManager.BEAN_NAME)
-            final ServicesManager servicesManager,
+            final ObjectProvider<ServicesManager> servicesManager,
             @Qualifier(OpenSamlConfigBean.DEFAULT_BEAN_NAME)
-            final OpenSamlConfigBean openSamlConfigBean,
+            final ObjectProvider<OpenSamlConfigBean> openSamlConfigBean,
             @Qualifier(AuditableExecution.AUDITABLE_EXECUTION_REGISTERED_SERVICE_ACCESS)
-            final AuditableExecution registeredServiceAccessStrategyEnforcer) {
+            final ObjectProvider<AuditableExecution> registeredServiceAccessStrategyEnforcer) {
             return new SamlRegisteredServiceCachedMetadataEndpoint(casProperties,
-                defaultSamlRegisteredServiceCachingMetadataResolver, servicesManager, registeredServiceAccessStrategyEnforcer,
-                openSamlConfigBean);
+                defaultSamlRegisteredServiceCachingMetadataResolver, servicesManager,
+                registeredServiceAccessStrategyEnforcer, openSamlConfigBean);
         }
 
         @Bean
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
         @ConditionalOnAvailableEndpoint
         public SSOSamlIdPPostProfileHandlerEndpoint ssoSamlPostProfileHandlerEndpoint(
+            final ConfigurableApplicationContext applicationContext,
             @Qualifier("casSamlIdPMetadataResolver")
             final MetadataResolver casSamlIdPMetadataResolver,
             final CasConfigurationProperties casProperties,
@@ -169,7 +169,8 @@ public class SamlIdPMetadataConfiguration {
             final SamlProfileObjectBuilder<Response> samlProfileSamlResponseBuilder,
             @Qualifier("samlIdPServiceFactory")
             final ServiceFactory samlIdPServiceFactory) {
-            return new SSOSamlIdPPostProfileHandlerEndpoint(casProperties, servicesManager,
+            return new SSOSamlIdPPostProfileHandlerEndpoint(casProperties,
+                applicationContext, servicesManager,
                 authenticationSystemSupport, samlIdPServiceFactory,
                 PrincipalFactoryUtils.newPrincipalFactory(),
                 samlProfileSamlResponseBuilder,
@@ -182,7 +183,7 @@ public class SamlIdPMetadataConfiguration {
 
     @Configuration(value = "SamlIdPDefaultMetadataResolversConfiguration", proxyBeanMethods = false)
     @EnableConfigurationProperties(CasConfigurationProperties.class)
-    public static class SamlIdPDefaultMetadataResolversConfiguration {
+    static class SamlIdPDefaultMetadataResolversConfiguration {
 
         @ConditionalOnMissingBean(name = "metadataQueryProtocolMetadataResolver")
         @Bean
@@ -266,7 +267,7 @@ public class SamlIdPMetadataConfiguration {
 
     @Configuration(value = "SamlIdPMetadataResolutionConfiguration", proxyBeanMethods = false)
     @EnableConfigurationProperties(CasConfigurationProperties.class)
-    public static class SamlIdPMetadataResolutionConfiguration {
+    static class SamlIdPMetadataResolutionConfiguration {
         @ConditionalOnMissingBean(name = "samlRegisteredServiceMetadataResolvers")
         @Bean
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
@@ -306,7 +307,7 @@ public class SamlIdPMetadataConfiguration {
     @Configuration(value = "SamlIdPMetadataGenerationConfiguration", proxyBeanMethods = false)
     @EnableConfigurationProperties(CasConfigurationProperties.class)
     @Lazy(false)
-    public static class SamlIdPMetadataGenerationConfiguration {
+    static class SamlIdPMetadataGenerationConfiguration {
         @ConditionalOnMissingBean(name = SamlIdPMetadataGenerator.BEAN_NAME)
         @Bean(initMethod = "initialize")
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
@@ -341,24 +342,29 @@ public class SamlIdPMetadataConfiguration {
 
     @Configuration(value = "SamlIdPMetadataLocatorConfiguration", proxyBeanMethods = false)
     @EnableConfigurationProperties(CasConfigurationProperties.class)
-    public static class SamlIdPMetadataLocatorConfiguration {
+    static class SamlIdPMetadataLocatorConfiguration {
         @ConditionalOnMissingBean(name = "samlIdPMetadataLocator")
         @Bean
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
         public SamlIdPMetadataLocator samlIdPMetadataLocator(
+            final ConfigurableApplicationContext applicationContext,
+            @Qualifier("samlIdPMetadataGeneratorCipherExecutor")
+            final CipherExecutor samlIdPMetadataGeneratorCipherExecutor,
             final CasConfigurationProperties casProperties,
             @Qualifier("samlIdPMetadataCache")
             final Cache<String, SamlIdPMetadataDocument> samlIdPMetadataCache) throws Exception {
             val idp = casProperties.getAuthn().getSamlIdp();
-            val location = SpringExpressionLanguageValueResolver.getInstance().resolve(idp.getMetadata().getFileSystem().getLocation());
+            val location = SpringExpressionLanguageValueResolver.getInstance()
+                .resolve(idp.getMetadata().getFileSystem().getLocation());
             val metadataLocation = ResourceUtils.getRawResourceFrom(location);
-            return new FileSystemSamlIdPMetadataLocator(metadataLocation, samlIdPMetadataCache);
+            return new FileSystemSamlIdPMetadataLocator(samlIdPMetadataGeneratorCipherExecutor,
+                metadataLocation, samlIdPMetadataCache, applicationContext);
         }
     }
 
     @Configuration(value = "SamlIdPMetadataCacheConfiguration", proxyBeanMethods = false)
     @EnableConfigurationProperties(CasConfigurationProperties.class)
-    public static class SamlIdPMetadataCacheConfiguration {
+    static class SamlIdPMetadataCacheConfiguration {
 
         @ConditionalOnMissingBean(name = "samlIdPMetadataCache")
         @Bean
@@ -387,7 +393,7 @@ public class SamlIdPMetadataConfiguration {
 
     @Configuration(value = "SamlIdPMetadataResolverConfiguration", proxyBeanMethods = false)
     @EnableConfigurationProperties(CasConfigurationProperties.class)
-    public static class SamlIdPMetadataResolverConfiguration {
+    static class SamlIdPMetadataResolverConfiguration {
 
         @ConditionalOnMissingBean(name = SamlRegisteredServiceCachingMetadataResolver.BEAN_NAME)
         @Bean
@@ -405,7 +411,7 @@ public class SamlIdPMetadataConfiguration {
 
     @Configuration(value = "SamlIdPMetadataContextConfiguration", proxyBeanMethods = false)
     @EnableConfigurationProperties(CasConfigurationProperties.class)
-    public static class SamlIdPMetadataContextConfiguration {
+    static class SamlIdPMetadataContextConfiguration {
         @Bean
         @ConditionalOnMissingBean(name = "samlIdPMetadataGeneratorConfigurationContext")
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
@@ -436,7 +442,7 @@ public class SamlIdPMetadataConfiguration {
 
     @Configuration(value = "SamlIdPMetadataInitializationConfiguration", proxyBeanMethods = false)
     @EnableConfigurationProperties(CasConfigurationProperties.class)
-    public static class SamlIdPMetadataInitializationConfiguration {
+    static class SamlIdPMetadataInitializationConfiguration {
         @Bean
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
         @Lazy(false)

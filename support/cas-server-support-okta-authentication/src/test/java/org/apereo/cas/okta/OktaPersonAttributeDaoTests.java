@@ -1,20 +1,21 @@
 package org.apereo.cas.okta;
 
 import org.apereo.cas.authentication.principal.PrincipalResolver;
-import org.apereo.cas.config.CasPersonDirectoryConfiguration;
-import org.apereo.cas.config.CasPersonDirectoryStubConfiguration;
-import org.apereo.cas.config.OktaPersonDirectoryConfiguration;
+import org.apereo.cas.authentication.principal.attribute.PersonAttributeDao;
+import org.apereo.cas.authentication.principal.attribute.PersonAttributeDaoFilter;
+import org.apereo.cas.config.CasOktaAuthenticationAutoConfiguration;
+import org.apereo.cas.config.CasPersonDirectoryAutoConfiguration;
+import org.apereo.cas.test.CasTestExtension;
 import org.apereo.cas.util.spring.beans.BeanContainer;
 import com.okta.sdk.client.Client;
 import com.okta.sdk.resource.user.User;
 import com.okta.sdk.resource.user.UserProfile;
 import com.okta.sdk.resource.user.UserStatus;
 import lombok.val;
-import org.apereo.services.persondir.IPersonAttributeDao;
-import org.apereo.services.persondir.IPersonAttributeDaoFilter;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -32,10 +33,10 @@ import static org.mockito.Mockito.*;
  * @since 6.4.0
  */
 @Tag("Authentication")
+@ExtendWith(CasTestExtension.class)
 class OktaPersonAttributeDaoTests {
 
     @TestConfiguration(value = "OktaClientMockConfiguration", proxyBeanMethods = false)
-    @SuppressWarnings("JavaUtilDate")
     static class OktaClientMockTestConfiguration {
         @Bean
         public Client oktaPersonDirectoryClient() {
@@ -56,9 +57,8 @@ class OktaPersonAttributeDaoTests {
     }
 
     @SpringBootTest(classes = {
-        OktaPersonDirectoryConfiguration.class,
-        CasPersonDirectoryConfiguration.class,
-        CasPersonDirectoryStubConfiguration.class,
+        CasOktaAuthenticationAutoConfiguration.class,
+        CasPersonDirectoryAutoConfiguration.class,
         BaseOktaTests.SharedTestConfiguration.class
     }, properties = {
         "cas.authn.attribute-repository.okta.organization-url=https://dev-668371.oktapreview.com",
@@ -68,11 +68,11 @@ class OktaPersonAttributeDaoTests {
     class OktaPersonDirectoryConfigurationTests {
         @Autowired
         @Qualifier("oktaPersonAttributeDaos")
-        private BeanContainer<IPersonAttributeDao> oktaPersonAttributeDaos;
+        private BeanContainer<PersonAttributeDao> oktaPersonAttributeDaos;
 
         @Autowired
         @Qualifier(PrincipalResolver.BEAN_NAME_ATTRIBUTE_REPOSITORY)
-        private IPersonAttributeDao attributeRepository;
+        private PersonAttributeDao attributeRepository;
 
         @Test
         void verifyOperation() throws Throwable {
@@ -80,17 +80,16 @@ class OktaPersonAttributeDaoTests {
             assertNull(attributeRepository.getPerson("casuser"));
 
             val dao = (OktaPersonAttributeDao) oktaPersonAttributeDaos.toList().getFirst();
-            assertTrue(dao.getPossibleUserAttributeNames(IPersonAttributeDaoFilter.alwaysChoose()).isEmpty());
-            assertTrue(dao.getAvailableQueryAttributes(IPersonAttributeDaoFilter.alwaysChoose()).isEmpty());
+            assertTrue(dao.getPossibleUserAttributeNames(PersonAttributeDaoFilter.alwaysChoose()).isEmpty());
+            assertTrue(dao.getAvailableQueryAttributes(PersonAttributeDaoFilter.alwaysChoose()).isEmpty());
             assertNotNull(dao.getOktaClient());
         }
     }
 
     @SpringBootTest(classes = {
         OktaPersonAttributeDaoTests.OktaClientMockTestConfiguration.class,
-        OktaPersonDirectoryConfiguration.class,
-        CasPersonDirectoryConfiguration.class,
-        CasPersonDirectoryStubConfiguration.class,
+        CasOktaAuthenticationAutoConfiguration.class,
+        CasPersonDirectoryAutoConfiguration.class,
         BaseOktaTests.SharedTestConfiguration.class
     }, properties = {
         "cas.authn.attribute-repository.okta.organization-url=https://dev-668371.oktapreview.com",
@@ -100,18 +99,18 @@ class OktaPersonAttributeDaoTests {
     class OktaPersonDirectoryMockTests {
         @Autowired
         @Qualifier("oktaPersonAttributeDaos")
-        private BeanContainer<IPersonAttributeDao> oktaPersonAttributeDaos;
+        private BeanContainer<PersonAttributeDao> oktaPersonAttributeDaos;
 
         @Autowired
         @Qualifier(PrincipalResolver.BEAN_NAME_ATTRIBUTE_REPOSITORY)
-        private IPersonAttributeDao attributeRepository;
+        private PersonAttributeDao attributeRepository;
 
         @Test
         void verifyOperation() throws Throwable {
             assertFalse(oktaPersonAttributeDaos.toList().isEmpty());
             assertNotNull(attributeRepository.getPerson("casuser"));
             assertFalse(attributeRepository.getPeople(Map.of("username", "casuser"),
-                IPersonAttributeDaoFilter.alwaysChoose()).isEmpty());
+                PersonAttributeDaoFilter.alwaysChoose()).isEmpty());
         }
     }
 

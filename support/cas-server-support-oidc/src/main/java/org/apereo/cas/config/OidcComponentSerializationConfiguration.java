@@ -9,20 +9,24 @@ import org.apereo.cas.oidc.claims.OidcCustomScopeAttributeReleasePolicy;
 import org.apereo.cas.oidc.claims.OidcEmailScopeAttributeReleasePolicy;
 import org.apereo.cas.oidc.claims.OidcPhoneScopeAttributeReleasePolicy;
 import org.apereo.cas.oidc.claims.OidcProfileScopeAttributeReleasePolicy;
+import org.apereo.cas.oidc.claims.OidcScopeFreeAttributeReleasePolicy;
+import org.apereo.cas.oidc.ticket.OidcCibaRequest;
+import org.apereo.cas.oidc.ticket.OidcDefaultCibaRequest;
 import org.apereo.cas.oidc.ticket.OidcDefaultPushedAuthorizationRequest;
 import org.apereo.cas.oidc.ticket.OidcPushedAuthorizationRequest;
 import org.apereo.cas.services.OidcRegisteredService;
 import org.apereo.cas.services.PairwiseOidcRegisteredServiceUsernameAttributeProvider;
 import org.apereo.cas.ticket.serialization.TicketSerializationExecutionPlanConfigurer;
-import org.apereo.cas.util.serialization.AbstractJacksonBackedStringSerializer;
+import org.apereo.cas.util.serialization.BaseJacksonSerializer;
 import org.apereo.cas.util.serialization.ComponentSerializationPlanConfigurer;
 import org.apereo.cas.util.spring.boot.ConditionalOnFeatureEnabled;
 
-import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.cloud.context.config.annotation.RefreshScope;
+import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.ScopedProxyMode;
 
 import java.io.Serial;
@@ -35,17 +39,22 @@ import java.io.Serial;
  */
 @EnableConfigurationProperties(CasConfigurationProperties.class)
 @ConditionalOnFeatureEnabled(feature = CasFeatureModule.FeatureCatalog.OpenIDConnect)
-@AutoConfiguration
-public class OidcComponentSerializationConfiguration {
+@Configuration(value = "OidcComponentSerializationConfiguration", proxyBeanMethods = false)
+class OidcComponentSerializationConfiguration {
 
     @Bean
     @ConditionalOnMissingBean(name = "oidcTicketSerializationExecutionPlanConfigurer")
     @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
-    public TicketSerializationExecutionPlanConfigurer oidcTicketSerializationExecutionPlanConfigurer() {
+    public TicketSerializationExecutionPlanConfigurer oidcTicketSerializationExecutionPlanConfigurer(
+        final ConfigurableApplicationContext applicationContext) {
         return plan -> {
-            plan.registerTicketSerializer(new OidcPushedAuthorizationRequestSerializer());
-            plan.registerTicketSerializer(OidcPushedAuthorizationRequest.class.getName(),
-                new OidcPushedAuthorizationRequestSerializer());
+            plan.registerTicketSerializer(new OidcPushedAuthorizationRequestSerializer(applicationContext));
+            plan.registerTicketSerializer(new OidcCibaRequestSerializer(applicationContext));
+
+            plan.registerTicketSerializer(OidcPushedAuthorizationRequest.class.getName(), new OidcPushedAuthorizationRequestSerializer(applicationContext));
+            plan.registerTicketSerializer(OidcCibaRequest.class.getName(), new OidcCibaRequestSerializer(applicationContext));
+            plan.registerTicketSerializer(OidcPushedAuthorizationRequest.PREFIX, new OidcPushedAuthorizationRequestSerializer(applicationContext));
+            plan.registerTicketSerializer(OidcCibaRequest.PREFIX, new OidcCibaRequestSerializer(applicationContext));
         };
     }
 
@@ -64,18 +73,28 @@ public class OidcComponentSerializationConfiguration {
             plan.registerSerializableClass(OidcEmailScopeAttributeReleasePolicy.class);
             plan.registerSerializableClass(OidcPhoneScopeAttributeReleasePolicy.class);
             plan.registerSerializableClass(OidcAssuranceScopeAttributeReleasePolicy.class);
+            plan.registerSerializableClass(OidcScopeFreeAttributeReleasePolicy.class);
             plan.registerSerializableClass(OidcProfileScopeAttributeReleasePolicy.class);
         };
     }
 
     private static final class OidcPushedAuthorizationRequestSerializer extends
-        AbstractJacksonBackedStringSerializer<OidcDefaultPushedAuthorizationRequest> {
+        BaseJacksonSerializer<OidcDefaultPushedAuthorizationRequest> {
         @Serial
         private static final long serialVersionUID = -6298623586274810263L;
 
-        @Override
-        public Class<OidcDefaultPushedAuthorizationRequest> getTypeToSerialize() {
-            return OidcDefaultPushedAuthorizationRequest.class;
+        OidcPushedAuthorizationRequestSerializer(final ConfigurableApplicationContext applicationContext) {
+            super(MINIMAL_PRETTY_PRINTER, applicationContext, OidcDefaultPushedAuthorizationRequest.class);
+        }
+    }
+
+    private static final class OidcCibaRequestSerializer extends
+        BaseJacksonSerializer<OidcDefaultCibaRequest> {
+        @Serial
+        private static final long serialVersionUID = -1298623586274810263L;
+
+        OidcCibaRequestSerializer(final ConfigurableApplicationContext applicationContext) {
+            super(MINIMAL_PRETTY_PRINTER, applicationContext, OidcDefaultCibaRequest.class);
         }
     }
 }

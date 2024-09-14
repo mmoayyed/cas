@@ -1,14 +1,17 @@
-const puppeteer = require('puppeteer');
-const cas = require('../../cas.js');
+
+const cas = require("../../cas.js");
 const assert = require("assert");
 
 async function returnCasResponse(page, appId) {
     await cas.log(`Producing CAS response for appId ${appId}`);
     await cas.gotoLogout(page);
     const service = `http://localhost:9889/anything/${appId}`;
-    await cas.goto(page, `https://localhost:8443/cas/login?service=${service}`);
+    await cas.gotoLogin(page, service);
+    await cas.sleep(1000);
     await cas.loginWith(page);
-    let ticket = await cas.assertTicketParameter(page);
+    await cas.sleep(2000);
+    await cas.logPage(page);
+    const ticket = await cas.assertTicketParameter(page);
     const body = await cas.doRequest(`https://localhost:8443/cas/p3/serviceValidate?service=${service}&ticket=${ticket}&format=JSON`);
     await cas.log(body);
     const response = JSON.parse(body);
@@ -16,7 +19,7 @@ async function returnCasResponse(page, appId) {
 }
 
 (async () => {
-    const browser = await puppeteer.launch(cas.browserOptions());
+    const browser = await cas.newBrowser(cas.browserOptions());
     const page = await cas.newPage(browser);
 
     let response = await returnCasResponse(page, "app1");

@@ -2,7 +2,6 @@
   "dependencies": "yubikey,gauth",
 
   "properties": [
-    "--cas.audit.engine.enabled=true",
     
     "--cas.authn.mfa.yubikey.client-id=18420",
     "--cas.authn.mfa.yubikey.secret-key=iBIehjui22aK8x82oe6qzGeb0As=",
@@ -18,9 +17,7 @@
     "--cas.authn.mfa.gauth.bypass.rest.url=http://localhost:3000/bypass",
 
     "--cas.authn.mfa.triggers.global.global-provider-id=mfa-gauth,mfa-yubikey",
-    "--cas.authn.mfa.core.provider-selection-enabled=true"
+    "--cas.authn.mfa.core.provider-selection.provider-selection-enabled=true"
   ]
 }
-
-
 

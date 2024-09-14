@@ -2,6 +2,7 @@ package org.apereo.cas.authentication.surrogate;
 
 import org.apereo.cas.authentication.principal.Principal;
 import org.apereo.cas.authentication.principal.Service;
+import org.apereo.cas.configuration.CasConfigurationProperties;
 import org.apereo.cas.services.ServicesManager;
 
 import lombok.Getter;
@@ -25,13 +26,15 @@ import java.util.Optional;
 public class SimpleSurrogateAuthenticationService extends BaseSurrogateAuthenticationService {
     private final Map<String, List> eligibleAccounts;
 
-    public SimpleSurrogateAuthenticationService(final Map<String, List> eligibleAccounts, final ServicesManager servicesManager) {
-        super(servicesManager);
-        this.eligibleAccounts = eligibleAccounts;
+    public SimpleSurrogateAuthenticationService(final Map<String, List> eligibleAccounts,
+                                                final ServicesManager servicesManager,
+                                                final CasConfigurationProperties casProperties) {
+        super(servicesManager, casProperties);
+        this.eligibleAccounts = Map.copyOf(eligibleAccounts);
     }
 
     @Override
-    public boolean canImpersonateInternal(final String surrogate, final Principal principal, final Optional<Service> service) {
+    public boolean canImpersonateInternal(final String surrogate, final Principal principal, final Optional<? extends Service> service) {
         if (this.eligibleAccounts.containsKey(principal.getId())) {
             val surrogates = this.eligibleAccounts.get(principal.getId());
             LOGGER.debug("Surrogate accounts authorized for [{}] are [{}]", principal.getId(), surrogates);
@@ -42,7 +45,7 @@ public class SimpleSurrogateAuthenticationService extends BaseSurrogateAuthentic
     }
 
     @Override
-    public Collection<String> getImpersonationAccounts(final String username) {
+    public Collection<String> getImpersonationAccounts(final String username, final Optional<? extends Service> service) {
         if (this.eligibleAccounts.containsKey(username)) {
             return this.eligibleAccounts.get(username);
         }

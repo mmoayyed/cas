@@ -47,8 +47,8 @@ public class DuoSecurityUserAccountStatusEndpoint extends BaseCasActuatorEndpoin
      */
     @ReadOperation(produces = MediaType.APPLICATION_JSON_VALUE)
     @Operation(summary = "Fetch Duo Security user account status", parameters = {
-        @Parameter(name = "username", required = true),
-        @Parameter(name = "providerId")
+        @Parameter(name = "username", required = true, description = "The username to fetch"),
+        @Parameter(name = "providerId", description = "The multifactor authentication provider id defined in CAS settings")
     })
     public Map<?, ?> fetchAccountStatus(@Selector final String username, @Nullable final String providerId) {
         val resolver = SpringExpressionLanguageValueResolver.getInstance();
@@ -60,16 +60,15 @@ public class DuoSecurityUserAccountStatusEndpoint extends BaseCasActuatorEndpoin
             .filter(BeanSupplier::isNotProxy)
             .map(DuoSecurityMultifactorAuthenticationProvider.class::cast)
             .filter(provider -> StringUtils.isBlank(providerId) || provider.matches(providerId))
-            .forEach(p -> {
-                val duoService = p.getDuoAuthenticationService();
+            .forEach(provider -> {
+                val duoService = provider.getDuoAuthenticationService();
                 val accountStatus = duoService.getUserAccount(username);
-                results.put(p.getId(),
+                results.put(provider.getId(),
                     CollectionUtils.wrap("duoApiHost", resolver.resolve(duoService.getProperties().getDuoApiHost()),
-                        "name", p.getFriendlyName(),
+                        "name", provider.getFriendlyName(),
                         "accountStatus", accountStatus
                     ));
             });
         return results;
-
     }
 }

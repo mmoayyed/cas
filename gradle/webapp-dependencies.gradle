@@ -28,18 +28,22 @@ dependencies {
     implementation project(":webapp:cas-server-webapp-resources")
 
     def casModules = providers.systemProperty("casModules").getOrNull()
-    if (casModules != null) {
+    if (casModules != null && casModules.trim().length() > 0) {
         def dependencies = casModules.split(",")
-        dependencies.each {
+        dependencies.findAll {it.length() > 0 }.each {
             def projectsToAdd = rootProject.subprojects.findAll {project ->
                 def pattern = /cas-server-${it}|cas-server-core-${it}|cas-server-support-${it}/
                 logger.debug("Matching ${pattern} against CAS module ${project.name}")
                 project.name.matches(pattern)
             }
 
-            ansi.green("Including CAS module(s): ${projectsToAdd}")
-            projectsToAdd.each {
-                implementation it
+            if (projectsToAdd.isEmpty()) {
+                ansi.yellow("No CAS module(s) found for ${it}")
+            } else {
+                ansi.green("Including CAS module(s): ${projectsToAdd}")
+                projectsToAdd.each {
+                    implementation it
+                }
             }
         }
     }
@@ -47,7 +51,7 @@ dependencies {
     implementation libraries.springcloudconfigclient
     implementation libraries.springcloudbootstrap
     implementation libraries.springbootpropertymigrator
-    if (!rootProject.publishFlag) {
+    if (!rootProject.publishFlag && !rootProject.skipSpringBootDevTools) {
         runtimeOnly libraries.springbootdevtools
     }
 }

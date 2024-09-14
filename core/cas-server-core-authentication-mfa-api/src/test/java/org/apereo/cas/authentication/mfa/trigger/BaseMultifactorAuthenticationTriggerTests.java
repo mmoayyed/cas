@@ -6,20 +6,20 @@ import org.apereo.cas.authentication.mfa.TestMultifactorAuthenticationProvider;
 import org.apereo.cas.authentication.principal.Principal;
 import org.apereo.cas.configuration.CasConfigurationProperties;
 import org.apereo.cas.services.RegisteredService;
+import org.apereo.cas.test.CasTestExtension;
 import org.apereo.cas.util.http.HttpRequestUtils;
-import org.apereo.cas.util.spring.ApplicationContextProvider;
+import org.apereo.cas.util.spring.boot.SpringBootTestAutoConfigurations;
 import lombok.val;
 import org.apereo.inspektr.common.web.ClientInfo;
 import org.apereo.inspektr.common.web.ClientInfoHolder;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.TestInfo;
-import org.springframework.boot.autoconfigure.aop.AopAutoConfiguration;
-import org.springframework.boot.autoconfigure.web.servlet.WebMvcAutoConfiguration;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.cloud.autoconfigure.RefreshAutoConfiguration;
 import org.springframework.context.ConfigurableApplicationContext;
-import org.springframework.context.support.StaticApplicationContext;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import java.util.List;
@@ -32,12 +32,10 @@ import static org.mockito.Mockito.*;
  * @author Misagh Moayyed
  * @since 6.1.0
  */
-@SpringBootTest(classes = {
-    RefreshAutoConfiguration.class,
-    WebMvcAutoConfiguration.class,
-    AopAutoConfiguration.class
-})
+@SpringBootTestAutoConfigurations
+@SpringBootTest(classes = RefreshAutoConfiguration.class)
 @EnableConfigurationProperties(CasConfigurationProperties.class)
+@ExtendWith(CasTestExtension.class)
 public abstract class BaseMultifactorAuthenticationTriggerTests {
     protected GeoLocationService geoLocationService;
 
@@ -51,14 +49,14 @@ public abstract class BaseMultifactorAuthenticationTriggerTests {
 
     protected TestMultifactorAuthenticationProvider multifactorAuthenticationProvider;
 
+    @Autowired
     protected ConfigurableApplicationContext applicationContext;
+
+    @Autowired
+    protected CasConfigurationProperties casProperties;
 
     @BeforeEach
     public void setup(final TestInfo info) {
-        this.applicationContext = new StaticApplicationContext();
-        applicationContext.refresh();
-        ApplicationContextProvider.holdApplicationContext(applicationContext);
-
         if (!info.getTags().contains("DisableProviderRegistration")) {
             this.multifactorAuthenticationProvider = TestMultifactorAuthenticationProvider.registerProviderIntoApplicationContext(applicationContext);
         }

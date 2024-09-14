@@ -5,8 +5,6 @@ import org.apereo.cas.authentication.AuthenticationResult;
 import org.apereo.cas.authentication.AuthenticationResultBuilder;
 import org.apereo.cas.authentication.AuthenticationServiceSelectionPlan;
 import org.apereo.cas.authentication.Credential;
-import org.apereo.cas.authentication.MultifactorAuthenticationProvider;
-import org.apereo.cas.authentication.OneTimeTokenAccount;
 import org.apereo.cas.authentication.adaptive.geo.GeoLocationRequest;
 import org.apereo.cas.authentication.principal.Principal;
 import org.apereo.cas.authentication.principal.Response;
@@ -17,29 +15,34 @@ import org.apereo.cas.logout.slo.SingleLogoutRequestContext;
 import org.apereo.cas.services.RegisteredService;
 import org.apereo.cas.services.ServicesManager;
 import org.apereo.cas.services.UnauthorizedServiceException;
-import org.apereo.cas.ticket.ServiceTicket;
+import org.apereo.cas.ticket.AuthenticationAwareTicket;
 import org.apereo.cas.ticket.Ticket;
-import org.apereo.cas.ticket.TicketGrantingTicket;
 import org.apereo.cas.ticket.registry.TicketRegistrySupport;
 import org.apereo.cas.util.CollectionUtils;
 import org.apereo.cas.util.LoggingUtils;
 import org.apereo.cas.util.function.FunctionUtils;
 import org.apereo.cas.util.http.HttpRequestUtils;
+import org.apereo.cas.util.spring.SpringExpressionLanguageValueResolver;
+import org.apereo.cas.web.BrowserStorage;
 import org.apereo.cas.web.cookie.CasCookieBuilder;
 import org.apereo.cas.web.flow.CasWebflowConstants;
 import lombok.NonNull;
 import lombok.experimental.UtilityClass;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
+import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.hc.core5.http.NameValuePair;
+import org.apache.hc.core5.net.WWWFormCodec;
 import org.springframework.binding.message.MessageBuilder;
 import org.springframework.binding.message.MessageContext;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.web.servlet.ModelAndView;
-import org.springframework.webflow.context.ExternalContext;
 import org.springframework.webflow.context.ExternalContextHolder;
 import org.springframework.webflow.core.collection.MutableAttributeMap;
 import org.springframework.webflow.engine.Flow;
@@ -51,8 +54,9 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.Serializable;
 import java.net.URI;
-import java.util.ArrayList;
+import java.nio.charset.StandardCharsets;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -128,7 +132,7 @@ public class WebUtils {
      * @return the http servlet request
      */
     public static HttpServletRequest getHttpServletRequestFromExternalWebflowContext() {
-        val servletExternalContext = (ExternalContext) ExternalContextHolder.getExternalContext();
+        val servletExternalContext = ExternalContextHolder.getExternalContext();
         if (servletExternalContext != null) {
             return (HttpServletRequest) servletExternalContext.getNativeRequest();
         }
@@ -152,7 +156,7 @@ public class WebUtils {
      * @return the http servlet response
      */
     public static HttpServletResponse getHttpServletResponseFromExternalWebflowContext() {
-        val servletExternalContext = (ExternalContext) ExternalContextHolder.getExternalContext();
+        val servletExternalContext = ExternalContextHolder.getExternalContext();
         if (servletExternalContext != null) {
             return (HttpServletResponse) servletExternalContext.getNativeResponse();
         }
@@ -212,7 +216,7 @@ public class WebUtils {
      * @param context the context
      * @param ticket  the ticket value
      */
-    public static void putTicketGrantingTicket(final RequestContext context, final TicketGrantingTicket ticket) {
+    public static void putTicketGrantingTicket(final RequestContext context, final Ticket ticket) {
         context.getFlowScope().put("ticketGrantingTicket", ticket);
     }
 
@@ -222,8 +226,8 @@ public class WebUtils {
      * @param context the context
      * @return the ticket granting ticket
      */
-    public static TicketGrantingTicket getTicketGrantingTicket(final RequestContext context) {
-        return context.getFlowScope().get("ticketGrantingTicket", TicketGrantingTicket.class);
+    public static Ticket getTicketGrantingTicket(final RequestContext context) {
+        return context.getFlowScope().get("ticketGrantingTicket", Ticket.class);
     }
 
     /**
@@ -232,7 +236,8 @@ public class WebUtils {
      * @param context the context
      * @param ticket  the ticket value
      */
-    public static void putTicketGrantingTicketInScopes(final RequestContext context, final TicketGrantingTicket ticket) {
+    public static void putTicketGrantingTicketInScopes(final RequestContext context, final Ticket ticket) {
+        putTicketGrantingTicket(context, ticket);
         val ticketValue = Optional.ofNullable(ticket).map(Ticket::getId).orElse(null);
         putTicketGrantingTicketInScopes(context, ticketValue);
     }
@@ -296,7 +301,7 @@ public class WebUtils {
      * @param context     the context
      * @param ticketValue the ticket value
      */
-    public static void putServiceTicketInRequestScope(final RequestContext context, final ServiceTicket ticketValue) {
+    public static void putServiceTicketInRequestScope(final RequestContext context, final Ticket ticketValue) {
         context.getRequestScope().put(PARAMETER_SERVICE_TICKET_ID, ticketValue.getId());
     }
 
@@ -522,21 +527,22 @@ public class WebUtils {
      * @return true if the cookie value is present
      */
     public static boolean isAuthenticatingAtPublicWorkstation(final RequestContext ctx) {
-        if (ctx.getFlowScope().contains(CasWebflowConstants.ATTRIBUTE_PUBLIC_WORKSTATION)) {
+        val foundParameter = ctx.getFlowScope().contains(CasWebflowConstants.ATTRIBUTE_PUBLIC_WORKSTATION);
+        if (foundParameter && BooleanUtils.toBoolean(ctx.getFlowScope().getBoolean(CasWebflowConstants.ATTRIBUTE_PUBLIC_WORKSTATION))) {
             LOGGER.debug("Public workstation flag detected. SSO session will be considered renewed.");
             return true;
         }
         return false;
     }
-
-
+    
     /**
      * Put public workstation into the flow if request parameter present.
      *
      * @param context the context
      */
     public static void putPublicWorkstationToFlowIfRequestParameterPresent(final RequestContext context) {
-        if (context.getRequestParameters().contains(CasWebflowConstants.ATTRIBUTE_PUBLIC_WORKSTATION)) {
+        val foundParameter = context.getRequestParameters().contains(CasWebflowConstants.ATTRIBUTE_PUBLIC_WORKSTATION);
+        if (foundParameter && context.getRequestParameters().getBoolean(CasWebflowConstants.ATTRIBUTE_PUBLIC_WORKSTATION)) {
             context.getFlowScope().put(CasWebflowConstants.ATTRIBUTE_PUBLIC_WORKSTATION, Boolean.TRUE);
         }
     }
@@ -550,7 +556,8 @@ public class WebUtils {
     public static void putWarnCookieIfRequestParameterPresent(final CasCookieBuilder warnCookieGenerator, final RequestContext context) {
         if (warnCookieGenerator != null) {
             LOGGER.trace("Evaluating request to determine if warning cookie should be generated");
-            if (StringUtils.isNotBlank(context.getExternalContext().getRequestParameterMap().get("warn"))) {
+            val foundParameter = context.getRequestParameters().contains(CasWebflowConstants.ATTRIBUTE_WARN_ON_REDIRECT);
+            if (foundParameter && context.getRequestParameters().getBoolean(CasWebflowConstants.ATTRIBUTE_WARN_ON_REDIRECT)) {
                 val response = WebUtils.getHttpServletResponseFromExternalWebflowContext(context);
                 warnCookieGenerator.addCookie(response, "true");
             }
@@ -566,9 +573,32 @@ public class WebUtils {
      * @param requestContext the ctx
      */
     public static void putAuthentication(final Authentication authentication, final RequestContext requestContext) {
-        requestContext.getConversationScope().put(CasWebflowConstants.ATTRIBUTE_AUTHENTICATION, authentication);
+        putAuthentication(authentication, requestContext.getConversationScope());
+        putAuthentication(authentication, requestContext.getFlowScope());
     }
 
+    /**
+     * Put authentication.
+     *
+     * @param ticket         the ticket
+     * @param requestContext the request context
+     */
+    public static void putAuthentication(final Ticket ticket, final RequestContext requestContext) {
+        if (ticket instanceof final AuthenticationAwareTicket aat) {
+            putAuthentication(aat.getAuthentication(), requestContext);
+        }
+    }
+
+    /**
+     * Put authentication.
+     *
+     * @param authentication the authentication
+     * @param scope          the scope
+     */
+    public static void putAuthentication(final Authentication authentication, final MutableAttributeMap scope) {
+        scope.put(CasWebflowConstants.ATTRIBUTE_AUTHENTICATION, authentication);
+    }
+    
     /**
      * Gets authentication from conversation scope.
      *
@@ -576,7 +606,17 @@ public class WebUtils {
      * @return the authentication
      */
     public static Authentication getAuthentication(final RequestContext ctx) {
-        return ctx.getConversationScope().get(CasWebflowConstants.ATTRIBUTE_AUTHENTICATION, Authentication.class);
+        return getAuthentication(ctx.getConversationScope());
+    }
+
+    /**
+     * Gets authentication.
+     *
+     * @param ctx the ctx
+     * @return the authentication
+     */
+    public static Authentication getAuthentication(final MutableAttributeMap<Object> ctx) {
+        return ctx.get(CasWebflowConstants.ATTRIBUTE_AUTHENTICATION, Authentication.class);
     }
 
     /**
@@ -740,7 +780,7 @@ public class WebUtils {
     public static void putRecaptchaPropertiesFlowScope(final RequestContext context, final GoogleRecaptchaProperties googleRecaptcha) {
         val flowScope = context.getFlowScope();
         if (googleRecaptcha.isEnabled()) {
-            flowScope.put("recaptchaSiteKey", googleRecaptcha.getSiteKey());
+            flowScope.put("recaptchaSiteKey", SpringExpressionLanguageValueResolver.getInstance().resolve(googleRecaptcha.getSiteKey()));
             flowScope.put("recaptchaInvisible", googleRecaptcha.isInvisible());
             flowScope.put("recaptchaPosition", googleRecaptcha.getPosition());
             flowScope.put("recaptchaVersion", googleRecaptcha.getVersion().name().toLowerCase(Locale.ENGLISH));
@@ -755,7 +795,7 @@ public class WebUtils {
      */
     public static String getRecaptchaSiteKey(final RequestContext context) {
         val flowScope = context.getFlowScope();
-        return flowScope.get("recaptchaSiteKey", String.class);
+        return SpringExpressionLanguageValueResolver.getInstance().resolve(flowScope.get("recaptchaSiteKey", String.class));
     }
 
     /**
@@ -776,6 +816,16 @@ public class WebUtils {
      */
     public static void putPasswordManagementEnabled(final RequestContext context, final Boolean value) {
         context.getFlowScope().put("passwordManagementEnabled", value);
+    }
+
+    /**
+     * Put forgot username enabled into flow scope.
+     *
+     * @param context the context
+     * @param value   the value
+     */
+    public static void putForgotUsernameEnabled(final RequestContext context, final Boolean value) {
+        context.getFlowScope().put("forgotUsernameEnabled", value);
     }
 
     /**
@@ -806,6 +856,16 @@ public class WebUtils {
      */
     public static boolean isPasswordManagementEnabled(final RequestContext context) {
         return context.getFlowScope().get("passwordManagementEnabled", Boolean.class);
+    }
+
+    /**
+     * Is forgot username enabled.
+     *
+     * @param context the context
+     * @return true/false
+     */
+    public static boolean isForgotUsernameEnabled(final RequestContext context) {
+        return context.getFlowScope().get("forgotUsernameEnabled", Boolean.class);
     }
 
     /**
@@ -892,49 +952,7 @@ public class WebUtils {
         return context.getFlowScope().getBoolean("rememberMeAuthenticationEnabled", Boolean.FALSE);
     }
 
-    /**
-     * Gets multifactor authentication trust record.
-     *
-     * @param <T>     the type parameter
-     * @param context the context
-     * @param clazz   the clazz
-     * @return the multifactor authentication trust record
-     */
-    public static <T> Optional<T> getMultifactorAuthenticationTrustRecord(final RequestContext context, final Class<T> clazz) {
-        return Optional.ofNullable(context.getFlowScope().get(CasWebflowConstants.VAR_ID_MFA_TRUST_RECORD, clazz));
-    }
 
-    /**
-     * Put multifactor authentication trust record.
-     *
-     * @param context the context
-     * @param object  the object
-     */
-    public static void putMultifactorAuthenticationTrustRecord(final RequestContext context, final Serializable object) {
-        context.getFlowScope().put(CasWebflowConstants.VAR_ID_MFA_TRUST_RECORD, object);
-    }
-
-    /**
-     * Put resolved multifactor authentication providers into scope.
-     *
-     * @param context the context
-     * @param value   the value
-     */
-    public static void putResolvedMultifactorAuthenticationProviders(final RequestContext context,
-                                                                     final Collection<MultifactorAuthenticationProvider> value) {
-        val providerIds = value.stream().map(MultifactorAuthenticationProvider::getId).collect(Collectors.toSet());
-        context.getConversationScope().put("resolvedMultifactorAuthenticationProviders", providerIds);
-    }
-
-    /**
-     * Gets resolved multifactor authentication providers.
-     *
-     * @param context the context
-     * @return the resolved multifactor authentication providers
-     */
-    public static Collection<String> getResolvedMultifactorAuthenticationProviders(final RequestContext context) {
-        return context.getConversationScope().get("resolvedMultifactorAuthenticationProviders", Collection.class);
-    }
 
     /**
      * Sets service user interface metadata.
@@ -1245,7 +1263,13 @@ public class WebUtils {
      */
     public static void putInitialHttpRequestPostParameters(final RequestContext context) {
         val request = getHttpServletRequestFromExternalWebflowContext(context);
-        context.getFlashScope().put("httpRequestInitialPostParameters", request.getParameterMap());
+        val queryParams = StringUtils.defaultString(request.getQueryString());
+        val parameters = request.getParameterMap()
+            .entrySet()
+            .stream()
+            .filter(param -> !queryParams.contains(param.getKey() + '='))
+            .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+        context.getFlashScope().put("httpRequestInitialPostParameters", parameters);
     }
 
     /**
@@ -1344,121 +1368,7 @@ public class WebUtils {
             flowVariable.create(requestContext);
         }
     }
-
-    /**
-     * Add the mfa provider id into flow scope.
-     *
-     * @param context  request context
-     * @param provider the mfa provider
-     */
-    public static void putMultifactorAuthenticationProvider(final RequestContext context, final MultifactorAuthenticationProvider provider) {
-        context.getFlowScope().put(CasWebflowConstants.VAR_ID_MFA_PROVIDER_ID, provider.getId());
-    }
-
-    /**
-     * Get the mfa provider id from flow scope.
-     *
-     * @param context request context
-     * @return provider id
-     */
-    public static String getMultifactorAuthenticationProvider(final RequestContext context) {
-        return context.getFlowScope().get(CasWebflowConstants.VAR_ID_MFA_PROVIDER_ID, String.class);
-    }
-
-    /**
-     * Put selectable multifactor authentication providers.
-     *
-     * @param requestContext the request context
-     * @param mfaProviders   the mfa providers
-     */
-    public static void putSelectableMultifactorAuthenticationProviders(final RequestContext requestContext, final List<String> mfaProviders) {
-        requestContext.getViewScope().put("mfaSelectableProviders", mfaProviders);
-    }
-
-    /**
-     * Gets selectable multifactor authentication providers.
-     *
-     * @param requestContext the request context
-     * @return the selectable multifactor authentication providers
-     */
-    public static List<String> getSelectableMultifactorAuthenticationProviders(final RequestContext requestContext) {
-        return requestContext.getViewScope().get("mfaSelectableProviders", List.class);
-    }
-
-    /**
-     * Put one time token account.
-     *
-     * @param requestContext the request context
-     * @param account        the account
-     */
-    public static void putOneTimeTokenAccount(final RequestContext requestContext, final OneTimeTokenAccount account) {
-        requestContext.getFlowScope().put("registeredDevice", account);
-    }
-
-    /**
-     * Put one time token accounts.
-     *
-     * @param requestContext the request context
-     * @param accounts       the accounts
-     */
-    public static void putOneTimeTokenAccounts(final RequestContext requestContext, final Collection accounts) {
-        requestContext.getFlowScope().put("registeredDevices", accounts);
-    }
-
-    /**
-     * Gets one time token accounts.
-     *
-     * @param requestContext the request context
-     * @return the one time token accounts
-     */
-    public static Collection getOneTimeTokenAccounts(final RequestContext requestContext) {
-        return requestContext.getFlowScope().get("registeredDevices", Collection.class);
-    }
-
-    /**
-     * Gets one time token account.
-     *
-     * @param <T>            the type parameter
-     * @param requestContext the request context
-     * @param clazz          the clazz
-     * @return the one time token account
-     */
-    public static <T extends OneTimeTokenAccount> T getOneTimeTokenAccount(final RequestContext requestContext, final Class<T> clazz) {
-        return requestContext.getFlowScope().get("registeredDevice", clazz);
-    }
-
-
-    /**
-     * Put google authenticator multiple device registration enabled.
-     *
-     * @param requestContext the request context
-     * @param enabled        the enabled
-     */
-    public static void putGoogleAuthenticatorMultipleDeviceRegistrationEnabled(final RequestContext requestContext,
-                                                                               final boolean enabled) {
-        requestContext.getFlowScope().put("gauthMultipleDeviceRegistrationEnabled", enabled);
-    }
-
-    /**
-     * Is google authenticator multiple device registration enabled?
-     *
-     * @param requestContext the request context
-     * @return true /false
-     */
-    public static Boolean isGoogleAuthenticatorMultipleDeviceRegistrationEnabled(final RequestContext requestContext) {
-        return requestContext.getFlowScope().get("gauthMultipleDeviceRegistrationEnabled", Boolean.class);
-    }
-
-    /**
-     * Put yubikey multiple device registration enabled.
-     *
-     * @param requestContext the request context
-     * @param enabled        the enabled
-     */
-    public static void putYubiKeyMultipleDeviceRegistrationEnabled(final RequestContext requestContext, final boolean enabled) {
-        requestContext.getFlowScope().put("yubikeyMultipleDeviceRegistrationEnabled", enabled);
-    }
-
+   
     /**
      * Put single logout request.
      *
@@ -1560,37 +1470,7 @@ public class WebUtils {
         return requestContext.getFlowScope().get("recaptchaPasswordManagementEnabled", Boolean.class);
     }
 
-    /**
-     * Put simple multifactor authentication token.
-     *
-     * @param requestContext the request context
-     * @param token          the token
-     */
-    public static void putSimpleMultifactorAuthenticationToken(final RequestContext requestContext, final Ticket token) {
-        requestContext.getFlowScope().put("simpleMultifactorAuthenticationToken", token);
-    }
 
-    /**
-     * Remove simple multifactor authentication token.
-     *
-     * @param requestContext the request context
-     */
-    public static void removeSimpleMultifactorAuthenticationToken(final RequestContext requestContext) {
-        requestContext.getFlowScope().remove("simpleMultifactorAuthenticationToken");
-    }
-
-    /**
-     * Gets simple multifactor authentication token.
-     *
-     * @param <T>            the type parameter
-     * @param requestContext the request context
-     * @param clazz          the clazz
-     * @return the simple multifactor authentication token
-     */
-    public static <T extends Ticket> T getSimpleMultifactorAuthenticationToken(final RequestContext requestContext,
-                                                                               final Class<T> clazz) {
-        return requestContext.getFlowScope().get("simpleMultifactorAuthenticationToken", clazz);
-    }
 
     /**
      * Resolve registered service.
@@ -1773,15 +1653,6 @@ public class WebUtils {
         requestContext.getRequestScope().remove("authenticationFlowInterruptFinalized");
     }
 
-    /**
-     * Gets multifactor authentication parent credential.
-     *
-     * @param requestContext the request context
-     * @return the multifactor authentication parent credential
-     */
-    public static Credential getMultifactorAuthenticationParentCredential(final RequestContext requestContext) {
-        return requestContext.getFlowScope().get("parentCredential", Credential.class);
-    }
 
     /**
      * Put ws federation delegated clients.
@@ -1803,48 +1674,6 @@ public class WebUtils {
      */
     public static <T extends Serializable> List<T> getWsFederationDelegatedClients(final RequestContext context, final Class<T> clazz) {
         return (List<T>) context.getFlowScope().get("wsfedUrls", List.class);
-    }
-
-    /**
-     * Put multifactor authentication registered devices.
-     *
-     * @param requestContext the request context
-     * @param accounts       the accounts
-     */
-    public static void putMultifactorAuthenticationRegisteredDevices(final RequestContext requestContext, final List accounts) {
-        val list = ObjectUtils.defaultIfNull(getMultifactorAuthenticationRegisteredDevices(requestContext), new ArrayList<>());
-        list.addAll(accounts);
-        requestContext.getFlowScope().put("multifactorRegisteredAccounts", list);
-    }
-
-    /**
-     * Put multifactor authentication trusted devices.
-     *
-     * @param requestContext the request context
-     * @param accounts       the accounts
-     */
-    public static void putMultifactorAuthenticationTrustedDevices(final RequestContext requestContext, final List accounts) {
-        requestContext.getFlowScope().put("multifactorTrustedDevices", accounts);
-    }
-
-    /**
-     * Gets multifactor authentication trusted devices.
-     *
-     * @param requestContext the request context
-     * @return the multifactor authentication trusted devices
-     */
-    public List getMultifactorAuthenticationTrustedDevices(final RequestContext requestContext) {
-        return requestContext.getFlowScope().get("multifactorTrustedDevices", List.class);
-    }
-
-    /**
-     * Gets multifactor authentication registered devices.
-     *
-     * @param requestContext the request context
-     * @return the multifactor authentication registered devices
-     */
-    public List getMultifactorAuthenticationRegisteredDevices(final RequestContext requestContext) {
-        return requestContext.getFlowScope().get("multifactorRegisteredAccounts", List.class);
     }
 
     /**
@@ -1922,5 +1751,178 @@ public class WebUtils {
         return (String) requestContext.getFlashScope().get("activeFlowId",
             requestContext.getFlowScope().get("activeFlowId",
                 requestContext.getConversationScope().get("activeFlowId")));
+    }
+
+    /**
+     * Gets browser storage context key.
+     *
+     * @param requestContext the request context
+     * @return the browser storage context key
+     */
+    public String getBrowserStorageContextKey(final RequestContext requestContext, final String defaultKey) {
+        return requestContext.getFlowScope().get("browserStorageContextKey", String.class, defaultKey);
+    }
+
+    /**
+     * Put browser storage context key.
+     *
+     * @param requestContext           the request context
+     * @param browserStorageContextKey the browser storage context key
+     */
+    public static void putBrowserStorageContextKey(final RequestContext requestContext, final String browserStorageContextKey) {
+        requestContext.getFlowScope().put("browserStorageContextKey", browserStorageContextKey);
+    }
+
+    /**
+     * Read browser storage from request.
+     *
+     * @param requestContext the request context
+     * @return the optional
+     * @throws Exception the exception
+     */
+    public static Optional<String> getBrowserStoragePayload(final RequestContext requestContext) throws Exception {
+        if (requestContext.getRequestParameters().contains(BrowserStorage.PARAMETER_BROWSER_STORAGE)) {
+            return Optional.of(requestContext.getRequestParameters().getRequired(BrowserStorage.PARAMETER_BROWSER_STORAGE))
+                .stream()
+                .filter(StringUtils::isNotBlank)
+                .findFirst();
+        }
+        val httpServletRequest = WebUtils.getHttpServletRequestFromExternalWebflowContext(requestContext);
+        return getBrowserStoragePayload(httpServletRequest);
+    }
+
+    /**
+     * Gets browser storage.
+     *
+     * @param httpServletRequest the http servlet request
+     * @return the browser storage
+     * @throws Exception the exception
+     */
+    public static Optional<String> getBrowserStoragePayload(final HttpServletRequest httpServletRequest) throws Exception {
+        val parameters = getHttpRequestParametersFromRequestBody(httpServletRequest);
+        FunctionUtils.doIfNotBlank(httpServletRequest.getParameter(BrowserStorage.PARAMETER_BROWSER_STORAGE),
+            value -> parameters.put(BrowserStorage.PARAMETER_BROWSER_STORAGE, value));
+        return parameters
+            .entrySet()
+            .stream()
+            .filter(param -> param.getKey().equalsIgnoreCase(BrowserStorage.PARAMETER_BROWSER_STORAGE))
+            .map(Map.Entry::getValue)
+            .filter(StringUtils::isNotBlank)
+            .findFirst()
+            .or(() -> Optional.ofNullable((String) httpServletRequest.getAttribute(BrowserStorage.PARAMETER_BROWSER_STORAGE)));
+    }
+
+    /**
+     * Put browser storage request.
+     *
+     * @param requestContext the request context
+     * @param browserStorage the browser storage
+     */
+    public static void putBrowserStorage(final RequestContext requestContext, final BrowserStorage browserStorage) {
+        requestContext.getFlowScope().put(BrowserStorage.PARAMETER_BROWSER_STORAGE, browserStorage);
+    }
+
+    /**
+     * Gets browser storage.
+     *
+     * @param requestContext the request context
+     * @return the browser storage
+     */
+    public static BrowserStorage getBrowserStorage(final RequestContext requestContext) {
+        return requestContext.getFlowScope().get(BrowserStorage.PARAMETER_BROWSER_STORAGE, BrowserStorage.class);
+    }
+
+    /**
+     * Put target state.
+     *
+     * @param requestContext the request context
+     * @param id             the id
+     */
+    public static void putTargetState(final RequestContext requestContext, final String id) {
+        requestContext.getFlowScope().put("targetState", id);
+    }
+
+    /**
+     * Gets target state.
+     *
+     * @param requestContext the request context
+     * @return the target state
+     */
+    public static String getTargetState(final RequestContext requestContext) {
+        return requestContext.getFlowScope().get("targetState", String.class);
+    }
+
+    /**
+     * Gets http request parameters.
+     *
+     * @param httpServletRequest the http servlet request
+     * @return the http request parameters from request body
+     */
+    public static Map<String, String> getHttpRequestParametersFromRequestBody(final HttpServletRequest httpServletRequest) {
+        if (HttpMethod.POST.matches(httpServletRequest.getMethod())
+            && StringUtils.equalsIgnoreCase(httpServletRequest.getContentType(), MediaType.APPLICATION_FORM_URLENCODED_VALUE)) {
+            try (val is = httpServletRequest.getInputStream()) {
+                if (!is.isFinished()) {
+                    val requestBody = IOUtils.toString(is, StandardCharsets.UTF_8);
+                    val encodedParams = WWWFormCodec.parse(requestBody, StandardCharsets.UTF_8);
+                    return encodedParams
+                        .stream()
+                        .filter(param -> StringUtils.isNotBlank(param.getValue()))
+                        .peek(param -> httpServletRequest.setAttribute(param.getName(), param.getValue()))
+                        .collect(Collectors.toMap(NameValuePair::getName, NameValuePair::getValue));
+                }
+            } catch (final Exception e) {
+                LoggingUtils.error(LOGGER, e);
+            }
+        }
+        return new HashMap<>();
+    }
+
+    /**
+     * Gets request parameter or attribute.
+     *
+     * @param requestContext the request context
+     * @param name           the name
+     * @return the request parameter or attribute
+     */
+    public Optional<String> getRequestParameterOrAttribute(final RequestContext requestContext, final String name) {
+        val httpServletRequest = WebUtils.getHttpServletRequestFromExternalWebflowContext(requestContext);
+        return getRequestParameterOrAttribute(httpServletRequest, name);
+    }
+
+    /**
+     * Gets request parameter or attribute.
+     *
+     * @param request the request
+     * @param name    the name
+     * @return the request parameter or attribute
+     */
+    public Optional<String> getRequestParameterOrAttribute(final HttpServletRequest request, final String name) {
+        return Optional.ofNullable(request.getParameter(name))
+            .or(() -> Optional.ofNullable((String) request.getAttribute(name)))
+            .filter(StringUtils::isNotBlank);
+    }
+
+    /**
+     * Track failed authentication attempts.
+     *
+     * @param requestContext the request context
+     */
+    public static void trackFailedAuthenticationAttempt(final RequestContext requestContext) {
+        val flowScope = requestContext.getFlowScope();
+        val attempts = flowScope.contains("authenticationFailureCount", Integer.class)
+            ? flowScope.get("authenticationFailureCount", Integer.class)
+            : 0;
+        flowScope.put("authenticationFailureCount", attempts + 1);
+    }
+
+    /**
+     * Gets authentication failure count.
+     *
+     * @param requestContext the request context
+     * @return the authentication failure count
+     */
+    public static Integer countFailedAuthenticationAttempts(final RequestContext requestContext) {
+        return requestContext.getFlowScope().get("authenticationFailureCount", Integer.class);
     }
 }

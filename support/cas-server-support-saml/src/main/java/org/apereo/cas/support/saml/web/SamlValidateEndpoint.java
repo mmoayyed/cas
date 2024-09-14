@@ -19,12 +19,14 @@ import org.apereo.cas.services.ServicesManager;
 import org.apereo.cas.support.saml.OpenSamlConfigBean;
 import org.apereo.cas.support.saml.SamlUtils;
 import org.apereo.cas.support.saml.authentication.SamlResponseBuilder;
-import org.apereo.cas.web.BaseCasActuatorEndpoint;
+import org.apereo.cas.web.BaseCasRestActuatorEndpoint;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import lombok.val;
 import org.apache.commons.lang3.StringUtils;
-import org.springframework.boot.actuate.endpoint.web.annotation.RestControllerEndpoint;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.boot.actuate.endpoint.annotation.Endpoint;
+import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -34,6 +36,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -42,34 +45,35 @@ import java.util.Optional;
  * @author Misagh Moayyed
  * @since 6.1.0
  */
-@RestControllerEndpoint(id = "samlValidate", enableByDefault = false)
-public class SamlValidateEndpoint extends BaseCasActuatorEndpoint {
-    private final ServicesManager servicesManager;
+@Endpoint(id = "samlValidate", enableByDefault = false)
+public class SamlValidateEndpoint extends BaseCasRestActuatorEndpoint {
+    private final ObjectProvider<ServicesManager> servicesManager;
 
-    private final AuthenticationSystemSupport authenticationSystemSupport;
+    private final ObjectProvider<AuthenticationSystemSupport> authenticationSystemSupport;
 
-    private final ServiceFactory<WebApplicationService> serviceFactory;
+    private final ObjectProvider<ServiceFactory<WebApplicationService>> serviceFactory;
 
-    private final PrincipalFactory principalFactory;
+    private final ObjectProvider<PrincipalFactory> principalFactory;
 
-    private final SamlResponseBuilder samlResponseBuilder;
+    private final ObjectProvider<SamlResponseBuilder> samlResponseBuilder;
 
-    private final OpenSamlConfigBean openSamlConfigBean;
+    private final ObjectProvider<OpenSamlConfigBean> openSamlConfigBean;
 
-    private final AuditableExecution registeredServiceAccessStrategyEnforcer;
+    private final ObjectProvider<AuditableExecution> registeredServiceAccessStrategyEnforcer;
 
-    private final PrincipalResolver principalResolver;
+    private final ObjectProvider<PrincipalResolver> principalResolver;
 
     public SamlValidateEndpoint(final CasConfigurationProperties casProperties,
-                                final ServicesManager servicesManager,
-                                final AuthenticationSystemSupport authenticationSystemSupport,
-                                final ServiceFactory<WebApplicationService> serviceFactory,
-                                final PrincipalFactory principalFactory,
-                                final SamlResponseBuilder samlResponseBuilder,
-                                final OpenSamlConfigBean openSamlConfigBean,
-                                final AuditableExecution registeredServiceAccessStrategyEnforcer,
-                                final PrincipalResolver principalResolver) {
-        super(casProperties);
+                                final ConfigurableApplicationContext applicationContext,
+                                final ObjectProvider<ServicesManager> servicesManager,
+                                final ObjectProvider<AuthenticationSystemSupport> authenticationSystemSupport,
+                                final ObjectProvider<ServiceFactory<WebApplicationService>> serviceFactory,
+                                final ObjectProvider<PrincipalFactory> principalFactory,
+                                final ObjectProvider<SamlResponseBuilder> samlResponseBuilder,
+                                final ObjectProvider<OpenSamlConfigBean> openSamlConfigBean,
+                                final ObjectProvider<AuditableExecution> registeredServiceAccessStrategyEnforcer,
+                                final ObjectProvider<PrincipalResolver> principalResolver) {
+        super(casProperties, applicationContext);
         this.servicesManager = servicesManager;
         this.authenticationSystemSupport = authenticationSystemSupport;
         this.serviceFactory = serviceFactory;
@@ -90,7 +94,7 @@ public class SamlValidateEndpoint extends BaseCasActuatorEndpoint {
      * @return the map
      * @throws Throwable the throwable
      */
-    @PostMapping (produces = {
+    @PostMapping(produces = {
         MediaType.TEXT_XML_VALUE,
         MediaType.APPLICATION_XML_VALUE,
         MediaType.APPLICATION_JSON_VALUE
@@ -101,25 +105,25 @@ public class SamlValidateEndpoint extends BaseCasActuatorEndpoint {
         MediaType.APPLICATION_FORM_URLENCODED_VALUE
     })
     @Operation(summary = "Handle validation request and produce saml1 payload.", parameters = {
-        @Parameter(name = "username", required = true),
-        @Parameter(name = "password", required = false),
-        @Parameter(name = "service", required = true)
+        @Parameter(name = "username", required = true, description = "The username"),
+        @Parameter(name = "password", required = false, description = "The password"),
+        @Parameter(name = "service", required = true, description = "The service")
     })
     public ResponseEntity handle(
         final HttpServletRequest request,
         final String username,
         @RequestParam(required = false) final String password,
         final String service) throws Throwable {
-        val selectedService = serviceFactory.createService(service);
+        val selectedService = serviceFactory.getObject().createService(service);
         val authentication = buildAuthentication(username, password, selectedService);
 
-        val registeredService = servicesManager.findServiceBy(selectedService);
+        val registeredService = servicesManager.getObject().findServiceBy(selectedService);
         val audit = AuditableContext.builder()
             .service(selectedService)
             .authentication(authentication)
             .registeredService(registeredService)
             .build();
-        val accessResult = registeredServiceAccessStrategyEnforcer.execute(audit);
+        val accessResult = registeredServiceAccessStrategyEnforcer.getObject().execute(audit);
         accessResult.throwExceptionIfNeeded();
 
         val principal = authentication.getPrincipal();
@@ -129,7 +133,7 @@ public class SamlValidateEndpoint extends BaseCasActuatorEndpoint {
             .registeredService(registeredService)
             .service(selectedService)
             .principal(principal)
-            .applicationContext(openSamlConfigBean.getApplicationContext())
+            .applicationContext(openSamlConfigBean.getObject().getApplicationContext())
             .build();
         val attributesToRelease = registeredService.getAttributeReleasePolicy().getAttributes(context);
 
@@ -138,20 +142,20 @@ public class SamlValidateEndpoint extends BaseCasActuatorEndpoint {
             .registeredService(registeredService)
             .service(selectedService)
             .principal(principal)
-            .applicationContext(openSamlConfigBean.getApplicationContext())
+            .applicationContext(openSamlConfigBean.getObject().getApplicationContext())
             .build();
         val principalId = registeredService.getUsernameAttributeProvider().resolveUsername(usernameContext);
 
-        val modifiedPrincipal = principalFactory.createPrincipal(principalId, attributesToRelease);
+        val modifiedPrincipal = principalFactory.getObject().createPrincipal(principalId, attributesToRelease);
         val builder = DefaultAuthenticationBuilder.newInstance(authentication);
         builder.setPrincipal(modifiedPrincipal);
         val finalAuthentication = builder.build();
 
-        val samlResponse = samlResponseBuilder.createResponse(selectedService.getId(), selectedService);
-        samlResponseBuilder.prepareSuccessfulResponse(samlResponse, selectedService, finalAuthentication, principal,
+        val samlResponse = samlResponseBuilder.getObject().createResponse(selectedService.getId(), selectedService);
+        samlResponseBuilder.getObject().prepareSuccessfulResponse(Map.of(), samlResponse, selectedService, finalAuthentication, principal,
             finalAuthentication.getAttributes(), principal.getAttributes());
 
-        val encoded = SamlUtils.transformSamlObject(openSamlConfigBean, samlResponse).toString();
+        val encoded = SamlUtils.transformSamlObject(openSamlConfigBean.getObject(), samlResponse).toString();
 
         val contentType = StringUtils.defaultIfBlank(request.getHeader(HttpHeaders.CONTENT_TYPE), MediaType.APPLICATION_JSON_VALUE);
         if (MediaType.APPLICATION_XML_VALUE.equals(contentType) || MediaType.TEXT_XML_VALUE.equals(contentType)) {
@@ -173,11 +177,11 @@ public class SamlValidateEndpoint extends BaseCasActuatorEndpoint {
                                                final WebApplicationService selectedService) throws Throwable {
         if (StringUtils.isNotBlank(password)) {
             val credential = new UsernamePasswordCredential(username, password);
-            val result = authenticationSystemSupport.finalizeAuthenticationTransaction(selectedService, credential);
+            val result = authenticationSystemSupport.getObject().finalizeAuthenticationTransaction(selectedService, credential);
             return result.getAuthentication();
         }
-        val principal = principalResolver.resolve(new BasicIdentifiableCredential(username),
-            Optional.of(principalFactory.createPrincipal(username)),
+        val principal = principalResolver.getObject().resolve(new BasicIdentifiableCredential(username),
+            Optional.of(principalFactory.getObject().createPrincipal(username)),
             Optional.empty(), Optional.of(selectedService));
         return DefaultAuthenticationBuilder.newInstance().setPrincipal(principal).build();
     }

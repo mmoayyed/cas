@@ -1,18 +1,19 @@
 package org.apereo.cas.webauthn.web.flow;
 
-import org.apereo.cas.config.CasWebflowAccountProfileConfiguration;
 import org.apereo.cas.services.RegisteredServiceTestUtils;
+import org.apereo.cas.test.CasTestExtension;
 import org.apereo.cas.util.MockRequestContext;
 import org.apereo.cas.web.flow.CasWebflowConstants;
+import org.apereo.cas.web.flow.util.MultifactorAuthenticationWebflowUtils;
 import org.apereo.cas.web.support.WebUtils;
 import lombok.val;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.ConfigurableApplicationContext;
-import org.springframework.context.annotation.Import;
 import org.springframework.webflow.execution.Action;
 import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.*;
@@ -24,10 +25,10 @@ import static org.junit.jupiter.api.Assertions.*;
  * @since 7.0.0
  */
 @Tag("WebflowMfaActions")
-@Import(CasWebflowAccountProfileConfiguration.class)
+@ExtendWith(CasTestExtension.class)
 @SpringBootTest(classes = BaseWebAuthnWebflowTests.SharedTestConfiguration.class,
     properties = "CasFeatureModule.AccountManagement.enabled=true")
-public class WebAuthnMultifactorAccountProfilePrepareActionTests {
+class WebAuthnMultifactorAccountProfilePrepareActionTests {
 
     @Autowired
     @Qualifier(CasWebflowConstants.ACTION_ID_ACCOUNT_PROFILE_WEBAUTHN_MFA_PREPARE)
@@ -42,7 +43,7 @@ public class WebAuthnMultifactorAccountProfilePrepareActionTests {
         WebUtils.putAuthentication(RegisteredServiceTestUtils.getAuthentication(UUID.randomUUID().toString()), context);
         val eventId = webAuthnAccountProfilePrepareAction.execute(context);
         assertNull(eventId);
-        assertNotNull(WebUtils.getMultifactorAuthenticationProvider(context));
+        assertNotNull(MultifactorAuthenticationWebflowUtils.getMultifactorAuthenticationProvider(context));
         assertTrue(context.getFlowScope().contains("webauthnAccountProfileRegistrationEnabled"));
     }
 

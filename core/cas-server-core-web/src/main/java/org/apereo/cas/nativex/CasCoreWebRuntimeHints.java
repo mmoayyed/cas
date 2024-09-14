@@ -1,10 +1,12 @@
 package org.apereo.cas.nativex;
 
 import org.apereo.cas.util.nativex.CasRuntimeHintsRegistrar;
-import org.apereo.cas.web.BrowserSessionStorage;
-import org.springframework.aot.hint.MemberCategory;
+import org.apereo.cas.web.DefaultBrowserStorage;
 import org.springframework.aot.hint.RuntimeHints;
 import org.springframework.aot.hint.TypeReference;
+import org.springframework.boot.web.server.WebServerFactoryCustomizer;
+import org.springframework.core.Ordered;
+import java.util.List;
 
 /**
  * This is {@link CasCoreWebRuntimeHints}.
@@ -16,13 +18,9 @@ public class CasCoreWebRuntimeHints implements CasRuntimeHintsRegistrar {
     @Override
     public void registerHints(final RuntimeHints hints, final ClassLoader classLoader) {
         hints.resources().registerResourceBundle("cas_common_messages");
-        hints.serialization()
-            .registerType(BrowserSessionStorage.class);
+        registerSerializationHints(hints, DefaultBrowserStorage.class);
+        registerReflectionHints(hints, List.of(TypeReference.of("org.springframework.web.servlet.handler.AbstractHandlerMethodMapping$EmptyHandler")));
 
-        hints.reflection()
-            .registerType(
-                TypeReference.of("org.springframework.web.servlet.handler.AbstractHandlerMethodMapping$EmptyHandler"),
-                MemberCategory.INVOKE_DECLARED_METHODS, MemberCategory.INVOKE_PUBLIC_METHODS,
-                MemberCategory.INTROSPECT_DECLARED_METHODS, MemberCategory.INTROSPECT_DECLARED_METHODS);
+        registerSpringProxy(hints, WebServerFactoryCustomizer.class, Ordered.class);
     }
 }

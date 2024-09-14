@@ -3,7 +3,6 @@ package org.apereo.cas.configuration.model.core.services;
 import org.apereo.cas.configuration.model.support.services.json.JsonServiceRegistryProperties;
 import org.apereo.cas.configuration.support.RequiresModule;
 
-import com.fasterxml.jackson.annotation.JsonFilter;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
@@ -21,7 +20,7 @@ import java.io.Serializable;
 @Getter
 @Setter
 @Accessors(chain = true)
-@JsonFilter("ServiceRegistryCoreProperties")
+
 public class ServiceRegistryCoreProperties implements Serializable {
     @Serial
     private static final long serialVersionUID = -268826011744304210L;
@@ -58,21 +57,11 @@ public class ServiceRegistryCoreProperties implements Serializable {
     private boolean initDefaultServices = true;
 
     /**
-     * Determine how services are internally managed, queried, cached and reloaded by CAS.
+     * When set to true, CAS creates in-memory indexes for specific pre-chosen fields
+     * of the registered services, allowing it to find a service definition by its friendly name,
+     * client id, etc. This is particularly useful for querying operations in OAuth or OpenID Connect,
+     * as there would be no need to loop through all service definitions looking for a matching client id.
+     * The indexes allow CAS to execute a direct query on loaded service objects to find the relevant definition.
      */
-    private ServiceManagementTypes managementType = ServiceManagementTypes.DEFAULT;
-
-    /**
-     * Types of service managers that one can control.
-     */
-    public enum ServiceManagementTypes {
-        /**
-         * Group service definitions by their domain.
-         */
-        DOMAIN,
-        /**
-         * Default option to keep definitions in a map as they arrive.
-         */
-        DEFAULT
-    }
+    private boolean indexServices = true;
 }

@@ -11,12 +11,12 @@ Each step or branch in the CAS authentication flow may decide to produce an auth
 and/or collect attributes and metadata about the authentication event itself. These objects or subjects are eventually
 collected and assembled into one canonical authentication object that represents a combination of all attempts, with
 all data and attributes merged into a single container. You can of course override the merging strategy by registering
-your own `IAttributeMerger` component with the runtime context:
+your own `AttributeMerger` component with the runtime context:
 
 ```java
 @Bean
-public IAttributeMerger principalElectionAttributeMerger() {
-    return new MyIAttributeMerger();
+public AttributeMerger principalElectionAttributeMerger() {
+    return new MyAttributeMerger();
 }
 ```
  
@@ -41,10 +41,10 @@ public PrincipalElectionStrategyConflictResolver defaultPrincipalElectionStrateg
 }
 ```
 
-<div class="alert alert-warning">:warning: <strong>Ahoy, Daring Adventurer! </strong> Let's put it bluntly: tinkering with 
+<div class="alert alert-warning">:warning: <strong>Ahoy, Daring Adventurer! </strong><p>Let's put it bluntly: tinkering with 
 these components and/or overriding their definition in your CAS build is like trying to teach a squirrel 
 algebra – yes, it's possible, but the odds are stacked against you, and it's guaranteed to lead to 
-hilariously unfortunate results. Resist the temptation to make changes here.</div>
+hilariously unfortunate results. Resist the temptation to make changes here.</p></div>
 
 [See this guide](../configuration/Configuration-Management-Extensions.html) to
 learn more about how to register configurations into the CAS runtime.

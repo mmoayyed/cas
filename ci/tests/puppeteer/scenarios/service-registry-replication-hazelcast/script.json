@@ -3,13 +3,11 @@
   "initScript": "${PWD}/ci/tests/puppeteer/scenarios/${SCENARIO}/init.sh",
 
   "properties": [
-    "--logging.level.org.apereo.cas=debug",
 
     "--management.endpoints.enabled-by-default=true",
     "--management.endpoints.web.exposure.include=*",
     "--cas.monitor.endpoints.endpoint.defaults.access=ANONYMOUS",
-    
-    "--cas.audit.engine.enabled=true",
+
     "--cas.service-registry.stream.core.enabled=true",
     "--cas.service-registry.core.init-from-json=false",
     "--cas.service-registry.json.watcher-enabled=true"

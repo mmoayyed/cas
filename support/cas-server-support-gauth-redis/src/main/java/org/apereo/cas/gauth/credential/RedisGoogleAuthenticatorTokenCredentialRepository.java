@@ -82,7 +82,7 @@ public class RedisGoogleAuthenticatorTokenCredentialRepository extends BaseGoogl
 
     @Override
     public OneTimeTokenAccount save(final OneTimeTokenAccount account) {
-        return update(account);
+        return update(account.assignIdIfNecessary());
     }
 
     @Override
@@ -125,11 +125,10 @@ public class RedisGoogleAuthenticatorTokenCredentialRepository extends BaseGoogl
         val redisKeyPattern = RedisCompositeKey.forPrincipals().withPrincipal(username).toKeyPattern();
         val accounts = casRedisTemplates.getPrincipalsRedisTemplate().boundSetOps(redisKeyPattern).members();
         casRedisTemplates.getAccountsRedisTemplate().executePipelined((RedisCallback<Object>) connection -> {
-            StreamSupport.stream(Objects.requireNonNull(accounts).spliterator(), false)
-                .forEach(account -> {
-                    val accountKey = RedisCompositeKey.forAccounts().withAccount(account).toKeyPattern();
-                    connection.keyCommands().del(accountKey.getBytes(StandardCharsets.UTF_8));
-                });
+            Objects.requireNonNull(accounts).forEach(account -> {
+                val accountKey = RedisCompositeKey.forAccounts().withAccount(account).toKeyPattern();
+                connection.keyCommands().del(accountKey.getBytes(StandardCharsets.UTF_8));
+            });
             return null;
         });
         casRedisTemplates.getPrincipalsRedisTemplate().delete(redisKeyPattern);

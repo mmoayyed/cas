@@ -1,8 +1,8 @@
 package org.apereo.cas.web;
 
 import org.apereo.cas.authentication.AuthenticationHandler;
-import org.apereo.cas.config.TokenAuthenticationConfiguration;
-import org.apereo.cas.config.TokenAuthenticationWebflowConfiguration;
+import org.apereo.cas.config.CasTokenAuthenticationAutoConfiguration;
+import org.apereo.cas.config.CasTokenAuthenticationWebflowAutoConfiguration;
 import org.apereo.cas.services.DefaultRegisteredServiceAccessStrategy;
 import org.apereo.cas.services.RegisteredServiceTestUtils;
 import org.apereo.cas.token.authentication.TokenCredential;
@@ -12,7 +12,7 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.context.annotation.Import;
+import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 import org.springframework.test.context.TestPropertySource;
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -24,9 +24,9 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 @TestPropertySource(properties = "management.endpoint.tokenAuth.enabled=true")
 @Tag("ActuatorEndpoint")
-@Import({
-    TokenAuthenticationConfiguration.class,
-    TokenAuthenticationWebflowConfiguration.class
+@ImportAutoConfiguration({
+    CasTokenAuthenticationAutoConfiguration.class,
+    CasTokenAuthenticationWebflowAutoConfiguration.class
 })
 class TokenAuthenticationEndpointTests extends AbstractCasEndpointTests {
     @Autowired

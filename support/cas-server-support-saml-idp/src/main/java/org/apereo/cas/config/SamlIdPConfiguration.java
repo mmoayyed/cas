@@ -56,11 +56,9 @@ import org.apereo.cas.ticket.query.SamlAttributeQueryTicketExpirationPolicyBuild
 import org.apereo.cas.ticket.query.SamlAttributeQueryTicketFactory;
 import org.apereo.cas.ticket.registry.TicketRegistry;
 import org.apereo.cas.ticket.tracking.TicketTrackingPolicy;
-import org.apereo.cas.util.function.FunctionUtils;
 import org.apereo.cas.util.spring.boot.ConditionalOnFeatureEnabled;
 import org.apereo.cas.web.UrlValidator;
 import org.apereo.cas.web.cookie.CasCookieBuilder;
-
 import lombok.val;
 import org.apache.velocity.app.VelocityEngine;
 import org.apereo.inspektr.audit.spi.AuditActionResolver;
@@ -81,7 +79,6 @@ import org.opensaml.soap.soap11.Envelope;
 import org.pac4j.core.context.session.SessionStore;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.config.ConfigurableBeanFactory;
-import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.cloud.context.config.annotation.RefreshScope;
@@ -91,7 +88,6 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Scope;
 import org.springframework.context.annotation.ScopedProxyMode;
 import org.springframework.core.io.ClassPathResource;
-
 import java.security.Security;
 import java.time.Duration;
 
@@ -103,8 +99,8 @@ import java.time.Duration;
  */
 @EnableConfigurationProperties(CasConfigurationProperties.class)
 @ConditionalOnFeatureEnabled(feature = CasFeatureModule.FeatureCatalog.SAMLIdentityProvider)
-@AutoConfiguration
-public class SamlIdPConfiguration {
+@Configuration(value = "SamlIdPConfiguration", proxyBeanMethods = false)
+class SamlIdPConfiguration {
 
     static {
         Security.addProvider(new BouncyCastleProvider());
@@ -113,7 +109,7 @@ public class SamlIdPConfiguration {
 
     @Configuration(value = "SamlIdPProfileBuilderConfiguration", proxyBeanMethods = false)
     @EnableConfigurationProperties(CasConfigurationProperties.class)
-    public static class SamlIdPProfileBuilderConfiguration {
+    static class SamlIdPProfileBuilderConfiguration {
         @ConditionalOnMissingBean(name = "samlResponseBuilderConfigurationContext")
         @Bean
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
@@ -355,7 +351,7 @@ public class SamlIdPConfiguration {
 
     @Configuration(value = "SamlIdPTicketFactoryPlanConfiguration", proxyBeanMethods = false)
     @EnableConfigurationProperties(CasConfigurationProperties.class)
-    public static class SamlIdPTicketFactoryPlanConfiguration {
+    static class SamlIdPTicketFactoryPlanConfiguration {
         @ConditionalOnMissingBean(name = "samlAttributeQueryTicketFactoryConfigurer")
         @Bean
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
@@ -377,7 +373,7 @@ public class SamlIdPConfiguration {
 
     @Configuration(value = "SamlIdPTicketExpirationPolicyConfiguration", proxyBeanMethods = false)
     @EnableConfigurationProperties(CasConfigurationProperties.class)
-    public static class SamlIdPTicketExpirationPolicyConfiguration {
+    static class SamlIdPTicketExpirationPolicyConfiguration {
         @ConditionalOnMissingBean(name = "samlAttributeQueryTicketExpirationPolicy")
         @Bean
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
@@ -395,7 +391,7 @@ public class SamlIdPConfiguration {
 
     @Configuration(value = "SamlIdPTicketConfiguration", proxyBeanMethods = false)
     @EnableConfigurationProperties(CasConfigurationProperties.class)
-    public static class SamlIdPTicketConfiguration {
+    static class SamlIdPTicketConfiguration {
         @ConditionalOnMissingBean(name = "samlAttributeQueryTicketFactory")
         @Bean
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
@@ -449,7 +445,7 @@ public class SamlIdPConfiguration {
 
     @Configuration(value = "SamlIdPLogoutConfiguration", proxyBeanMethods = false)
     @EnableConfigurationProperties(CasConfigurationProperties.class)
-    public static class SamlIdPLogoutConfiguration {
+    static class SamlIdPLogoutConfiguration {
         @ConditionalOnMissingBean(name = "samlSingleLogoutServiceLogoutUrlBuilder")
         @Bean
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
@@ -477,7 +473,7 @@ public class SamlIdPConfiguration {
 
     @Configuration(value = "SamlIdPCryptoConfiguration", proxyBeanMethods = false)
     @EnableConfigurationProperties(CasConfigurationProperties.class)
-    public static class SamlIdPCryptoConfiguration {
+    static class SamlIdPCryptoConfiguration {
         @ConditionalOnMissingBean(name = "samlObjectEncrypter")
         @Bean
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
@@ -503,7 +499,7 @@ public class SamlIdPConfiguration {
 
     @Configuration(value = "SamlIdPAuditConfiguration", proxyBeanMethods = false)
     @EnableConfigurationProperties(CasConfigurationProperties.class)
-    public static class SamlIdPAuditConfiguration {
+    static class SamlIdPAuditConfiguration {
         @Bean
         @ConditionalOnMissingBean(name = "samlResponseAuditPrincipalIdProvider")
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
@@ -587,18 +583,13 @@ public class SamlIdPConfiguration {
 
     @Configuration(value = "SamlIdPAttributeDefinitionsConfiguration", proxyBeanMethods = false)
     @EnableConfigurationProperties(CasConfigurationProperties.class)
-    public static class SamlIdPAttributeDefinitionsConfiguration {
+    static class SamlIdPAttributeDefinitionsConfiguration {
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
         @Bean
         @ConditionalOnMissingBean(name = "samlIdPAttributeDefinitionStoreConfigurer")
         public AttributeDefinitionStoreConfigurer samlIdPAttributeDefinitionStoreConfigurer(
             final CasConfigurationProperties casProperties) {
-            return store -> FunctionUtils.doUnchecked(__ -> {
-                try (val samlStore = new DefaultAttributeDefinitionStore(new ClassPathResource("samlidp-attribute-definitions.json"))) {
-                    samlStore.setScope(casProperties.getServer().getScope());
-                    store.importStore(samlStore);
-                }
-            });
+            return () -> DefaultAttributeDefinitionStore.from(new ClassPathResource("samlidp-attribute-definitions.json"));
         }
     }
 }

@@ -3,14 +3,11 @@ package org.apereo.cas.configuration.model.support.jdbc.authn;
 import org.apereo.cas.configuration.support.RequiredProperty;
 import org.apereo.cas.configuration.support.RequiresModule;
 
-import com.fasterxml.jackson.annotation.JsonFilter;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
 
 import java.io.Serial;
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * This is {@link QueryJdbcAuthenticationProperties}.
@@ -22,7 +19,7 @@ import java.util.List;
 @Getter
 @Setter
 @Accessors(chain = true)
-@JsonFilter("QueryJdbcAuthenticationProperties")
+
 public class QueryJdbcAuthenticationProperties extends BaseJdbcAuthenticationProperties {
 
     @Serial
@@ -49,9 +46,4 @@ public class QueryJdbcAuthenticationProperties extends BaseJdbcAuthenticationPro
      * Boolean field that should indicate whether the account is disabled.
      */
     private String fieldDisabled;
-
-    /**
-     * List of column names to fetch as user attributes.
-     */
-    private List<String> principalAttributeList = new ArrayList<>(0);
 }

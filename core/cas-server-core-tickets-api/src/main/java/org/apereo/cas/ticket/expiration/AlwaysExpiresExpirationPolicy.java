@@ -13,7 +13,7 @@ import java.io.Serial;
 import java.time.ZonedDateTime;
 
 /**
- * AlwaysExpiresExpirationPolicy always answers true when asked if a Ticket is
+ * {@link AlwaysExpiresExpirationPolicy} always answers true when asked if a Ticket is
  * expired.
  *
  * @author Misagh Moayyed
@@ -42,22 +42,10 @@ public class AlwaysExpiresExpirationPolicy extends AbstractCasExpirationPolicy {
     public Long getTimeToLive() {
         return 0L;
     }
-
+    
     @JsonIgnore
     @Override
-    public Long getTimeToIdle() {
-        return 0L;
-    }
-
-    @JsonIgnore
-    @Override
-    public ZonedDateTime getMaximumExpirationTime(final Ticket ticketState) {
-        return ZonedDateTime.now(getClock());
-    }
-
-    @JsonIgnore
-    @Override
-    public ZonedDateTime getIdleExpirationTime(final Ticket ticketState) {
+    public ZonedDateTime toMaximumExpirationTime(final Ticket ticketState) {
         return ZonedDateTime.now(getClock());
     }
 }

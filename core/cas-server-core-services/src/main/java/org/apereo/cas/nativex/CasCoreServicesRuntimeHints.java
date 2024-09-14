@@ -1,6 +1,7 @@
 package org.apereo.cas.nativex;
 
 import org.apereo.cas.authentication.principal.DefaultPrincipalAttributesRepository;
+import org.apereo.cas.authentication.principal.PrincipalProvisioner;
 import org.apereo.cas.authentication.principal.ShibbolethCompatiblePersistentIdGenerator;
 import org.apereo.cas.authentication.principal.cache.AbstractPrincipalAttributesRepository;
 import org.apereo.cas.authentication.principal.cache.CachingPrincipalAttributesRepository;
@@ -11,6 +12,8 @@ import org.apereo.cas.services.AllAuthenticationHandlersRegisteredServiceAuthent
 import org.apereo.cas.services.AnonymousRegisteredServiceUsernameAttributeProvider;
 import org.apereo.cas.services.AnyAuthenticationHandlerRegisteredServiceAuthenticationPolicyCriteria;
 import org.apereo.cas.services.AttributeBasedRegisteredServiceAccessStrategyActivationCriteria;
+import org.apereo.cas.services.AttributeBasedRegisteredServiceAttributeReleaseActivationCriteria;
+import org.apereo.cas.services.AttributeBasedRegisteredServiceSingleSignOnParticipationPolicy;
 import org.apereo.cas.services.BaseRegisteredService;
 import org.apereo.cas.services.BaseRegisteredServiceAccessStrategy;
 import org.apereo.cas.services.BaseRegisteredServiceUsernameAttributeProvider;
@@ -19,7 +22,9 @@ import org.apereo.cas.services.CasRegisteredService;
 import org.apereo.cas.services.ChainingAttributeReleasePolicy;
 import org.apereo.cas.services.ChainingRegisteredServiceAccessStrategy;
 import org.apereo.cas.services.ChainingRegisteredServiceAccessStrategyActivationCriteria;
+import org.apereo.cas.services.ChainingRegisteredServiceAttributeReleaseActivationCriteria;
 import org.apereo.cas.services.ChainingRegisteredServiceDelegatedAuthenticationPolicy;
+import org.apereo.cas.services.ChainingServiceRegistry;
 import org.apereo.cas.services.DefaultRegisteredServiceAcceptableUsagePolicy;
 import org.apereo.cas.services.DefaultRegisteredServiceAccessStrategy;
 import org.apereo.cas.services.DefaultRegisteredServiceAuthenticationPolicy;
@@ -31,6 +36,7 @@ import org.apereo.cas.services.DefaultRegisteredServiceProperty;
 import org.apereo.cas.services.DefaultRegisteredServiceProxyGrantingTicketExpirationPolicy;
 import org.apereo.cas.services.DefaultRegisteredServiceProxyTicketExpirationPolicy;
 import org.apereo.cas.services.DefaultRegisteredServiceServiceTicketExpirationPolicy;
+import org.apereo.cas.services.DefaultRegisteredServiceSurrogatePolicy;
 import org.apereo.cas.services.DefaultRegisteredServiceTicketGrantingTicketExpirationPolicy;
 import org.apereo.cas.services.DefaultRegisteredServiceUsernameProvider;
 import org.apereo.cas.services.DefaultRegisteredServiceWebflowInterruptPolicy;
@@ -38,7 +44,9 @@ import org.apereo.cas.services.DenyAllAttributeReleasePolicy;
 import org.apereo.cas.services.FullRegexRegisteredServiceMatchingStrategy;
 import org.apereo.cas.services.GroovyRegisteredServiceAccessStrategy;
 import org.apereo.cas.services.GroovyRegisteredServiceAccessStrategyActivationCriteria;
+import org.apereo.cas.services.GroovyRegisteredServiceAttributeReleaseActivationCriteria;
 import org.apereo.cas.services.GroovyRegisteredServiceAuthenticationPolicyCriteria;
+import org.apereo.cas.services.GroovyRegisteredServiceSingleSignOnParticipationPolicy;
 import org.apereo.cas.services.GroovyRegisteredServiceUsernameProvider;
 import org.apereo.cas.services.GroovyScriptAttributeReleasePolicy;
 import org.apereo.cas.services.LiteralRegisteredServiceMatchingStrategy;
@@ -48,9 +56,9 @@ import org.apereo.cas.services.PatternMatchingAttributeReleasePolicy;
 import org.apereo.cas.services.PrincipalAttributeRegisteredServiceUsernameProvider;
 import org.apereo.cas.services.RefuseRegisteredServiceProxyPolicy;
 import org.apereo.cas.services.RegexMatchingRegisteredServiceProxyPolicy;
-import org.apereo.cas.services.RegexRegisteredService;
 import org.apereo.cas.services.RegisteredServiceAccessStrategyEnforcer;
 import org.apereo.cas.services.RegisteredServiceLogoutType;
+import org.apereo.cas.services.RegisteredServicePasswordlessPolicy;
 import org.apereo.cas.services.RegisteredServicePublicKeyImpl;
 import org.apereo.cas.services.RemoteEndpointServiceAccessStrategy;
 import org.apereo.cas.services.RestfulRegisteredServiceAuthenticationPolicyCriteria;
@@ -74,10 +82,8 @@ import org.apereo.cas.services.support.RegisteredServiceMappedRegexAttributeFilt
 import org.apereo.cas.services.support.RegisteredServiceRegexAttributeFilter;
 import org.apereo.cas.services.support.RegisteredServiceScriptedAttributeFilter;
 import org.apereo.cas.util.nativex.CasRuntimeHintsRegistrar;
-import org.springframework.aot.hint.MemberCategory;
+import lombok.val;
 import org.springframework.aot.hint.RuntimeHints;
-import org.springframework.aot.hint.TypeReference;
-
 import java.util.List;
 
 /**
@@ -89,105 +95,114 @@ import java.util.List;
 public class CasCoreServicesRuntimeHints implements CasRuntimeHintsRegistrar {
     @Override
     public void registerHints(final RuntimeHints hints, final ClassLoader classLoader) {
-        hints.proxies()
-            .registerJdkProxy(ServiceRegistryInitializer.class)
-            .registerJdkProxy(RegisteredServiceAccessStrategyEnforcer.class)
-            .registerJdkProxy(ServiceRegistry.class)
-            .registerJdkProxy(ServiceRegistryExecutionPlanConfigurer.class);
+        registerProxyHints(hints, List.of(
+            PrincipalProvisioner.class,
+            ServiceRegistryInitializer.class,
+            RegisteredServiceAccessStrategyEnforcer.class,
+            ServiceRegistry.class,
+            ServiceRegistryExecutionPlanConfigurer.class));
 
+        registerSpringProxy(hints, ChainingServiceRegistry.class, ServiceRegistry.class);
         registerSerializableSpringProxy(hints, ServiceRegistryInitializerEventListener.class);
 
-        hints.serialization()
-            .registerType(BaseRegisteredService.class)
-            .registerType(BaseWebBasedRegisteredService.class)
-            .registerType(CasRegisteredService.class)
-            .registerType(RegexRegisteredService.class)
+        registerSerializationHints(hints,
+            BaseRegisteredService.class,
+            BaseWebBasedRegisteredService.class,
+            CasRegisteredService.class,
 
-            .registerType(BaseRegisteredServiceAccessStrategy.class)
-            .registerType(AbstractRegisteredServiceAttributeReleasePolicy.class)
+            BaseRegisteredServiceAccessStrategy.class,
+            AbstractRegisteredServiceAttributeReleasePolicy.class,
 
-            .registerType(RegisteredServiceLogoutType.class)
-            .registerType(RegisteredServicePublicKeyImpl.class)
-            .registerType(DefaultRegisteredServiceContact.class)
-            .registerType(DefaultRegisteredServiceProperty.class)
-            .registerType(DefaultRegisteredServiceDelegatedAuthenticationPolicy.class)
-            .registerType(ChainingRegisteredServiceDelegatedAuthenticationPolicy.class)
-            .registerType(DefaultRegisteredServiceExpirationPolicy.class)
-            .registerType(DefaultRegisteredServiceServiceTicketExpirationPolicy.class)
-            .registerType(DefaultRegisteredServiceProxyTicketExpirationPolicy.class)
-            .registerType(DefaultRegisteredServiceDelegatedAuthenticationPolicy.class)
-            .registerType(DefaultRegisteredServiceAcceptableUsagePolicy.class)
-            .registerType(DefaultRegisteredServiceAuthenticationPolicy.class)
-            .registerType(ShibbolethCompatiblePersistentIdGenerator.class)
-            .registerType(FullRegexRegisteredServiceMatchingStrategy.class)
-            .registerType(PartialRegexRegisteredServiceMatchingStrategy.class)
-            .registerType(LiteralRegisteredServiceMatchingStrategy.class)
+            RegisteredServiceLogoutType.class,
+            RegisteredServicePublicKeyImpl.class,
+            DefaultRegisteredServiceContact.class,
+            DefaultRegisteredServiceProperty.class,
+            DefaultRegisteredServiceDelegatedAuthenticationPolicy.class,
+            ChainingRegisteredServiceDelegatedAuthenticationPolicy.class,
+            ChainingRegisteredServiceAttributeReleaseActivationCriteria.class,
+            DefaultRegisteredServiceExpirationPolicy.class,
+            DefaultRegisteredServiceServiceTicketExpirationPolicy.class,
+            DefaultRegisteredServiceProxyTicketExpirationPolicy.class,
+            DefaultRegisteredServiceDelegatedAuthenticationPolicy.class,
+            DefaultRegisteredServiceAcceptableUsagePolicy.class,
+            DefaultRegisteredServiceAuthenticationPolicy.class,
+            ShibbolethCompatiblePersistentIdGenerator.class,
+            FullRegexRegisteredServiceMatchingStrategy.class,
+            PartialRegexRegisteredServiceMatchingStrategy.class,
+            LiteralRegisteredServiceMatchingStrategy.class,
 
-            .registerType(RegexMatchingRegisteredServiceProxyPolicy.class)
-            .registerType(RefuseRegisteredServiceProxyPolicy.class)
-            .registerType(DefaultRegisteredServiceAccessStrategy.class)
-            .registerType(ChainingRegisteredServiceAccessStrategy.class)
-            .registerType(GroovyRegisteredServiceAccessStrategy.class)
-            .registerType(RemoteEndpointServiceAccessStrategy.class)
-            .registerType(TimeBasedRegisteredServiceAccessStrategy.class)
-            .registerType(DefaultRegisteredServiceProxyGrantingTicketExpirationPolicy.class)
-            .registerType(DefaultRegisteredServiceProxyTicketExpirationPolicy.class)
-            .registerType(DefaultRegisteredServiceTicketGrantingTicketExpirationPolicy.class)
-            .registerType(DefaultRegisteredServiceServiceTicketExpirationPolicy.class)
-            .registerType(PrincipalAttributeRegisteredServiceUsernameProvider.class)
-            .registerType(AnonymousRegisteredServiceUsernameAttributeProvider.class)
-            .registerType(BaseRegisteredServiceUsernameAttributeProvider.class)
-            .registerType(StaticRegisteredServiceUsernameProvider.class)
-            .registerType(GroovyRegisteredServiceUsernameProvider.class)
-            .registerType(DefaultRegisteredServiceUsernameProvider.class)
-            .registerType(DefaultRegisteredServiceWebflowInterruptPolicy.class)
-            .registerType(RegisteredServiceRegexAttributeFilter.class)
-            .registerType(RegisteredServiceChainingAttributeFilter.class)
-            .registerType(RegisteredServiceMappedRegexAttributeFilter.class)
-            .registerType(RegisteredServiceScriptedAttributeFilter.class)
-            .registerType(ChainingRegisteredServiceAccessStrategyActivationCriteria.class)
-            .registerType(AttributeBasedRegisteredServiceAccessStrategyActivationCriteria.class)
-            .registerType(GroovyRegisteredServiceAccessStrategyActivationCriteria.class)
+            RegexMatchingRegisteredServiceProxyPolicy.class,
+            RefuseRegisteredServiceProxyPolicy.class,
+            DefaultRegisteredServiceAccessStrategy.class,
+            ChainingRegisteredServiceAccessStrategy.class,
+            RemoteEndpointServiceAccessStrategy.class,
+            TimeBasedRegisteredServiceAccessStrategy.class,
+            DefaultRegisteredServiceProxyGrantingTicketExpirationPolicy.class,
+            DefaultRegisteredServiceProxyTicketExpirationPolicy.class,
+            DefaultRegisteredServiceTicketGrantingTicketExpirationPolicy.class,
+            DefaultRegisteredServiceServiceTicketExpirationPolicy.class,
+            PrincipalAttributeRegisteredServiceUsernameProvider.class,
+            AnonymousRegisteredServiceUsernameAttributeProvider.class,
+            BaseRegisteredServiceUsernameAttributeProvider.class,
+            StaticRegisteredServiceUsernameProvider.class,
+            DefaultRegisteredServiceUsernameProvider.class,
+            DefaultRegisteredServiceWebflowInterruptPolicy.class,
+            RegisteredServiceRegexAttributeFilter.class,
+            RegisteredServiceChainingAttributeFilter.class,
+            RegisteredServiceMappedRegexAttributeFilter.class,
+            RegisteredServiceScriptedAttributeFilter.class,
+            ChainingRegisteredServiceAccessStrategyActivationCriteria.class,
+            AttributeBasedRegisteredServiceAccessStrategyActivationCriteria.class,
+            AttributeBasedRegisteredServiceAttributeReleaseActivationCriteria.class,
+            AttributeBasedRegisteredServiceSingleSignOnParticipationPolicy.class,
+            DefaultRegisteredServiceSurrogatePolicy.class,
 
-            .registerType(ChainingAttributeReleasePolicy.class)
-            .registerType(DenyAllAttributeReleasePolicy.class)
-            .registerType(ReturnAllowedAttributeReleasePolicy.class)
-            .registerType(ReturnAllAttributeReleasePolicy.class)
-            .registerType(ReturnStaticAttributeReleasePolicy.class)
-            .registerType(ReturnMappedAttributeReleasePolicy.class)
-            .registerType(GroovyScriptAttributeReleasePolicy.class)
-            .registerType(ReturnRestfulAttributeReleasePolicy.class)
-            .registerType(PatternMatchingAttributeReleasePolicy.class)
-            .registerType(PatternMatchingAttributeReleasePolicy.Rule.class)
+            ChainingAttributeReleasePolicy.class,
+            DenyAllAttributeReleasePolicy.class,
+            ReturnAllowedAttributeReleasePolicy.class,
+            ReturnAllAttributeReleasePolicy.class,
+            ReturnStaticAttributeReleasePolicy.class,
+            ReturnMappedAttributeReleasePolicy.class,
+            ReturnRestfulAttributeReleasePolicy.class,
+            PatternMatchingAttributeReleasePolicy.class,
+            PatternMatchingAttributeReleasePolicy.Rule.class,
 
-            .registerType(DefaultRegisteredServiceMultifactorPolicy.class)
-            .registerType(BaseMultifactorAuthenticationProviderProperties.MultifactorAuthenticationProviderFailureModes.class)
+            DefaultRegisteredServiceMultifactorPolicy.class,
+            BaseMultifactorAuthenticationProviderProperties.MultifactorAuthenticationProviderFailureModes.class,
 
-            .registerType(AbstractPrincipalAttributesRepository.class)
-            .registerType(CachingPrincipalAttributesRepository.class)
-            .registerType(DefaultPrincipalAttributesRepository.class)
-            .registerType(PrincipalAttributesCoreProperties.MergingStrategyTypes.class)
+            AbstractPrincipalAttributesRepository.class,
+            CachingPrincipalAttributesRepository.class,
+            DefaultPrincipalAttributesRepository.class,
+            PrincipalAttributesCoreProperties.MergingStrategyTypes.class,
 
-            .registerType(DefaultRegisteredServiceConsentPolicy.class)
+            DefaultRegisteredServiceConsentPolicy.class,
 
-            .registerType(AllAuthenticationHandlersRegisteredServiceAuthenticationPolicyCriteria.class)
-            .registerType(AnyAuthenticationHandlerRegisteredServiceAuthenticationPolicyCriteria.class)
-            .registerType(GroovyRegisteredServiceAuthenticationPolicyCriteria.class)
-            .registerType(NotPreventedRegisteredServiceAuthenticationPolicyCriteria.class)
-            .registerType(RestfulRegisteredServiceAuthenticationPolicyCriteria.class);
+            AllAuthenticationHandlersRegisteredServiceAuthenticationPolicyCriteria.class,
+            AnyAuthenticationHandlerRegisteredServiceAuthenticationPolicyCriteria.class,
+            NotPreventedRegisteredServiceAuthenticationPolicyCriteria.class,
+            RestfulRegisteredServiceAuthenticationPolicyCriteria.class
+        );
 
-        List.of(
+        if (isGroovyPresent(classLoader)) {
+            registerSerializationHints(hints, List.of(
+                GroovyRegisteredServiceAccessStrategy.class,
+                GroovyRegisteredServiceUsernameProvider.class,
+                GroovyRegisteredServiceAttributeReleaseActivationCriteria.class,
+                GroovyRegisteredServiceAccessStrategyActivationCriteria.class,
+                GroovyRegisteredServiceSingleSignOnParticipationPolicy.class,
+                GroovyScriptAttributeReleasePolicy.class,
+                GroovyRegisteredServiceAuthenticationPolicyCriteria.class
+            ));
+        }
+        registerReflectionHintsForDeclaredAndPublicElements(hints, List.of(
             UnauthorizedServiceException.class,
             RegisteredServiceQuery.class,
             RegisteredServiceQueryIndex.class,
             CasRegisteredService.class
-        ).forEach(el ->
-            hints.reflection().registerType(TypeReference.of(el),
-                MemberCategory.INVOKE_DECLARED_CONSTRUCTORS,
-                MemberCategory.INVOKE_PUBLIC_CONSTRUCTORS,
-                MemberCategory.INVOKE_DECLARED_METHODS,
-                MemberCategory.INVOKE_PUBLIC_METHODS,
-                MemberCategory.DECLARED_FIELDS,
-                MemberCategory.PUBLIC_FIELDS));
+        ));
+
+        val classes = findSubclassesOf(RegisteredServicePasswordlessPolicy.class);
+        registerSerializationHints(hints, classes);
+        registerReflectionHints(hints, classes);
     }
 }

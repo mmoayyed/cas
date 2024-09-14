@@ -1,12 +1,12 @@
 package org.apereo.cas.configuration.model.support.jpa;
 
+import org.apereo.cas.configuration.features.CasFeatureModule;
 import org.apereo.cas.configuration.model.support.ConnectionPoolingProperties;
 import org.apereo.cas.configuration.support.DurationCapable;
 import org.apereo.cas.configuration.support.ExpressionLanguageCapable;
 import org.apereo.cas.configuration.support.RequiredProperty;
 import org.apereo.cas.configuration.support.RequiresModule;
 
-import com.fasterxml.jackson.annotation.JsonFilter;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
@@ -28,9 +28,9 @@ import java.util.Map;
 @Setter
 @RequiresModule(name = "cas-server-support-jdbc-drivers")
 @Accessors(chain = true)
-@JsonFilter("AbstractJpaProperties")
+
 @SuppressWarnings("UnescapedEntity")
-public abstract class AbstractJpaProperties implements Serializable {
+public abstract class AbstractJpaProperties implements CasFeatureModule, Serializable {
 
     @Serial
     private static final long serialVersionUID = 761486823496930920L;
@@ -113,6 +113,13 @@ public abstract class AbstractJpaProperties implements Serializable {
      */
     @DurationCapable
     private String idleTimeout = "PT10M";
+
+    /**
+     * Indicates the maximum number of milliseconds that the service
+     * can wait to obtain a connection.
+     */
+    @DurationCapable
+    private String connectionTimeout = "PT30S";
 
     /**
      * Attempts to do a JNDI data source look up for the data source name specified.

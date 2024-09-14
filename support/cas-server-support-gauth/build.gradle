@@ -9,6 +9,8 @@ ext {
 }
 dependencies {
     api project(":api:cas-server-core-api-webflow")
+
+    implementation libraries.jose4j
     
     implementation project(":support:cas-server-support-gauth-core")
     implementation project(":support:cas-server-support-otp-mfa")
@@ -30,6 +32,8 @@ dependencies {
     compileOnly project(":core:cas-server-core-rest-api")
     compileOnly project(":support:cas-server-support-trusted-mfa")
 
+    testImplementation libraries.springboottomcat
+    
     testImplementation project(":core:cas-server-core-configuration")
     testImplementation project(":core:cas-server-core-rest")
 
@@ -44,6 +48,7 @@ dependencies {
     testImplementation project(":core:cas-server-core-web")
     testImplementation project(":core:cas-server-core")
     testImplementation project(":core:cas-server-core-util")
+    testImplementation project(":core:cas-server-core-scripting")
     testImplementation project(":core:cas-server-core-cookie")
     testImplementation project(":core:cas-server-core-logout")
     testImplementation project(":core:cas-server-core-logging")

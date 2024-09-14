@@ -45,7 +45,7 @@ parallel="--parallel "
 dryRun=""
 info=""
 gradleCmd="./gradlew"
-flags="--stacktrace --no-daemon --configure-on-demand --build-cache -x javadoc -x check -DskipNestedConfigMetadataGen=true -Dverbose=true "
+flags="--no-daemon --configure-on-demand --build-cache -x javadoc -x check -Dverbose=true "
 coverageTask=""
 
 while (( "$#" )); do
@@ -62,14 +62,23 @@ while (( "$#" )); do
         parallel="--no-parallel "
         shift
         ;;
+    --pts)
+        printf "Running tests with predictive test selection mode: ${GREEN}$2${ENDCOLOR}\n"
+        flags+=" -Dpts.mode=$2 "
+        shift 2
+        ;;
+    --no-pts)
+        flags+=" -DPTS_ENABLED=false "
+        shift
+        ;;
     --with-coverage)
         currentDir=`pwd`
         case "${currentDir}" in
             *api*|*core*|*support*|*webapp*)
-                coverageTask="jacocoTestReport "
+                coverageTask="jacocoTestReport"
                 ;;
             *)
-                coverageTask="jacocoRootReport "
+                coverageTask="jacocoRootReport"
                 ;;
         esac
         shift
@@ -93,6 +102,14 @@ while (( "$#" )); do
     --debug)
         debug=" --debug-jvm "
         parallel=""
+        shift
+        ;;
+    --events)
+        flags+=" -DtestLoggingEvents=$2 "
+        shift 2
+        ;;
+    --offline)
+        flags+=" --offline "
         shift
         ;;
     --no-watch)
@@ -285,6 +302,7 @@ while (( "$#" )); do
                 task+="testOAuth "
                 ;;
             oidc)
+                isDockerOnLinux && ./ci/tests/mail/run-mail-server.sh
                 task+="testOIDC "
                 ;;
             mfa)
@@ -308,7 +326,7 @@ while (( "$#" )); do
             saml1)
                 task+="testSAML1 "
                 ;;
-            saml2web)
+            saml2web|samlweb)
                 task+="testSAML2Web "
                 ;;
             saml2)
@@ -491,25 +509,30 @@ while (( "$#" )); do
     esac
 done
 
-if [[ -z "$task" ]]
-then
+if [[ -n "$coverageTask" ]]; then
+  task=""
+  printf "${GREEN}Running code coverage task [${coverageTask}] will disable all other task executions. Make sure all test tasks that generate code coverage data have already executed.${ENDCOLOR}\n"
+fi
+
+if [[ -z "$task" ]] && [[ -z "$coverageTask" ]]; then
   printHelp
   exit 1
 fi
 
 cmd="$gradleCmd ${GREEN}$task $tests${ENDCOLOR}${flags}${debug}${dryRun}${info}${parallel}${GREEN}$coverageTask${ENDCOLOR}"
-printf "${cmd}\n"
-
+printf "${cmd} %n"
+echo
 cmd="$gradleCmd $task $tests $flags ${debug} ${parallel} ${dryRun} ${info} ${coverageTask}"
 eval "$cmd"
 retVal=$?
 echo -e "***************************************************************************************"
-printf "${CYAN}Gradle build finished at `date` with exit code $retVal ${ENDCOLOR}\n"
+printf "${CYAN}Gradle build finished at `date` with exit code $retVal ${ENDCOLOR}%n"
 echo -e "***************************************************************************************"
 
 if [ $retVal == 0 ]; then
-    printf "${GREEN}Gradle build finished successfully.${ENDCOLOR}\n"
+    printf "${GREEN}Gradle build finished successfully.${ENDCOLOR}%n"
+    exit 0
 else
-    printf "${RED}Gradle build did NOT finish successfully.${ENDCOLOR}"
+    printf "${RED}Gradle build did NOT finish successfully.${ENDCOLOR}%n"
     exit $retVal
 fi

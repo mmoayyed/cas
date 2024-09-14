@@ -1,13 +1,11 @@
 {
-  "dependencies": "oidc",
-
+  "dependencies": "oidc,scripting",
+  "conditions": {
+    "docker": "true"
+  },
   "properties": [
     "--cas.server.name=https://localhost:8443",
     "--cas.server.prefix=${cas.server.name}/cas",
-
-    "--logging.level.org.apereo.cas=info",
-
-    "--cas.audit.engine.enabled=true",
 
     "--cas.authn.attribute-repository.stub.attributes.name=CASName",
     "--cas.authn.attribute-repository.stub.attributes.given_name=CAS",
@@ -25,6 +23,7 @@
     
     "--cas.service-registry.core.init-from-json=true",
     "--cas.service-registry.json.location=file:${PWD}/ci/tests/puppeteer/scenarios/${SCENARIO}/services"
-  ]
+  ],
+  "initScript": "${PWD}/ci/tests/httpbin/run-httpbin-server.sh"
 }
 

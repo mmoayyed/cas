@@ -2,11 +2,13 @@ package org.apereo.cas;
 
 import org.apereo.cas.authentication.CoreAuthenticationTestUtils;
 import org.apereo.cas.authentication.attribute.PrincipalAttributeRepositoryFetcher;
+import org.apereo.cas.authentication.principal.attribute.PersonAttributeDao;
+import org.apereo.cas.test.CasTestExtension;
 import lombok.val;
-import org.apereo.services.persondir.IPersonAttributeDao;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -21,6 +23,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * @since 6.2.0
  */
 @Tag("Attributes")
+@ExtendWith(CasTestExtension.class)
 class PrincipalAttributeRepositoryFetcherTests {
     @SpringBootTest(classes = BasePrincipalAttributeRepositoryTests.SharedTestConfiguration.class,
         properties = {
@@ -37,7 +40,7 @@ class PrincipalAttributeRepositoryFetcherTests {
     static class BaseTests {
         @Autowired
         @Qualifier("aggregatingAttributeRepository")
-        protected IPersonAttributeDao aggregatingAttributeRepository;
+        protected PersonAttributeDao aggregatingAttributeRepository;
     }
 
     @Nested

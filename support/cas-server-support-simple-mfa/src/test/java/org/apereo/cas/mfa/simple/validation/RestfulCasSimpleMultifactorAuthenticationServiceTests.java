@@ -6,26 +6,25 @@ import org.apereo.cas.mfa.simple.CasSimpleMultifactorTokenCredential;
 import org.apereo.cas.mfa.simple.ticket.CasSimpleMultifactorAuthenticationTicket;
 import org.apereo.cas.mfa.simple.ticket.CasSimpleMultifactorAuthenticationTicketFactory;
 import org.apereo.cas.services.RegisteredServiceTestUtils;
+import org.apereo.cas.test.CasTestExtension;
 import org.apereo.cas.ticket.TicketFactory;
 import org.apereo.cas.util.MockWebServer;
 import org.apereo.cas.util.serialization.JacksonObjectMapperFactory;
-
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.val;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.HttpStatus;
-
 import javax.security.auth.login.FailedLoginException;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.UUID;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -35,6 +34,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * @since 6.6.0
  */
 @Tag("RestfulApi")
+@ExtendWith(CasTestExtension.class)
 @SpringBootTest(classes = BaseCasSimpleMultifactorAuthenticationTests.SharedTestConfiguration.class,
     properties = {
         "cas.authn.mfa.simple.token.rest.url=http://localhost:9229",
@@ -82,7 +82,7 @@ class RestfulCasSimpleMultifactorAuthenticationServiceTests {
             webServer.start();
             val mfaFactory = (CasSimpleMultifactorAuthenticationTicketFactory)
                 defaultTicketFactory.get(CasSimpleMultifactorAuthenticationTicket.class);
-            var token = (CasSimpleMultifactorAuthenticationTicket) mfaFactory.create(tokenId, service, Map.of());
+            var token = mfaFactory.create(tokenId, service, Map.of());
             assertDoesNotThrow(() -> multifactorAuthenticationService.store(token));
         }
         try (val webServer = new MockWebServer(9229,
@@ -90,7 +90,7 @@ class RestfulCasSimpleMultifactorAuthenticationServiceTests {
             webServer.start();
             val mfaFactory = (CasSimpleMultifactorAuthenticationTicketFactory)
                 defaultTicketFactory.get(CasSimpleMultifactorAuthenticationTicket.class);
-            var token = (CasSimpleMultifactorAuthenticationTicket) mfaFactory.create(tokenId, service, Map.of());
+            var token = mfaFactory.create(tokenId, service, Map.of());
             assertThrows(FailedLoginException.class, () -> multifactorAuthenticationService.store(token));
         }
     }

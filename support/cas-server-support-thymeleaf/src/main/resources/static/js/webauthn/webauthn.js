@@ -47,7 +47,7 @@
  * WebAuthN Core
  *******************************************************/
 
-(function (root, factory) {
+((root, factory) => {
     if (typeof define === 'function' && define.amd) {
         define(['base64url'], factory);
     } else if (typeof module === 'object' && module.exports) {
@@ -55,7 +55,7 @@
     } else {
         root.webauthn = factory(root.base64url);
     }
-})(this, function (base64url) {
+})(this, base64url => {
 
     function extend(obj, more) {
         return Object.assign({}, obj, more);
@@ -325,12 +325,14 @@ function getRegisterRequest(urls,
                             displayName,
                             credentialNickname,
                             requireResidentKey = false) {
+    let execution = document.getElementById('execution').value;
     return fetch(urls.register, {
         body: new URLSearchParams({
             username,
             displayName,
             credentialNickname,
             requireResidentKey,
+            execution: execution,
             sessionToken: session.sessionToken || null,
         }),
         headers: {

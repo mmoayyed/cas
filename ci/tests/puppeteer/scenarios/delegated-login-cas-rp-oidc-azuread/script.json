@@ -1,5 +1,5 @@
 {
-  "dependencies": "pac4j-webflow",
+  "dependencies": "pac4j-webflow,pac4j-oidc",
   "conditions": {
     "env": "AZURE_AD_CLIENT_ID,AZURE_AD_CLIENT_SECRET,AZURE_AD_USER_PASSWORD,AZURE_AD_TENANT,AZURE_AD_DOMAIN"
   },
@@ -9,7 +9,6 @@
   "properties": [
     "--cas.server.name=https://localhost:8443",
     "--cas.server.prefix=${cas.server.name}/cas",
-    "--cas.audit.slf4j.use-single-line=true",
 
     "--cas.monitor.endpoints.endpoint.defaults.access=ANONYMOUS",
     "--management.endpoints.web.exposure.include=*",

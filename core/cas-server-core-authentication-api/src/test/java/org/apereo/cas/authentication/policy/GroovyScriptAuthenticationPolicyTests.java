@@ -31,7 +31,7 @@ class GroovyScriptAuthenticationPolicyTests {
         FileUtils.write(scriptFile, script, StandardCharsets.UTF_8);
         val policy = new GroovyScriptAuthenticationPolicy("file:" + scriptFile.getCanonicalPath());
         val authentication = CoreAuthenticationTestUtils.getAuthentication();
-        authentication.getCredentials().get(0).getCredentialMetadata().putProperty("mustFail", "true");
+        authentication.getCredentials().getFirst().getCredentialMetadata().putProperty("mustFail", "true");
         assertThrows(GeneralSecurityException.class, () -> policy.isSatisfiedBy(authentication, mock(ConfigurableApplicationContext.class)));
     }
 
@@ -73,11 +73,7 @@ class GroovyScriptAuthenticationPolicyTests {
 
     @Test
     void verifyBadFile() throws Throwable {
-        val script = """
-            def shouldResumeOnFailure(Object[] args) { def failure = args[0]\s
-             return failure != null\s
-            }""";
-        val p = new GroovyScriptAuthenticationPolicy(script);
-        assertThrows(IllegalArgumentException.class, () -> p.shouldResumeOnFailure(new RuntimeException()));
+        val policy = new GroovyScriptAuthenticationPolicy("unknown-file");
+        assertThrows(IllegalArgumentException.class, () -> policy.shouldResumeOnFailure(new RuntimeException()));
     }
 }

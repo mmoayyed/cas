@@ -1,38 +1,40 @@
-const puppeteer = require('puppeteer');
-const cas = require('../../cas.js');
+
+const cas = require("../../cas.js");
+const assert = require("assert");
 
 (async () => {
-    const browser = await puppeteer.launch(cas.browserOptions());
+    const browser = await cas.newBrowser(cas.browserOptions());
     const page = await cas.newPage(browser);
     await cas.gotoLogin(page);
-    await page.waitForTimeout(2000);
+    await cas.sleep(2000);
     await cas.assertInnerText(page, "#forgotPasswordLink", "Reset your password");
     await cas.click(page, "#forgotPasswordLink");
-    await page.waitForTimeout(2000);
+    await cas.sleep(2000);
 
-    await cas.type(page,'#username', "casuser");
+    await cas.type(page,"#username", "casuser");
     await cas.pressEnter(page);
-    await page.waitForNavigation();
-    await page.waitForTimeout(1000);
+    await cas.waitForNavigation(page);
+    await cas.sleep(1000);
     await cas.screenshot(page);
+    await cas.assertInnerText(page, "#content h2", "Password Reset Instructions Sent Successfully.");
+    await cas.assertInnerTextStartsWith(page, "#content p", "You should shortly receive a message");
 
-    const page2 = await browser.newPage();
-    await page2.goto("http://localhost:8282");
-    await page2.waitForTimeout(1000);
-    await cas.click(page2, "table tbody td a");
-    await page2.waitForTimeout(1000);
-    let code = await cas.textContent(page2, "div[name=bodyPlainText] .well");
-    await page2.close();
-
+    const link = await cas.extractFromEmail(browser);
+    assert(link !== undefined);
+    await cas.goto(page, link);
+    await cas.sleep(2000);
+    
+    const code = await cas.extractFromEmail(browser);
     await page.bringToFront();
     await cas.type(page, "#token", code);
     await cas.submitForm(page, "#fm1");
-    await page.waitForTimeout(4000);
-    await cas.screenshot(page);
-
-    await page.waitForTimeout(1000);
-    await cas.assertInnerText(page, "#content h2", "Password Reset Instructions Sent Successfully.");
-    await cas.assertInnerTextStartsWith(page, "#content p", "You should shortly receive a message");
+    await cas.sleep(4000);
+    await cas.assertInnerText(page, "#pwdmain h3", "Hello, casuser. You must change your password.");
+    await cas.type(page,"#password", "Jv!e0mKD&dCNl^Q");
+    await cas.type(page,"#confirmedPassword", "Jv!e0mKD&dCNl^Q");
+    await cas.pressEnter(page);
+    await cas.waitForNavigation(page);
+    await cas.assertInnerText(page, "#content h2", "Password Change Successful");
 
     await browser.close();
 })();

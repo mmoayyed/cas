@@ -1,7 +1,7 @@
 package org.apereo.cas.util.crypto;
 
-import org.jose4j.jwe.ContentEncryptionAlgorithmIdentifiers;
-
+import org.apereo.cas.util.NamedObject;
+import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import java.io.Serializable;
 import java.security.Key;
 
@@ -14,22 +14,11 @@ import java.security.Key;
  * @param <O> the type parameter for the output
  * @since 4.1
  */
-public interface CipherExecutor<I, O> extends EncodableCipher<I, O>, DecodableCipher<I, O> {
+public interface CipherExecutor<I, O> extends EncodableCipher<I, O>, DecodableCipher<I, O>, NamedObject {
     /**
-     * The default content encryption algorithm.
+     * Default cipher bean name for ticket registry ops.
      */
-    String DEFAULT_CONTENT_ENCRYPTION_ALGORITHM =
-        ContentEncryptionAlgorithmIdentifiers.AES_128_CBC_HMAC_SHA_256;
-
-    /**
-     * Encryption key size for text data and ciphers.
-     */
-    int DEFAULT_STRINGABLE_ENCRYPTION_KEY_SIZE = 256;
-
-    /**
-     * Signing key size for text data and ciphers.
-     */
-    int DEFAULT_STRINGABLE_SIGNING_KEY_SIZE = 512;
+    String BEAN_NAME_TICKET_REGISTRY_CIPHER_EXECUTOR = "defaultTicketRegistryCipherExecutor";
 
     /**
      * Factory method.
@@ -75,15 +64,7 @@ public interface CipherExecutor<I, O> extends EncodableCipher<I, O>, DecodableCi
     default boolean isEnabled() {
         return true;
     }
-
-    /**
-     * The (component) name of this cipher.
-     *
-     * @return the name.
-     */
-    default String getName() {
-        return getClass().getSimpleName();
-    }
+    
 
     /**
      * Produce the signing key used to sign tokens in this cipher.
@@ -92,5 +73,15 @@ public interface CipherExecutor<I, O> extends EncodableCipher<I, O>, DecodableCi
      */
     default Key getSigningKey() {
         return null;
+    }
+
+    /**
+     * With signing disabled.
+     *
+     * @return the property bound cipher executor
+     */
+    @CanIgnoreReturnValue
+    default CipherExecutor<I, ?> withSigningDisabled() {
+        return this;
     }
 }

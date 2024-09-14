@@ -7,6 +7,7 @@ dependencies {
     api project(":api:cas-server-core-api-monitor")
 
     compileOnly project(":core:cas-server-core-services")
+
     
     implementation project(":core:cas-server-core-authentication-attributes")
     implementation project(":core:cas-server-core-authentication-api")
@@ -18,12 +19,14 @@ dependencies {
     
     testImplementation project(":core:cas-server-core-web")
     testImplementation project(":core:cas-server-core-logout-api")
+    testImplementation project(":core:cas-server-core-logout")
     testImplementation project(":core:cas-server-core-tickets")
     testImplementation project(":core:cas-server-core-services")
     testImplementation project(":core:cas-server-core-util")
     testImplementation project(":core:cas-server-core-notifications")
     testImplementation project(":core:cas-server-core-configuration")
     testImplementation project(":core:cas-server-core-monitor")
+    testImplementation project(":core:cas-server-core-scripting")
 
     testImplementation project(path: ":core:cas-server-core-util-api", configuration: "tests")
     testImplementation project(path: ":core:cas-server-core-authentication-api", configuration: "tests")

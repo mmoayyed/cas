@@ -2,15 +2,13 @@ package org.apereo.cas.services;
 
 import org.apereo.cas.configuration.support.ExpressionLanguageCapable;
 import org.apereo.cas.configuration.support.RegularExpressionCapable;
-import org.apereo.cas.util.model.TriStateBoolean;
-
+import org.apereo.cas.configuration.support.TriStateBoolean;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.Accessors;
-
 import java.io.Serial;
 
 /**
@@ -40,4 +38,7 @@ public class DefaultRegisteredServiceWebflowInterruptPolicy implements Registere
     @ExpressionLanguageCapable
     @RegularExpressionCapable
     private String attributeValue;
+
+    @ExpressionLanguageCapable
+    private String groovyScript;
 }

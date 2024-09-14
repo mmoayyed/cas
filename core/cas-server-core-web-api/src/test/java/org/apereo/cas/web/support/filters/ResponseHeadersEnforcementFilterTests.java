@@ -1,5 +1,6 @@
 package org.apereo.cas.web.support.filters;
 
+import org.apereo.cas.services.RegisteredService;
 import lombok.val;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
@@ -9,7 +10,13 @@ import org.springframework.mock.web.MockFilterConfig;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.mock.web.MockServletContext;
-
+import org.springframework.webflow.conversation.NoSuchConversationException;
+import org.springframework.webflow.conversation.impl.SimpleConversationId;
+import jakarta.servlet.RequestDispatcher;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import java.util.Optional;
+import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -42,6 +49,20 @@ class ResponseHeadersEnforcementFilterTests {
     void verifyUnrecognizedParam() throws Throwable {
         filterConfig.addInitParameter("bad-param", "bad-value");
         assertThrows(RuntimeException.class, () -> filter.init(filterConfig));
+    }
+
+    @Test
+    void verifyMissingFlowConversation() {
+        val mockFilter = new ResponseHeadersEnforcementFilter() {
+            @Override
+            protected Optional<RegisteredService> prepareFilterBeforeExecution(final HttpServletResponse httpServletResponse, final HttpServletRequest httpServletRequest) {
+                throw new RuntimeException(new IllegalArgumentException(new NoSuchConversationException(new SimpleConversationId(UUID.randomUUID().toString()))));
+            }
+        };
+        val servletRequest = new MockHttpServletRequest();
+        val servletResponse = new MockHttpServletResponse();
+        assertThrows(NoSuchConversationException.class, () -> mockFilter.doFilter(servletRequest, servletResponse, new MockFilterChain()));
+        assertNotNull(servletRequest.getAttribute(RequestDispatcher.ERROR_EXCEPTION));
     }
 
     @Test
@@ -92,5 +113,45 @@ class ResponseHeadersEnforcementFilterTests {
         filter.destroy();
         assertNull(servletResponse.getHeaderValue("Cache-Control"));
         assertNull(servletResponse.getHeaderValue("Pragma"));
+    }
+
+    @Test
+    void verifyDynamicNonce() throws Throwable {
+        val servletContext = new MockServletContext();
+        val specificFilterConfig = new MockFilterConfig(servletContext);
+        specificFilterConfig.addInitParameter(ResponseHeadersEnforcementFilter.INIT_PARAM_CONTENT_SECURITY_POLICY, "script-src '@nonce@';");
+        filter.init(specificFilterConfig);
+
+        val servletRequest = new MockHttpServletRequest();
+        servletRequest.setSecure(true);
+        val servletResponse = new MockHttpServletResponse();
+        filter.doFilter(servletRequest, servletResponse, new MockFilterChain());
+        filter.destroy();
+
+        val generatedNonce = servletRequest.getAttribute(ResponseHeadersEnforcementFilter.CSP_GENERATED_NONCE);
+        assertNotNull(generatedNonce);
+        val contentSecurityPolicy = servletResponse.getHeaderValue("Content-Security-Policy");
+        assertEquals("script-src '" + generatedNonce + "';", contentSecurityPolicy);
+    }
+
+    @Test
+    void verifyDynamicNonceAlreadyGenerated() throws Throwable {
+        val servletContext = new MockServletContext();
+        val specificFilterConfig = new MockFilterConfig(servletContext);
+        specificFilterConfig.addInitParameter(ResponseHeadersEnforcementFilter.INIT_PARAM_CONTENT_SECURITY_POLICY, "script-src '@nonce@';");
+        filter.init(specificFilterConfig);
+
+        val servletRequest = new MockHttpServletRequest();
+        servletRequest.setSecure(true);
+        val alreadyGeneratedNonce = "123456";
+        servletRequest.setAttribute(ResponseHeadersEnforcementFilter.CSP_GENERATED_NONCE, alreadyGeneratedNonce);
+        val servletResponse = new MockHttpServletResponse();
+        filter.doFilter(servletRequest, servletResponse, new MockFilterChain());
+        filter.destroy();
+
+        val generatedNonce = servletRequest.getAttribute(ResponseHeadersEnforcementFilter.CSP_GENERATED_NONCE);
+        assertEquals(alreadyGeneratedNonce, generatedNonce);
+        val contentSecurityPolicy = servletResponse.getHeaderValue("Content-Security-Policy");
+        assertEquals("script-src '" + alreadyGeneratedNonce + "';", contentSecurityPolicy);
     }
 }

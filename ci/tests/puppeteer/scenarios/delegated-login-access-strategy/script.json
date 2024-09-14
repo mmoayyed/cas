@@ -1,9 +1,8 @@
 {
-  "dependencies": "reports,pac4j-webflow",
+  "dependencies": "reports,pac4j-webflow,pac4j-cas",
   "conditions": {
     "docker": "true"
   },
-
   "properties": [
     "--cas.server.name=https://localhost:8443",
     "--cas.server.prefix=https://localhost:8443/cas",
@@ -19,7 +18,6 @@
     "--cas.authn.pac4j.cas[1].client-name=CASServerTwo",
     "--cas.authn.pac4j.cas[1].display-name=My CAS Two",
     
-    "--logging.level.org.apereo.cas=debug",
 
     "--cas.monitor.endpoints.endpoint.defaults.access=ANONYMOUS",
     "--management.endpoints.web.exposure.include=*",
@@ -28,7 +26,6 @@
     "--cas.service-registry.core.init-from-json=true",
     "--cas.service-registry.json.location=file:${PWD}/ci/tests/puppeteer/scenarios/${SCENARIO}/services"
   ],
-  "initScript": "${PWD}/ci/tests/cas/run-cas-server.sh"
+  "initScript": "${PWD}/ci/tests/cas/run-cas-server.sh,${PWD}/ci/tests/httpbin/run-httpbin-server.sh"
 }
-
 

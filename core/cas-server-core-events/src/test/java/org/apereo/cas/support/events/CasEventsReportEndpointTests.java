@@ -1,17 +1,20 @@
 package org.apereo.cas.support.events;
 
 import org.apereo.cas.authentication.CoreAuthenticationTestUtils;
-import org.apereo.cas.config.CasCoreEventsConfiguration;
-import org.apereo.cas.config.CasCoreUtilConfiguration;
+import org.apereo.cas.config.CasCoreEventsAutoConfiguration;
+import org.apereo.cas.config.CasCoreScriptingAutoConfiguration;
+import org.apereo.cas.config.CasCoreUtilAutoConfiguration;
 import org.apereo.cas.configuration.CasConfigurationProperties;
 import org.apereo.cas.support.events.authentication.CasAuthenticationTransactionFailureEvent;
 import org.apereo.cas.support.events.authentication.CasAuthenticationTransactionSuccessfulEvent;
 import org.apereo.cas.support.events.dao.AbstractCasEventRepository;
 import org.apereo.cas.support.events.dao.CasEvent;
 import org.apereo.cas.support.events.web.CasEventsReportEndpoint;
+import org.apereo.cas.test.CasTestExtension;
 import org.apereo.cas.util.CollectionUtils;
 import org.apereo.cas.util.http.HttpRequestUtils;
 import org.apereo.cas.util.serialization.JacksonObjectMapperFactory;
+import org.apereo.cas.util.spring.boot.SpringBootTestAutoConfigurations;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.val;
 import org.apereo.inspektr.common.web.ClientInfo;
@@ -19,12 +22,12 @@ import org.apereo.inspektr.common.web.ClientInfoHolder;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.cloud.autoconfigure.RefreshAutoConfiguration;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.http.HttpStatus;
@@ -50,14 +53,16 @@ import static org.junit.jupiter.api.Assertions.*;
  * @author Misagh Moayyed
  * @since 6.2.0
  */
+@SpringBootTestAutoConfigurations
 @SpringBootTest(classes = {
     CasEventsReportEndpointTests.CasEventsReportEndpointTestConfiguration.class,
-    CasCoreEventsConfiguration.class,
-    CasCoreUtilConfiguration.class,
-    RefreshAutoConfiguration.class
+    CasCoreEventsAutoConfiguration.class,
+    CasCoreUtilAutoConfiguration.class,
+    CasCoreScriptingAutoConfiguration.class
 })
 @EnableConfigurationProperties(CasConfigurationProperties.class)
 @Tag("ActuatorEndpoint")
+@ExtendWith(CasTestExtension.class)
 class CasEventsReportEndpointTests {
     private static final ObjectMapper MAPPER = JacksonObjectMapperFactory.builder()
         .defaultTypingEnabled(true).build().toObjectMapper();
@@ -139,9 +144,9 @@ class CasEventsReportEndpointTests {
                 .setCreationTime(ZonedDateTime.now(Clock.systemUTC()).toString())
                 .putTimestamp(System.currentTimeMillis());
             val content = MAPPER.writeValueAsString(event);
-            var name = event.getEventId() + ".json";
-            val e = new ZipEntry(name);
-            zipStream.putNextEntry(e);
+            val name = event.getEventId() + ".json";
+            val entry = new ZipEntry(name);
+            zipStream.putNextEntry(entry);
 
             val data = content.getBytes(StandardCharsets.UTF_8);
             zipStream.write(data, 0, data.length);

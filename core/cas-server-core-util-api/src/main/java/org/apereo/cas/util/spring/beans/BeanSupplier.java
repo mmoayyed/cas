@@ -19,6 +19,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 /**
@@ -42,7 +43,7 @@ public interface BeanSupplier<T> extends Supplier<T> {
      * @return the bean supplier
      */
     static <T> BeanSupplier<T> of(final Class<T> clazz) {
-        return new DefaultBeanSupplier<T>(clazz);
+        return new DefaultBeanSupplier<>(clazz);
     }
 
     /**
@@ -64,6 +65,18 @@ public interface BeanSupplier<T> extends Supplier<T> {
      */
     static boolean isNotProxy(final Object result) {
         return result != null && !isProxy(result);
+    }
+
+    /**
+     * If not proxy, then do.
+     *
+     * @param object   the object
+     * @param consumer the consumer
+     */
+    static <T> void ifNotProxy(final T object, final Consumer<T> consumer) {
+        if (isNotProxy(object)) {
+            consumer.accept(object);
+        }
     }
 
     @Override
@@ -146,7 +159,24 @@ public interface BeanSupplier<T> extends Supplier<T> {
      *
      * @return the bean supplier
      */
-    BeanSupplier<T> otherwiseProxy();
+    default BeanSupplier<T> otherwiseProxy() {
+        return otherwiseProxy(null);
+    }
+
+    /**
+     * Otherwise proxy bean supplier.
+     *
+     * @param beforeCallback the callback to execute before proxy is created
+     * @return the bean supplier
+     */
+    BeanSupplier<T> otherwiseProxy(Consumer<T> beforeCallback);
+    
+    /**
+     * Create a null bean.
+     *
+     * @return the bean supplier
+     */
+    BeanSupplier<T> otherwiseNull();
 
     @RequiredArgsConstructor
     class DefaultBeanSupplier<T> implements BeanSupplier<T> {
@@ -157,14 +187,14 @@ public interface BeanSupplier<T> extends Supplier<T> {
 
         private Supplier<T> beanSupplier;
 
-        private Supplier<T> proxySupplier;
+        private Supplier<T> otherwiseSupplier;
 
         @Override
         public T get() {
             if (!conditionSuppliers.isEmpty() && conditionSuppliers.stream().allMatch(Supplier::get)) {
                 return beanSupplier.get();
             }
-            return proxySupplier.get();
+            return otherwiseSupplier.get();
         }
 
         @Override
@@ -189,14 +219,30 @@ public interface BeanSupplier<T> extends Supplier<T> {
         @Override
         @CanIgnoreReturnValue
         public BeanSupplier<T> otherwise(final Supplier<T> beanSupplier) {
-            this.proxySupplier = beanSupplier;
+            this.otherwiseSupplier = beanSupplier;
             return this;
         }
 
         @Override
         @CanIgnoreReturnValue
-        public BeanSupplier<T> otherwiseProxy() {
+        public BeanSupplier<T> otherwiseProxy(final Consumer<T> beforeCallback) {
+            if (beforeCallback != null) {
+                beforeCallback.accept(null);
+            }
             return otherwise(new ProxiedBeanSupplier<>(this.clazz));
+        }
+
+        @Override
+        @CanIgnoreReturnValue
+        public BeanSupplier<T> otherwiseNull() {
+            return otherwise(new NullBeanSupplier<>());
+        }
+    }
+
+    class NullBeanSupplier<T> implements Supplier<T> {
+        @Override
+        public T get() {
+            return null;
         }
     }
 
@@ -226,8 +272,8 @@ public interface BeanSupplier<T> extends Supplier<T> {
 
             TYPES_AND_VALUES.put(Optional.class, Optional.empty());
 
-            TYPES_AND_VALUES.put(double.class, 0D);
-            TYPES_AND_VALUES.put(Double.class, 0D);
+            TYPES_AND_VALUES.put(double.class, 0.0D);
+            TYPES_AND_VALUES.put(Double.class, 0.0D);
             TYPES_AND_VALUES.put(long.class, 0L);
             TYPES_AND_VALUES.put(Long.class, 0L);
             TYPES_AND_VALUES.put(int.class, 0);
@@ -263,4 +309,6 @@ public interface BeanSupplier<T> extends Supplier<T> {
                     }));
         }
     }
+
+
 }

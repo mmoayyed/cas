@@ -4,7 +4,6 @@
   "properties": [
     "--cas.server.name=https://localhost:8443",
     "--cas.server.prefix=${cas.server.name}/cas",
-    "--cas.audit.engine.enabled=true",
     
     "--cas.service-registry.core.init-from-json=true",
     "--cas.service-registry.json.location=file:${PWD}/ci/tests/puppeteer/scenarios/${SCENARIO}/services",
@@ -13,10 +12,11 @@
 
     "--cas.authn.mfa.gauth.core.issuer=CASIssuer",
     "--cas.authn.mfa.gauth.core.label=CASLabel",
-    
-    "--cas.authn.mfa.core.provider-selection-enabled=true"
+
+    "--cas.authn.mfa.core.provider-selection.cookie.enabled=true",
+    "--cas.authn.mfa.core.provider-selection.cookie.crypto.enabled=true",
+    "--cas.authn.mfa.core.provider-selection.cookie.pin-to-session=true",
+    "--cas.authn.mfa.core.provider-selection.provider-selection-enabled=true"
   ]
 }
-
-
 

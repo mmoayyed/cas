@@ -11,7 +11,7 @@ import org.apereo.cas.services.RegisteredService;
 import org.apereo.cas.services.RegisteredServiceTestUtils;
 import org.apereo.cas.util.MockRequestContext;
 import org.apereo.cas.web.flow.CasWebflowConfigurer;
-import org.apereo.cas.web.support.WebUtils;
+import org.apereo.cas.web.flow.util.MultifactorAuthenticationWebflowUtils;
 import lombok.val;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -49,10 +49,10 @@ class PrepareMultifactorProviderSelectionActionTests extends BaseCasWebflowMulti
         val context = MockRequestContext.create(applicationContext);
         context.setFlowExecutionContext(exec);
 
-        val chain = new DefaultChainingMultifactorAuthenticationProvider(
+        val chain = new DefaultChainingMultifactorAuthenticationProvider(applicationContext,
             new DefaultMultifactorAuthenticationFailureModeEvaluator(casProperties));
         val provider = new TestMultifactorAuthenticationProvider();
-        provider.setBypassEvaluator(new DefaultChainingMultifactorAuthenticationBypassProvider());
+        provider.setBypassEvaluator(new DefaultChainingMultifactorAuthenticationBypassProvider(applicationContext));
         chain.addMultifactorAuthenticationProvider(provider);
         val attributes = new LocalAttributeMap(RegisteredService.class.getName(), RegisteredServiceTestUtils.getRegisteredService());
         attributes.put(MultifactorAuthenticationProvider.class.getName(), chain);
@@ -62,6 +62,6 @@ class PrepareMultifactorProviderSelectionActionTests extends BaseCasWebflowMulti
             attributes);
         context.setCurrentEvent(event);
         assertNull(action.execute(context));
-        assertNotNull(WebUtils.getSelectableMultifactorAuthenticationProviders(context));
+        assertNotNull(MultifactorAuthenticationWebflowUtils.getSelectableMultifactorAuthenticationProviders(context));
     }
 }

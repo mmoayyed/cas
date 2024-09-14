@@ -8,8 +8,8 @@ import org.apereo.cas.support.oauth.web.response.OAuth20AuthorizationRequest;
 import org.apereo.cas.support.oauth.web.response.accesstoken.ext.AccessTokenRequestContext;
 import org.apereo.cas.support.oauth.web.response.callback.OAuth20AuthorizationModelAndViewBuilder;
 import org.apereo.cas.support.oauth.web.response.callback.OAuth20TokenAuthorizationResponseBuilder;
-import org.apereo.cas.ticket.accesstoken.OAuth20AccessToken;
-import org.apereo.cas.ticket.refreshtoken.OAuth20RefreshToken;
+import org.apereo.cas.ticket.Ticket;
+import org.apereo.cas.ticket.idtoken.IdTokenGenerationContext;
 
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
@@ -40,15 +40,28 @@ public class OidcImplicitIdTokenAuthorizationResponseBuilder<T extends OidcConfi
     }
 
     @Override
-    protected ModelAndView buildCallbackUrlResponseType(
-        final AccessTokenRequestContext holder,
-        final OAuth20AccessToken accessToken,
-        final List<NameValuePair> params,
-        final OAuth20RefreshToken refreshToken) throws Throwable {
-        val idToken = configurationContext.getIdTokenGeneratorService().generate(accessToken,
-            holder.getUserProfile(), OAuth20ResponseTypes.ID_TOKEN, holder.getGrantType(), holder.getRegisteredService());
-        LOGGER.debug("Generated id token [{}]", idToken);
-        params.add(new BasicNameValuePair(OidcConstants.ID_TOKEN, idToken.token()));
-        return super.buildCallbackUrlResponseType(holder, accessToken, params, refreshToken);
+    protected ModelAndView buildCallbackUrlResponseType(final AccessTokenRequestContext tokenRequestContext,
+                                                        final Ticket givenAccessToken, final Ticket givenRefreshToken,
+                                                        final List<NameValuePair> parameters) throws Throwable {
+        val accessToken = resolveAccessToken(givenAccessToken);
+        val idTokenContext = IdTokenGenerationContext.builder()
+            .accessToken(accessToken)
+            .userProfile(tokenRequestContext.getUserProfile())
+            .responseType(OAuth20ResponseTypes.ID_TOKEN)
+            .grantType(tokenRequestContext.getGrantType())
+            .registeredService(tokenRequestContext.getRegisteredService())
+            .build();
+        
+        val idToken = configurationContext.getIdTokenGeneratorService().generate(idTokenContext);
+        if (idToken != null) {
+            LOGGER.debug("Generated id token [{}]", idToken);
+            parameters.add(new BasicNameValuePair(OidcConstants.ID_TOKEN, idToken.token()));
+        }
+        return super.buildCallbackUrlResponseType(tokenRequestContext, accessToken, givenRefreshToken, parameters);
+    }
+
+    @Override
+    protected boolean includeAccessTokenInResponse(final AccessTokenRequestContext tokenRequestContext) {
+        return false;
     }
 }

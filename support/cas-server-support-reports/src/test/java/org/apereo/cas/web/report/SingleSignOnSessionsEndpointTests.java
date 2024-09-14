@@ -104,13 +104,8 @@ class SingleSignOnSessionsEndpointTests extends AbstractCasEndpointTests {
         var results = singleSignOnSessionsEndpoint.getSsoSessions(new SingleSignOnSessionsEndpoint.SsoSessionsRequest()
             .withType(SingleSignOnSessionsEndpoint.SsoSessionReportOptions.ALL.getType()));
         assertFalse(results.isEmpty());
-        assertTrue(results.containsKey("totalUsageCount"));
         assertTrue(results.containsKey("activeSsoSessions"));
-        assertTrue(results.containsKey("totalTicketGrantingTickets"));
-        assertTrue(results.containsKey("totalTickets"));
-        assertTrue(results.containsKey("totalPrincipals"));
-        assertTrue(results.containsKey("totalProxyGrantingTickets"));
-
+        
         val sessions = (List) results.get("activeSsoSessions");
         assertEquals(1, sessions.size());
 
@@ -159,7 +154,7 @@ class SingleSignOnSessionsEndpointTests extends AbstractCasEndpointTests {
         when(registry.getTickets(any(Predicate.class))).thenReturn(Stream.of(new MockTicketGrantingTicket("casuser")));
         when(registry.deleteTicket(anyString())).thenThrow(new RuntimeException());
 
-        val results = new SingleSignOnSessionsEndpoint(new DirectObjectProvider<>(registry),
+        val results = new SingleSignOnSessionsEndpoint(new DirectObjectProvider<>(registry), applicationContext,
             casProperties, new DirectObjectProvider<>(defaultSingleLogoutRequestExecutor)).destroySsoSessions(
             new SingleSignOnSessionsEndpoint.SsoSessionsRequest()
                 .withType(SingleSignOnSessionsEndpoint.SsoSessionReportOptions.DIRECT.getType()),

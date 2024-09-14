@@ -1,29 +1,29 @@
-const puppeteer = require('puppeteer');
-const cas = require('../../cas.js');
+
+const cas = require("../../cas.js");
 const assert = require("assert");
 
 async function gotoPage(page, instanceId, pageId) {
-    let response = await cas.goto(page, `https://localhost:8443/cas/sba/instances/${instanceId}/${pageId}`);
-    await page.waitForTimeout(1000);
+    const response = await cas.goto(page, `https://localhost:8443/cas/sba/instances/${instanceId}/${pageId}`);
+    await cas.sleep(1000);
     await cas.log(`${response.status()} ${response.statusText()}`);
     assert(response.ok());
 }
 
 (async () => {
-    const browser = await puppeteer.launch(cas.browserOptions());
+    const browser = await cas.newBrowser(cas.browserOptions());
     const page = await cas.newPage(browser);
     await cas.goto(page, "https://localhost:8443/cas/sba");
     await cas.screenshot(page);
     await cas.loginWith(page, "s#kiooritea", "p@$$W0rd");
     await cas.screenshot(page);
-    await page.waitForTimeout(3000);
+    await cas.sleep(3000);
     await cas.click(page, "div#CAS button");
-    await page.waitForTimeout(3000);
+    await cas.sleep(3000);
     await cas.click(page, "div#CAS li");
-    await page.waitForTimeout(3000);
+    await cas.sleep(3000);
     await cas.logPage(page);
-    let url = await page.url();
-    const pathArray = url.split('/');
+    const url = await page.url();
+    const pathArray = url.split("/");
     const instanceId = pathArray[pathArray.length - 2];
     await cas.log(`Instance ID ${instanceId}`);
 

@@ -7,19 +7,14 @@ import org.apereo.cas.util.CollectionUtils;
 import org.apereo.cas.util.spring.beans.BeanSupplier;
 import org.apereo.cas.web.flow.actions.ConsumerExecutionAction;
 import org.apereo.cas.web.flow.configurer.AbstractCasWebflowConfigurer;
-
 import lombok.val;
-import org.springframework.binding.convert.service.RuntimeBindingConversionExecutor;
-import org.springframework.binding.mapping.impl.DefaultMapping;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.core.annotation.AnnotationAwareOrderComparator;
 import org.springframework.webflow.definition.registry.FlowDefinitionRegistry;
-import org.springframework.webflow.engine.ActionState;
 import org.springframework.webflow.engine.Flow;
 import org.springframework.webflow.engine.History;
 import org.springframework.webflow.engine.ViewState;
 import org.springframework.webflow.engine.builder.support.FlowBuilderServices;
-
 import java.util.HashMap;
 import java.util.Optional;
 
@@ -49,34 +44,26 @@ public class DelegatedAuthenticationWebflowConfigurer extends AbstractCasWebflow
     @Override
     protected void doInitialize() {
         val flowDefn = getLoginFlow();
-        Optional.ofNullable(flowDefn)
-            .ifPresent(flow -> {
-                createClientActionState(flow);
-                createStopWebflowViewState(flow);
-                createDelegatedClientLogoutAction();
-                createClientRedirectSubflow(flow);
-                createIdentityProviderLogoutState(flow);
-                
-                val selectionType = casProperties.getAuthn().getPac4j().getCore().getDiscoverySelection().getSelectionType();
-                if (selectionType.isDynamic()) {
-                    createDynamicDiscoveryViewState(flow);
-                    createDynamicDiscoveryActionState(flow);
-                    createRedirectToProviderViewState(flow);
-                }
-            });
+        Optional.ofNullable(flowDefn).ifPresent(flow -> {
+            createClientActionState(flow);
+            createStopWebflowViewState(flow);
+            createDelegatedClientLogoutAction();
+            createClientRedirectSubflow(flow);
+            createIdentityProviderLogoutState(flow);
+
+            val selectionType = casProperties.getAuthn().getPac4j().getCore().getDiscoverySelection().getSelectionType();
+            if (selectionType.isDynamic()) {
+                createDynamicDiscoveryViewState(flow);
+                createDynamicDiscoveryActionState(flow);
+                createRedirectToProviderViewState(flow);
+            }
+        });
     }
 
-    /**
-     * Create delegated client logout action.
-     */
     protected void createDelegatedClientLogoutAction() {
         val logoutFlow = getLogoutFlow();
-
         val terminateSessionState = getState(logoutFlow, CasWebflowConstants.STATE_ID_TERMINATE_SESSION);
         terminateSessionState.getEntryActionList().add(createEvaluateAction(CasWebflowConstants.ACTION_ID_DELEGATED_AUTHENTICATION_CLIENT_LOGOUT));
-
-        val finishLogout = getState(logoutFlow, CasWebflowConstants.STATE_ID_FINISH_LOGOUT, ActionState.class);
-        finishLogout.getExitActionList().add(createEvaluateAction(CasWebflowConstants.ACTION_ID_DELEGATED_AUTHENTICATION_CLIENT_FINISH_LOGOUT));
     }
 
     protected void createDelegatedClientCredentialSelectionState(final Flow flow) {
@@ -136,11 +123,6 @@ public class DelegatedAuthenticationWebflowConfigurer extends AbstractCasWebflow
 
     }
 
-    /**
-     * Create stop webflow view state.
-     *
-     * @param flow the flow
-     */
     protected void createStopWebflowViewState(final Flow flow) {
         createDecisionState(flow, CasWebflowConstants.DECISION_STATE_CHECK_DELEGATED_AUTHN_FAILURE,
             "flowScope.unauthorizedRedirectUrl != null",
@@ -213,22 +195,19 @@ public class DelegatedAuthenticationWebflowConfigurer extends AbstractCasWebflow
             .filter(BeanSupplier::isNotProxy)
             .sorted(AnnotationAwareOrderComparator.INSTANCE).toList();
 
-        val attrMapping = new DefaultMapping(createExpression("flowScope." + CasWebflowConstants.ATTRIBUTE_SERVICE),
-            createExpression(CasWebflowConstants.ATTRIBUTE_SERVICE));
+        val attrMapping = createFlowMapping("flowScope." + CasWebflowConstants.ATTRIBUTE_SERVICE, CasWebflowConstants.ATTRIBUTE_SERVICE);
         val attrMappings = CollectionUtils.wrapList(attrMapping);
         customizers.forEach(c -> c.getWebflowAttributeMappings()
-            .forEach(key -> attrMappings.add(new DefaultMapping(createExpression("flowScope." + key), createExpression(key)))));
+            .forEach(key -> attrMappings.add(createFlowMapping("flowScope." + key, key))));
         val attributeMapper = createFlowInputMapper(attrMappings);
         val subflowMapper = createSubflowAttributeMapper(attributeMapper, null);
         subflowState.setAttributeMapper(subflowMapper);
 
-        val mapping = new DefaultMapping(createExpression(CasWebflowConstants.ATTRIBUTE_SERVICE),
-            createExpression("flowScope." + CasWebflowConstants.ATTRIBUTE_SERVICE));
-        mapping.setTypeConverter(new RuntimeBindingConversionExecutor(Service.class,
-            flowBuilderServices.getConversionService()));
+        val mapping = createFlowMapping(CasWebflowConstants.ATTRIBUTE_SERVICE,
+            "flowScope." + CasWebflowConstants.ATTRIBUTE_SERVICE, false, Service.class);
         val flowMappings = CollectionUtils.wrapList(mapping);
         customizers.forEach(c -> c.getWebflowAttributeMappings()
-            .forEach(key -> flowMappings.add(new DefaultMapping(createExpression(key), createExpression("flowScope." + key)))));
+            .forEach(key -> flowMappings.add(createFlowMapping(key, "flowScope." + key))));
         createFlowInputMapper(flowMappings, redirectFlow);
     }
 }

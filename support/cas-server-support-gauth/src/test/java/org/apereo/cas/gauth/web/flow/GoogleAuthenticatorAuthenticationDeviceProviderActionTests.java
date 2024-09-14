@@ -1,17 +1,20 @@
 package org.apereo.cas.gauth.web.flow;
 
-import org.apereo.cas.config.CasWebflowAccountProfileConfiguration;
+import org.apereo.cas.config.CasCoreWebflowAutoConfiguration;
 import org.apereo.cas.gauth.BaseGoogleAuthenticatorTests;
 import org.apereo.cas.gauth.credential.GoogleAuthenticatorAccount;
 import org.apereo.cas.otp.repository.credentials.OneTimeTokenCredentialRepository;
 import org.apereo.cas.services.RegisteredServiceTestUtils;
+import org.apereo.cas.test.CasTestExtension;
 import org.apereo.cas.util.MockRequestContext;
 import org.apereo.cas.web.flow.CasWebflowConstants;
 import org.apereo.cas.web.flow.actions.MultifactorAuthenticationDeviceProviderAction;
+import org.apereo.cas.web.flow.util.MultifactorAuthenticationWebflowUtils;
 import org.apereo.cas.web.support.WebUtils;
 import lombok.val;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -27,10 +30,11 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 @SpringBootTest(classes = {
     BaseGoogleAuthenticatorTests.SharedTestConfiguration.class,
-    CasWebflowAccountProfileConfiguration.class
+    CasCoreWebflowAutoConfiguration.class
 },
     properties = "CasFeatureModule.AccountManagement.enabled=true")
 @Tag("WebflowMfaActions")
+@ExtendWith(CasTestExtension.class)
 class GoogleAuthenticatorAuthenticationDeviceProviderActionTests {
     @Autowired
     @Qualifier(CasWebflowConstants.ACTION_ID_ACCOUNT_PROFILE_GOOGLE_MFA_DEVICE_PROVIDER)
@@ -55,7 +59,9 @@ class GoogleAuthenticatorAuthenticationDeviceProviderActionTests {
 
         WebUtils.putAuthentication(RegisteredServiceTestUtils.getAuthentication(acct.getUsername()), context);
         assertNull(googleAccountDeviceProviderAction.execute(context));
-        assertEquals(1, WebUtils.getMultifactorAuthenticationRegisteredDevices(context).size());
+        val registeredDevices = MultifactorAuthenticationWebflowUtils.getMultifactorAuthenticationRegisteredDevices(context);
+        assertEquals(1, registeredDevices.size());
+        assertEquals("Google Authenticator", registeredDevices.iterator().next().getSource());
     }
 
 }

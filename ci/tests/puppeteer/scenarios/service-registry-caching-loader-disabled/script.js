@@ -1,9 +1,9 @@
-const puppeteer = require('puppeteer');
-const cas = require('../../cas.js');
+
+const cas = require("../../cas.js");
 const assert = require("assert");
 
 (async () => {
-    const browser = await puppeteer.launch(cas.browserOptions());
+    const browser = await cas.newBrowser(cas.browserOptions());
     const page = await cas.newPage(browser);
     await cas.gotoLogin(page, "https://apereo.github.io&renew=true");
     await cas.assertVisibility(page, "#username");
@@ -14,21 +14,21 @@ const assert = require("assert");
 
     const baseUrl = "https://localhost:8443/cas/actuator/registeredServices/type";
     await cas.doGet(`${baseUrl}/CasRegisteredService`,
-        res => {
+        (res) => {
             assert(res.status === 200);
-            assert(res.data[1].length === 1)
+            assert(res.data[1].length === 1);
         },
-        error => {
+        (error) => {
             throw error;
-        }, {'Content-Type': "application/json"});
+        }, {"Content-Type": "application/json"});
     await cas.doGet(`${baseUrl}/OidcRegisteredService`,
-        res => {
+        (res) => {
             assert(res.status === 200);
-            assert(res.data[1].length === 0)
+            assert(res.data[1].length === 0);
         },
-        error => {
+        (error) => {
             throw error;
-        }, {'Content-Type': "application/json"});
+        }, {"Content-Type": "application/json"});
 
     await browser.close();
 })();

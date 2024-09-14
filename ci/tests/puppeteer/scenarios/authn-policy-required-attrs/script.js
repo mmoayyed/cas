@@ -1,20 +1,20 @@
-const puppeteer = require('puppeteer');
-const cas = require('../../cas.js');
+
+const cas = require("../../cas.js");
 const assert = require("assert");
 const querystring = require("querystring");
 
 async function authenticateWithRestApi(username, status = 200) {
     const formData = {
         username: username,
-        password: 'p@ssw0rd'
+        password: "p@ssw0rd"
     };
     const postData = querystring.stringify(formData);
-    const body = await cas.doRequest('https://localhost:8443/cas/v1/users',
-        'POST',
+    const body = await cas.doRequest("https://localhost:8443/cas/v1/users",
+        "POST",
         {
-            'Accept': 'application/json',
-            'Content-Length': Buffer.byteLength(postData),
-            'Content-Type': 'application/x-www-form-urlencoded'
+            "Accept": "application/json",
+            "Content-Length": Buffer.byteLength(postData),
+            "Content-Type": "application/x-www-form-urlencoded"
         },
         status,
         postData);
@@ -23,7 +23,7 @@ async function authenticateWithRestApi(username, status = 200) {
 }
 
 (async () => {
-    const browser = await puppeteer.launch(cas.browserOptions());
+    const browser = await cas.newBrowser(cas.browserOptions());
     const page = await cas.newPage(browser);
     await cas.gotoLogin(page);
     await cas.loginWith(page, "casweb", "p@ssw0rd");
@@ -31,16 +31,16 @@ async function authenticateWithRestApi(username, status = 200) {
     await cas.gotoLogout(page);
 
     await cas.gotoLogin(page);
-    let response = await cas.loginWith(page, "casrest", "p@ssw0rd");
-    await page.waitForTimeout(2000);
+    const response = await cas.loginWith(page, "casrest", "p@ssw0rd");
+    await cas.sleep(2000);
     assert(response.status() === 401);
     await cas.screenshot(page);
     await cas.assertCookie(page, false);
     await cas.assertInnerTextStartsWith(page, "#loginErrorsPanel p", "Authentication attempt has failed");
     await browser.close();
 
-    let restResult = await authenticateWithRestApi("casweb");
+    const restResult = await authenticateWithRestApi("casweb");
     assert(restResult.authentication.principal.id === "casweb");
 
-    restResult = await authenticateWithRestApi("casrest", 401);
+    await authenticateWithRestApi("casrest", 401);
 })();

@@ -1,23 +1,27 @@
 package org.apereo.cas.pm;
 
-import org.apereo.cas.config.CasCoreAuditConfiguration;
-import org.apereo.cas.config.CasCoreAuthenticationPrincipalConfiguration;
-import org.apereo.cas.config.CasCoreConfiguration;
-import org.apereo.cas.config.CasCoreNotificationsConfiguration;
-import org.apereo.cas.config.CasCoreServicesConfiguration;
-import org.apereo.cas.config.CasCoreTicketCatalogConfiguration;
-import org.apereo.cas.config.CasCoreTicketIdGeneratorsConfiguration;
-import org.apereo.cas.config.CasCoreTicketsConfiguration;
-import org.apereo.cas.config.CasCoreTicketsSerializationConfiguration;
-import org.apereo.cas.config.CasCoreUtilConfiguration;
-import org.apereo.cas.config.CasCoreWebConfiguration;
-import org.apereo.cas.config.LdapPasswordManagementConfiguration;
-import org.apereo.cas.config.PasswordManagementConfiguration;
+import org.apereo.cas.config.CasCoreAuditAutoConfiguration;
+import org.apereo.cas.config.CasCoreAuthenticationAutoConfiguration;
+import org.apereo.cas.config.CasCoreAutoConfiguration;
+import org.apereo.cas.config.CasCoreCookieAutoConfiguration;
+import org.apereo.cas.config.CasCoreLogoutAutoConfiguration;
+import org.apereo.cas.config.CasCoreMultifactorAuthenticationAutoConfiguration;
+import org.apereo.cas.config.CasCoreMultifactorAuthenticationWebflowAutoConfiguration;
+import org.apereo.cas.config.CasCoreNotificationsAutoConfiguration;
+import org.apereo.cas.config.CasCoreScriptingAutoConfiguration;
+import org.apereo.cas.config.CasCoreServicesAutoConfiguration;
+import org.apereo.cas.config.CasCoreTicketsAutoConfiguration;
+import org.apereo.cas.config.CasCoreUtilAutoConfiguration;
+import org.apereo.cas.config.CasCoreWebAutoConfiguration;
+import org.apereo.cas.config.CasCoreWebflowAutoConfiguration;
+import org.apereo.cas.config.CasLdapPasswordManagementAutoConfiguration;
+import org.apereo.cas.config.CasPasswordManagementAutoConfiguration;
+import org.apereo.cas.test.CasTestExtension;
+import org.apereo.cas.util.spring.boot.SpringBootTestAutoConfigurations;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.boot.autoconfigure.web.servlet.WebMvcAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.cloud.autoconfigure.RefreshAutoConfiguration;
 
 /**
  * This is {@link BaseLdapPasswordManagementServiceTests}.
@@ -25,23 +29,26 @@ import org.springframework.cloud.autoconfigure.RefreshAutoConfiguration;
  * @author Misagh Moayyed
  * @since 5.3.0
  */
+@SpringBootTestAutoConfigurations
 @SpringBootTest(classes = {
-    RefreshAutoConfiguration.class,
-    WebMvcAutoConfiguration.class,
-    LdapPasswordManagementConfiguration.class,
-    PasswordManagementConfiguration.class,
-    CasCoreConfiguration.class,
-    CasCoreAuthenticationPrincipalConfiguration.class,
-    CasCoreTicketsConfiguration.class,
-    CasCoreTicketCatalogConfiguration.class,
-    CasCoreTicketsSerializationConfiguration.class,
-    CasCoreTicketIdGeneratorsConfiguration.class,
-    CasCoreServicesConfiguration.class,
-    CasCoreWebConfiguration.class,
-    CasCoreAuditConfiguration.class,
-    CasCoreNotificationsConfiguration.class,
-    CasCoreUtilConfiguration.class
+    CasLdapPasswordManagementAutoConfiguration.class,
+    CasPasswordManagementAutoConfiguration.class,
+    CasCoreAutoConfiguration.class,
+    CasCoreAuthenticationAutoConfiguration.class,
+    CasCoreTicketsAutoConfiguration.class,
+    CasCoreServicesAutoConfiguration.class,
+    CasCoreWebAutoConfiguration.class,
+    CasCoreAuditAutoConfiguration.class,
+    CasCoreNotificationsAutoConfiguration.class,
+    CasCoreLogoutAutoConfiguration.class,
+    CasCoreUtilAutoConfiguration.class,
+    CasCoreCookieAutoConfiguration.class,
+    CasCoreWebflowAutoConfiguration.class,
+    CasCoreMultifactorAuthenticationAutoConfiguration.class,
+    CasCoreMultifactorAuthenticationWebflowAutoConfiguration.class,
+    CasCoreScriptingAutoConfiguration.class
 })
+@ExtendWith(CasTestExtension.class)
 public abstract class BaseLdapPasswordManagementServiceTests {
     @Autowired
     @Qualifier(PasswordManagementService.DEFAULT_BEAN_NAME)

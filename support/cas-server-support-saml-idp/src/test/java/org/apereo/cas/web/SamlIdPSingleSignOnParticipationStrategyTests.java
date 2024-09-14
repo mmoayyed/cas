@@ -16,8 +16,6 @@ import org.opensaml.saml.saml2.core.Issuer;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.test.context.TestPropertySource;
-import org.springframework.webflow.context.ExternalContextHolder;
-import org.springframework.webflow.execution.RequestContextHolder;
 import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -32,6 +30,7 @@ import static org.mockito.Mockito.*;
 class SamlIdPSingleSignOnParticipationStrategyTests {
 
     @Nested
+    @TestPropertySource(properties = "cas.authn.saml-idp.metadata.file-system.location=${#systemProperties['java.io.tmpdir']}/saml282")
     class DefaultTests extends BaseSamlIdPWebflowTests {
         @Autowired
         @Qualifier("samlIdPSingleSignOnParticipationStrategy")
@@ -40,8 +39,6 @@ class SamlIdPSingleSignOnParticipationStrategyTests {
         @Test
         void verifyParticipation() throws Throwable {
             val context = MockRequestContext.create(applicationContext);
-            RequestContextHolder.setRequestContext(context);
-            ExternalContextHolder.setExternalContext(context.getExternalContext());
 
             val issuer = UUID.randomUUID().toString();
             val authnRequest = getAuthnRequestFor(issuer);
@@ -60,8 +57,6 @@ class SamlIdPSingleSignOnParticipationStrategyTests {
         @Test
         void verifyForcedAuthn() throws Throwable {
             val context = MockRequestContext.create(applicationContext);
-            RequestContextHolder.setRequestContext(context);
-            ExternalContextHolder.setExternalContext(context.getExternalContext());
 
             val issuer = UUID.randomUUID().toString();
             val authnRequest = getAuthnRequestFor(issuer);
@@ -79,7 +74,10 @@ class SamlIdPSingleSignOnParticipationStrategyTests {
     }
 
     @Nested
-    @TestPropertySource(properties = "cas.authn.mfa.triggers.global.global-provider-id=mfa-dummy")
+    @TestPropertySource(properties = {
+        "cas.authn.saml-idp.metadata.file-system.location=${#systemProperties['java.io.tmpdir']}/saml989",
+        "cas.authn.mfa.triggers.global.global-provider-id=mfa-dummy"
+    })
     class MfaProviderTests extends BaseSamlIdPWebflowTests {
         @Autowired
         @Qualifier("samlIdPSingleSignOnParticipationStrategy")
@@ -88,8 +86,6 @@ class SamlIdPSingleSignOnParticipationStrategyTests {
         @Test
         void verifyMfaProviderFailsContext() throws Throwable {
             val context = MockRequestContext.create(applicationContext);
-            RequestContextHolder.setRequestContext(context);
-            ExternalContextHolder.setExternalContext(context.getExternalContext());
 
             TestMultifactorAuthenticationProvider.registerProviderIntoApplicationContext(applicationContext);
 

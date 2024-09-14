@@ -1,28 +1,32 @@
 package org.apereo.cas.nativex;
 
-import org.apereo.cas.util.cipher.WebflowConversationStateCipherExecutor;
 import org.apereo.cas.util.nativex.CasRuntimeHintsRegistrar;
 import org.apereo.cas.web.flow.CasWebflowConfigurer;
 import org.apereo.cas.web.flow.CasWebflowExecutionPlanConfigurer;
 import org.apereo.cas.web.flow.authentication.CasWebflowExceptionHandler;
 import org.apereo.cas.web.flow.configurer.CasWebflowCustomizer;
 import org.apereo.cas.web.flow.decorator.WebflowDecorator;
+import org.apereo.cas.web.flow.executor.CasFlowExecutor;
+import org.apereo.cas.web.flow.executor.ClientFlowExecutionKey;
 import org.apereo.cas.web.flow.executor.ClientFlowExecutionRepository;
-import lombok.val;
-import org.springframework.aot.hint.MemberCategory;
+import org.apereo.cas.web.flow.resolver.CasWebflowEventResolver;
 import org.springframework.aot.hint.RuntimeHints;
-import org.springframework.aot.hint.TypeReference;
 import org.springframework.binding.message.MessageContext;
 import org.springframework.binding.validation.ValidationContext;
+import org.springframework.webflow.conversation.impl.ContainedConversation;
+import org.springframework.webflow.conversation.impl.ConversationContainer;
 import org.springframework.webflow.core.AnnotatedObject;
 import org.springframework.webflow.core.collection.LocalAttributeMap;
 import org.springframework.webflow.definition.StateDefinition;
 import org.springframework.webflow.definition.TransitionDefinition;
+import org.springframework.webflow.definition.registry.FlowDefinitionRegistry;
 import org.springframework.webflow.engine.FlowExecutionExceptionHandlerSet;
 import org.springframework.webflow.engine.TransitionSet;
-import org.springframework.webflow.engine.impl.FlowExecutionImpl;
+import org.springframework.webflow.engine.builder.ViewFactoryCreator;
 import org.springframework.webflow.execution.Action;
-import java.util.Collection;
+import org.springframework.webflow.execution.FlowExecution;
+import org.springframework.webflow.execution.FlowSession;
+import org.springframework.webflow.execution.RequestContext;
 import java.util.List;
 
 /**
@@ -34,56 +38,42 @@ import java.util.List;
 public class CasCoreWebflowRuntimeHints implements CasRuntimeHintsRegistrar {
     @Override
     public void registerHints(final RuntimeHints hints, final ClassLoader classLoader) {
-        hints.proxies()
-            .registerJdkProxy(Action.class)
-            .registerJdkProxy(TransitionDefinition.class)
-            .registerJdkProxy(StateDefinition.class)
-            .registerJdkProxy(CasWebflowConfigurer.class)
-            .registerJdkProxy(CasWebflowCustomizer.class)
-            .registerJdkProxy(WebflowDecorator.class)
-            .registerJdkProxy(CasWebflowExecutionPlanConfigurer.class)
-            .registerJdkProxy(CasWebflowExceptionHandler.class);
+        registerProxyHints(hints, List.of(
+            Action.class,
+            TransitionDefinition.class,
+            StateDefinition.class,
+            CasWebflowConfigurer.class,
+            CasWebflowCustomizer.class,
+            CasWebflowEventResolver.class,
+            WebflowDecorator.class,
+            CasWebflowExecutionPlanConfigurer.class,
+            CasWebflowExceptionHandler.class
+        ));
+        registerSpringProxy(hints, CasFlowExecutor.class);
 
-        hints.serialization()
-            .registerType(ClientFlowExecutionRepository.SerializedFlowExecutionState.class)
-            .registerType(LocalAttributeMap.class);
+        registerSerializationHints(hints,
+            ContainedConversation.class,
+            ClientFlowExecutionKey.class,
+            ClientFlowExecutionRepository.SerializedFlowExecutionState.class,
+            ConversationContainer.class,
+            LocalAttributeMap.class);
 
-        registerReflectionHints(hints,
-            findSubclassesInPackage(MessageContext.class, "org.springframework.binding"));
-        registerReflectionHints(hints,
-            findSubclassesInPackage(ValidationContext.class, "org.springframework.binding"));
+        registerReflectionHints(hints, findSubclassesInPackage(MessageContext.class, "org.springframework.binding"));
+        registerReflectionHints(hints, findSubclassesInPackage(ValidationContext.class, "org.springframework.binding"));
+        registerReflectionHints(hints, findSubclassesInPackage(RequestContext.class, "org.springframework.webflow"));
+        registerReflectionHints(hints, findSubclassesInPackage(FlowSession.class, "org.springframework.webflow"));
+        registerReflectionHints(hints, findSubclassesInPackage(ViewFactoryCreator.class, "org.springframework.webflow"));
+        registerReflectionHints(hints, findSubclassesInPackage(FlowExecution.class, "org.springframework.webflow"));
 
         registerReflectionHints(hints, List.of(
-            TypeReference.of("org.springframework.webflow.engine.impl.RequestControlContextImpl"),
-            TypeReference.of("org.springframework.webflow.engine.impl.FlowSessionImpl"),
+            CasWebflowEventResolver.class,
             TransitionSet.class,
-            FlowExecutionImpl.class,
-            FlowExecutionExceptionHandlerSet.class,
-            WebflowConversationStateCipherExecutor.class
+            FlowDefinitionRegistry.class,
+            FlowExecutionExceptionHandlerSet.class
         ));
 
         registerReflectionHints(hints,
             findSubclassesInPackage(AnnotatedObject.class, "org.springframework.webflow"));
-    }
 
-    private static void registerReflectionHints(final RuntimeHints hints, final Collection entries) {
-        val memberCategories = new MemberCategory[]{
-            MemberCategory.INVOKE_DECLARED_CONSTRUCTORS,
-            MemberCategory.INVOKE_PUBLIC_CONSTRUCTORS,
-            MemberCategory.INVOKE_DECLARED_METHODS,
-            MemberCategory.INVOKE_PUBLIC_METHODS,
-            MemberCategory.DECLARED_FIELDS,
-            MemberCategory.PUBLIC_FIELDS};
-        entries.forEach(el -> {
-            if (el instanceof final String clazz) {
-                hints.reflection().registerType(TypeReference.of(clazz), memberCategories);
-            }
-            if (el instanceof final Class clazz) {
-                hints.reflection().registerType(clazz, memberCategories);
-            }
-            if (el instanceof final TypeReference reference) {
-                hints.reflection().registerType(reference, memberCategories);
-            }
-        });
     }
 }

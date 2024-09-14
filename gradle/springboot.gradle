@@ -15,8 +15,6 @@ if (project.ext.forceBootifulArtifact || (!rootProject.publishFlag && !rootProje
                 resources {
                     srcDirs new File("/etc/cas/templates/"),
                             new File("${project(":webapp").getProjectDir()}/cas-server-webapp-resources/src/main/resources/"),
-                            new File("${project(":support").getProjectDir()}/cas-server-support-palantir/src/main/resources/static"),
-                            new File("${project(":support").getProjectDir()}/cas-server-support-palantir/src/main/resources/templates"),
                             new File("${project(":support").getProjectDir()}/cas-server-support-thymeleaf/src/main/resources/"),
                             new File("${project(":support").getProjectDir()}/cas-server-support-themes-collection/src/main/resources/")
                 }
@@ -24,19 +22,22 @@ if (project.ext.forceBootifulArtifact || (!rootProject.publishFlag && !rootProje
         }
     }
 
+
     springBoot {
         mainClassName = project.ext.mainClassName
         buildInfo {
             properties {
                 if (!rootProject.generateTimestamps) {
-                    time = null
+                    excludes = ['time']
                 }
             }
         }
     }
+    tasks.named("bootBuildInfo") {
+        notCompatibleWithConfigurationCache("bootBuildInfo is not supported by the Gradle configuration cache: https://github.com/gradle/gradle/issues/20469")
+    }
 
     if (plugins.hasPlugin("war")) {
-
         tasks.named('javadoc') {
             enabled false
         }
@@ -59,8 +60,10 @@ if (project.ext.forceBootifulArtifact || (!rootProject.publishFlag && !rootProje
                         "Specification-Version": "${-> gitCommitId}",
                         "Implementation-Version": project.version)
             }
-            from "${buildDir}/resources/main", { into "WEB-INF/classes" }
-            launchScript()
+            from "${project.layout.buildDirectory.getAsFile().get().path}/resources/main", { into "WEB-INF/classes" }
+            if (!rootProject.skipBootifulLaunchScript) {
+                launchScript()
+            }
             duplicatesStrategy = DuplicatesStrategy.EXCLUDE
         }
 
@@ -70,8 +73,10 @@ if (project.ext.forceBootifulArtifact || (!rootProject.publishFlag && !rootProje
             if (project.ext.has("archiveFileName")) {
                 archiveFileName = project.ext.archiveFileName
             }
-            from "${buildDir}/resources/main", { into "WEB-INF/classes" }
-            launchScript()
+            from "${project.layout.buildDirectory.getAsFile().get().path}/resources/main", { into "WEB-INF/classes" }
+            if (!rootProject.skipBootifulLaunchScript) {
+                launchScript()
+            }
             duplicatesStrategy = DuplicatesStrategy.EXCLUDE
         }
 
@@ -101,7 +106,7 @@ if (project.ext.forceBootifulArtifact || (!rootProject.publishFlag && !rootProje
         if (Os.isFamily(Os.FAMILY_WINDOWS)) {
             dependsOn pathingJar
             doFirst {
-                classpath = files("$buildDir/classes/main", "$buildDir/resources/main", "${project(":webapp").getProjectDir()}/cas-server-webapp-resources/src/main/resources/", pathingJar.archivePath)
+                classpath = files("$project.layout.buildDirectory.getAsFile().get().path/classes/main", "$project.layout.buildDirectory.getAsFile().get().path/resources/main", "${project(":webapp").getProjectDir()}/cas-server-webapp-resources/src/main/resources/", pathingJar.archivePath)
             }
         }
 
@@ -118,6 +123,10 @@ if (project.ext.forceBootifulArtifact || (!rootProject.publishFlag && !rootProje
         list.add("java.base/jdk.internal.ref=ALL-UNNAMED")
         list.add("--add-opens")
         list.add("java.base/java.lang=ALL-UNNAMED")
+        list.add("--add-opens")
+        list.add("java.base/java.util.concurrent=ALL-UNNAMED")
+        list.add("--add-opens")
+        list.add("java.base/java.util.concurrent.locks=ALL-UNNAMED")
         list.add("--add-opens")
         list.add("java.base/java.util=ALL-UNNAMED")
         list.add("--add-opens")

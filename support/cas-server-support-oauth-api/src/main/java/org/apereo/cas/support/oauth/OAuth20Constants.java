@@ -12,7 +12,7 @@ public interface OAuth20Constants {
      * Internal attribute to indicate whether the incoming request is an access token request.
      */
     String REQUEST_ATTRIBUTE_ACCESS_TOKEN_REQUEST = "oauth.request.access-token";
-    
+
     /**
      * The prompt parameter.
      */
@@ -54,10 +54,10 @@ public interface OAuth20Constants {
     String REDIRECT_URI = "redirect_uri";
 
     /**
-     * The Authorization Server is unable to meet the requirements of the Relying Party for the authentication of the End-User. 
+     * The Authorization Server is unable to meet the requirements of the Relying Party for the authentication of the End-User.
      */
     String UNMET_AUTHENTICATION_REQUIREMENTS = "unmet_authentication_requirements";
-    
+
     /**
      * The response type.
      */
@@ -272,7 +272,7 @@ public interface OAuth20Constants {
      * Header value to signal JWT responses for token introspection payloads.
      */
     String INTROSPECTION_JWT_HEADER_CONTENT_TYPE = "application/token-introspection+jwt";
-    
+
     /**
      * The callback authorize url.
      */
@@ -408,6 +408,52 @@ public interface OAuth20Constants {
      */
     String DPOP = "DPoP";
 
+    /**
+     * resource parameter.
+     */
+    String RESOURCE = "resource";
+
+    /**
+     * audience parameter.
+     */
+    String AUDIENCE = "audience";
+
+    /**
+     * requested_token_type parameter.
+     */
+    String REQUESTED_TOKEN_TYPE = "requested_token_type";
+
+    /**
+     * subject_token parameter.
+     */
+    String SUBJECT_TOKEN = "subject_token";
+
+    /**
+     * subject_token_type parameter.
+     */
+    String SUBJECT_TOKEN_TYPE = "subject_token_type";
+    /**
+     * issued_token_type parameter.
+     */
+    String ISSUED_TOKEN_TYPE = "issued_token_type";
+    /**
+     * actor_token parameter.
+     */
+    String ACTOR_TOKEN = "actor_token";
+    /**
+     * act claim.
+     */
+    String CLAIM_ACT = "act";
+
+    /**
+     * The sub claim.
+     */
+    String CLAIM_SUB = "sub";
+
+    /**
+     * actor_token_type parameter.
+     */
+    String ACTOR_TOKEN_TYPE = "actor_token_type";
 
     /**
      * DPoP confirmation that is put inside access token as an attribute.

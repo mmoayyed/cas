@@ -1,26 +1,26 @@
 package org.apereo.cas.services;
 
-import org.apereo.cas.config.CasCoreUtilConfiguration;
+import org.apereo.cas.config.CasCoreScriptingAutoConfiguration;
+import org.apereo.cas.config.CasCoreUtilAutoConfiguration;
 import org.apereo.cas.configuration.CasConfigurationProperties;
+import org.apereo.cas.test.CasTestExtension;
 import org.apereo.cas.util.CollectionUtils;
+import org.apereo.cas.util.RandomUtils;
 import org.apereo.cas.util.serialization.JacksonObjectMapperFactory;
-
+import org.apereo.cas.util.spring.boot.SpringBootTestAutoConfigurations;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ArrayListMultimap;
 import lombok.val;
-import org.apache.commons.io.FileUtils;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.cloud.autoconfigure.RefreshAutoConfiguration;
 import org.springframework.context.ConfigurableApplicationContext;
-
-import java.io.File;
+import java.nio.file.Files;
 import java.util.HashMap;
 import java.util.List;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -28,14 +28,14 @@ import static org.junit.jupiter.api.Assertions.*;
  * @since 4.1.0
  */
 @Tag("RegisteredService")
+@SpringBootTestAutoConfigurations
+@ExtendWith(CasTestExtension.class)
 @SpringBootTest(classes = {
-    CasCoreUtilConfiguration.class,
-    RefreshAutoConfiguration.class
+    CasCoreUtilAutoConfiguration.class,
+    CasCoreScriptingAutoConfiguration.class
 })
 @EnableConfigurationProperties(CasConfigurationProperties.class)
 class PrincipalAttributeRegisteredServiceUsernameProviderTests {
-
-    private static final File JSON_FILE = new File(FileUtils.getTempDirectoryPath(), "principalAttributeRegisteredServiceUsernameProvider.json");
 
     private static final ObjectMapper MAPPER = JacksonObjectMapperFactory.builder()
         .defaultTypingEnabled(true).build().toObjectMapper();
@@ -197,9 +197,10 @@ class PrincipalAttributeRegisteredServiceUsernameProviderTests {
 
     @Test
     void verifySerializeAPrincipalAttributeRegisteredServiceUsernameProviderToJson() throws Throwable {
+        val jsonFile = Files.createTempFile(RandomUtils.randomAlphabetic(8), ".json").toFile();
         val providerWritten = new PrincipalAttributeRegisteredServiceUsernameProvider("cn");
-        MAPPER.writeValue(JSON_FILE, providerWritten);
-        val providerRead = MAPPER.readValue(JSON_FILE, PrincipalAttributeRegisteredServiceUsernameProvider.class);
+        MAPPER.writeValue(jsonFile, providerWritten);
+        val providerRead = MAPPER.readValue(jsonFile, PrincipalAttributeRegisteredServiceUsernameProvider.class);
         assertEquals(providerWritten, providerRead);
     }
 }

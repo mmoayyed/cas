@@ -1,5 +1,5 @@
 {
-  "dependencies": "pac4j-webflow,reports",
+  "dependencies": "pac4j-webflow,reports,pac4j-saml",
   "conditions": {
     "docker": "true"
   },
@@ -7,8 +7,6 @@
   "properties": [
     "--cas.server.name=https://localhost:8443",
     "--cas.server.prefix=https://localhost:8443/cas",
-    "--cas.audit.engine.enabled=true",
-    "--cas.audit.slf4j.use-single-line=true",
     
     "--management.endpoints.web.cors.allowed-headers=*",
     "--management.endpoints.web.cors.allowed-methods=OPTIONS,GET,POST",
@@ -36,7 +34,7 @@
 
     "--cas.service-registry.core.init-from-json=true",
     
-    "--logging.level.org.apereo.cas=info",
+
     "--logging.level.org.springframework.webflow=info",
     "--logging.level.org.springframework.webflow.mvc.servlet=warn",
 
@@ -46,5 +44,4 @@
   ],
   "initScript": "${PWD}/ci/tests/puppeteer/scenarios/${SCENARIO}/init.sh"
 }
-
 

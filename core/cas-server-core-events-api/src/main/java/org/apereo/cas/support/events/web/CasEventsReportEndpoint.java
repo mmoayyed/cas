@@ -3,26 +3,21 @@ package org.apereo.cas.support.events.web;
 import org.apereo.cas.configuration.CasConfigurationProperties;
 import org.apereo.cas.support.events.CasEventRepository;
 import org.apereo.cas.support.events.dao.CasEvent;
-import org.apereo.cas.util.serialization.JacksonObjectMapperFactory;
-import org.apereo.cas.web.BaseCasActuatorEndpoint;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apereo.cas.web.BaseCasRestActuatorEndpoint;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import lombok.val;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.springframework.boot.actuate.endpoint.web.annotation.RestControllerEndpoint;
-import org.springframework.context.ApplicationContext;
+import org.springframework.boot.actuate.endpoint.annotation.Endpoint;
+import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
-
 import jakarta.servlet.http.HttpServletRequest;
-
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Comparator;
@@ -35,18 +30,13 @@ import java.util.zip.ZipInputStream;
  * @author Misagh Moayyed
  * @since 5.3.0
  */
-@RestControllerEndpoint(id = "events", enableByDefault = false)
-public class CasEventsReportEndpoint extends BaseCasActuatorEndpoint {
-    private static final ObjectMapper MAPPER = JacksonObjectMapperFactory.builder()
-        .defaultTypingEnabled(true).build().toObjectMapper();
-    
-    private final ApplicationContext applicationContext;
-
+@Endpoint(id = "events", enableByDefault = false)
+public class CasEventsReportEndpoint extends BaseCasRestActuatorEndpoint {
     public CasEventsReportEndpoint(final CasConfigurationProperties casProperties,
-                                   final ApplicationContext applicationContext) {
-        super(casProperties);
-        this.applicationContext = applicationContext;
+                                   final ConfigurableApplicationContext applicationContext) {
+        super(casProperties, applicationContext);
     }
+
 
     /**
      * Delete all events response entity.
@@ -67,14 +57,14 @@ public class CasEventsReportEndpoint extends BaseCasActuatorEndpoint {
      * @return the collection
      */
     @GetMapping(produces = {
+        MediaType.APPLICATION_JSON_VALUE,
         MEDIA_TYPE_SPRING_BOOT_V2_JSON,
         MEDIA_TYPE_SPRING_BOOT_V3_JSON,
         MediaType.APPLICATION_FORM_URLENCODED_VALUE,
-        MediaType.APPLICATION_JSON_VALUE,
         MEDIA_TYPE_CAS_YAML
     })
     @Operation(summary = "Provide a report of CAS events in the event repository",
-        parameters = @Parameter(name = "limit", required = false))
+        parameters = @Parameter(name = "limit", required = false, description = "Limit the number of events to fetch"))
     public ResponseEntity events(@RequestParam(required = false, defaultValue = "1000") final int limit) throws Exception {
         val eventRepository = applicationContext.getBean(CasEventRepository.BEAN_NAME, CasEventRepository.class);
         val results = eventRepository.load()
@@ -92,10 +82,10 @@ public class CasEventsReportEndpoint extends BaseCasActuatorEndpoint {
      * @throws Exception the exception
      */
     @PostMapping(produces = {
+        MediaType.APPLICATION_JSON_VALUE,
         MEDIA_TYPE_SPRING_BOOT_V2_JSON,
         MEDIA_TYPE_SPRING_BOOT_V3_JSON,
         MediaType.APPLICATION_FORM_URLENCODED_VALUE,
-        MediaType.APPLICATION_JSON_VALUE,
         MEDIA_TYPE_CAS_YAML
     })
     @Operation(summary = "Upload CAS events and store them into the event repository")
@@ -121,7 +111,7 @@ public class CasEventsReportEndpoint extends BaseCasActuatorEndpoint {
              val zipIn = new ZipInputStream(bais)) {
             var entry = zipIn.getNextEntry();
             while (entry != null) {
-                if (!entry.isDirectory()) {
+                if (!entry.isDirectory() && !entry.getName().contains("..") && entry.getName().endsWith(".json")) {
                     val requestBody = IOUtils.toString(zipIn, StandardCharsets.UTF_8);
                     val casEvent = MAPPER.readValue(requestBody, CasEvent.class);
                     eventRepository.save(casEvent);

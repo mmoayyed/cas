@@ -1,12 +1,9 @@
 package org.apereo.cas.pm.web.flow;
 
 import org.apereo.cas.authentication.MultifactorAuthenticationProvider;
-import org.apereo.cas.config.CasSimpleMultifactorAuthenticationConfiguration;
-import org.apereo.cas.config.CasSimpleMultifactorAuthenticationEventExecutionPlanConfiguration;
-import org.apereo.cas.config.CasSimpleMultifactorAuthenticationMultifactorProviderBypassConfiguration;
-import org.apereo.cas.config.PasswordManagementConfiguration;
-import org.apereo.cas.config.PasswordManagementForgotUsernameConfiguration;
-import org.apereo.cas.config.PasswordManagementWebflowConfiguration;
+import org.apereo.cas.config.CasPasswordManagementAutoConfiguration;
+import org.apereo.cas.config.CasPasswordManagementWebflowAutoConfiguration;
+import org.apereo.cas.config.CasSimpleMultifactorAuthenticationAutoConfiguration;
 import org.apereo.cas.util.MockRequestContext;
 import org.apereo.cas.web.flow.BaseWebflowConfigurerTests;
 import org.apereo.cas.web.flow.CasWebflowConfigurer;
@@ -20,15 +17,13 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.context.annotation.Import;
+import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.web.servlet.HandlerAdapter;
-import org.springframework.webflow.context.ExternalContextHolder;
 import org.springframework.webflow.engine.ActionState;
 import org.springframework.webflow.engine.Flow;
 import org.springframework.webflow.engine.TransitionableState;
 import org.springframework.webflow.execution.Action;
-import org.springframework.webflow.execution.RequestContextHolder;
 import org.springframework.webflow.mvc.servlet.FlowHandler;
 import java.util.stream.StreamSupport;
 import static org.junit.jupiter.api.Assertions.*;
@@ -47,10 +42,9 @@ class PasswordManagementWebflowConfigurerTests {
         "cas.authn.pm.reset.security-questions-enabled=false",
         "cas.authn.pm.core.enabled=false"
     })
-    @Import({
-        PasswordManagementConfiguration.class,
-        PasswordManagementWebflowConfiguration.class,
-        PasswordManagementForgotUsernameConfiguration.class
+    @ImportAutoConfiguration({
+        CasPasswordManagementAutoConfiguration.class,
+        CasPasswordManagementWebflowAutoConfiguration.class
     })
     @Nested
     class DisabledTests extends BaseWebflowConfigurerTests {
@@ -84,9 +78,7 @@ class PasswordManagementWebflowConfigurerTests {
             when(handler.getFlowId()).thenReturn(CasWebflowConfigurer.FLOW_ID_PASSWORD_RESET);
             assertTrue(passwordResetHandlerAdapter.supports(handler));
 
-            val context = MockRequestContext.create();
-            RequestContextHolder.setRequestContext(context);
-            ExternalContextHolder.setExternalContext(context.getExternalContext());
+            val context = MockRequestContext.create(applicationContext);
             assertEquals(CasWebflowConstants.TRANSITION_ID_SUCCESS, verifySecurityQuestionsAction.execute(context).getId());
 
             state = (TransitionableState) flow.getState(CasWebflowConstants.STATE_ID_EXPIRED_PASSWORD);
@@ -98,14 +90,10 @@ class PasswordManagementWebflowConfigurerTests {
 
     @Nested
     @TestPropertySource(properties = "cas.authn.pm.core.enabled=true")
-    @Import({
-        CasSimpleMultifactorAuthenticationConfiguration.class,
-        CasSimpleMultifactorAuthenticationMultifactorProviderBypassConfiguration.class,
-        CasSimpleMultifactorAuthenticationEventExecutionPlanConfiguration.class,
-
-        PasswordManagementConfiguration.class,
-        PasswordManagementWebflowConfiguration.class,
-        PasswordManagementForgotUsernameConfiguration.class
+    @ImportAutoConfiguration({
+        CasSimpleMultifactorAuthenticationAutoConfiguration.class,
+        CasPasswordManagementAutoConfiguration.class,
+        CasPasswordManagementWebflowAutoConfiguration.class
     })
     class EnabledTests extends BaseWebflowConfigurerTests {
         @Autowired
@@ -142,24 +130,21 @@ class PasswordManagementWebflowConfigurerTests {
             state = (TransitionableState) flow.getState(CasWebflowConstants.STATE_ID_PASSWORD_UPDATE_SUCCESS);
             assertNotNull(state);
 
-            assertTrue(passwordManagementMultifactorWebflowCustomizer.getWebflowAttributeMappings()
-                .contains(CasWebflowConstants.ATTRIBUTE_PASSWORD_MANAGEMENT_QUERY));
+            val webflowAttributeMappings = passwordManagementMultifactorWebflowCustomizer.getWebflowAttributeMappings();
+            assertTrue(webflowAttributeMappings.contains(CasWebflowConstants.ATTRIBUTE_PASSWORD_MANAGEMENT_QUERY));
+            assertTrue(webflowAttributeMappings.contains(CasWebflowConstants.ATTRIBUTE_PASSWORD_MANAGEMENT_REQUEST));
+            assertTrue(webflowAttributeMappings.contains(CasWebflowConstants.ATTRIBUTE_AUTHENTICATION));
+            assertTrue(webflowAttributeMappings.contains(CasWebflowConstants.ATTRIBUTE_AUTHENTICATION_RESULT_BUILDER));
 
             val handler = mock(FlowHandler.class);
             when(handler.getFlowId()).thenReturn(CasWebflowConfigurer.FLOW_ID_PASSWORD_RESET);
             assertTrue(passwordResetHandlerAdapter.supports(handler));
 
             val startState = (ActionState) flow.getStartState();
-            assertEquals(CasWebflowConstants.STATE_ID_SEND_PASSWORD_RESET_INSTRUCTIONS,
+            assertEquals(CasWebflowConstants.STATE_ID_PASSWORD_RESET_SUBFLOW,
                 startState.getTransition(CasWebflowConstants.TRANSITION_ID_RESUME_RESET_PASSWORD).getTargetStateId());
 
-            val sendAcct = (TransitionableState) flow.getState(CasWebflowConstants.STATE_ID_SEND_PASSWORD_RESET_INSTRUCTIONS);
-            assertEquals(sendAcct.getTransition(casSimpleMultifactorAuthenticationProvider.getId()).getTargetStateId(),
-                casSimpleMultifactorAuthenticationProvider.getId());
-
-            val context = MockRequestContext.create();
-            RequestContextHolder.setRequestContext(context);
-            ExternalContextHolder.setExternalContext(context.getExternalContext());
+            val context = MockRequestContext.create(applicationContext);
             assertEquals(CasWebflowConstants.TRANSITION_ID_SUCCESS, verifySecurityQuestionsAction.execute(context).getId());
 
             state = (TransitionableState) flow.getState(CasWebflowConstants.STATE_ID_EXPIRED_PASSWORD);
@@ -177,6 +162,12 @@ class PasswordManagementWebflowConfigurerTests {
                 .execute(context);
             assertNull(event);
             assertTrue(WebUtils.isPasswordManagementEnabled(context));
+            assertTrue(WebUtils.isForgotUsernameEnabled(context));
+
+            val passwordResetFlow = (Flow) loginFlowDefinitionRegistry.getFlowDefinition(CasWebflowConfigurer.FLOW_ID_PASSWORD_RESET);
+            val sendAcct = (TransitionableState) passwordResetFlow.getState(CasWebflowConstants.STATE_ID_INIT_PASSWORD_RESET);
+            assertEquals(sendAcct.getTransition(casSimpleMultifactorAuthenticationProvider.getId()).getTargetStateId(),
+                casSimpleMultifactorAuthenticationProvider.getId());
         }
     }
 }

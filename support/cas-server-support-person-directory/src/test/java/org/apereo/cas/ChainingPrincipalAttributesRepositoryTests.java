@@ -3,18 +3,19 @@ package org.apereo.cas;
 import org.apereo.cas.authentication.CoreAuthenticationTestUtils;
 import org.apereo.cas.authentication.principal.ChainingPrincipalAttributesRepository;
 import org.apereo.cas.authentication.principal.DefaultPrincipalAttributesRepository;
-import org.apereo.cas.config.CasCoreUtilConfiguration;
+import org.apereo.cas.config.CasCoreUtilAutoConfiguration;
 import org.apereo.cas.config.CasPersonDirectoryTestConfiguration;
 import org.apereo.cas.services.RegisteredServiceAttributeReleasePolicyContext;
 import org.apereo.cas.services.ServicesManager;
+import org.apereo.cas.test.CasTestExtension;
+import org.apereo.cas.util.spring.boot.SpringBootTestAutoConfigurations;
 import lombok.val;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.autoconfigure.web.servlet.WebMvcAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.cloud.autoconfigure.RefreshAutoConfiguration;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Bean;
 import java.util.List;
@@ -30,12 +31,12 @@ import static org.mockito.Mockito.*;
  * @since 6.5.0
  */
 @Tag("Attributes")
+@ExtendWith(CasTestExtension.class)
+@SpringBootTestAutoConfigurations
 @SpringBootTest(classes = {
-    RefreshAutoConfiguration.class,
-    WebMvcAutoConfiguration.class,
     ChainingPrincipalAttributesRepositoryTests.ChainingPrincipalAttributesRepositoryTestConfiguration.class,
     CasPersonDirectoryTestConfiguration.class,
-    CasCoreUtilConfiguration.class
+    CasCoreUtilAutoConfiguration.class
 })
 class ChainingPrincipalAttributesRepositoryTests {
     @Autowired
@@ -63,7 +64,7 @@ class ChainingPrincipalAttributesRepositoryTests {
             CoreAuthenticationTestUtils.getPrincipal().getAttributes(), context));
     }
 
-    @TestConfiguration(proxyBeanMethods = false)
+    @TestConfiguration(value = "ChainingPrincipalAttributesRepositoryTestConfiguration", proxyBeanMethods = false)
     static class ChainingPrincipalAttributesRepositoryTestConfiguration {
         @Bean
         public ServicesManager servicesManager() {

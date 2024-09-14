@@ -1,30 +1,30 @@
-const puppeteer = require("puppeteer");
+
 const assert = require("assert");
 const cas = require("../../cas.js");
 
 (async () => {
-    const browser = await puppeteer.launch(cas.browserOptions());
-    let scratch = await cas.fetchGoogleAuthenticatorScratchCode();
+    const browser = await cas.newBrowser(cas.browserOptions());
+    const scratch = await cas.fetchGoogleAuthenticatorScratchCode();
     const page = await cas.newPage(browser);
     const service = "https://google.com";
-    await cas.goto(page, `https://localhost:8443/cas/login?service=${service}`);
-    await page.waitForTimeout(1000);
+    await cas.gotoLogin(page, service);
+    await cas.sleep(1000);
     await cas.loginWith(page);
-    await page.waitForTimeout(500);
+    await cas.sleep(500);
 
     await cas.log("Select mfa-gauth");
-    await cas.assertVisibility(page, '#mfa-gauth');
+    await cas.assertVisibility(page, "#mfa-gauth");
 
     await cas.submitForm(page, "#mfa-gauth > form[name=fm-mfa-gauth]");
-    await page.waitForTimeout(1000);
+    await cas.sleep(1000);
 
     await cas.log(`Using scratch code ${scratch} to login...`);
-    await cas.type(page,'#token', scratch);
+    await cas.type(page,"#token", scratch);
     await cas.pressEnter(page);
-    await page.waitForNavigation();
-    await page.waitForTimeout(1000);
+    await cas.waitForNavigation(page);
+    await cas.sleep(1000);
 
-    let ticket = await cas.assertTicketParameter(page);
+    const ticket = await cas.assertTicketParameter(page);
 
     await cas.log(`Validating ticket ${ticket} with service ${service}`);
     const body = await cas.doRequest(`https://localhost:8443/cas/p3/serviceValidate?service=${service}&ticket=${ticket}`);

@@ -19,6 +19,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.hc.core5.http.HttpEntityContainer;
 import org.apache.hc.core5.http.HttpResponse;
 import org.hjson.JsonValue;
+import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import java.nio.charset.StandardCharsets;
@@ -41,8 +42,9 @@ public class RestfulSamlIdPMetadataLocator extends AbstractSamlIdPMetadataLocato
 
     public RestfulSamlIdPMetadataLocator(final CipherExecutor<String, String> metadataCipherExecutor,
                                          final Cache<String, SamlIdPMetadataDocument> metadataCache,
-                                         final RestSamlMetadataProperties properties) {
-        super(metadataCipherExecutor, metadataCache);
+                                         final RestSamlMetadataProperties properties,
+                                         final ConfigurableApplicationContext applicationContext) {
+        super(metadataCipherExecutor, metadataCache, applicationContext);
         this.properties = properties;
     }
 
@@ -64,10 +66,12 @@ public class RestfulSamlIdPMetadataLocator extends AbstractSamlIdPMetadataLocato
             if (response != null) {
                 val status = HttpStatus.valueOf(response.getCode());
                 if (status.is2xxSuccessful()) {
-                    val entity = IOUtils.toString(((HttpEntityContainer) response).getEntity().getContent(), StandardCharsets.UTF_8);
-                    val document = MAPPER.readValue(JsonValue.readHjson(entity).toString(), SamlIdPMetadataDocument.class);
-                    if (document != null && document.isValid()) {
-                        return document;
+                    try (val content = ((HttpEntityContainer) response).getEntity().getContent()) {
+                        val entity = IOUtils.toString(content, StandardCharsets.UTF_8);
+                        val document = MAPPER.readValue(JsonValue.readHjson(entity).toString(), SamlIdPMetadataDocument.class);
+                        if (document != null && document.isValid()) {
+                            return document;
+                        }
                     }
                 }
             }

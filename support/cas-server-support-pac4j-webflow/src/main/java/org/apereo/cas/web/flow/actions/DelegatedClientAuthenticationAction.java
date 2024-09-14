@@ -1,6 +1,7 @@
 package org.apereo.cas.web.flow.actions;
 
 import org.apereo.cas.CasProtocolConstants;
+import org.apereo.cas.authentication.AuthenticationException;
 import org.apereo.cas.authentication.principal.ClientCredential;
 import org.apereo.cas.authentication.principal.DelegatedAuthenticationCandidateProfile;
 import org.apereo.cas.authentication.principal.DelegatedClientAuthenticationCredentialResolver;
@@ -8,6 +9,7 @@ import org.apereo.cas.authentication.principal.Service;
 import org.apereo.cas.logout.slo.SingleLogoutContinuation;
 import org.apereo.cas.pac4j.client.DelegatedClientAuthenticationFailureEvaluator;
 import org.apereo.cas.services.UnauthorizedServiceException;
+import org.apereo.cas.util.CollectionUtils;
 import org.apereo.cas.util.LoggingUtils;
 import org.apereo.cas.util.function.FunctionUtils;
 import org.apereo.cas.util.spring.beans.BeanSupplier;
@@ -134,11 +136,16 @@ public class DelegatedClientAuthenticationAction extends AbstractAuthenticationA
                     throw client.processLogout(callContext, clientCredential.get().getCredentials());
                 }
                 return finalizeDelegatedClientAuthentication(context, clientCredential.get());
+            } else if (StringUtils.isNotBlank(clientName)) {
+                val msg = "Client %s failed to validate credentials".formatted(clientName);
+                LoggingUtils.error(LOGGER, msg);
+                return stopWebflow(new AuthenticationException(msg), context);
             }
         } catch (final HttpAction e) {
             FunctionUtils.doIf(LOGGER.isDebugEnabled(),
                 o -> LOGGER.debug(e.getMessage(), e), o -> LOGGER.info(e.getMessage())).accept(e);
             val continuation = SingleLogoutContinuation.builder();
+            clientCredential.ifPresent(cc -> continuation.context(CollectionUtils.wrap(ClientCredential.class.getName(), cc)));
             if (e instanceof final AutomaticFormPostAction formPostAction) {
                 continuation.method(HttpMethod.POST).url(formPostAction.getUrl()).data(formPostAction.getData());
             }
@@ -205,9 +212,9 @@ public class DelegatedClientAuthenticationAction extends AbstractAuthenticationA
         return new Event(this, CasWebflowConstants.TRANSITION_ID_SELECT);
     }
 
-    private Event getLogoutEvent(final HttpAction e) {
+    private Event getLogoutEvent(final HttpAction action) {
         return new Event(this, CasWebflowConstants.TRANSITION_ID_LOGOUT,
-            new LocalAttributeMap<>("action", e));
+            new LocalAttributeMap<>("action", action));
     }
 
     private Event getFinalEvent() {
@@ -253,7 +260,12 @@ public class DelegatedClientAuthenticationAction extends AbstractAuthenticationA
 
     protected Optional<ClientCredential> populateContextWithClientCredential(final BaseClient client,
                                                                              final RequestContext requestContext) {
-        return configContext.getCredentialExtractor().extract(client, requestContext);
+        return configContext.getCredentialExtractors()
+            .stream()
+            .filter(BeanSupplier::isNotProxy)
+            .map(extractor -> extractor.extract(client, requestContext))
+            .flatMap(Optional::stream)
+            .findFirst();
     }
 
     protected BaseClient findDelegatedClientByName(final String clientName) {

@@ -5,42 +5,40 @@ import org.apereo.cas.authentication.adaptive.geo.GeoLocationRequest;
 import org.apereo.cas.authentication.adaptive.geo.GeoLocationResponse;
 import org.apereo.cas.authentication.adaptive.geo.GeoLocationService;
 import org.apereo.cas.authentication.mfa.TestMultifactorAuthenticationProvider;
-import org.apereo.cas.config.CasCoreAuditConfiguration;
-import org.apereo.cas.config.CasCoreAuthenticationPrincipalConfiguration;
-import org.apereo.cas.config.CasCoreAuthenticationServiceSelectionStrategyConfiguration;
-import org.apereo.cas.config.CasCoreConfiguration;
-import org.apereo.cas.config.CasCoreHttpConfiguration;
-import org.apereo.cas.config.CasCoreNotificationsConfiguration;
-import org.apereo.cas.config.CasCoreServicesConfiguration;
-import org.apereo.cas.config.CasCoreTicketsConfiguration;
-import org.apereo.cas.config.CasCoreTicketsSerializationConfiguration;
-import org.apereo.cas.config.CasCoreUtilConfiguration;
-import org.apereo.cas.config.CasCoreWebConfiguration;
+import org.apereo.cas.config.CasCoreAuditAutoConfiguration;
+import org.apereo.cas.config.CasCoreAuthenticationAutoConfiguration;
+import org.apereo.cas.config.CasCoreAutoConfiguration;
+import org.apereo.cas.config.CasCoreCookieAutoConfiguration;
+import org.apereo.cas.config.CasCoreLogoutAutoConfiguration;
+import org.apereo.cas.config.CasCoreMultifactorAuthenticationAutoConfiguration;
+import org.apereo.cas.config.CasCoreMultifactorAuthenticationWebflowAutoConfiguration;
+import org.apereo.cas.config.CasCoreNotificationsAutoConfiguration;
+import org.apereo.cas.config.CasCoreServicesAutoConfiguration;
+import org.apereo.cas.config.CasCoreTicketsAutoConfiguration;
+import org.apereo.cas.config.CasCoreUtilAutoConfiguration;
+import org.apereo.cas.config.CasCoreWebAutoConfiguration;
+import org.apereo.cas.config.CasCoreWebflowAutoConfiguration;
+import org.apereo.cas.config.CasMultifactorAuthnTrustAutoConfiguration;
 import org.apereo.cas.config.CasRegisteredServicesTestConfiguration;
-import org.apereo.cas.config.CasWebApplicationServiceFactoryConfiguration;
-import org.apereo.cas.config.MultifactorAuthnTrustConfiguration;
-import org.apereo.cas.config.MultifactorAuthnTrustWebflowConfiguration;
-import org.apereo.cas.config.MultifactorAuthnTrustedDeviceFingerprintConfiguration;
+import org.apereo.cas.test.CasTestExtension;
 import org.apereo.cas.trusted.authentication.api.MultifactorAuthenticationTrustRecord;
 import org.apereo.cas.trusted.authentication.api.MultifactorAuthenticationTrustRecordKeyGenerator;
 import org.apereo.cas.trusted.authentication.api.MultifactorAuthenticationTrustStorage;
 import org.apereo.cas.trusted.web.flow.fingerprint.DeviceFingerprintStrategy;
 import org.apereo.cas.util.DateTimeUtils;
+import org.apereo.cas.util.spring.boot.SpringBootTestAutoConfigurations;
 import org.apereo.cas.web.flow.CasWebflowConstants;
 import lombok.Getter;
 import lombok.val;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.SpringBootConfiguration;
 import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
-import org.springframework.boot.autoconfigure.aop.AopAutoConfiguration;
-import org.springframework.boot.autoconfigure.mail.MailSenderAutoConfiguration;
-import org.springframework.boot.autoconfigure.web.servlet.WebMvcAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.cloud.autoconfigure.RefreshAutoConfiguration;
 import org.springframework.cloud.context.config.annotation.RefreshScope;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Bean;
@@ -62,6 +60,7 @@ import static org.mockito.Mockito.*;
  */
 @SpringBootTest(classes = AbstractMultifactorAuthenticationTrustStorageTests.SharedTestConfiguration.class)
 @Getter
+@ExtendWith(CasTestExtension.class)
 public abstract class AbstractMultifactorAuthenticationTrustStorageTests {
     @Autowired
     @Qualifier(MultifactorAuthenticationTrustStorage.BEAN_NAME)
@@ -120,33 +119,25 @@ public abstract class AbstractMultifactorAuthenticationTrustStorageTests {
             disposableBean.destroy();
         }
     }
-
+    @SpringBootTestAutoConfigurations
     @ImportAutoConfiguration({
-        RefreshAutoConfiguration.class,
-        WebMvcAutoConfiguration.class,
-        MailSenderAutoConfiguration.class,
-        AopAutoConfiguration.class
+        CasCoreAutoConfiguration.class,
+        CasCoreAuthenticationAutoConfiguration.class,
+        CasCoreUtilAutoConfiguration.class,
+        CasCoreNotificationsAutoConfiguration.class,
+        CasCoreServicesAutoConfiguration.class,
+        CasCoreAuditAutoConfiguration.class,
+        CasCoreWebAutoConfiguration.class,
+        CasCoreCookieAutoConfiguration.class,
+        CasCoreTicketsAutoConfiguration.class,
+        CasCoreLogoutAutoConfiguration.class,
+        CasCoreWebflowAutoConfiguration.class,
+        CasCoreMultifactorAuthenticationAutoConfiguration.class,
+        CasCoreMultifactorAuthenticationWebflowAutoConfiguration.class,
+        CasMultifactorAuthnTrustAutoConfiguration.class
     })
-    @SpringBootConfiguration
-    @Import({
-        CasCoreConfiguration.class,
-        CasCoreAuthenticationPrincipalConfiguration.class,
-        CasCoreUtilConfiguration.class,
-        CasCoreNotificationsConfiguration.class,
-        CasCoreServicesConfiguration.class,
-        CasRegisteredServicesTestConfiguration.class,
-        CasCoreAuditConfiguration.class,
-        CasCoreHttpConfiguration.class,
-        CasCoreWebConfiguration.class,
-        CasWebApplicationServiceFactoryConfiguration.class,
-        CasCoreAuthenticationServiceSelectionStrategyConfiguration.class,
-        GeoLocationServiceTestConfiguration.class,
-        CasCoreTicketsConfiguration.class,
-        CasCoreTicketsSerializationConfiguration.class,
-        MultifactorAuthnTrustWebflowConfiguration.class,
-        MultifactorAuthnTrustConfiguration.class,
-        MultifactorAuthnTrustedDeviceFingerprintConfiguration.class
-    })
+    @SpringBootConfiguration(proxyBeanMethods = false)
+    @Import({CasRegisteredServicesTestConfiguration.class, GeoLocationServiceTestConfiguration.class})
     public static class SharedTestConfiguration {
     }
 

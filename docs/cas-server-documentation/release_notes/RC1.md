@@ -4,7 +4,7 @@ title: CAS - Release Notes
 category: Planning
 ---
 
-# 7.0.0-RC1 Release Notes
+# 7.2.0-RC1 Release Notes
 
 We strongly recommend that you take advantage of the release candidates as they come out. Waiting for a `GA` release is only going to set
 you up for unpleasant surprises. A `GA` is [a tag and nothing more](https://apereo.github.io/2017/03/08/the-myth-of-ga-rel/). Note 
@@ -32,143 +32,89 @@ maintenance and release planning, especially when it comes to addressing critica
 - [Release Schedule](https://github.com/apereo/cas/milestones)
 - [Release Policy](/cas/developer/Release-Policy.html)
 
+## System Requirements
+
+The JDK baseline requirement for this CAS release is and **MUST** be JDK `21`. All compatible distributions
+such as Amazon Corretto, Zulu, Eclipse Temurin, etc should work and are implicitly supported.
+
 ## New & Noteworthy
 
 The following items are new improvements and enhancements presented in this release. 
-   
-### JDK Requirement
 
-The JDK baseline requirement for this CAS release is and **MUST** be JDK `17`. All compatible distributions
-such as Amazon Corretto, Zulu, Eclipse Temurin, etc should work and are implicitly supported.
+### Spring Boot 3.4
+
+The migration of the entire codebase to Spring Boot `3.4` is ongoing, and at the moment is waiting for the wider ecosystem 
+of supporting frameworks and libraries to catch up to changes. We anticipate the work to finalize in the next few 
+release candidates and certainly prior to the final release.
+   
+The following integrations and extensions remain dysfunctional for now until the underlying library adds
+support for the new version of Spring Boot:
+
+1. [Swagger](../integration/Swagger-Integration.html)
+2. [Spring Boot Admin](../monitoring/Configuring-SpringBootAdmin.html)
+
+### OpenRewrite Recipes
+
+CAS continues to produce and publish [OpenRewrite](https://docs.openrewrite.org/) recipes that allow the project to upgrade installations
+in place from one version to the next. [See this guide](../installation/OpenRewrite-Upgrade-Recipes.html) to learn more.
+
+### Graal VM Native Images
+
+A CAS server installation and deployment process can be tuned to build and run 
+as a [Graal VM native image](../installation/GraalVM-NativeImage-Installation.html). We continue to polish native runtime hints.
+The collection of end-to-end [browser tests based on Puppeteer](../../developer/Test-Process.html) have selectively switched
+to build and verify Graal VM native images and we plan to extend the coverage to all such scenarios in the coming releases.
 
 ### Testing Strategy
 
-The collection of end-to-end browser tests based on Puppeteer continue to grow to cover more use cases 
-and scenarios. At the moment, total number of jobs stands at approximately `342` distinct scenarios. The overall 
-test coverage of the CAS codebase is approximately `94%`.
- 
-### OpenID Connect Claim Definitions
+The collection of end-to-end [browser tests based on Puppeteer](../../developer/Test-Process.html) continue to grow to cover more use cases
+and scenarios. At the moment, total number of jobs stands at approximately `490` distinct scenarios. The overall
+test coverage of the CAS codebase is approximately `94%`. Furthermore, a large number of test categories that group internal unit tests
+are now configured to run with parallelism enabled.
+  
+### Jaeger Distributed Tracing
 
-Attribute definitions that specifically apply to the release of attributes as part of 
-OpenID Connect responses can be decorated using the [attribute definition store](../authentication/OIDC-Attribute-Definitions.html).
-       
-### CAS Protocol Views
+Jaeger is an open-source distributed tracing platform, that is now 
+[supported by CAS](../monitoring/Configuring-Tracing-Jaeger.html) for metrics and monitoring.
 
-CAS Protocol views and responses, previously managed and rendered via Thymeleaf, are now switched to use Mustache as the templating engine.
-This allow CAS to render and log the final output for better visibility and troubleshooting. Protocol responses are sent to the `PROTOCOL_MESSAGE` logger.
+### Redis Ticket Registry
 
-### CosmosDb Ticket Registry
+The performance of the [Redis Ticket Registry](../ticketing/Redis-Ticket-Registry.html) is improved to remove unnecessary 
+classloading, locks and JSON serialization overhead.
+         
+### Kafka Ticket Registry
 
-A new ticket registry implementation backed by [Azure Cosmos DB](../ticketing/CosmosDb-Ticket-Registry.html) is now available.
-
-### OpenID Connect Logging
-
-Authentication requests and responses for OpenID Connect and OAuth are logged via a dedicated 
-logger. Similar to CAS and SAML2 protocols, protocol responses such a profile requests, access token generation, etc 
-are sent to the `PROTOCOL_MESSAGE` logger.
-
-### Removed Modules
-
-The following modules that were previously marked as deprecated are now removed from CAS and will no longer
-be supported, maintained or released:
-
-- OpenID Protocol
-- Digest Authentication
-- Apache Shiro Authentication
-- Apache Fortress Authentication
-- Ehcache Ticket Registry
-- SwivelSecure Multifactor Authentication
-- Acceptto Multifactor Authentication
-- Infinispan Ticket Registry
-- Couchbase Ticket Registry
-- Scripted Attribute Repository
-- Scripted Registered Service Attribute Release Policy
-- Scripted Username Attribute Provider
-- NTLM Authentication
-- SCIM v1 Provisioning 
-
-### Conditional Access Strategy
-
-The ABAC authorization policy assigned to a registered service can 
-now be [conditionally activated](../services/Service-Access-Strategy-ABAC-Activation.html).
-
-### Attribute Definitions
-
-[Attribute definitions](../integration/Attribute-Definitions.html) can now be dynamically and programmatically registered with CAS via a dedicated API.
-
-### OAuth2/UMA Scopes
-
-Certain OAuth2 and/or UMA authorization requests are now able to enforce scope access by comparing requested scopes in the authorization
-request with what must be explicitly allowed in the registered service definition. In other words, scopes can only be allowed and requested
-if they are already authorized for the application definition in CAS.
-
-### SAML2 Metadata Resolution
-
-In the event that a SAML2 service provider is configured to download metadata from a URL, CAS may now attempt to reuse the previously-downloaded
-backup file on disk for the service provider, if the metadata file is still seen as valid. This capability will require the forceful fetching
-of the metadata over HTTP to be disabled.
-
-### Delegated Authentication Dynamic Discovery
-
-[Dynamic Discovery](../integration/Delegate-Authentication-DiscoverySelection.html) configured for delegated authentication is able to
-start the delegation flow based on a principal attribute that would then be matched against the configuration rules to locate the 
-appropriate external identity provider.
-     
-### AMQP Ticket Registry
-
-The JMS ticket registry has now been removed and replaced with a ticket registry implementation that is backed by the AMQP protocol
-and RabbitMQ. [See this](../ticketing/Messaging-AMQP-Ticket-Registry.html) for more info. 
- 
-### SAML2 Attribute Definitions
-
-[SAML2 attribute definitions](../installation/Configuring-SAML2-Attribute-Definitions.html) can now register persistent attribute definitions.
-
-### Docker Images
-
-A number of Docker images used for integration testing are now upgraded to their latest available versions:
-
-- LocalStack
-- Apereo CAS
-- Apache Cassandra
-- Couchbase Server
-- Amazon DynamoDb
-- InfluxDb
-- MariaDb
-- MongoDb
-- MySQL
-- PostgreSQL
-- Redis
+Apache Kafka can now be used as a [ticket registry](../ticketing/Kafka-Ticket-Registry.html) to broadcast ticket operations across the cluster.
 
 ## Other Stuff
    
-- A [Redis-based health indicator](../monitoring/Configuring-Monitoring-Redis.html) is available to report back on the health status of 
-  Redis connections. 
-- [Registered Service ABAC policy](../services/Service-Access-Strategy-ABAC.html) can now support inline Groovy conditions for attributes.
-- [CAS configuration security](../configuration/Configuration-Properties-Security-CAS.html) via Jasypt is able to respect the IV 
-  generation flag based on algorithms.
-- Embedded YAML application configuration files are able to override default application properties that ship with CAS.
-- Authentication context classes in the SAML2 response can be determined from context mapping settings when no specific context class is present in the 
-  SAML2 authentication context.
-- Integration tests for [CosmosDb Service Registry](../services/CosmosDb-Service-Management.html) are now turned on using a Azure Cosmos DB account on Azure 
-  free services.
-- SAML2 metadata resolution for service providers are now sent to the CAS audit log and recorded under `SAML2_METADATA_RESOLUTION`.
-- Support for [Google Analytics 4](../integration/Configuring-Google-Analytics.html) is now included.
-- Small improvements to how [Redis Ticket Registry](../ticketing/Redis-Ticket-Registry.html) can count ticket types.
-- [Auditable CAS events](../audits/Audits.html) are now automatically collected and displayed in the documentation.
+- When processing `refresh_token` grant types in OAuth2 and OpenID Connect, CAS now only requires the requested scopes to be a subset of the granted scopes.
+- Support for [reCAPTCHA](../integration/Configuring-Google-reCAPTCHA.html) is now extended to support [Friendly CAPTCHA](https://friendlycaptcha.com/). 
+- Content security policy header configuration can now support a dynamic nonce, which is a random value different for every HTTP request.
+- Static resources can now be externalized by default via the following additional directories: `file:/etc/cas/static` and `file:/etc/cas/public`.
+- The `maxAge` cookie setting can now be configured as a duration.
+- An optional principal attribute can now be configured to be used as the username sent to [Duo Security](../mfa/DuoSecurity-Authentication.html).
+- Response mode handling of OpenID Connect `token` or `id_token` response types is adjusted to build the redirect URL and parameters/fragments correctly.  
+- [Palantir Admin Console](../installation/Admin-Dashboard.html) now offers the ability to remove (trusted) registered multifactor authentication devices.
+- OAuth access tokens with an expiration policy value of zero now prevent CAS from issuing access tokens altogether. 
 
 ## Library Upgrades
 
-- Spring 
 - Spring Boot
-- Mockito
-- Nimbus
-- Twilio
-- Netty
-- JGit
+- Spring 
+- Spring Session
+- Spring Integration
+- Spring Kafka
 - Spring Cloud
-- Pac4j
-- Couchbase Client
+- Spring Data
+- Spring AMQP
+- Spring Security
 - Micrometer
+- ErrorProne
+- Apache Log4j
+- Logback
+- Amazon SDK
+- Gradle
+- JGit
 - Apache Tomcat
-- Puppeteer
-- Spring Shell
+

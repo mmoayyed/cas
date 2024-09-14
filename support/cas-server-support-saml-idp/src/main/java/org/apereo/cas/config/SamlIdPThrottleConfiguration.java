@@ -9,7 +9,6 @@ import org.apereo.cas.util.spring.boot.ConditionalOnFeatureEnabled;
 import lombok.val;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.AutoConfigureOrder;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -21,7 +20,7 @@ import org.springframework.context.annotation.ScopedProxyMode;
 import org.springframework.core.Ordered;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
-import javax.annotation.Nonnull;
+import jakarta.annotation.Nonnull;
 
 /**
  * This is {@link SamlIdPThrottleConfiguration}.
@@ -35,12 +34,12 @@ import javax.annotation.Nonnull;
     CasFeatureModule.FeatureCatalog.Throttling,
     CasFeatureModule.FeatureCatalog.SAMLIdentityProvider
 })
-@AutoConfiguration
-public class SamlIdPThrottleConfiguration {
+@Configuration(value = "SamlIdPThrottleConfiguration", proxyBeanMethods = false)
+class SamlIdPThrottleConfiguration {
 
     @Configuration(value = "SamlIdPThrottleWebMvcConfiguration", proxyBeanMethods = false)
     @EnableConfigurationProperties(CasConfigurationProperties.class)
-    public static class SamlIdPThrottleWebMvcConfiguration {
+    static class SamlIdPThrottleWebMvcConfiguration {
         @Bean
         @ConditionalOnMissingBean(name = "samlIdPThrottleWebMvcConfigurer")
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)

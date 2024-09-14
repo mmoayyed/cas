@@ -5,7 +5,8 @@ import org.apereo.cas.authentication.MultifactorAuthenticationPrincipalResolver;
 import org.apereo.cas.authentication.MultifactorAuthenticationProvider;
 import org.apereo.cas.authentication.MultifactorAuthenticationUtils;
 import org.apereo.cas.authentication.principal.Principal;
-import org.apereo.cas.web.support.WebUtils;
+import org.apereo.cas.util.spring.beans.BeanSupplier;
+import org.apereo.cas.web.flow.util.MultifactorAuthenticationWebflowUtils;
 import lombok.val;
 import org.springframework.beans.factory.BeanFactoryUtils;
 import org.springframework.context.ConfigurableApplicationContext;
@@ -30,7 +31,7 @@ public abstract class AbstractMultifactorAuthenticationAction<T extends Multifac
 
     @Override
     protected Event doPreExecute(final RequestContext requestContext) throws Exception {
-        val providerId = WebUtils.getMultifactorAuthenticationProvider(requestContext);
+        val providerId = MultifactorAuthenticationWebflowUtils.getMultifactorAuthenticationProvider(requestContext);
         val applicationContext = requestContext.getActiveFlow().getApplicationContext();
         this.provider = (T) MultifactorAuthenticationUtils.getMultifactorAuthenticationProviderById(providerId, applicationContext)
             .orElseThrow(() -> new AuthenticationException("Unable to determine multifactor authentication provider for " + providerId));
@@ -45,6 +46,7 @@ public abstract class AbstractMultifactorAuthenticationAction<T extends Multifac
         AnnotationAwareOrderComparator.sort(resolvers);
         return resolvers
             .stream()
+            .filter(BeanSupplier::isNotProxy)
             .filter(resolver -> resolver.supports(principal))
             .findFirst()
             .map(r -> r.resolve(principal))

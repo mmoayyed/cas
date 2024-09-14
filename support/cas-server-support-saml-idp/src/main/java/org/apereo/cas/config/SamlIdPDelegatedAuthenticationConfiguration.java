@@ -10,13 +10,14 @@ import org.apereo.cas.util.spring.boot.ConditionalOnFeatureEnabled;
 import org.apereo.cas.util.spring.boot.ConditionalOnFeaturesEnabled;
 
 import org.pac4j.core.context.session.SessionStore;
+import org.pac4j.saml.client.SAML2Client;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.cloud.context.config.annotation.RefreshScope;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.ScopedProxyMode;
 
 /**
@@ -31,12 +32,13 @@ import org.springframework.context.annotation.ScopedProxyMode;
     @ConditionalOnFeatureEnabled(feature = CasFeatureModule.FeatureCatalog.DelegatedAuthentication),
     @ConditionalOnFeatureEnabled(feature = CasFeatureModule.FeatureCatalog.SAMLIdentityProvider)
 })
-@AutoConfiguration
-public class SamlIdPDelegatedAuthenticationConfiguration {
+@Configuration(value = "SamlIdPDelegatedAuthenticationConfiguration", proxyBeanMethods = false)
+class SamlIdPDelegatedAuthenticationConfiguration {
 
     @Bean
     @ConditionalOnMissingBean(name = "saml2DelegatedClientAuthenticationRequestCustomizer")
     @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
+    @ConditionalOnClass(SAML2Client.class)
     public DelegatedClientAuthenticationRequestCustomizer saml2DelegatedClientAuthenticationRequestCustomizer(
         @Qualifier(ServicesManager.BEAN_NAME)
         final ServicesManager servicesManager,

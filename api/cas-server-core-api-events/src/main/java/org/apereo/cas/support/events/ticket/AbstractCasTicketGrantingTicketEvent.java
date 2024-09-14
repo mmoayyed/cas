@@ -1,7 +1,8 @@
 package org.apereo.cas.support.events.ticket;
 
 import org.apereo.cas.support.events.AbstractCasEvent;
-import org.apereo.cas.ticket.TicketGrantingTicket;
+import org.apereo.cas.ticket.AuthenticationAwareTicket;
+import org.apereo.cas.ticket.IdleExpirationPolicy;
 import lombok.Getter;
 import lombok.ToString;
 import org.apereo.inspektr.common.web.ClientInfo;
@@ -24,9 +25,10 @@ public abstract class AbstractCasTicketGrantingTicketEvent extends AbstractCasEv
     @Serial
     private static final long serialVersionUID = 5815205609847140811L;
 
-    private final TicketGrantingTicket ticketGrantingTicket;
+    private final AuthenticationAwareTicket ticketGrantingTicket;
 
-    protected AbstractCasTicketGrantingTicketEvent(final Object source, final TicketGrantingTicket ticketGrantingTicket, final ClientInfo clientInfo) {
+    protected AbstractCasTicketGrantingTicketEvent(final Object source, final AuthenticationAwareTicket ticketGrantingTicket,
+                                                   final ClientInfo clientInfo) {
         super(source, clientInfo);
         this.ticketGrantingTicket = ticketGrantingTicket;
     }
@@ -37,7 +39,7 @@ public abstract class AbstractCasTicketGrantingTicketEvent extends AbstractCasEv
      * @return tgt creation time
      */
     public ZonedDateTime getCreationTime() {
-        return this.ticketGrantingTicket.getCreationTime();
+        return ticketGrantingTicket.getCreationTime();
     }
 
     /**
@@ -46,7 +48,7 @@ public abstract class AbstractCasTicketGrantingTicketEvent extends AbstractCasEv
      * @return tgt id
      */
     public String getId() {
-        return this.ticketGrantingTicket.getId();
+        return ticketGrantingTicket.getId();
     }
 
     /**
@@ -55,7 +57,7 @@ public abstract class AbstractCasTicketGrantingTicketEvent extends AbstractCasEv
      * @return tgt's TTL
      */
     public Long getTimeToLive() {
-        return this.ticketGrantingTicket.getExpirationPolicy().getTimeToLive();
+        return ticketGrantingTicket.getExpirationPolicy().getTimeToLive();
     }
 
     /**
@@ -64,7 +66,7 @@ public abstract class AbstractCasTicketGrantingTicketEvent extends AbstractCasEv
      * @return tgt's TTI
      */
     public Long getTimeToIdle() {
-        return this.ticketGrantingTicket.getExpirationPolicy().getTimeToIdle();
+        return ticketGrantingTicket.getExpirationPolicy() instanceof final IdleExpirationPolicy iep ? iep.getTimeToIdle() : 0L;
     }
 
     /**
@@ -73,6 +75,6 @@ public abstract class AbstractCasTicketGrantingTicketEvent extends AbstractCasEv
      * @return principal id
      */
     public String getPrincipalId() {
-        return this.ticketGrantingTicket.getAuthentication().getPrincipal().getId();
+        return ticketGrantingTicket.getAuthentication().getPrincipal().getId();
     }
 }

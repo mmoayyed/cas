@@ -4,7 +4,6 @@ import org.apereo.cas.configuration.model.SpringResourceProperties;
 import org.apereo.cas.configuration.support.RegularExpressionCapable;
 import org.apereo.cas.configuration.support.RequiresModule;
 
-import com.fasterxml.jackson.annotation.JsonFilter;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
@@ -23,7 +22,7 @@ import java.io.Serializable;
 @Getter
 @Setter
 @Accessors(chain = true)
-@JsonFilter("PrincipalAttributeMultifactorAuthenticationProperties")
+
 public class PrincipalAttributeMultifactorAuthenticationProperties implements Serializable {
 
     @Serial
@@ -56,7 +55,7 @@ public class PrincipalAttributeMultifactorAuthenticationProperties implements Se
     private String globalPrincipalAttributeNameTriggers;
 
     /**
-     * The regular expression that is cross matches against the principal attribute to determine
+     * The regular expression that is cross matched against the principal attribute to determine
      * if the account is qualified for multifactor authentication.
      * Matching and comparison operations are case insensitive.
      */
@@ -69,4 +68,14 @@ public class PrincipalAttributeMultifactorAuthenticationProperties implements Se
      * match to trigger multifactor authentication.
      */
     private boolean denyIfUnmatched;
+
+    /**
+     * Principal attribute triggers by default look for a positive match and the presence of a pattern in attribute values.
+     * If you are looking to reverse that behavior and trigger MFA when the attribute value
+     * does NOT match the given pattern, then set this flag to {@code true}.
+     * This option does not apply when a predicate trigger is used to decide on the provider,
+     * and is only relevant when {@link #globalPrincipalAttributeNameTriggers} and
+     * {@link #globalPrincipalAttributeValueRegex} are used.
+     */
+    private boolean reverseMatch;
 }

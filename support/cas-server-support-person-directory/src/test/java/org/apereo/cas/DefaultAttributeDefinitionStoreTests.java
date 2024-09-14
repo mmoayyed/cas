@@ -7,20 +7,21 @@ import org.apereo.cas.authentication.attribute.AttributeDefinitionStore;
 import org.apereo.cas.authentication.attribute.DefaultAttributeDefinition;
 import org.apereo.cas.authentication.attribute.DefaultAttributeDefinitionStore;
 import org.apereo.cas.authentication.principal.PrincipalResolver;
+import org.apereo.cas.authentication.principal.attribute.PersonAttributeDao;
 import org.apereo.cas.configuration.CasConfigurationProperties;
 import org.apereo.cas.services.RegisteredServiceAttributeReleasePolicyContext;
 import org.apereo.cas.services.RegisteredServicePublicKey;
 import org.apereo.cas.services.RegisteredServicePublicKeyImpl;
 import org.apereo.cas.services.ReturnAllAttributeReleasePolicy;
+import org.apereo.cas.test.CasTestExtension;
 import org.apereo.cas.util.CollectionUtils;
 import org.apereo.cas.util.serialization.JacksonObjectMapperFactory;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.val;
 import org.apache.commons.io.FileUtils;
-import org.apache.commons.lang3.tuple.Pair;
-import org.apereo.services.persondir.IPersonAttributeDao;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -35,7 +36,6 @@ import java.nio.file.attribute.FileTime;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
@@ -57,6 +57,7 @@ import static org.mockito.Mockito.*;
         "cas.server.scope=cas.org"
     })
 @Tag("Attributes")
+@ExtendWith(CasTestExtension.class)
 @EnableConfigurationProperties(CasConfigurationProperties.class)
 class DefaultAttributeDefinitionStoreTests {
 
@@ -74,7 +75,7 @@ class DefaultAttributeDefinitionStoreTests {
 
     @Autowired
     @Qualifier(PrincipalResolver.BEAN_NAME_ATTRIBUTE_REPOSITORY)
-    private IPersonAttributeDao attributeRepository;
+    private PersonAttributeDao attributeRepository;
 
     @Autowired
     private ConfigurableApplicationContext applicationContext;
@@ -208,7 +209,7 @@ class DefaultAttributeDefinitionStoreTests {
                 .service(CoreAuthenticationTestUtils.getService())
                 .attributes(Map.of())
                 .build();
-            var values = (Optional<Pair<AttributeDefinition, List<Object>>>) store.resolveAttributeValues("whatever", context);
+            var values = store.resolveAttributeValues("whatever", context);
             assertTrue(values.isEmpty());
         }
     }

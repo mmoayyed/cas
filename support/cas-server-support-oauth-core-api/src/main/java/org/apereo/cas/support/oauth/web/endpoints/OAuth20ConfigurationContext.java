@@ -4,10 +4,12 @@ import org.apereo.cas.CentralAuthenticationService;
 import org.apereo.cas.audit.AuditableExecution;
 import org.apereo.cas.authentication.attribute.AttributeDefinitionStore;
 import org.apereo.cas.authentication.principal.PrincipalFactory;
+import org.apereo.cas.authentication.principal.PrincipalResolver;
 import org.apereo.cas.authentication.principal.ServiceFactory;
 import org.apereo.cas.authentication.principal.WebApplicationService;
 import org.apereo.cas.configuration.CasConfigurationProperties;
 import org.apereo.cas.logout.slo.SingleLogoutServiceLogoutUrlBuilder;
+import org.apereo.cas.notifications.CommunicationsManager;
 import org.apereo.cas.services.ServicesManager;
 import org.apereo.cas.support.oauth.authenticator.OAuth20CasAuthenticationBuilder;
 import org.apereo.cas.support.oauth.profile.OAuth20ProfileScopeToAttributesFilter;
@@ -20,6 +22,7 @@ import org.apereo.cas.support.oauth.web.response.accesstoken.OAuth20TokenGenerat
 import org.apereo.cas.support.oauth.web.response.accesstoken.response.OAuth20AccessTokenResponseGenerator;
 import org.apereo.cas.support.oauth.web.response.callback.OAuth20AuthorizationResponseBuilder;
 import org.apereo.cas.support.oauth.web.response.callback.OAuth20InvalidAuthorizationResponseBuilder;
+import org.apereo.cas.support.oauth.web.response.introspection.OAuth20IntrospectionResponseGenerator;
 import org.apereo.cas.support.oauth.web.views.ConsentApprovalViewResolver;
 import org.apereo.cas.support.oauth.web.views.OAuth20CallbackAuthorizeViewResolver;
 import org.apereo.cas.support.oauth.web.views.OAuth20UserProfileViewRenderer;
@@ -32,12 +35,12 @@ import org.apereo.cas.ticket.registry.TicketRegistry;
 import org.apereo.cas.token.JwtBuilder;
 import org.apereo.cas.util.crypto.CipherExecutor;
 import org.apereo.cas.util.gen.RandomStringGenerator;
+import org.apereo.cas.util.http.HttpClient;
 import org.apereo.cas.util.serialization.StringSerializer;
 import org.apereo.cas.validation.AuthenticationAttributeReleasePolicy;
 import org.apereo.cas.web.cookie.CasCookieBuilder;
 import org.apereo.cas.web.support.ArgumentExtractor;
 import org.apereo.cas.web.support.CookieUtils;
-
 import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
@@ -49,7 +52,7 @@ import org.pac4j.core.profile.ProfileManager;
 import org.pac4j.jee.context.JEEContext;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.ConfigurableApplicationContext;
-
+import org.springframework.scheduling.TaskScheduler;
 import java.io.Serializable;
 import java.util.List;
 import java.util.Optional;
@@ -70,7 +73,7 @@ public class OAuth20ConfigurationContext {
     private final ServicesManager servicesManager;
 
     private final TicketFactory ticketFactory;
-    
+
     private final TicketRegistry ticketRegistry;
 
     private final PrincipalFactory principalFactory;
@@ -141,6 +144,18 @@ public class OAuth20ConfigurationContext {
 
     private final AttributeDefinitionStore attributeDefinitionStore;
 
+    private final List<OAuth20IntrospectionResponseGenerator> introspectionResponseGenerator;
+
+    private final PrincipalResolver principalResolver;
+
+    private final TaskScheduler taskScheduler;
+
+    private final CommunicationsManager communicationsManager;
+
+    private final CipherExecutor<byte[], byte[]> webflowCipherExecutor;
+
+    private final HttpClient httpClient;
+
     /**
      * Gets ticket granting ticket.
      *
@@ -151,13 +166,16 @@ public class OAuth20ConfigurationContext {
         val ticketGrantingTicket = CookieUtils.getTicketGrantingTicketFromRequest(
             getTicketGrantingTicketCookieGenerator(),
             getTicketRegistry(), context.getNativeRequest());
-        return Optional.ofNullable(ticketGrantingTicket)
-            .orElseGet(() -> {
-                val manager = new ProfileManager(context, getSessionStore());
-                return manager.getProfile()
-                    .map(profile -> profile.getAttribute(TicketGrantingTicket.class.getName()))
-                    .map(ticketId -> ticketRegistry.getTicket(ticketId.toString(), TicketGrantingTicket.class))
-                    .orElse(null);
-            });
+        if (!ticketGrantingTicketCookieGenerator.containsCookie(context.getNativeRequest())) {
+            return Optional.ofNullable(ticketGrantingTicket)
+                .orElseGet(() -> {
+                    val manager = new ProfileManager(context, getSessionStore());
+                    return manager.getProfile()
+                        .map(profile -> profile.getAttribute(TicketGrantingTicket.class.getName()))
+                        .map(ticketId -> ticketRegistry.getTicket(ticketId.toString(), TicketGrantingTicket.class))
+                        .orElse(null);
+                });
+        }
+        return ticketGrantingTicket;
     }
 }

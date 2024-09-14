@@ -5,11 +5,11 @@ import org.apereo.cas.audit.AuditPrincipalResolvers;
 import org.apereo.cas.audit.AuditResourceResolvers;
 import org.apereo.cas.audit.AuditableActions;
 import org.apereo.cas.authentication.AuthenticationSystemSupport;
-import org.apereo.cas.authentication.DefaultAuthenticationBuilder;
 import org.apereo.cas.authentication.MultifactorAuthenticationProvider;
 import org.apereo.cas.authentication.MultifactorAuthenticationProviderSelector;
 import org.apereo.cas.authentication.MultifactorAuthenticationUtils;
 import org.apereo.cas.authentication.credential.BasicIdentifiableCredential;
+import org.apereo.cas.authentication.principal.NullPrincipal;
 import org.apereo.cas.authentication.principal.Principal;
 import org.apereo.cas.authentication.principal.PrincipalResolver;
 import org.apereo.cas.authentication.principal.WebApplicationService;
@@ -30,6 +30,7 @@ import org.apereo.cas.util.CollectionUtils;
 import org.apereo.cas.util.function.FunctionUtils;
 import org.apereo.cas.web.flow.CasWebflowConstants;
 import org.apereo.cas.web.flow.actions.BaseCasWebflowAction;
+import org.apereo.cas.web.flow.util.MultifactorAuthenticationWebflowUtils;
 import org.apereo.cas.web.support.WebUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -39,7 +40,6 @@ import org.apereo.inspektr.audit.annotation.Audit;
 import org.springframework.context.ApplicationContext;
 import org.springframework.web.servlet.support.RequestContextUtils;
 import org.springframework.webflow.action.EventFactorySupport;
-import org.springframework.webflow.core.collection.LocalAttributeMap;
 import org.springframework.webflow.execution.Event;
 import org.springframework.webflow.execution.RequestContext;
 import java.net.URL;
@@ -110,7 +110,7 @@ public class SendPasswordResetInstructionsAction extends BaseCasWebflowAction {
            actionResolverName = AuditActionResolvers.REQUEST_CHANGE_PASSWORD_ACTION_RESOLVER,
            resourceResolverName = AuditResourceResolvers.REQUEST_CHANGE_PASSWORD_RESOURCE_RESOLVER)
     @Override
-    protected Event doExecuteInternal(final RequestContext requestContext) throws Exception {
+    protected Event doExecuteInternal(final RequestContext requestContext) throws Throwable {
         communicationsManager.validate();
         if (!communicationsManager.isMailSenderDefined() && !communicationsManager.isSmsSenderDefined()) {
             return getErrorEvent("contact.failed", "Unable to send email as no mail sender is defined", requestContext);
@@ -121,58 +121,60 @@ public class SendPasswordResetInstructionsAction extends BaseCasWebflowAction {
             return getErrorEvent("username.required", "No username is provided", requestContext);
         }
 
-        val email = FunctionUtils.doUnchecked(() -> passwordManagementService.findEmail(query));
-        val phone = FunctionUtils.doUnchecked(() -> passwordManagementService.findPhone(query));
+        val email = passwordManagementService.findEmail(query);
+        val phone = passwordManagementService.findPhone(query);
         if (StringUtils.isBlank(email) && StringUtils.isBlank(phone)) {
             LOGGER.warn("No recipient is provided with a valid email/phone");
             return getInvalidContactEvent(requestContext);
         }
         WebUtils.putPasswordManagementQuery(requestContext, query);
-        return FunctionUtils.doUnchecked(() -> {
-            if (doesPasswordResetRequireMultifactorAuthentication(requestContext)) {
-                return switchToMultifactorAuthenticationFlow(requestContext);
+        if (doesPasswordResetRequireMultifactorAuthentication(requestContext)) {
+            if (!hasPrincipalRegisteredMultifactorAuthenticationDevice(requestContext)) {
+                LOGGER.warn("No registered devices for multifactor authentication could be found for [{}]", query.getUsername());
+                WebUtils.addErrorMessageToContext(requestContext, "screen.mfaDenied.message");
+                return new EventFactorySupport().event(this, CasWebflowConstants.TRANSITION_ID_DENY);
             }
-            val service = WebUtils.getService(requestContext);
-            val url = buildPasswordResetUrl(query.getUsername(), service);
-            if (url != null) {
-                val pm = casProperties.getAuthn().getPm();
-                val duration = Beans.newDuration(pm.getReset().getExpiration());
-                LOGGER.debug("Generated password reset URL [{}]; Link is only active for the next [{}] minute(s)", url, duration);
-                val sendEmail = sendPasswordResetEmailToAccount(query.getUsername(), email, url, requestContext);
-                val sendSms = sendPasswordResetSmsToAccount(phone, url);
-                if (sendEmail.isSuccess() || sendSms) {
-                    return success(url);
-                }
-            } else {
-                LOGGER.error("No password reset URL could be built and sent to [{}]", email);
+        }
+        val service = WebUtils.getService(requestContext);
+        val url = buildPasswordResetUrl(query.getUsername(), service);
+        if (url != null) {
+            val pm = casProperties.getAuthn().getPm();
+            val duration = Beans.newDuration(pm.getReset().getExpiration());
+            LOGGER.debug("Generated password reset URL [{}]; Link is only active for the next [{}] minute(s)", url, duration);
+            val sendEmail = sendPasswordResetEmailToAccount(query.getUsername(), email, url, requestContext);
+            val sendSms = sendPasswordResetSmsToAccount(phone, url);
+            if (sendEmail.isSuccess() || sendSms) {
+                return success(url);
             }
-            LOGGER.error("Failed to notify account [{}]", email);
-            return getErrorEvent("contact.failed", "Failed to send the password reset link via email address or phone", requestContext);
-        });
+        } else {
+            LOGGER.error("No password reset URL could be built and sent to [{}]", email);
+        }
+        LOGGER.error("Failed to notify account [{}]", email);
+        return getErrorEvent("contact.failed", "Failed to send the password reset link via email address or phone", requestContext);
     }
 
     protected boolean doesPasswordResetRequireMultifactorAuthentication(final RequestContext requestContext) {
         val providers = MultifactorAuthenticationUtils.getAvailableMultifactorAuthenticationProviders(applicationContext);
-        val providerId = WebUtils.getMultifactorAuthenticationProvider(requestContext);
+        val providerId = MultifactorAuthenticationWebflowUtils.getMultifactorAuthenticationProvider(requestContext);
         return casProperties.getAuthn().getPm().getReset().isMultifactorAuthenticationEnabled()
             && !providers.isEmpty() && StringUtils.isBlank(providerId);
     }
 
-    protected Event switchToMultifactorAuthenticationFlow(final RequestContext requestContext) throws Throwable {
+    protected boolean hasPrincipalRegisteredMultifactorAuthenticationDevice(final RequestContext requestContext) throws Throwable {
         val query = WebUtils.getPasswordManagementQuery(requestContext, PasswordManagementQuery.class);
-        val principal = principalResolver.resolve(new BasicIdentifiableCredential(query.getUsername()));
+        val principal = resolvedPrincipal(query.getUsername());
         val provider = selectMultifactorAuthenticationProvider(requestContext, principal);
-        val authentication = DefaultAuthenticationBuilder.newInstance().setPrincipal(principal).build();
-        WebUtils.putAuthentication(authentication, requestContext);
-        val builder = authenticationSystemSupport.getAuthenticationResultBuilderFactory().newBuilder();
-        val authenticationResult = builder.collect(authentication);
-        WebUtils.putAuthenticationResultBuilder(authenticationResult, requestContext);
-        WebUtils.putTargetTransition(requestContext, CasWebflowConstants.TRANSITION_ID_RESUME_RESET_PASSWORD);
-        WebUtils.putMultifactorAuthenticationProvider(requestContext, provider);
-        return new EventFactorySupport().event(this, provider.getId(),
-            new LocalAttributeMap<>(Map.of(MultifactorAuthenticationProvider.class.getName(), provider)));
+        LOGGER.debug("Selected multifactor authentication provider [{}]", provider.getId());
+        return provider.getDeviceManager() == null || provider.getDeviceManager().hasRegisteredDevices(principal);
     }
 
+    protected Principal resolvedPrincipal(final String username) throws Throwable {
+        val resolvedPrincipal = principalResolver.resolve(new BasicIdentifiableCredential(username));
+        return resolvedPrincipal instanceof NullPrincipal
+            ? authenticationSystemSupport.getPrincipalFactory().createPrincipal(username)
+            : resolvedPrincipal;
+    }
+    
     protected MultifactorAuthenticationProvider selectMultifactorAuthenticationProvider(final RequestContext requestContext,
                                                                                         final Principal principal) throws Throwable {
         val providers = MultifactorAuthenticationUtils.getAvailableMultifactorAuthenticationProviders(applicationContext);
@@ -204,7 +206,7 @@ public class SendPasswordResetInstructionsAction extends BaseCasWebflowAction {
             LOGGER.debug("Sending password reset URL [{}] via SMS to [{}]", url.toExternalForm(), to);
             val reset = casProperties.getAuthn().getPm().getReset().getSms();
             val message = SmsBodyBuilder.builder().properties(reset).parameters(Map.of("url", url.toExternalForm())).build().get();
-            val smsRequest = SmsRequest.builder().from(reset.getFrom()).to(to).text(message).build();
+            val smsRequest = SmsRequest.builder().from(reset.getFrom()).to(List.of(to)).text(message).build();
             return communicationsManager.sms(smsRequest);
         }
         return false;
@@ -215,14 +217,13 @@ public class SendPasswordResetInstructionsAction extends BaseCasWebflowAction {
         val reset = casProperties.getAuthn().getPm().getReset().getMail();
         val parameters = CollectionUtils.<String, Object>wrap("url", url.toExternalForm());
         if (StringUtils.isNotBlank(to)) {
-            val credential = new BasicIdentifiableCredential();
-            credential.setId(username);
-            val person = principalResolver.resolve(credential);
+            val person = resolvedPrincipal(username);
             FunctionUtils.doIfNotNull(person, principal -> parameters.put("principal", principal));
             val request = WebUtils.getHttpServletRequestFromExternalWebflowContext(requestContext);
             val locale = Optional.ofNullable(RequestContextUtils.getLocaleResolver(request))
                 .map(resolver -> resolver.resolveLocale(request));
-            val text = EmailMessageBodyBuilder.builder()
+            val text = EmailMessageBodyBuilder
+                .builder()
                 .properties(reset)
                 .parameters(parameters)
                 .locale(locale)
@@ -230,14 +231,15 @@ public class SendPasswordResetInstructionsAction extends BaseCasWebflowAction {
                 .get();
             LOGGER.debug("Sending password reset URL [{}] via email to [{}] for username [{}]", url, to, username);
 
-            val emailRequest = EmailMessageRequest.builder()
+            val emailRequest = EmailMessageRequest
+                .builder()
                 .emailProperties(reset)
                 .principal(person)
                 .to(List.of(to))
                 .locale(locale.orElseGet(Locale::getDefault))
                 .body(text)
                 .build();
-            return this.communicationsManager.email(emailRequest);
+            return communicationsManager.email(emailRequest);
         }
         return EmailCommunicationResult.builder().success(false).to(List.of(to)).build();
     }

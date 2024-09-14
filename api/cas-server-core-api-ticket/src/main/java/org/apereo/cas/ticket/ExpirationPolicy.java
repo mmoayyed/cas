@@ -43,14 +43,9 @@ public interface ExpirationPolicy extends Serializable {
      *
      * @return time to live in seconds. A zero value indicates the time duration is not supported or is inactive.
      */
-    Long getTimeToLive();
-
-    /**
-     * Describes the idle time duration for the item.
-     *
-     * @return idle time in seconds. A zero value indicates the time duration is not supported or is inactive. Unit of measure is defined by the implementation.
-     */
-    Long getTimeToIdle();
+    default Long getTimeToLive() {
+        return 0L;
+    }
 
     /**
      * Gets name of this expiration policy.
@@ -66,8 +61,7 @@ public interface ExpirationPolicy extends Serializable {
      */
     @JsonIgnore
     Clock getClock();
-
-
+    
     /**
      * Gets maximum expiration time for this ticket.
      * The ticket will expire at the calculated time.
@@ -75,18 +69,7 @@ public interface ExpirationPolicy extends Serializable {
      * @param ticketState the ticket state
      * @return the maximum expiration time
      */
-    default ZonedDateTime getMaximumExpirationTime(final Ticket ticketState) {
-        return null;
-    }
-
-    /**
-     * Gets idle expiration time for this ticket.
-     * The ticket will expire at the calculated time if idle.
-     *
-     * @param ticketState the ticket state
-     * @return the idle expiration time
-     */
-    default ZonedDateTime getIdleExpirationTime(final Ticket ticketState) {
+    default ZonedDateTime toMaximumExpirationTime(final Ticket ticketState) {
         return null;
     }
 }

@@ -1,33 +1,13 @@
 package org.apereo.cas.ticket;
 
+import org.apereo.cas.AbstractOAuth20Tests;
 import org.apereo.cas.authentication.CoreAuthenticationTestUtils;
-import org.apereo.cas.config.CasCookieConfiguration;
-import org.apereo.cas.config.CasCoreAuthenticationConfiguration;
-import org.apereo.cas.config.CasCoreAuthenticationPrincipalConfiguration;
-import org.apereo.cas.config.CasCoreAuthenticationSupportConfiguration;
-import org.apereo.cas.config.CasCoreConfiguration;
-import org.apereo.cas.config.CasCoreHttpConfiguration;
-import org.apereo.cas.config.CasCoreLogoutConfiguration;
-import org.apereo.cas.config.CasCoreNotificationsConfiguration;
-import org.apereo.cas.config.CasCoreServicesConfiguration;
-import org.apereo.cas.config.CasCoreTicketCatalogConfiguration;
-import org.apereo.cas.config.CasCoreTicketIdGeneratorsConfiguration;
-import org.apereo.cas.config.CasCoreTicketsConfiguration;
-import org.apereo.cas.config.CasCoreTicketsSerializationConfiguration;
-import org.apereo.cas.config.CasCoreUtilConfiguration;
-import org.apereo.cas.config.CasCoreWebConfiguration;
-import org.apereo.cas.config.CasDefaultServiceTicketIdGeneratorsConfiguration;
-import org.apereo.cas.config.CasOAuth20AuthenticationServiceSelectionStrategyConfiguration;
-import org.apereo.cas.config.CasOAuth20ComponentSerializationConfiguration;
-import org.apereo.cas.config.CasOAuth20Configuration;
-import org.apereo.cas.config.CasOAuth20EndpointsConfiguration;
-import org.apereo.cas.config.CasPersonDirectoryTestConfiguration;
-import org.apereo.cas.config.CasWebApplicationServiceFactoryConfiguration;
 import org.apereo.cas.mock.MockTicketGrantingTicket;
 import org.apereo.cas.services.RegisteredServiceTestUtils;
 import org.apereo.cas.services.ServicesManager;
 import org.apereo.cas.support.oauth.OAuth20GrantTypes;
 import org.apereo.cas.support.oauth.OAuth20ResponseTypes;
+import org.apereo.cas.test.CasTestExtension;
 import org.apereo.cas.ticket.accesstoken.OAuth20AccessToken;
 import org.apereo.cas.ticket.accesstoken.OAuth20AccessTokenFactory;
 import org.apereo.cas.ticket.code.OAuth20Code;
@@ -43,11 +23,10 @@ import org.apereo.cas.util.crypto.CipherExecutor;
 import org.apereo.cas.util.serialization.JacksonObjectMapperFactory;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.val;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.boot.autoconfigure.web.servlet.WebMvcAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.cloud.autoconfigure.RefreshAutoConfiguration;
 import java.util.ArrayList;
 import java.util.HashMap;
 import static org.mockito.Mockito.*;
@@ -58,32 +37,8 @@ import static org.mockito.Mockito.*;
  * @author Misagh Moayyed
  * @since 5.3.0
  */
-@SpringBootTest(classes = {
-    RefreshAutoConfiguration.class,
-    WebMvcAutoConfiguration.class,
-    CasOAuth20Configuration.class,
-    CasOAuth20EndpointsConfiguration.class,
-    CasCoreNotificationsConfiguration.class,
-    CasCoreServicesConfiguration.class,
-    CasCoreConfiguration.class,
-    CasCoreTicketsConfiguration.class,
-    CasCookieConfiguration.class,
-    CasCoreTicketCatalogConfiguration.class,
-    CasCoreTicketIdGeneratorsConfiguration.class,
-    CasCoreTicketsSerializationConfiguration.class,
-    CasCoreWebConfiguration.class,
-    CasCoreUtilConfiguration.class,
-    CasCoreHttpConfiguration.class,
-    CasCoreAuthenticationSupportConfiguration.class,
-    CasPersonDirectoryTestConfiguration.class,
-    CasCoreAuthenticationConfiguration.class,
-    CasCoreAuthenticationPrincipalConfiguration.class,
-    CasWebApplicationServiceFactoryConfiguration.class,
-    CasCoreLogoutConfiguration.class,
-    CasOAuth20ComponentSerializationConfiguration.class,
-    CasDefaultServiceTicketIdGeneratorsConfiguration.class,
-    CasOAuth20AuthenticationServiceSelectionStrategyConfiguration.class
-})
+@SpringBootTest(classes = AbstractOAuth20Tests.SharedTestConfiguration.class)
+@ExtendWith(CasTestExtension.class)
 public abstract class BaseOAuth20ExpirationPolicyTests {
     protected static final ObjectMapper MAPPER = JacksonObjectMapperFactory.builder()
         .defaultTypingEnabled(false).build().toObjectMapper();
@@ -142,7 +97,7 @@ public abstract class BaseOAuth20ExpirationPolicyTests {
         val rt = defaultRefreshTokenFactory.create(testService, at.getAuthentication(),
             at.getTicketGrantingTicket(), new ArrayList<>(), "clientid12345", at.getId(),
             new HashMap<>(), OAuth20ResponseTypes.CODE, OAuth20GrantTypes.AUTHORIZATION_CODE);
-        at.getTicketGrantingTicket().getDescendantTickets().add(rt.getId());
+        ((TicketGrantingTicket) at.getTicketGrantingTicket()).getDescendantTickets().add(rt.getId());
         return rt;
     }
 }

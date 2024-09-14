@@ -1,10 +1,10 @@
 package org.apereo.cas.configuration.model.support.quartz;
 
+import org.apereo.cas.configuration.features.CasFeatureModule;
 import org.apereo.cas.configuration.support.DurationCapable;
 import org.apereo.cas.configuration.support.RegularExpressionCapable;
 import org.apereo.cas.configuration.support.RequiresModule;
 
-import com.fasterxml.jackson.annotation.JsonFilter;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
@@ -22,8 +22,8 @@ import java.io.Serializable;
 @Getter
 @Setter
 @Accessors(chain = true)
-@JsonFilter("SchedulingProperties")
-public class SchedulingProperties implements Serializable {
+
+public class SchedulingProperties implements CasFeatureModule, Serializable {
 
     @Serial
     private static final long serialVersionUID = -1522227059439367394L;
@@ -58,4 +58,20 @@ public class SchedulingProperties implements Serializable {
      */
     @DurationCapable
     private String repeatInterval = "PT2M";
+
+    /**
+     * A cron-like expression, extending the usual UN*X definition to include triggers
+     * on the second, minute, hour, day of month, month, and day of week.
+     * For example, {@code 0 * * * * MON-FRI} means once per minute on weekdays (at the top of the minute - the 0th second)
+     * or {@code 0 0 0 * * *} means every day at midnight.
+     * * Note that when cron expressions are defined, the start delay and repeat interval settings are must be
+     * removed and set to blank.
+     */
+    private String cronExpression;
+
+    /**
+     * A time zone for which the cron expression will be resolved.
+     * By default, this attribute is empty (i.e. the scheduler's time zone will be used).
+     */
+    private String cronTimeZone;
 }

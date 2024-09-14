@@ -1,25 +1,22 @@
 package org.apereo.cas.pm.web.flow;
 
-import org.apereo.cas.config.CasSupportActionsConfiguration;
-import org.apereo.cas.config.PasswordManagementConfiguration;
-import org.apereo.cas.config.PasswordManagementForgotUsernameConfiguration;
-import org.apereo.cas.config.PasswordManagementWebflowConfiguration;
+import org.apereo.cas.config.CasPasswordManagementAutoConfiguration;
+import org.apereo.cas.config.CasPasswordManagementWebflowAutoConfiguration;
+import org.apereo.cas.config.CasSupportActionsAutoConfiguration;
 import org.apereo.cas.util.MockRequestContext;
 import org.apereo.cas.web.flow.BaseWebflowConfigurerTests;
 import org.apereo.cas.web.flow.CasWebflowConfigurer;
 import org.apereo.cas.web.support.WebUtils;
-
 import lombok.val;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.context.annotation.Import;
+import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.webflow.engine.Flow;
 import org.springframework.webflow.engine.TransitionableState;
 import org.springframework.webflow.execution.Action;
-
 import static org.apereo.cas.web.flow.CasWebflowConstants.*;
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -29,11 +26,10 @@ import static org.junit.jupiter.api.Assertions.*;
  * @author Misagh Moayyed
  * @since 6.4.0
  */
-@Import({
-    CasSupportActionsConfiguration.class,
-    PasswordManagementConfiguration.class,
-    PasswordManagementWebflowConfiguration.class,
-    PasswordManagementForgotUsernameConfiguration.class
+@ImportAutoConfiguration({
+    CasSupportActionsAutoConfiguration.class,
+    CasPasswordManagementAutoConfiguration.class,
+    CasPasswordManagementWebflowAutoConfiguration.class
 })
 @TestPropertySource(properties = {
     "cas.authn.pm.forgot-username.google-recaptcha.enabled=true",
@@ -49,7 +45,7 @@ class ForgotUsernameCaptchaWebflowConfigurerTests extends BaseWebflowConfigurerT
     
     @Test
     void verifyCaptcha() throws Throwable {
-        val context = MockRequestContext.create();
+        val context = MockRequestContext.create(applicationContext);
         initCaptchaAction.execute(context);
         assertTrue(WebUtils.isRecaptchaForgotUsernameEnabled(context));
     }

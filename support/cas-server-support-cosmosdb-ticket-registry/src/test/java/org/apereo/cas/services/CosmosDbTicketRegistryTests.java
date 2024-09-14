@@ -1,8 +1,7 @@
 package org.apereo.cas.services;
 
 import org.apereo.cas.authentication.CoreAuthenticationTestUtils;
-import org.apereo.cas.config.CosmosDbTicketRegistryConfiguration;
-import org.apereo.cas.config.CosmosDbTicketRegistryTicketCatalogConfiguration;
+import org.apereo.cas.config.CasCosmosDbTicketRegistryAutoConfiguration;
 import org.apereo.cas.cosmosdb.CosmosDbObjectFactory;
 import org.apereo.cas.ticket.TicketGrantingTicket;
 import org.apereo.cas.ticket.TicketGrantingTicketImpl;
@@ -11,7 +10,6 @@ import org.apereo.cas.ticket.registry.BaseTicketRegistryTests;
 import org.apereo.cas.ticket.registry.TicketRegistry;
 import org.apereo.cas.util.TicketGrantingTicketIdGenerator;
 import org.apereo.cas.util.spring.ApplicationContextProvider;
-
 import lombok.Getter;
 import lombok.val;
 import org.apache.commons.lang3.StringUtils;
@@ -23,12 +21,10 @@ import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.api.parallel.ResourceLock;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.context.annotation.Import;
+import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 import org.springframework.test.context.TestPropertySource;
-
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -38,10 +34,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * @since 7.0.0
  */
 @Tag("Azure")
-@Import({
-    CosmosDbTicketRegistryConfiguration.class,
-    CosmosDbTicketRegistryTicketCatalogConfiguration.class
-})
+@ImportAutoConfiguration(CasCosmosDbTicketRegistryAutoConfiguration.class)
 @TestPropertySource(properties = {
     "cas.tgc.crypto.enabled=false",
     "cas.http-client.host-name-verifier=none",

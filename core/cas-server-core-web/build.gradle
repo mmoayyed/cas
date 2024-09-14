@@ -18,9 +18,18 @@ dependencies {
     testImplementation project(":core:cas-server-core-services-registry")
     testImplementation project(":core:cas-server-core-services-api")
     testImplementation project(":core:cas-server-core-services-authentication")
-    
+    testImplementation project(":core:cas-server-core-services")
+    testImplementation project(":core:cas-server-core")
+    testImplementation project(":core:cas-server-core-util")
+    testImplementation project(":core:cas-server-core-tickets")
+    testImplementation project(":core:cas-server-core-authentication")
+    testImplementation project(":core:cas-server-core-logout")
+    testImplementation project(":core:cas-server-core-notifications")
+    testImplementation project(":core:cas-server-core-scripting")
+
     testRuntimeOnly libraries.webjars
     testRuntimeOnly libraries.webjarsbootstrap
+    testRuntimeOnly libraries.webjarspalantir
     testRuntimeOnly libraries.websockets
     
     implementation libraries.snakeyaml

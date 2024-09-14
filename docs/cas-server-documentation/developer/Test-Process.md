@@ -121,14 +121,23 @@ Functional tests start by generating a plain CAS overlay as a baseline that is a
 This overlay is supplied the test scenario configuration that explains the required modules, properties, etc to use when CAS is deployed
 inside an embedded Apache Tomcat container. Once running, the Puppeteer script is executed by Node for the given test scenario to verify
 specific functionality such as successful logins, generation of tickets, etc.
+   
+To see the full list of all Puppeteer test scenarios, you may run:
 
-All functional and browser tests are executed by the [continuous integration system](Test-Process.html#continuous-integration). 
+```bash
+ls ./ci/tests/puppeteer/scenarios
+```
+
+All functional and browser test scenarios are executed by the [continuous integration system](Test-Process.html#continuous-integration). 
   
 To install Puppeteer once:
 
 ```bash
 npm i -g puppeteer
 ```
+
+<div class="alert alert-info">:information_source: <strong>Usage</strong><p>
+The above step is not strictly necessary. CAS will automatically attempt to install Puppeteer when necessary when you run test scenarios.</p></div>
 
 To help simplify the testing process, you may use the following bash function in your `~/.profile`:
 
@@ -154,7 +163,7 @@ To see the list of available test scenarios:
 ```
 
 Remote debugging may be available on port `5000`. To successfully run tests, 
-you need to make sure [jq](https://stedolan.github.io/jq/) is installed.
+you also need to make sure [jq](https://stedolan.github.io/jq/) is installed.
    
 The following command-line options are supported for test execution:
 
@@ -172,24 +181,32 @@ The following command-line options are supported for test execution:
 | `--hbo`                                   | A combination of `--headless` and `--build` and Gradle's `--offline` flag.               |
 | `--hbod`                                  | A combination of `--hbo` and Gradle's `--offline` flag.                                  |
 | `--bo`                                    | A combination of `--build` and Gradle's `--offline` flag.                                |
-| `--hr`                                    | A combination of `--headless` and `--resume`.                                            |
+| `--hr`                                    | A combination of `--headless` and `--resume`. Disables the linter automatically.         |
 | `--ho`                                    | A combination of `--headless` and Gradle's `--offline` flag.                             |
 | `--hd`                                    | A combination of `--headless` and `--debug`.                                             |
 | `--hb`                                    | A combination of `--headless` and `--build`.                                             |
 | `--body`, `--bogy`, `--boyd`              | A combination of `--build`, `--debug`, `--dry-run` and Gradle's `--offline` flag.        |
 | `--boy`                                   | A combination of `--build`, `--dry-run` and Gradle's `--offline` flag.                   |
 | `--io`, `--initonly`                      | Initialize the execution of the test scenario, but do not run it.                        |
-| `--nc`, `--ncl`, `--noclear`              | Initialize the execution of the test scenario, but do not run it.                        |
 | `--native`, `--graalvm`, `--nb`           | Build the test scenario and produce a native-image as the final build artifact.          |
 | `--nr`, `--native-run`                    | Run the test scenario as a native-image. Requires a native build via `--nb`.             |
+| `--nbr`                                   | A combination of `--nb` and `--nr` flags.                                                |
+| `--no-lint`, `--nol`                      | Disable the linter that validates scenario scripts.                                      |
+| `--hol`                                   | A combination of `--headless` and `--offline` flags with linter disabled.                |
 
-For example, the `login-success` test scenario may be run using: 
+For example, the `login-success` test scenario with a remote debugger may be run using: 
 
 ```bash
-pupcas login-success --hbo
+pupcas login-success --hbod
 ```
          
 All other build related options and flags (i.e. `--info`) may be passed directly to the script. 
+
+...and once the scenario is still running, you can rerun it (in a new terminal window) using:
+
+```bash
+pupcas login-success --hr
+```
 
 ### Test Scenario Anatomy
 
@@ -203,7 +220,7 @@ const cas = require('../../cas.js');
 const assert = require("assert");
 
 (async () => {
-    const browser = await puppeteer.launch(cas.browserOptions());
+    const browser = await cas.newBrowser(cas.browserOptions());
     const page = await cas.newPage(browser);
     
     // Do stuff and check/assert behavior...
@@ -222,6 +239,9 @@ A basic modest outline of the test configuration may be:
   "conditions": {
     "docker": "true"
   },
+  "environmentVariables": [
+    "NAME=VALUE"
+  ],
   "requirements": {
     "graalvm": {
       "build": false

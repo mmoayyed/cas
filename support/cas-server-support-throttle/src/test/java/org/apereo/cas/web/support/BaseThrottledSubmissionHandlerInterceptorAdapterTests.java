@@ -4,32 +4,24 @@ import org.apereo.cas.CasProtocolConstants;
 import org.apereo.cas.authentication.AuthenticationManager;
 import org.apereo.cas.authentication.CoreAuthenticationTestUtils;
 import org.apereo.cas.authentication.credential.UsernamePasswordCredential;
-import org.apereo.cas.config.CasCoreAuditConfiguration;
-import org.apereo.cas.config.CasCoreAuthenticationConfiguration;
-import org.apereo.cas.config.CasCoreAuthenticationHandlersConfiguration;
-import org.apereo.cas.config.CasCoreAuthenticationMetadataConfiguration;
-import org.apereo.cas.config.CasCoreAuthenticationPolicyConfiguration;
-import org.apereo.cas.config.CasCoreAuthenticationPrincipalConfiguration;
-import org.apereo.cas.config.CasCoreAuthenticationServiceSelectionStrategyConfiguration;
-import org.apereo.cas.config.CasCoreAuthenticationSupportConfiguration;
-import org.apereo.cas.config.CasCoreConfiguration;
-import org.apereo.cas.config.CasCoreHttpConfiguration;
-import org.apereo.cas.config.CasCoreLogoutConfiguration;
-import org.apereo.cas.config.CasCoreNotificationsConfiguration;
-import org.apereo.cas.config.CasCoreServicesAuthenticationConfiguration;
-import org.apereo.cas.config.CasCoreServicesConfiguration;
-import org.apereo.cas.config.CasCoreTicketCatalogConfiguration;
-import org.apereo.cas.config.CasCoreTicketIdGeneratorsConfiguration;
-import org.apereo.cas.config.CasCoreTicketsConfiguration;
-import org.apereo.cas.config.CasCoreTicketsSerializationConfiguration;
-import org.apereo.cas.config.CasCoreUtilConfiguration;
-import org.apereo.cas.config.CasCoreWebConfiguration;
-import org.apereo.cas.config.CasPersonDirectoryConfiguration;
-import org.apereo.cas.config.CasPersonDirectoryStubConfiguration;
+import org.apereo.cas.config.CasCoreAuditAutoConfiguration;
+import org.apereo.cas.config.CasCoreAuthenticationAutoConfiguration;
+import org.apereo.cas.config.CasCoreAutoConfiguration;
+import org.apereo.cas.config.CasCoreCookieAutoConfiguration;
+import org.apereo.cas.config.CasCoreLogoutAutoConfiguration;
+import org.apereo.cas.config.CasCoreMultifactorAuthenticationAutoConfiguration;
+import org.apereo.cas.config.CasCoreMultifactorAuthenticationWebflowAutoConfiguration;
+import org.apereo.cas.config.CasCoreNotificationsAutoConfiguration;
+import org.apereo.cas.config.CasCoreServicesAutoConfiguration;
+import org.apereo.cas.config.CasCoreTicketsAutoConfiguration;
+import org.apereo.cas.config.CasCoreUtilAutoConfiguration;
+import org.apereo.cas.config.CasCoreWebAutoConfiguration;
+import org.apereo.cas.config.CasCoreWebflowAutoConfiguration;
+import org.apereo.cas.config.CasPersonDirectoryAutoConfiguration;
 import org.apereo.cas.config.CasRegisteredServicesTestConfiguration;
-import org.apereo.cas.config.CasThrottlingConfiguration;
-import org.apereo.cas.config.CasWebApplicationServiceFactoryConfiguration;
+import org.apereo.cas.config.CasThrottlingAutoConfiguration;
 import org.apereo.cas.util.MockRequestContext;
+import org.apereo.cas.util.spring.boot.SpringBootTestAutoConfigurations;
 import lombok.val;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.hc.core5.http.HttpStatus;
@@ -43,10 +35,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.SpringBootConfiguration;
 import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
-import org.springframework.boot.autoconfigure.aop.AopAutoConfiguration;
-import org.springframework.boot.autoconfigure.mail.MailSenderAutoConfiguration;
-import org.springframework.boot.autoconfigure.web.servlet.WebMvcAutoConfiguration;
-import org.springframework.cloud.autoconfigure.RefreshAutoConfiguration;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpMethod;
 import org.springframework.mock.web.MockHttpServletRequest;
@@ -119,8 +107,7 @@ public abstract class BaseThrottledSubmissionHandlerInterceptorAdapterTests {
             }
         }));
     }
-    protected MockHttpServletResponse login(final String username,
-                                            final String password,
+    protected MockHttpServletResponse login(final String username, final String password,
                                             final String fromAddress) throws Exception {
         val context = MockRequestContext.create();
         val request = context.getHttpServletRequest();
@@ -130,6 +117,7 @@ public abstract class BaseThrottledSubmissionHandlerInterceptorAdapterTests {
         context.setParameter(CasProtocolConstants.PARAMETER_USERNAME, username);
         context.setParameter(CasProtocolConstants.PARAMETER_PASSWORD, password);
         request.setRemoteAddr(fromAddress);
+        request.addHeader("User-Agent", "Firefox");
         request.setAttribute("flowRequestContext", context);
         request.setRequestURI("/cas/login");
         context.setCurrentEvent(new Event(StringUtils.EMPTY, "error"));
@@ -150,40 +138,26 @@ public abstract class BaseThrottledSubmissionHandlerInterceptorAdapterTests {
         return response;
     }
 
+    @SpringBootTestAutoConfigurations
     @ImportAutoConfiguration({
-        RefreshAutoConfiguration.class,
-        WebMvcAutoConfiguration.class,
-        MailSenderAutoConfiguration.class,
-        AopAutoConfiguration.class
+        CasCoreAutoConfiguration.class,
+        CasCoreNotificationsAutoConfiguration.class,
+        CasCoreServicesAutoConfiguration.class,
+        CasCoreUtilAutoConfiguration.class,
+        CasCoreTicketsAutoConfiguration.class,
+        CasCoreLogoutAutoConfiguration.class,
+        CasPersonDirectoryAutoConfiguration.class,
+        CasCoreAuthenticationAutoConfiguration.class,
+        CasCoreWebAutoConfiguration.class,
+        CasCoreAuditAutoConfiguration.class,
+        CasCoreCookieAutoConfiguration.class,
+        CasThrottlingAutoConfiguration.class,
+        CasCoreWebflowAutoConfiguration.class,
+        CasCoreMultifactorAuthenticationAutoConfiguration.class,
+        CasCoreMultifactorAuthenticationWebflowAutoConfiguration.class
     })
-    @SpringBootConfiguration
-    @Import({
-        CasCoreConfiguration.class,
-        CasCoreAuthenticationServiceSelectionStrategyConfiguration.class,
-        CasCoreNotificationsConfiguration.class,
-        CasCoreServicesConfiguration.class,
-        CasCoreUtilConfiguration.class,
-        CasCoreTicketsConfiguration.class,
-        CasCoreTicketIdGeneratorsConfiguration.class,
-        CasCoreTicketCatalogConfiguration.class,
-        CasCoreTicketsSerializationConfiguration.class,
-        CasCoreLogoutConfiguration.class,
-        CasPersonDirectoryConfiguration.class,
-        CasPersonDirectoryStubConfiguration.class,
-        CasCoreAuthenticationPrincipalConfiguration.class,
-        CasCoreAuthenticationPolicyConfiguration.class,
-        CasCoreAuthenticationMetadataConfiguration.class,
-        CasCoreAuthenticationSupportConfiguration.class,
-        CasCoreAuthenticationHandlersConfiguration.class,
-        CasCoreAuthenticationConfiguration.class,
-        CasCoreServicesAuthenticationConfiguration.class,
-        CasCoreHttpConfiguration.class,
-        CasCoreWebConfiguration.class,
-        CasRegisteredServicesTestConfiguration.class,
-        CasWebApplicationServiceFactoryConfiguration.class,
-        CasCoreAuditConfiguration.class,
-        CasThrottlingConfiguration.class
-    })
-    static class SharedTestConfiguration {
+    @SpringBootConfiguration(proxyBeanMethods = false)
+    @Import(CasRegisteredServicesTestConfiguration.class)
+    public static class SharedTestConfiguration {
     }
 }

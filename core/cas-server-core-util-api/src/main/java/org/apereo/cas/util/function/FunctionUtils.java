@@ -14,6 +14,8 @@ import org.springframework.retry.RetryCallback;
 import org.springframework.retry.RetryContext;
 import org.springframework.retry.RetryListener;
 import org.springframework.retry.backoff.FixedBackOffPolicy;
+import org.springframework.retry.backoff.NoBackOffPolicy;
+import org.springframework.retry.policy.NeverRetryPolicy;
 import org.springframework.retry.policy.SimpleRetryPolicy;
 import org.springframework.retry.support.RetryTemplate;
 import java.util.HashMap;
@@ -146,6 +148,19 @@ public class FunctionUtils {
     }
 
     /**
+     * Do if blank.
+     *
+     * @param <T>          the type parameter
+     * @param input        the input
+     * @param trueFunction the true function
+     */
+    public static <T> void doIfBlank(final CharSequence input, final CheckedConsumer<T> trueFunction) {
+        if (StringUtils.isBlank(input)) {
+            doAndHandle(trueFunction);
+        }
+    }
+
+    /**
      * Do if not blank.
      *
      * @param <T>           the type parameter
@@ -166,8 +181,7 @@ public class FunctionUtils {
      * @param input        the input
      * @param trueFunction the true function
      */
-    public static <T extends CharSequence> void doIfNotBlank(final T input,
-                                                             final CheckedConsumer<T> trueFunction) {
+    public static <T extends CharSequence> void doIfNotBlank(final T input, final CheckedConsumer<T> trueFunction) {
         try {
             if (StringUtils.isNotBlank(input)) {
                 trueFunction.accept(input);
@@ -424,6 +438,17 @@ public class FunctionUtils {
     }
 
     /**
+     * Do if condition holds.
+     *
+     * @param <T>          the type parameter
+     * @param condition    the condition
+     * @param trueFunction the true function
+     */
+    public static <T> void doWhen(final boolean condition, final Consumer<T> trueFunction) {
+        doIf(condition, trueFunction, __ -> {}).accept(null);
+    }
+    
+    /**
      * Do without throws and return status.
      *
      * @param func   the func
@@ -474,6 +499,19 @@ public class FunctionUtils {
     }
 
     /**
+     * Do and retry with mix attempts.
+     *
+     * @param <T>             the type parameter
+     * @param callback        the callback
+     * @param maximumAttempts the maximum attempts
+     * @return the t
+     * @throws Exception the exception
+     */
+    public static <T> T doAndRetry(final RetryCallback<T, Exception> callback, final int maximumAttempts) throws Exception {
+        return doAndRetry(List.of(), callback, maximumAttempts);
+    }
+
+    /**
      * Do and retry.
      *
      * @param <T>      the type parameter
@@ -484,15 +522,36 @@ public class FunctionUtils {
      */
     public static <T> T doAndRetry(final List<Class<? extends Throwable>> clazzes,
                                    final RetryCallback<T, Exception> callback) throws Exception {
+        return doAndRetry(clazzes, callback, SimpleRetryPolicy.DEFAULT_MAX_ATTEMPTS);
+    }
+
+    /**
+     * Do and retry with a max number of attempts.
+     *
+     * @param <T>             the type parameter
+     * @param clazzes         the clazzes
+     * @param callback        the callback
+     * @param maximumAttempts the maximum attempts
+     * @return the t
+     * @throws Exception the exception
+     */
+    public static <T> T doAndRetry(final List<Class<? extends Throwable>> clazzes,
+                                   final RetryCallback<T, Exception> callback,
+                                   final int maximumAttempts) throws Exception {
         val retryTemplate = new RetryTemplate();
-        retryTemplate.setBackOffPolicy(new FixedBackOffPolicy());
 
         val classified = new HashMap<Class<? extends Throwable>, Boolean>();
         classified.put(Error.class, Boolean.TRUE);
         classified.put(Throwable.class, Boolean.TRUE);
         clazzes.forEach(clz -> classified.put(clz, Boolean.TRUE));
 
-        val retryPolicy = new SimpleRetryPolicy(SimpleRetryPolicy.DEFAULT_MAX_ATTEMPTS, classified, true);
+        val retryPolicy = maximumAttempts > 0
+            ? new SimpleRetryPolicy(maximumAttempts, classified, true)
+            : new NeverRetryPolicy();
+        retryTemplate.setBackOffPolicy(maximumAttempts > 0
+            ? new FixedBackOffPolicy()
+            : new NoBackOffPolicy());
+        
         retryTemplate.setRetryPolicy(retryPolicy);
         retryTemplate.setThrowLastExceptionOnExhausted(true);
         retryTemplate.registerListener(new RetryListener() {
@@ -538,8 +597,7 @@ public class FunctionUtils {
      * @param throwable the throwable
      * @throws Throwable the throwable
      */
-    public static void throwIf(final boolean condition,
-                               final CheckedSupplier<? extends Throwable> throwable) throws Throwable {
+    public static void throwIf(final boolean condition, final CheckedSupplier<? extends Throwable> throwable) throws Throwable {
         if (condition) {
             throw throwable.get();
         }
@@ -568,8 +626,25 @@ public class FunctionUtils {
      * @return the t
      * @throws Exception the exception
      */
-    public static <T> T doAndThrow(final CheckedSupplier<T> supplier,
-                                   final Function<Throwable, ? extends Exception> handler) throws Exception {
+    public static <T> T doAndThrow(final CheckedSupplier<T> supplier, final Function<Throwable, ? extends Exception> handler) throws Exception {
+        try {
+            return supplier.get();
+        } catch (final Throwable e) {
+            LoggingUtils.error(LOGGER, e);
+            throw handler.apply(e);
+        }
+    }
+
+    /**
+     * Do and throw unchecked.
+     *
+     * @param <T>      the type parameter
+     * @param supplier the supplier
+     * @param handler  the handler
+     * @return the t
+     */
+    public static <T> T doAndThrowUnchecked(final CheckedSupplier<T> supplier,
+                                            final Function<Throwable, ? extends RuntimeException> handler) {
         try {
             return supplier.get();
         } catch (final Throwable e) {

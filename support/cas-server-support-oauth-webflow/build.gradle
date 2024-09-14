@@ -31,7 +31,7 @@ dependencies {
     implementation project(":support:cas-server-support-token-core-api")
     implementation project(":support:cas-server-support-oauth")
     implementation project(":support:cas-server-support-oauth-core-api")
-    implementation project(":support:cas-server-support-oauth-core")
+
     implementation project(":support:cas-server-support-oauth-api")
     implementation project(":support:cas-server-support-oauth-services")
     implementation project(":support:cas-server-support-actions")
@@ -53,7 +53,8 @@ dependencies {
     testImplementation project(":core:cas-server-core-audit")
     testImplementation project(":core:cas-server-core-logout")
     testImplementation project(":core:cas-server-core-util")
-
+    testImplementation project(":core:cas-server-core-scripting")
+    
     testImplementation project(path: ":core:cas-server-core", configuration: "tests")
     testImplementation project(path: ":core:cas-server-core-webflow", configuration: "tests")
     testImplementation project(path: ":core:cas-server-core-webflow-mfa", configuration: "tests")

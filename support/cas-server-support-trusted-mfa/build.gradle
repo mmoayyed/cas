@@ -7,6 +7,8 @@ ext {
     ]
 }
 dependencies {
+    implementation libraries.jose4j
+    
     api project(":api:cas-server-core-api-audit")
     api project(":api:cas-server-core-api-cookie")
 
@@ -39,7 +41,10 @@ dependencies {
     testImplementation project(":core:cas-server-core-logging")
     testImplementation project(":core:cas-server-core-logout")
     testImplementation project(":core:cas-server-core")
+    testImplementation project(":core:cas-server-core-scripting")
 
+    testImplementation libraries.springboottomcat
+    
     testImplementation project(":support:cas-server-support-reports")
     testImplementation project(":support:cas-server-support-person-directory")
 
@@ -50,6 +55,7 @@ dependencies {
     testImplementation project(path: ":core:cas-server-core-util-api", configuration: "tests")
     testImplementation project(path: ":core:cas-server-core-audit-api", configuration: "tests")
     testImplementation project(path: ":core:cas-server-core-authentication-mfa-api", configuration: "tests")
+    testImplementation project(path: ":core:cas-server-core-webflow", configuration: "tests")
     testImplementation project(path: ":support:cas-server-support-ldap-core", configuration: "tests")
     testImplementation project(path: ":support:cas-server-support-reports", configuration: "tests")
 }

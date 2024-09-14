@@ -3,8 +3,8 @@ package org.apereo.cas.web.report;
 import org.apereo.cas.CasProtocolConstants;
 import org.apereo.cas.authentication.AcceptUsersAuthenticationHandler;
 import org.apereo.cas.authentication.AuthenticationEventExecutionPlanConfigurer;
-import org.apereo.cas.config.CasThymeleafConfiguration;
-import org.apereo.cas.config.CasValidationConfiguration;
+import org.apereo.cas.config.CasThymeleafAutoConfiguration;
+import org.apereo.cas.config.CasValidationAutoConfiguration;
 import org.apereo.cas.services.RegisteredService;
 import org.apereo.cas.services.RegisteredServiceTestUtils;
 import org.apereo.cas.util.CollectionUtils;
@@ -16,6 +16,7 @@ import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
@@ -34,10 +35,10 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 @TestPropertySource(properties = "management.endpoint.casValidate.enabled=true")
 @Tag("ActuatorEndpoint")
-@Import({
-    CasProtocolValidationEndpointTests.TestAuthenticationConfiguration.class,
-    CasThymeleafConfiguration.class,
-    CasValidationConfiguration.class
+@Import(CasProtocolValidationEndpointTests.AuthenticationTestConfiguration.class)
+@ImportAutoConfiguration({
+    CasThymeleafAutoConfiguration.class,
+    CasValidationAutoConfiguration.class
 })
 class CasProtocolValidationEndpointTests extends AbstractCasEndpointTests {
     @Autowired
@@ -77,8 +78,8 @@ class CasProtocolValidationEndpointTests extends AbstractCasEndpointTests {
         return request;
     }
 
-    @TestConfiguration(value = "TestAuthenticationConfiguration", proxyBeanMethods = false)
-    static class TestAuthenticationConfiguration {
+    @TestConfiguration(value = "AuthenticationTestConfiguration", proxyBeanMethods = false)
+    static class AuthenticationTestConfiguration {
         @Bean
         public AuthenticationEventExecutionPlanConfigurer surrogateAuthenticationEventExecutionPlanConfigurer() {
             return plan -> plan.registerAuthenticationHandler(new AcceptUsersAuthenticationHandler(CollectionUtils.wrap("casuser", "Mellon")));

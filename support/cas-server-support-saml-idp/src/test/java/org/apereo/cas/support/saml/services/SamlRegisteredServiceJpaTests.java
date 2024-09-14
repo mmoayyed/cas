@@ -1,22 +1,19 @@
 package org.apereo.cas.support.saml.services;
 
-import org.apereo.cas.config.CasHibernateJpaConfiguration;
-import org.apereo.cas.config.JpaServiceRegistryConfiguration;
+import org.apereo.cas.config.CasHibernateJpaAutoConfiguration;
+import org.apereo.cas.config.CasJpaServiceRegistryAutoConfiguration;
 import org.apereo.cas.services.ChainingAttributeReleasePolicy;
 import org.apereo.cas.services.DefaultRegisteredServiceAccessStrategy;
 import org.apereo.cas.services.DenyAllAttributeReleasePolicy;
 import org.apereo.cas.support.saml.BaseSamlIdPConfigurationTests;
 import org.apereo.cas.util.CollectionUtils;
-
 import lombok.val;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
-import org.springframework.context.annotation.Import;
+import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 import org.springframework.test.context.TestPropertySource;
-
 import java.util.Arrays;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -25,9 +22,9 @@ import static org.junit.jupiter.api.Assertions.*;
  * @author Misagh Moayyed
  * @since 5.0.0
  */
-@Import({
-    CasHibernateJpaConfiguration.class,
-    JpaServiceRegistryConfiguration.class
+@ImportAutoConfiguration({
+    CasHibernateJpaAutoConfiguration.class,
+    CasJpaServiceRegistryAutoConfiguration.class
 })
 @Tag("SAML2")
 @TestPropertySource(properties = {

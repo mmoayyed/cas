@@ -1,16 +1,11 @@
 package org.apereo.cas.services;
 
-import org.apereo.cas.config.CasCoreAuthenticationMetadataConfiguration;
-import org.apereo.cas.config.CasCoreNotificationsConfiguration;
-import org.apereo.cas.config.CasCoreServicesConfiguration;
-import org.apereo.cas.config.CasCoreUtilConfiguration;
-import org.apereo.cas.config.CasCoreWebConfiguration;
-import org.apereo.cas.config.CasWebApplicationServiceFactoryConfiguration;
-import org.apereo.cas.config.GitServiceRegistryConfiguration;
+import org.apereo.cas.config.CasGitServiceRegistryAutoConfiguration;
 import org.apereo.cas.configuration.model.support.git.services.GitServiceRegistryProperties;
 import org.apereo.cas.git.GitRepository;
 import org.apereo.cas.services.util.RegisteredServiceJsonSerializer;
 import org.apereo.cas.services.util.RegisteredServiceYamlSerializer;
+import org.apereo.cas.test.CasTestExtension;
 import org.apereo.cas.util.CollectionUtils;
 import org.apereo.cas.util.LoggingUtils;
 import org.apereo.cas.util.RandomUtils;
@@ -29,12 +24,10 @@ import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.boot.autoconfigure.mail.MailSenderAutoConfiguration;
-import org.springframework.boot.autoconfigure.web.servlet.WebMvcAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.cloud.autoconfigure.RefreshAutoConfiguration;
 import org.springframework.context.ConfigurableApplicationContext;
 import java.io.File;
 import java.io.IOException;
@@ -51,16 +44,8 @@ import static org.mockito.Mockito.*;
  * @since 6.1.0
  */
 @SpringBootTest(classes = {
-    GitServiceRegistryConfiguration.class,
-    CasCoreServicesConfiguration.class,
-    CasCoreNotificationsConfiguration.class,
-    CasCoreUtilConfiguration.class,
-    CasCoreWebConfiguration.class,
-    CasWebApplicationServiceFactoryConfiguration.class,
-    CasCoreAuthenticationMetadataConfiguration.class,
-    RefreshAutoConfiguration.class,
-    WebMvcAutoConfiguration.class,
-    MailSenderAutoConfiguration.class
+    CasGitServiceRegistryAutoConfiguration.class,
+    AbstractServiceRegistryTests.SharedTestConfiguration.class
 },
     properties = {
         "cas.service-registry.git.sign-commits=false",
@@ -69,6 +54,7 @@ import static org.mockito.Mockito.*;
     })
 @Slf4j
 @Tag("Git")
+@ExtendWith(CasTestExtension.class)
 @Getter
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class GitServiceRegistryTests extends AbstractServiceRegistryTests {

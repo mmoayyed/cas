@@ -1,10 +1,10 @@
-const puppeteer = require('puppeteer');
-const performance = require('perf_hooks').performance;
-const cas = require('../../cas.js');
+
+const performance = require("perf_hooks").performance;
+const cas = require("../../cas.js");
 const path = require("path");
 
 (async () => {
-    const browser = await puppeteer.launch(cas.browserOptions());
+    const browser = await cas.newBrowser(cas.browserOptions());
     const page = await cas.newPage(browser);
 
     const entityIds = [
@@ -30,9 +30,9 @@ const path = require("path");
     ];
 
     await sendRequest(page, entityIds);
-    await cas.doRequest("https://localhost:8443/cas/actuator/samlIdPRegisteredServiceMetadataCache", "DELETE", {}, 204);
+    await cas.doDelete("https://localhost:8443/cas/actuator/samlIdPRegisteredServiceMetadataCache");
 
-    await cas.removeDirectoryOrFile(path.join(__dirname, '/saml-md'));
+    await cas.removeDirectoryOrFile(path.join(__dirname, "/saml-md"));
     await browser.close();
 })();
 
@@ -47,21 +47,21 @@ async function sendRequest(page, entityIds) {
             url += "&target=https%3A%2F%2Flocalhost%3A8443%2Fcas%2Flogin";
 
             await cas.log(`Navigating to ${url}`);
-            let s = performance.now();
+            const s = performance.now();
             await cas.goto(page, url);
-            let e = performance.now();
-            let duration = (e - s) / 1000;
+            const e = performance.now();
+            const duration = (e - s) / 1000;
             await cas.log(`Request took ${duration} seconds.`);
 
             if (count > 1 && duration > 15) {
                 await cas.logr("Request took longer than expected");
             }
 
-            await page.waitForTimeout(1000);
-            await cas.assertVisibility(page, '#username');
-            await cas.assertVisibility(page, '#password');
+            await cas.sleep(1000);
+            await cas.assertVisibility(page, "#username");
+            await cas.assertVisibility(page, "#password");
             await cas.loginWith(page);
-            await page.waitForTimeout(1000);
+            await cas.sleep(1000);
             count++;
         } catch (e) {
             await cas.logr(e);

@@ -1,13 +1,11 @@
 package org.apereo.cas.configuration.model.support.passwordless.account;
 
 import org.apereo.cas.configuration.model.support.ldap.AbstractLdapSearchProperties;
+import org.apereo.cas.configuration.support.RegularExpressionCapable;
 import org.apereo.cas.configuration.support.RequiresModule;
-
-import com.fasterxml.jackson.annotation.JsonFilter;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
-
 import java.io.Serial;
 
 /**
@@ -20,7 +18,7 @@ import java.io.Serial;
 @Getter
 @Setter
 @Accessors(chain = true)
-@JsonFilter("PasswordlessAuthenticationLdapAccountsProperties")
+
 public class PasswordlessAuthenticationLdapAccountsProperties extends AbstractLdapSearchProperties {
     @Serial
     private static final long serialVersionUID = -1102345678378393382L;
@@ -40,8 +38,17 @@ public class PasswordlessAuthenticationLdapAccountsProperties extends AbstractLd
     /**
      * Name of the LDAP attribute that
      * indicates the user's name.
+     *
+     * @deprecated This property will likely be removed in v8.
      */
+    @Deprecated
     private String nameAttribute = "cn";
+
+    /**
+     * Name of the LDAP attribute that
+     * indicates the username.
+     */
+    private String usernameAttribute;
 
     /**
      * Name of the LDAP attribute that
@@ -52,4 +59,21 @@ public class PasswordlessAuthenticationLdapAccountsProperties extends AbstractLd
      * Comparisons are not case sensitive.
      */
     private String requestPasswordAttribute = "requestPassword";
+
+    /**
+     * Name of the LDAP attribute that is required to be present
+     * in the user account entry for passwordless authentication to trigger.
+     * Presence of this attribute is checked to ensure the user account
+     * is allowed to use passwordless authentication.
+     */
+    private String requiredAttribute;
+
+    /**
+     * The required attribute value that must be present in the user account entry
+     * for passwordless authentication to trigger. Presence of this attribute is checked
+     * to ensure the user account is allowed to use passwordless authentication.
+     * The value can be a regular expression pattern.
+     */
+    @RegularExpressionCapable
+    private String requiredAttributeValue;
 }

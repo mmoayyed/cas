@@ -8,22 +8,21 @@ import org.apereo.cas.authentication.adaptive.geo.GeoLocationResponse;
 import org.apereo.cas.authentication.credential.UsernamePasswordCredential;
 import org.apereo.cas.authentication.principal.DefaultPrincipalAttributesRepository;
 import org.apereo.cas.authentication.principal.PrincipalFactoryUtils;
-import org.apereo.cas.config.CasCoreAuthenticationComponentSerializationConfiguration;
-import org.apereo.cas.config.CasCoreNotificationsConfiguration;
-import org.apereo.cas.config.CasCoreServicesComponentSerializationConfiguration;
-import org.apereo.cas.config.CasCoreServicesConfiguration;
-import org.apereo.cas.config.CasCoreTicketCatalogConfiguration;
-import org.apereo.cas.config.CasCoreTicketComponentSerializationConfiguration;
-import org.apereo.cas.config.CasCoreTicketsConfiguration;
-import org.apereo.cas.config.CasCoreTicketsSerializationConfiguration;
-import org.apereo.cas.config.CasCoreUtilSerializationConfiguration;
-import org.apereo.cas.config.CasCoreWebConfiguration;
+import org.apereo.cas.config.CasCoreAuthenticationAutoConfiguration;
+import org.apereo.cas.config.CasCoreAutoConfiguration;
+import org.apereo.cas.config.CasCoreLogoutAutoConfiguration;
+import org.apereo.cas.config.CasCoreNotificationsAutoConfiguration;
+import org.apereo.cas.config.CasCoreServicesAutoConfiguration;
+import org.apereo.cas.config.CasCoreTicketsAutoConfiguration;
+import org.apereo.cas.config.CasCoreUtilAutoConfiguration;
+import org.apereo.cas.config.CasCoreWebAutoConfiguration;
 import org.apereo.cas.configuration.model.support.memcached.BaseMemcachedProperties;
 import org.apereo.cas.memcached.MemcachedUtils;
 import org.apereo.cas.mock.MockServiceTicket;
 import org.apereo.cas.mock.MockTicketGrantingTicket;
 import org.apereo.cas.services.RegisteredServiceTestUtils;
 import org.apereo.cas.services.ReturnAllAttributeReleasePolicy;
+import org.apereo.cas.test.CasTestExtension;
 import org.apereo.cas.ticket.ProxyGrantingTicketIssuerTicket;
 import org.apereo.cas.ticket.TicketGrantingTicketImpl;
 import org.apereo.cas.ticket.expiration.HardTimeoutExpirationPolicy;
@@ -33,6 +32,7 @@ import org.apereo.cas.ticket.tracking.TicketTrackingPolicy;
 import org.apereo.cas.util.CollectionUtils;
 import org.apereo.cas.util.junit.EnabledIfListeningOnPort;
 import org.apereo.cas.util.serialization.ComponentSerializationPlan;
+import org.apereo.cas.util.spring.boot.SpringBootTestAutoConfigurations;
 import com.esotericsoftware.kryo.KryoException;
 import lombok.ToString;
 import lombok.extern.slf4j.Slf4j;
@@ -44,11 +44,10 @@ import org.apache.commons.lang3.StringUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.boot.autoconfigure.web.servlet.WebMvcAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.cloud.autoconfigure.RefreshAutoConfiguration;
 import javax.security.auth.login.AccountNotFoundException;
 import java.io.Serial;
 import java.time.ZoneId;
@@ -69,20 +68,18 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 @Slf4j
 @Tag("Memcached")
+@ExtendWith(CasTestExtension.class)
 @EnabledIfListeningOnPort(port = 11211)
+@SpringBootTestAutoConfigurations
 @SpringBootTest(classes = {
-    RefreshAutoConfiguration.class,
-    WebMvcAutoConfiguration.class,
-    CasCoreServicesComponentSerializationConfiguration.class,
-    CasCoreServicesConfiguration.class,
-    CasCoreWebConfiguration.class,
-    CasCoreNotificationsConfiguration.class,
-    CasCoreTicketsConfiguration.class,
-    CasCoreTicketCatalogConfiguration.class,
-    CasCoreTicketsSerializationConfiguration.class,
-    CasCoreTicketComponentSerializationConfiguration.class,
-    CasCoreAuthenticationComponentSerializationConfiguration.class,
-    CasCoreUtilSerializationConfiguration.class
+    CasCoreServicesAutoConfiguration.class,
+    CasCoreLogoutAutoConfiguration.class,
+    CasCoreAutoConfiguration.class,
+    CasCoreWebAutoConfiguration.class,
+    CasCoreNotificationsAutoConfiguration.class,
+    CasCoreTicketsAutoConfiguration.class,
+    CasCoreAuthenticationAutoConfiguration.class,
+    CasCoreUtilAutoConfiguration.class
 })
 class CasKryoTranscoderTests {
     private static final String ST_ID = "ST-1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ01234567890ABCDEFGHIJK";
@@ -133,8 +130,7 @@ class CasKryoTranscoderTests {
         val data = new CachedData(0, ArrayUtils.EMPTY_BYTE_ARRAY, 10);
         assertThrows(KryoException.class, () -> transcoder.decode(data));
         
-        if (transcoder instanceof CasKryoTranscoder) {
-            val enc = (CasKryoTranscoder) this.transcoder;
+        if (transcoder instanceof final CasKryoTranscoder enc) {
             assertNotNull(enc.getKryo());
         }
     }

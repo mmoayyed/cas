@@ -1,5 +1,5 @@
 {
-  "dependencies": "events-memory,electrofence,geolocation,simple-mfa",
+  "dependencies": "events-memory,electrofence,geolocation,simple-mfa,scripting",
   "conditions": {
     "docker": "true"
   },
@@ -11,7 +11,6 @@
     "--cas.authn.attribute-repository.stub.attributes.mail=casuser@example.org",
     
     "--cas.http-client.host-name-verifier=none",
-    "--cas.audit.slf4j.use-single-line=true",
 
     "--cas.authn.adaptive.risk.core.threshold=0.2",
     "--cas.authn.adaptive.risk.agent.enabled=true",
@@ -24,7 +23,7 @@
 
     "--cas.authn.mfa.simple.mail.html=false",
     "--cas.authn.mfa.simple.mail.from=cas@example.com",
-    "--cas.authn.mfa.simple.mail.subject=CAS Token",
+    "--cas.authn.mfa.simple.mail.subject=CASToken",
     "--cas.authn.mfa.simple.mail.text=${token}",
     
     "--cas.authn.adaptive.risk.response.mail.html=false",

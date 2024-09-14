@@ -39,7 +39,7 @@ attribute value `http://id.incommon.org/category/research-and-scholarship`:
 }
 ```
 
-Attributes authorized for release are set to be `eduPersonPrincipalName`, `eduPersonTargetedID`, `email`, `displayName`,
+Attributes authorized for release are set to be `eduPersonPrincipalName`, `eduPersonTargetedID`, `mail`, `displayName`,
 `givenName`, `surname`, `eduPersonScopedAffiliation`.
 
 {% endtab %}
@@ -99,7 +99,7 @@ the authenticated principal id is used. You can also control whether the final g
 
 {% endtab %}
 
-{% tab saml2attrrel Groovy %}
+{% tab saml2attrrel <i class="fa fa-file-code px-1"></i>Groovy %}
 
 This policy allows a Groovy script to calculate the collection of released attributes.
 
@@ -162,6 +162,8 @@ def run(final Object... args) {
 }
 ```
 
+To prepare CAS to support and integrate with Apache Groovy, please [review this guide](../integration/Apache-Groovy-Scripting.html).
+
 {% endtab %}
 
 {% tab saml2attrrel Pattern Matching Entity Ids %}
@@ -179,8 +181,8 @@ policy may be used to release a collection of allowed attributes to entity ids g
   "attributeReleasePolicy": {
     "@class": "org.apereo.cas.support.saml.services.PatternMatchingEntityIdAttributeReleasePolicy",
     "allowedAttributes" : [ "java.util.ArrayList", [ "cn", "mail", "sn" ] ],
-    "fullMatch" : "true",
-    "reverseMatch" : "false",
+    "fullMatch" : true,
+    "reverseMatch" : false,
     "entityIds" : "entityId1|entityId2|somewhere.+"
   }
 }
@@ -286,8 +288,29 @@ The `useFriendlyName` allows the filter to compare the requested attribute’s f
 
 {% endtab %}
 
+{% tab saml2attrrel Authentication Request Requester ID %}
 
-{% tab saml2attrrel Anonymous Access %}
+This attribute release policy authorizes the release of allowed attributes if the requester ID of the
+SAML2 authentication request inside its `Scoping` element matches the defined pattern:
+
+```json
+{
+  "@class": "org.apereo.cas.support.saml.services.SamlRegisteredService",
+  "serviceId": "entity-ids-allowed-via-regex",
+  "name": "SAML",
+  "id": 10,
+  "metadataLocation": "path/to/metadata.xml",
+  "attributeReleasePolicy": {
+    "@class": "org.apereo.cas.support.saml.services.AuthnRequestRequesterIdAttributeReleasePolicy",
+    "allowedAttributes" : [ "java.util.ArrayList", [ "cn", "mail", "sn" ] ]
+    "requesterIdPattern" : ".*"
+  }
+}
+```
+
+{% endtab %}
+
+{% tab saml2attrrel <i class="fa fa-user-secret px-1"></i>Anonymous Access %}
 
 A specific attribute release policy is available to release the [attribute bundles](https://refeds.org/category/anonymous)
 to service providers that contain the entity attribute value `https://refeds.org/category/anonymous`:
@@ -354,6 +377,31 @@ to service providers that contain the entity attribute value `https://refeds.org
     "policies": [ "java.util.ArrayList",
       [
          {"@class": "org.apereo.cas.support.saml.services.PersonalizedAccessAttributeReleasePolicy"}
+      ]
+    ]
+  }
+}
+```
+
+{% endtab %}
+
+{% tab saml2attrrel Entity Group %}
+
+A specific attribute release policy that will compare the defined group as a regular expression with the name of the
+`EntitiesDescriptor` element as well as any `AffiliationDescriptor` owners or identifiers.
+
+```json
+{
+  "@class": "org.apereo.cas.support.saml.services.SamlRegisteredService",
+  "serviceId": "entity-ids-allowed-via-regex",
+  "name": "SAML",
+  "id": 10,
+  "metadataLocation": "path/to/incommon/metadata.xml",
+  "attributeReleasePolicy": {
+    "@class": "org.apereo.cas.services.ChainingAttributeReleasePolicy",
+    "policies": [ "java.util.ArrayList",
+      [
+         {"@class": "org.apereo.cas.support.saml.services.MetadataEntityGroupAttributeReleasePolicy"}
       ]
     ]
   }

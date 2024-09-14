@@ -3,7 +3,7 @@ package org.apereo.cas.support.saml.services.idp.metadata.cache;
 import org.apereo.cas.support.saml.OpenSamlConfigBean;
 import org.apereo.cas.support.saml.SamlException;
 import org.apereo.cas.support.saml.services.idp.metadata.plan.SamlRegisteredServiceMetadataResolutionPlan;
-import org.apereo.cas.util.concurrent.CasReentrantLock;
+import org.apereo.cas.util.RandomUtils;
 import org.apereo.cas.util.function.FunctionUtils;
 import org.apereo.cas.util.http.HttpClient;
 import org.apereo.cas.util.spring.SpringExpressionLanguageValueResolver;
@@ -11,6 +11,7 @@ import com.github.benmanes.caffeine.cache.CacheLoader;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
+import net.shibboleth.shared.component.AbstractIdentifiableInitializableComponent;
 import org.jooq.lambda.Unchecked;
 import org.opensaml.saml.metadata.resolver.ChainingMetadataResolver;
 import org.opensaml.saml.metadata.resolver.MetadataResolver;
@@ -34,38 +35,29 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class SamlRegisteredServiceMetadataResolverCacheLoader implements CacheLoader<SamlRegisteredServiceCacheKey, CachedMetadataResolverResult> {
 
-    /**
-     * The Config bean.
-     */
     protected final OpenSamlConfigBean configBean;
 
-    /**
-     * The Http client.
-     */
     protected final HttpClient httpClient;
     
-    private final CasReentrantLock lock = new CasReentrantLock();
-
     private final SamlRegisteredServiceMetadataResolutionPlan metadataResolutionPlan;
 
     @Override
     public CachedMetadataResolverResult load(final SamlRegisteredServiceCacheKey cacheKey) {
-        return lock.tryLock(() -> {
-            val metadataResolvers = loadMetadataResolvers(cacheKey);
-            if (metadataResolvers.isEmpty()) {
-                val registeredService = cacheKey.getRegisteredService();
-                val metadataLocation = SpringExpressionLanguageValueResolver.getInstance().resolve(registeredService.getMetadataLocation());
-                throw new SamlException("No metadata resolvers could be configured for service " + registeredService.getName()
-                    + " with metadata location " + metadataLocation);
-            }
+        val metadataResolvers = loadMetadataResolvers(cacheKey);
+        if (metadataResolvers.isEmpty()) {
+            val registeredService = cacheKey.getRegisteredService();
+            val metadataLocation = SpringExpressionLanguageValueResolver.getInstance().resolve(registeredService.getMetadataLocation());
+            throw new SamlException("No metadata resolvers could be configured for service " + registeredService.getName()
+                + " with metadata location " + metadataLocation);
+        }
 
-            val metadataResolver = initializeChainingMetadataResolver(metadataResolvers);
-            LOGGER.debug("Metadata resolvers active for this request are [{}]", metadataResolvers);
-            return CachedMetadataResolverResult.builder()
-                .cachedInstant(Instant.now(Clock.systemUTC()))
-                .metadataResolver(metadataResolver)
-                .build();
-        });
+        val metadataResolver = initializeChainingMetadataResolver(metadataResolvers);
+        LOGGER.debug("Metadata resolvers active for this request are [{}]", Objects.requireNonNull(metadataResolvers));
+        return CachedMetadataResolverResult
+            .builder()
+            .cachedInstant(Instant.now(Clock.systemUTC()))
+            .metadataResolver(metadataResolver)
+            .build();
     }
 
     protected MetadataResolver initializeChainingMetadataResolver(final List<MetadataResolver> metadataResolvers) {
@@ -96,6 +88,13 @@ public class SamlRegisteredServiceMetadataResolverCacheLoader implements CacheLo
             }))
             .flatMap(Collection::stream)
             .filter(Objects::nonNull)
+            .peek(Unchecked.consumer(givenResolver -> {
+                if (givenResolver instanceof final AbstractIdentifiableInitializableComponent metadataResolver && !metadataResolver.isInitialized()) {
+                    FunctionUtils.doIfBlank(metadataResolver.getId(), __ -> metadataResolver.setId(registeredService.getName() + '-' + RandomUtils.generateSecureRandomId()));
+                    LOGGER.trace("Metadata resolver [{}] will be forcefully initialized", metadataResolver.getId());
+                    metadataResolver.initialize();
+                }
+            }))
             .collect(Collectors.toList());
     }
 }

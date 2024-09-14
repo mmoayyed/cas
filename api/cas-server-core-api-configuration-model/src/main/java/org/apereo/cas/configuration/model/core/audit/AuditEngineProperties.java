@@ -3,7 +3,6 @@ package org.apereo.cas.configuration.model.core.audit;
 import org.apereo.cas.configuration.support.RegularExpressionCapable;
 import org.apereo.cas.configuration.support.RequiresModule;
 
-import com.fasterxml.jackson.annotation.JsonFilter;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
@@ -24,7 +23,7 @@ import java.util.stream.Stream;
 @Getter
 @Setter
 @Accessors(chain = true)
-@JsonFilter("AuditEngineProperties")
+
 public class AuditEngineProperties implements Serializable {
 
     @Serial
@@ -47,15 +46,6 @@ public class AuditEngineProperties implements Serializable {
      * the principal id and attributes released.
      */
     private boolean includeValidationAssertion;
-
-    /**
-     * Application code to use in the audit logs.
-     * <p>
-     * This is a unique code that acts as the identifier for the application.
-     * In case audit logs are aggregated in a central location. This makes it easy
-     * to identify the application and filter results based on the code.
-     */
-    private String appCode = "CAS";
 
     /**
      * Request header to use identify the server address.
@@ -87,6 +77,13 @@ public class AuditEngineProperties implements Serializable {
      * or whether errors should bubble up and thrown back.
      */
     private boolean ignoreAuditFailures;
+
+    /**
+     * Collection of HTTP headers that could be extracted from the request
+     * and tracked by the underlying audit engine and storage. By default,
+     * all request headers are tracked and stored.
+     */
+    private List<String> httpRequestHeaders = Stream.of("*").toList();
 
     /**
      * Indicate a list of supported audit actions that should be recognized,

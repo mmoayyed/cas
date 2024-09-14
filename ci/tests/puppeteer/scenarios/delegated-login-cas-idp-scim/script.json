@@ -1,13 +1,11 @@
 {
-  "dependencies": "oidc,pac4j-webflow,scim",
+  "dependencies": "oidc,pac4j-webflow,scim,,pac4j-cas",
   "conditions": {
     "docker": "true"
   },
-
   "properties": [
     "--cas.server.name=https://localhost:8443",
     "--cas.server.prefix=${cas.server.name}/cas",
-    "--cas.audit.engine.enabled=true",
     
     "--cas.authn.oidc.core.issuer=https://localhost:8443/cas/oidc",
     "--cas.authn.oidc.discovery.scopes=openid,profile,email,address,phone",
@@ -26,7 +24,6 @@
     "--cas.scim.username=scim-user",
     "--cas.scim.password=changeit",
 
-    "--logging.level.org.apereo.cas=info",
     "--cas.http-client.host-name-verifier=none",
 
     "--cas.authn.pac4j.provisioning.scim.enabled=true",
@@ -38,5 +35,5 @@
     "--cas.authn.oauth.session-replication.cookie.name=OAUTHDISSESSION",
     "--cas.authn.pac4j.core.session-replication.cookie.name=PAC4JDISSESSION"
   ],
-  "initScript": "${PWD}/ci/tests/scim/run-scim-server.sh,${PWD}/ci/tests/cas/run-cas-server.sh"
+  "initScript": "${PWD}/ci/tests/scim/run-scim-server.sh,${PWD}/ci/tests/cas/run-cas-server.sh,${PWD}/ci/tests/httpbin/run-httpbin-server.sh"
 }

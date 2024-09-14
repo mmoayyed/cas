@@ -2,23 +2,22 @@ package org.apereo.cas.services;
 
 import org.apereo.cas.authentication.CoreAuthenticationTestUtils;
 import org.apereo.cas.configuration.CasConfigurationProperties;
+import org.apereo.cas.test.CasTestExtension;
+import org.apereo.cas.util.RandomUtils;
 import org.apereo.cas.util.serialization.JacksonObjectMapperFactory;
-
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.val;
-import org.apache.commons.io.FileUtils;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.cloud.autoconfigure.RefreshAutoConfiguration;
 import org.springframework.context.ConfigurableApplicationContext;
-
-import java.io.File;
+import java.nio.file.Files;
 import java.util.List;
 import java.util.Map;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -29,11 +28,9 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 @Tag("Attributes")
 @SpringBootTest(classes = RefreshAutoConfiguration.class)
+@ExtendWith(CasTestExtension.class)
 @EnableConfigurationProperties(CasConfigurationProperties.class)
 class PatternMatchingAttributeReleasePolicyTests {
-    private static final File JSON_FILE = new File(FileUtils.getTempDirectoryPath(),
-        "PatternMatchingAttributeReleasePolicyTests.json");
-
     private static final ObjectMapper MAPPER = JacksonObjectMapperFactory.builder()
         .defaultTypingEnabled(true).build().toObjectMapper();
 
@@ -42,14 +39,15 @@ class PatternMatchingAttributeReleasePolicyTests {
     
     @Test
     void verifySerializeToJson() throws Throwable {
+        val jsonFile = Files.createTempFile(RandomUtils.randomAlphabetic(8), ".json").toFile();
         val policy = new PatternMatchingAttributeReleasePolicy();
         assertNotNull(policy.getName());
         policy.getAllowedAttributes().put("memberOf",
             new PatternMatchingAttributeReleasePolicy.Rule()
                 .setPattern("CN=(\\w+),OU=(\\w+)")
                 .setTransform("${1}/${2}"));
-        MAPPER.writeValue(JSON_FILE, policy);
-        val policyRead = MAPPER.readValue(JSON_FILE, PatternMatchingAttributeReleasePolicy.class);
+        MAPPER.writeValue(jsonFile, policy);
+        val policyRead = MAPPER.readValue(jsonFile, PatternMatchingAttributeReleasePolicy.class);
         assertEquals(policy, policyRead);
     }
 

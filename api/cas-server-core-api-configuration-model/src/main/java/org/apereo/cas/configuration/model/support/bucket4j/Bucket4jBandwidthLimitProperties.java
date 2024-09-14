@@ -1,9 +1,9 @@
 package org.apereo.cas.configuration.model.support.bucket4j;
 
+import org.apereo.cas.configuration.features.CasFeatureModule;
 import org.apereo.cas.configuration.support.DurationCapable;
 import org.apereo.cas.configuration.support.RequiresModule;
 
-import com.fasterxml.jackson.annotation.JsonFilter;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
@@ -21,8 +21,8 @@ import java.io.Serializable;
 @Getter
 @Setter
 @Accessors(chain = true)
-@JsonFilter("Bucket4jBandwidthLimitProperties")
-public class Bucket4jBandwidthLimitProperties implements Serializable {
+
+public class Bucket4jBandwidthLimitProperties implements CasFeatureModule, Serializable {
     @Serial
     private static final long serialVersionUID = -4208702997065904970L;
 

@@ -38,9 +38,18 @@ public enum OAuth20GrantTypes {
      */
     REFRESH_TOKEN("refresh_token"),
     /**
+     * For the token exchange grant type.
+     */
+    TOKEN_EXCHANGE("urn:ietf:params:oauth:grant-type:token-exchange"),
+    /**
      * UMA ticket grant type.
      */
-    UMA_TICKET("urn:ietf:params:oauth:grant-type:uma-ticket");
-
+    UMA_TICKET("urn:ietf:params:oauth:grant-type:uma-ticket"),
+    /**
+     * CIBA grant type.
+     */
+    CIBA("urn:openid:params:grant-type:ciba");
+    
     private final String type;
+
 }

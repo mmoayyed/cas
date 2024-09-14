@@ -2,75 +2,57 @@ package org.apereo.cas;
 
 import org.apereo.cas.authentication.AuthenticationHandler;
 import org.apereo.cas.authentication.Credential;
+import org.apereo.cas.authentication.attribute.AttributeRepositoryResolver;
+import org.apereo.cas.authentication.attribute.StubPersonAttributeDao;
 import org.apereo.cas.authentication.principal.Principal;
 import org.apereo.cas.authentication.principal.PrincipalFactoryUtils;
 import org.apereo.cas.authentication.principal.PrincipalResolutionExecutionPlanConfigurer;
 import org.apereo.cas.authentication.principal.PrincipalResolver;
 import org.apereo.cas.authentication.principal.Service;
+import org.apereo.cas.authentication.principal.attribute.PersonAttributeDao;
 import org.apereo.cas.authentication.principal.resolvers.EchoingPrincipalResolver;
 import org.apereo.cas.config.CasAuthenticationEventExecutionPlanTestConfiguration;
-import org.apereo.cas.config.CasCookieConfiguration;
-import org.apereo.cas.config.CasCoreAuthenticationConfiguration;
-import org.apereo.cas.config.CasCoreAuthenticationHandlersConfiguration;
-import org.apereo.cas.config.CasCoreAuthenticationMetadataConfiguration;
-import org.apereo.cas.config.CasCoreAuthenticationMonitoringConfiguration;
-import org.apereo.cas.config.CasCoreAuthenticationPolicyConfiguration;
-import org.apereo.cas.config.CasCoreAuthenticationPrincipalConfiguration;
-import org.apereo.cas.config.CasCoreAuthenticationServiceSelectionStrategyConfiguration;
-import org.apereo.cas.config.CasCoreAuthenticationSupportConfiguration;
-import org.apereo.cas.config.CasCoreConfiguration;
-import org.apereo.cas.config.CasCoreHttpConfiguration;
-import org.apereo.cas.config.CasCoreLogoutConfiguration;
-import org.apereo.cas.config.CasCoreMultifactorAuthenticationConfiguration;
-import org.apereo.cas.config.CasCoreNotificationsConfiguration;
-import org.apereo.cas.config.CasCoreServicesAuthenticationConfiguration;
-import org.apereo.cas.config.CasCoreServicesConfiguration;
-import org.apereo.cas.config.CasCoreTicketCatalogConfiguration;
-import org.apereo.cas.config.CasCoreTicketIdGeneratorsConfiguration;
-import org.apereo.cas.config.CasCoreTicketsConfiguration;
-import org.apereo.cas.config.CasCoreTicketsSerializationConfiguration;
-import org.apereo.cas.config.CasCoreUtilConfiguration;
-import org.apereo.cas.config.CasCoreValidationConfiguration;
-import org.apereo.cas.config.CasCoreWebConfiguration;
-import org.apereo.cas.config.CasCoreWebflowConfiguration;
-import org.apereo.cas.config.CasDefaultServiceTicketIdGeneratorsConfiguration;
-import org.apereo.cas.config.CasMultifactorAuthenticationWebflowConfiguration;
+import org.apereo.cas.config.CasCoreAuditAutoConfiguration;
+import org.apereo.cas.config.CasCoreAuthenticationAutoConfiguration;
+import org.apereo.cas.config.CasCoreAutoConfiguration;
+import org.apereo.cas.config.CasCoreCookieAutoConfiguration;
+import org.apereo.cas.config.CasCoreLogoutAutoConfiguration;
+import org.apereo.cas.config.CasCoreMultifactorAuthenticationAutoConfiguration;
+import org.apereo.cas.config.CasCoreMultifactorAuthenticationWebflowAutoConfiguration;
+import org.apereo.cas.config.CasCoreNotificationsAutoConfiguration;
+import org.apereo.cas.config.CasCoreScriptingAutoConfiguration;
+import org.apereo.cas.config.CasCoreServicesAutoConfiguration;
+import org.apereo.cas.config.CasCoreTicketsAutoConfiguration;
+import org.apereo.cas.config.CasCoreUtilAutoConfiguration;
+import org.apereo.cas.config.CasCoreValidationAutoConfiguration;
+import org.apereo.cas.config.CasCoreWebAutoConfiguration;
+import org.apereo.cas.config.CasCoreWebflowAutoConfiguration;
 import org.apereo.cas.config.CasRegisteredServicesTestConfiguration;
-import org.apereo.cas.config.CasWebApplicationServiceFactoryConfiguration;
-import org.apereo.cas.config.CasWebflowContextConfiguration;
 import org.apereo.cas.configuration.CasConfigurationProperties;
-import org.apereo.cas.ticket.ExpirationPolicy;
-import org.apereo.cas.ticket.ExpirationPolicyBuilder;
-import org.apereo.cas.ticket.expiration.NeverExpiresExpirationPolicy;
+import org.apereo.cas.test.CasTestExtension;
 import org.apereo.cas.ticket.tracking.TicketTrackingPolicy;
 import org.apereo.cas.util.CollectionUtils;
 import org.apereo.cas.util.function.FunctionUtils;
-
+import org.apereo.cas.util.spring.boot.SpringBootTestAutoConfigurations;
 import lombok.val;
-import org.apereo.services.persondir.IPersonAttributeDao;
-import org.apereo.services.persondir.support.StubPersonAttributeDao;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.SpringBootConfiguration;
 import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
-import org.springframework.boot.autoconfigure.aop.AopAutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
-import org.springframework.boot.autoconfigure.mail.MailSenderAutoConfiguration;
-import org.springframework.boot.autoconfigure.web.servlet.WebMvcAutoConfiguration;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.cloud.autoconfigure.RefreshAutoConfiguration;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.EnableAspectJAutoProxy;
 import org.springframework.context.annotation.Import;
 import org.springframework.scheduling.annotation.EnableScheduling;
-
-import java.io.Serial;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * This is {@link BaseCasCoreTests}.
@@ -82,6 +64,7 @@ import java.util.Optional;
 @EnableAspectJAutoProxy(proxyTargetClass = false)
 @EnableScheduling
 @EnableConfigurationProperties(CasConfigurationProperties.class)
+@ExtendWith(CasTestExtension.class)
 public abstract class BaseCasCoreTests {
 
     @Autowired
@@ -94,57 +77,29 @@ public abstract class BaseCasCoreTests {
     @Qualifier(TicketTrackingPolicy.BEAN_NAME_SERVICE_TICKET_TRACKING)
     protected TicketTrackingPolicy serviceTicketSessionTrackingPolicy;
 
-    public static ExpirationPolicyBuilder neverExpiresExpirationPolicyBuilder() {
-        return new ExpirationPolicyBuilder() {
-            @Serial
-            private static final long serialVersionUID = -9043565995104313970L;
-
-            @Override
-            public ExpirationPolicy buildTicketExpirationPolicy() {
-                return NeverExpiresExpirationPolicy.INSTANCE;
-            }
-        };
-    }
-
+    @SpringBootTestAutoConfigurations
     @ImportAutoConfiguration({
-        MailSenderAutoConfiguration.class,
-        AopAutoConfiguration.class,
-        WebMvcAutoConfiguration.class,
-        RefreshAutoConfiguration.class
+        CasCoreCookieAutoConfiguration.class,
+        CasCoreServicesAutoConfiguration.class,
+        CasCoreTicketsAutoConfiguration.class,
+        CasCoreUtilAutoConfiguration.class,
+        CasCoreScriptingAutoConfiguration.class,
+        CasCoreAuthenticationAutoConfiguration.class,
+        CasCoreWebAutoConfiguration.class,
+        CasCoreWebflowAutoConfiguration.class,
+        CasCoreLogoutAutoConfiguration.class,
+        CasCoreAuditAutoConfiguration.class,
+        CasCoreNotificationsAutoConfiguration.class,
+        CasCoreMultifactorAuthenticationAutoConfiguration.class,
+        CasCoreMultifactorAuthenticationWebflowAutoConfiguration.class,
+        CasCoreValidationAutoConfiguration.class,
+        CasCoreAutoConfiguration.class
     })
-    @SpringBootConfiguration
+    @SpringBootConfiguration(proxyBeanMethods = false)
     @Import({
-        SharedTestConfiguration.AttributeRepositoryTestConfiguration.class,
-        CasCookieConfiguration.class,
-        CasCoreServicesConfiguration.class,
-        CasAuthenticationEventExecutionPlanTestConfiguration.class,
-        CasCoreServicesAuthenticationConfiguration.class,
-        CasWebApplicationServiceFactoryConfiguration.class,
-        CasDefaultServiceTicketIdGeneratorsConfiguration.class,
-        CasCoreTicketIdGeneratorsConfiguration.class,
-        CasCoreUtilConfiguration.class,
-        CasCoreAuthenticationConfiguration.class,
-        CasCoreAuthenticationPrincipalConfiguration.class,
-        CasCoreAuthenticationPolicyConfiguration.class,
-        CasCoreAuthenticationMonitoringConfiguration.class,
-        CasCoreAuthenticationMetadataConfiguration.class,
-        CasCoreAuthenticationSupportConfiguration.class,
-        CasCoreAuthenticationHandlersConfiguration.class,
-        CasCoreHttpConfiguration.class,
         CasRegisteredServicesTestConfiguration.class,
-        CasCoreAuthenticationServiceSelectionStrategyConfiguration.class,
-        CasCoreTicketsConfiguration.class,
-        CasCoreTicketCatalogConfiguration.class,
-        CasCoreTicketsSerializationConfiguration.class,
-        CasCoreWebConfiguration.class,
-        CasWebflowContextConfiguration.class,
-        CasCoreWebflowConfiguration.class,
-        CasCoreLogoutConfiguration.class,
-        CasCoreNotificationsConfiguration.class,
-        CasCoreMultifactorAuthenticationConfiguration.class,
-        CasMultifactorAuthenticationWebflowConfiguration.class,
-        CasCoreValidationConfiguration.class,
-        CasCoreConfiguration.class
+        CasAuthenticationEventExecutionPlanTestConfiguration.class,
+        SharedTestConfiguration.AttributeRepositoryTestConfiguration.class
     })
     public static class SharedTestConfiguration {
 
@@ -153,7 +108,7 @@ public abstract class BaseCasCoreTests {
             @Bean
             public PrincipalResolutionExecutionPlanConfigurer testPrincipalResolutionPlanConfigurer(
                 @Qualifier(PrincipalResolver.BEAN_NAME_ATTRIBUTE_REPOSITORY)
-                final IPersonAttributeDao attributeRepository) {
+                final PersonAttributeDao attributeRepository) {
                 return plan -> {
                     val resolver = new EchoingPrincipalResolver() {
                         @Override
@@ -167,7 +122,7 @@ public abstract class BaseCasCoreTests {
                         }
 
                         @Override
-                        public IPersonAttributeDao getAttributeRepository() {
+                        public PersonAttributeDao getAttributeRepository() {
                             return attributeRepository;
                         }
                     };
@@ -176,12 +131,11 @@ public abstract class BaseCasCoreTests {
             }
         }
 
-
         @TestConfiguration(value = "AttributeRepositoryTestConfiguration", proxyBeanMethods = false)
         public static class AttributeRepositoryTestConfiguration {
             @ConditionalOnMissingBean(name = PrincipalResolver.BEAN_NAME_ATTRIBUTE_REPOSITORY)
             @Bean
-            public IPersonAttributeDao attributeRepository() {
+            public PersonAttributeDao attributeRepository() {
                 val attrs = CollectionUtils.wrap(
                     "binaryAttribute", CollectionUtils.wrap("binaryAttributeValue".getBytes(StandardCharsets.UTF_8)),
                     "uid", CollectionUtils.wrap("uid"),
@@ -189,6 +143,12 @@ public abstract class BaseCasCoreTests {
                     "eduPersonAffiliation", CollectionUtils.wrap("developer"),
                     "groupMembership", CollectionUtils.wrap("adopters"));
                 return new StubPersonAttributeDao((Map) attrs);
+            }
+
+            @Bean
+            @ConditionalOnMissingBean(name = AttributeRepositoryResolver.BEAN_NAME)
+            public AttributeRepositoryResolver attributeRepositoryResolver() {
+                return query -> Set.of(PersonAttributeDao.WILDCARD);
             }
         }
     }

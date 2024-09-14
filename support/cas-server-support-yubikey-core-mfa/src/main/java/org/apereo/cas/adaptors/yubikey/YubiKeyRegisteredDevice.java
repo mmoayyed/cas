@@ -1,9 +1,12 @@
 package org.apereo.cas.adaptors.yubikey;
 
 import org.apereo.cas.util.function.FunctionUtils;
+import org.apereo.cas.util.serialization.JacksonObjectMapperFactory;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
@@ -17,7 +20,6 @@ import org.springframework.data.annotation.Id;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Embeddable;
-import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Table;
 import java.io.Serial;
 import java.io.Serializable;
@@ -46,8 +48,10 @@ public class YubiKeyRegisteredDevice implements Serializable, Cloneable {
     @Serial
     private static final long serialVersionUID = 221869140885521905L;
 
+    private static final ObjectMapper MAPPER = JacksonObjectMapperFactory.builder()
+        .defaultTypingEnabled(false).build().toObjectMapper();
+    
     @Id
-    @GeneratedValue
     @JsonProperty
     private long id;
 
@@ -67,5 +71,15 @@ public class YubiKeyRegisteredDevice implements Serializable, Cloneable {
     @Override
     public YubiKeyRegisteredDevice clone() {
         return FunctionUtils.doUnchecked(() -> (YubiKeyRegisteredDevice) super.clone());
+    }
+
+    /**
+     * Convert this record into JSON.
+     *
+     * @return the string
+     */
+    @JsonIgnore
+    public String toJson() {
+        return FunctionUtils.doUnchecked(() -> MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(this));
     }
 }

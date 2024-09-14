@@ -1,23 +1,16 @@
 package org.apereo.cas.services;
 
-import org.apereo.cas.config.CasCoreAuthenticationMetadataConfiguration;
-import org.apereo.cas.config.CasCoreNotificationsConfiguration;
-import org.apereo.cas.config.CasCoreServicesConfiguration;
-import org.apereo.cas.config.CasCoreUtilConfiguration;
-import org.apereo.cas.config.CasCoreWebConfiguration;
-import org.apereo.cas.config.CasWebApplicationServiceFactoryConfiguration;
-import org.apereo.cas.config.DynamoDbServiceRegistryConfiguration;
+import org.apereo.cas.config.CasDynamoDbServiceRegistryAutoConfiguration;
+import org.apereo.cas.test.CasTestExtension;
 import org.apereo.cas.util.junit.EnabledIfListeningOnPort;
-
 import lombok.Getter;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.TestMethodOrder;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.boot.autoconfigure.web.servlet.WebMvcAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.cloud.autoconfigure.RefreshAutoConfiguration;
 import software.amazon.awssdk.core.SdkSystemSetting;
 
 /**
@@ -27,15 +20,8 @@ import software.amazon.awssdk.core.SdkSystemSetting;
  * @since 5.1.0
  */
 @SpringBootTest(classes = {
-    DynamoDbServiceRegistryConfiguration.class,
-    CasCoreServicesConfiguration.class,
-    CasCoreUtilConfiguration.class,
-    CasCoreWebConfiguration.class,
-    CasWebApplicationServiceFactoryConfiguration.class,
-    CasCoreNotificationsConfiguration.class,
-    CasCoreAuthenticationMetadataConfiguration.class,
-    WebMvcAutoConfiguration.class,
-    RefreshAutoConfiguration.class
+    CasDynamoDbServiceRegistryAutoConfiguration.class,
+    AbstractServiceRegistryTests.SharedTestConfiguration.class
 },
     properties = {
         "cas.service-registry.dynamo-db.endpoint=http://localhost:8000",
@@ -44,6 +30,7 @@ import software.amazon.awssdk.core.SdkSystemSetting;
         "cas.service-registry.dynamo-db.region=us-east-1"
     })
 @Tag("DynamoDb")
+@ExtendWith(CasTestExtension.class)
 @EnabledIfListeningOnPort(port = 8000)
 @Getter
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)

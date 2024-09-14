@@ -4,16 +4,20 @@ import org.apereo.cas.adaptors.x509.authentication.CasX509Certificate;
 import org.apereo.cas.authentication.CoreAuthenticationTestUtils;
 import org.apereo.cas.authentication.CoreAuthenticationUtils;
 import org.apereo.cas.authentication.attribute.AttributeDefinitionStore;
+import org.apereo.cas.authentication.attribute.AttributeRepositoryResolver;
 import org.apereo.cas.authentication.principal.PrincipalFactoryUtils;
+import org.apereo.cas.authentication.principal.attribute.PersonAttributeDao;
 import org.apereo.cas.authentication.principal.resolvers.PrincipalResolutionContext;
 import org.apereo.cas.configuration.model.core.authentication.PrincipalAttributesCoreProperties;
 import org.apereo.cas.services.ServicesManager;
+import org.apereo.cas.test.CasTestExtension;
 import org.apereo.cas.util.CollectionUtils;
+import org.apereo.cas.util.spring.boot.SpringBootTestAutoConfigurations;
 import lombok.val;
 import org.apache.commons.lang3.StringUtils;
-import org.apereo.services.persondir.IPersonAttributeDao;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -37,7 +41,9 @@ import static org.junit.jupiter.params.provider.Arguments.*;
  * @since 5.3.0
  */
 @Tag("X509")
+@SpringBootTestAutoConfigurations
 @SpringBootTest(classes = RefreshAutoConfiguration.class)
+@ExtendWith(CasTestExtension.class)
 class X509CommonNameEDIPIPrincipalResolverTests {
     @Autowired
     private ConfigurableApplicationContext applicationContext;
@@ -47,6 +53,9 @@ class X509CommonNameEDIPIPrincipalResolverTests {
 
     @Mock
     private AttributeDefinitionStore attributeDefinitionStore;
+
+    @Mock
+    private AttributeRepositoryResolver attributeRepositoryResolver;
 
     @BeforeEach
     public void before() throws Exception {
@@ -135,6 +144,7 @@ class X509CommonNameEDIPIPrincipalResolverTests {
             .attributeDefinitionStore(attributeDefinitionStore)
             .servicesManager(servicesManager)
             .applicationContext(applicationContext)
+            .attributeRepositoryResolver(attributeRepositoryResolver)
             .attributeMerger(CoreAuthenticationUtils.getAttributeMerger(PrincipalAttributesCoreProperties.MergingStrategyTypes.REPLACE))
             .attributeRepository(CoreAuthenticationTestUtils.getAttributeRepository())
             .principalFactory(PrincipalFactoryUtils.newPrincipalFactory())
@@ -142,7 +152,7 @@ class X509CommonNameEDIPIPrincipalResolverTests {
             .principalNameTransformer(formUserId -> formUserId)
             .useCurrentPrincipalId(false)
             .resolveAttributes(true)
-            .activeAttributeRepositoryIdentifiers(CollectionUtils.wrapSet(IPersonAttributeDao.WILDCARD))
+            .activeAttributeRepositoryIdentifiers(CollectionUtils.wrapSet(PersonAttributeDao.WILDCARD))
             .build();
 
         val resolver = new X509CommonNameEDIPIPrincipalResolver(context);

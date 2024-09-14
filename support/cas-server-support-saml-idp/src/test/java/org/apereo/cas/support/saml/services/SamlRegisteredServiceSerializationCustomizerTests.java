@@ -1,13 +1,13 @@
 package org.apereo.cas.support.saml.services;
 
+import org.apereo.cas.configuration.support.TriStateBoolean;
 import org.apereo.cas.services.util.RegisteredServiceJsonSerializer;
 import org.apereo.cas.support.saml.BaseSamlIdPConfigurationTests;
-import org.apereo.cas.util.model.TriStateBoolean;
 import lombok.val;
-import org.cryptacular.io.ClassPathResource;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.test.context.TestPropertySource;
 import static org.junit.jupiter.api.Assertions.*;
 

@@ -5,15 +5,15 @@ import org.apereo.cas.authentication.principal.WebApplicationService;
 import org.apereo.cas.services.ServiceRegistry;
 import org.apereo.cas.services.ServiceRegistryInitializer;
 import org.apereo.cas.services.ServicesManager;
+import org.apereo.cas.test.CasTestExtension;
 import lombok.val;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.boot.autoconfigure.web.servlet.WebMvcAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.cloud.autoconfigure.RefreshAutoConfiguration;
 import org.springframework.test.context.TestPropertySource;
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -24,18 +24,8 @@ import static org.junit.jupiter.api.Assertions.*;
  * @since 6.2.0
  */
 @Tag("RegisteredService")
-@SpringBootTest(classes = {
-    RefreshAutoConfiguration.class,
-    WebMvcAutoConfiguration.class,
-    CasCoreServicesConfiguration.class,
-    CasCoreUtilConfiguration.class,
-    CasCoreWebConfiguration.class,
-    CasWebApplicationServiceFactoryConfiguration.class,
-    CasCoreNotificationsConfiguration.class,
-    CasServiceRegistryInitializationConfiguration.class
-},
-    properties = "cas.service-registry.core.init-from-json=true"
-)
+@ExtendWith(CasTestExtension.class)
+@SpringBootTest(classes = BaseAutoConfigurationTests.SharedTestConfiguration.class, properties = "cas.service-registry.core.init-from-json=true")
 class CasServiceRegistryInitializationConfigurationTests {
     @Autowired
     @Qualifier("serviceRegistryInitializer")
@@ -50,7 +40,7 @@ class CasServiceRegistryInitializationConfigurationTests {
     private ServicesManager servicesManager;
 
     @Autowired
-    @Qualifier("webApplicationServiceFactory")
+    @Qualifier(WebApplicationService.BEAN_NAME_FACTORY)
     private ServiceFactory<WebApplicationService> webApplicationServiceFactory;
 
     @Nested

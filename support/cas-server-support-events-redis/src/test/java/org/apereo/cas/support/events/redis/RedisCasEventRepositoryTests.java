@@ -1,17 +1,21 @@
 package org.apereo.cas.support.events.redis;
 
-import org.apereo.cas.config.CasCoreHttpConfiguration;
-import org.apereo.cas.config.RedisEventsConfiguration;
+import org.apereo.cas.config.CasCoreWebAutoConfiguration;
+import org.apereo.cas.config.CasRedisEventsAutoConfiguration;
+import org.apereo.cas.configuration.CasConfigurationProperties;
 import org.apereo.cas.support.events.AbstractCasEventRepositoryTests;
 import org.apereo.cas.support.events.CasEventRepository;
+import org.apereo.cas.test.CasTestExtension;
 import org.apereo.cas.util.junit.EnabledIfListeningOnPort;
-
+import org.apereo.cas.util.spring.boot.SpringBootTestAutoConfigurations;
 import lombok.Getter;
 import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.boot.autoconfigure.web.WebProperties;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.cloud.autoconfigure.RefreshAutoConfiguration;
 
 /**
  * Test cases for {@link RedisCasEventRepositoryTests}.
@@ -20,10 +24,11 @@ import org.springframework.cloud.autoconfigure.RefreshAutoConfiguration;
  * @since 6.4.0
  */
 @Tag("Redis")
+@ExtendWith(CasTestExtension.class)
+@SpringBootTestAutoConfigurations
 @SpringBootTest(classes = {
-    RedisEventsConfiguration.class,
-    CasCoreHttpConfiguration.class,
-    RefreshAutoConfiguration.class
+    CasRedisEventsAutoConfiguration.class,
+    CasCoreWebAutoConfiguration.class
 },
     properties = {
         "cas.events.redis.host=localhost",
@@ -31,6 +36,7 @@ import org.springframework.cloud.autoconfigure.RefreshAutoConfiguration;
     })
 @Getter
 @EnabledIfListeningOnPort(port = 6379)
+@EnableConfigurationProperties({CasConfigurationProperties.class, WebProperties.class})
 class RedisCasEventRepositoryTests extends AbstractCasEventRepositoryTests {
 
     @Autowired

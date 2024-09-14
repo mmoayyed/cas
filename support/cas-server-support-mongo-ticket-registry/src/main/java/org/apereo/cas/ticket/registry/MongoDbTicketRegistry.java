@@ -1,6 +1,8 @@
 package org.apereo.cas.ticket.registry;
 
+import org.apereo.cas.authentication.principal.Service;
 import org.apereo.cas.monitor.Monitorable;
+import org.apereo.cas.ticket.ServiceAwareTicket;
 import org.apereo.cas.ticket.ServiceTicket;
 import org.apereo.cas.ticket.Ticket;
 import org.apereo.cas.ticket.TicketCatalog;
@@ -11,11 +13,9 @@ import org.apereo.cas.util.DateTimeUtils;
 import org.apereo.cas.util.LoggingUtils;
 import org.apereo.cas.util.crypto.CipherExecutor;
 import org.apereo.cas.util.function.FunctionUtils;
-
 import com.mongodb.client.MongoCollection;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
-import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.hjson.JsonValue;
 import org.hjson.Stringify;
@@ -27,7 +27,6 @@ import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.TextCriteria;
 import org.springframework.data.mongodb.core.query.TextQuery;
 import org.springframework.data.mongodb.core.query.Update;
-
 import java.io.Serializable;
 import java.time.Instant;
 import java.util.Collection;
@@ -75,7 +74,7 @@ public class MongoDbTicketRegistry extends AbstractTicketRegistry {
     }
 
     @Override
-    public void addTicketInternal(final Ticket ticket) {
+    public Ticket addSingleTicket(final Ticket ticket) {
         try {
             LOGGER.debug("Adding ticket [{}]", ticket.getId());
             val document = buildTicketAsDocument(ticket);
@@ -93,6 +92,7 @@ public class MongoDbTicketRegistry extends AbstractTicketRegistry {
             LOGGER.error("Failed adding [{}]", ticket);
             LoggingUtils.error(LOGGER, e);
         }
+        return ticket;
     }
 
     @Override
@@ -113,7 +113,7 @@ public class MongoDbTicketRegistry extends AbstractTicketRegistry {
             val query = new Query(Criteria.where(MongoDbTicketDocument.FIELD_NAME_ID).is(encTicketId));
             val found = mongoTemplate.findOne(query, MongoDbTicketDocument.class, collectionName);
             if (found != null) {
-                val decoded = deserializeTicketFromMongoDocument(found);
+                val decoded = deserializeTicket(found.getJson(), found.getType());
                 val result = decodeTicket(decoded);
 
                 if (predicate.test(result)) {
@@ -150,7 +150,7 @@ public class MongoDbTicketRegistry extends AbstractTicketRegistry {
             .map(this::getTicketCollectionInstanceByMetadata)
             .map(map -> mongoTemplate.findAll(MongoDbTicketDocument.class, map))
             .flatMap(List::stream)
-            .map(ticket -> decodeTicket(deserializeTicketFromMongoDocument(ticket)))
+            .map(ticket -> decodeTicket(deserializeTicket(ticket.getJson(), ticket.getType())))
             .filter(ticket -> !ticket.isExpired())
             .collect(Collectors.toSet());
     }
@@ -180,13 +180,15 @@ public class MongoDbTicketRegistry extends AbstractTicketRegistry {
     }
 
     @Override
-    public Stream<Ticket> stream() {
+    public Stream<Ticket> stream(final TicketRegistryStreamCriteria criteria) {
         return ticketCatalog
             .findAll()
             .stream()
             .map(this::getTicketCollectionInstanceByMetadata)
             .flatMap(map -> mongoTemplate.stream(new Query(), MongoDbTicketDocument.class, map))
-            .map(ticket -> decodeTicket(deserializeTicketFromMongoDocument(ticket)));
+            .skip(criteria.getFrom())
+            .limit(criteria.getCount())
+            .map(ticket -> decodeTicket(deserializeTicket(ticket.getJson(), ticket.getType())));
     }
 
     @Override
@@ -200,8 +202,18 @@ public class MongoDbTicketRegistry extends AbstractTicketRegistry {
     }
 
     @Override
+    public long countTickets() {
+        return ticketCatalog
+            .findAll()
+            .stream()
+            .map(this::getTicketCollectionInstanceByMetadata)
+            .mapToLong(map -> mongoTemplate.count(new Query(), map))
+            .sum();
+    }
+
+    @Override
     public Stream<? extends Ticket> getSessionsFor(final String principalId) {
-        val ticketDefinitions = ticketCatalog.findTicketImplementations(TicketGrantingTicket.class);
+        val ticketDefinitions = ticketCatalog.findTicketDefinition(TicketGrantingTicket.class);
         return ticketDefinitions
             .stream()
             .map(this::getTicketCollectionInstanceByMetadata)
@@ -211,7 +223,7 @@ public class MongoDbTicketRegistry extends AbstractTicketRegistry {
                     : TextQuery.queryText(TextCriteria.forDefaultLanguage().matchingAny(principalId)).sortByScore().with(PageRequest.of(0, PAGE_SIZE));
                 return mongoTemplate.stream(query, MongoDbTicketDocument.class, map);
             })
-            .map(ticket -> decodeTicket(deserializeTicketFromMongoDocument(ticket)))
+            .map(ticket -> decodeTicket(deserializeTicket(ticket.getJson(), ticket.getType())))
             .filter(ticket -> !ticket.isExpired());
     }
 
@@ -240,7 +252,7 @@ public class MongoDbTicketRegistry extends AbstractTicketRegistry {
                 val query = new Query(finalCriteria);
                 return mongoTemplate.stream(query, MongoDbTicketDocument.class, map);
             })
-            .map(ticket -> decodeTicket(deserializeTicketFromMongoDocument(ticket)))
+            .map(ticket -> decodeTicket(deserializeTicket(ticket.getJson(), ticket.getType())))
             .filter(ticket -> !ticket.isExpired());
     }
 
@@ -270,19 +282,41 @@ public class MongoDbTicketRegistry extends AbstractTicketRegistry {
             .stream()
             .map(this::getTicketCollectionInstanceByMetadata)
             .flatMap(map -> {
-                val limit = criteria.getCount() != null ? Limit.of(criteria.getCount().intValue()) : Limit.unlimited();
-                val query = new Query().limit(limit);
-                return mongoTemplate.stream(query, MongoDbTicketDocument.class, map);
+                val limit = criteria.getCount() > 0 ? Limit.of(Long.valueOf(criteria.getCount()).intValue()) : Limit.unlimited();
+                val query = StringUtils.isNotBlank(criteria.getId())
+                    ? new Query(Criteria.where(MongoDbTicketDocument.FIELD_NAME_ID).is(digestIdentifier(criteria.getId())))
+                    : new Query();
+                return mongoTemplate.stream(query.limit(limit), MongoDbTicketDocument.class, map);
             })
+            .filter(document -> StringUtils.isBlank(criteria.getPrincipal())
+                || StringUtils.equalsIgnoreCase(criteria.getPrincipal(), document.getPrincipal()))
             .map(document -> {
-                if (BooleanUtils.isTrue(criteria.getDecode())) {
-                    val ticket = decodeTicket(deserializeTicketFromMongoDocument(document));
+                if (criteria.isDecode()) {
+                    val ticket = decodeTicket(deserializeTicket(document.getJson(), document.getType()));
                     return ticket != null ? !ticket.isExpired() : null;
                 }
                 return "%s:%s".formatted(document.getTicketId(), StringUtils.defaultIfBlank(document.getPrincipal(), "N/A"));
             })
             .filter(Objects::nonNull)
             .collect(Collectors.toList());
+    }
+
+    @Override
+    public long countTicketsFor(final Service service) {
+        return ticketCatalog
+            .findAll()
+            .stream()
+            .map(this::getTicketCollectionInstanceByMetadata)
+            .flatMap(map -> {
+                val query = new Query(Criteria.where(MongoDbTicketDocument.FIELD_NAME_SERVICE).is(service.getId()));
+                return mongoTemplate.stream(query, MongoDbTicketDocument.class, map);
+            })
+            .map(document -> {
+                val ticket = decodeTicket(deserializeTicket(document.getJson(), document.getType()));
+                return ticket != null ? !ticket.isExpired() : null;
+            })
+            .filter(Objects::nonNull)
+            .count();
     }
 
     protected long countTicketsByTicketType(final Class<? extends Ticket> ticketType) {
@@ -296,23 +330,26 @@ public class MongoDbTicketRegistry extends AbstractTicketRegistry {
 
     protected MongoDbTicketDocument buildTicketAsDocument(final Ticket ticket) throws Throwable {
         val encTicket = encodeTicket(ticket);
-
         val json = serializeTicket(encTicket);
         FunctionUtils.throwIf(StringUtils.isBlank(json),
             () -> new IllegalArgumentException("Ticket " + ticket.getId() + " cannot be serialized to JSON"));
-        LOGGER.trace("Serialized ticket into a JSON document as\n [{}]",
-            JsonValue.readJSON(json).toString(Stringify.FORMATTED));
+        if (LOGGER.isTraceEnabled()) {
+            LOGGER.trace("Serialized ticket into a JSON document as\n [{}]",
+                JsonValue.readJSON(json).toString(Stringify.FORMATTED));
+        }
 
         val expireAt = getExpireAt(ticket);
         LOGGER.trace("Calculated expiration date for ticket ttl as [{}]", expireAt);
 
         val principal = getPrincipalIdFrom(ticket);
-        return MongoDbTicketDocument.builder()
+        return MongoDbTicketDocument
+            .builder()
             .expireAt(expireAt)
             .type(encTicket.getClass().getName())
             .ticketId(encTicket.getId())
             .json(json)
             .principal(digestIdentifier(principal))
+            .service(ticket instanceof final ServiceAwareTicket sat && Objects.nonNull(sat.getService()) ? sat.getService().getId() : null)
             .attributes(collectAndDigestTicketAttributes(ticket))
             .build();
     }
@@ -332,8 +369,5 @@ public class MongoDbTicketRegistry extends AbstractTicketRegistry {
         });
     }
 
-    protected Ticket deserializeTicketFromMongoDocument(final MongoDbTicketDocument document) {
-        return ticketSerializationManager.deserializeTicket(document.getJson(), document.getType());
-    }
 }
 

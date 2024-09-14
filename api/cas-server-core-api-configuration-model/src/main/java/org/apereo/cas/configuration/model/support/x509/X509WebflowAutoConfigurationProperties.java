@@ -4,7 +4,6 @@ import org.apereo.cas.configuration.model.core.web.flow.WebflowAutoConfiguration
 import org.apereo.cas.configuration.support.RequiredProperty;
 import org.apereo.cas.configuration.support.RequiresModule;
 
-import com.fasterxml.jackson.annotation.JsonFilter;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
@@ -21,10 +20,15 @@ import java.io.Serial;
 @Getter
 @Setter
 @Accessors(chain = true)
-@JsonFilter("X509WebflowAutoConfigurationProperties")
+
 public class X509WebflowAutoConfigurationProperties extends WebflowAutoConfigurationProperties {
     @Serial
     private static final long serialVersionUID = 2744305877450488111L;
+
+    /**
+     * Default order for webflow configuration.
+     */
+    private static final int DEFAULT_ORDER = 80;
 
     /**
      * Port that is used to enact x509 client authentication
@@ -45,6 +49,6 @@ public class X509WebflowAutoConfigurationProperties extends WebflowAutoConfigura
     private String clientAuth = "want";
 
     public X509WebflowAutoConfigurationProperties() {
-        setOrder(10);
+        setOrder(DEFAULT_ORDER);
     }
 }

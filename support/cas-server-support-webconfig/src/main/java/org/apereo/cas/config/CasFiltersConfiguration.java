@@ -8,6 +8,7 @@ import org.apereo.cas.services.ServicesManager;
 import org.apereo.cas.services.web.support.RegisteredServiceCorsConfigurationSource;
 import org.apereo.cas.services.web.support.RegisteredServiceResponseHeadersEnforcementFilter;
 import org.apereo.cas.util.CollectionUtils;
+import org.apereo.cas.util.spring.SpringExpressionLanguageValueResolver;
 import org.apereo.cas.util.spring.beans.BeanCondition;
 import org.apereo.cas.util.spring.beans.BeanSupplier;
 import org.apereo.cas.util.spring.boot.ConditionalOnFeatureEnabled;
@@ -20,7 +21,7 @@ import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.boot.autoconfigure.AutoConfiguration;
+import org.springframework.boot.actuate.autoconfigure.endpoint.web.WebEndpointProperties;
 import org.springframework.boot.autoconfigure.AutoConfigureAfter;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -30,6 +31,7 @@ import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.ScopedProxyMode;
+import org.springframework.core.Ordered;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.filter.CharacterEncodingFilter;
 import org.springframework.web.filter.CorsFilter;
@@ -44,11 +46,11 @@ import java.util.HashMap;
  */
 @EnableConfigurationProperties(CasConfigurationProperties.class)
 @ConditionalOnFeatureEnabled(feature = CasFeatureModule.FeatureCatalog.WebApplication)
-@AutoConfiguration
-public class CasFiltersConfiguration {
+@Configuration(value = "CasFiltersConfiguration", proxyBeanMethods = false)
+class CasFiltersConfiguration {
     @Configuration(value = "CasFiltersEncodingConfiguration", proxyBeanMethods = false)
     @EnableConfigurationProperties(CasConfigurationProperties.class)
-    public static class CasFiltersBaseConfiguration {
+    static class CasFiltersBaseConfiguration {
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
         @Bean
         public FilterRegistrationBean<CharacterEncodingFilter> characterEncodingFilter(
@@ -59,14 +61,15 @@ public class CasFiltersConfiguration {
             bean.setUrlPatterns(CollectionUtils.wrap("/*"));
             bean.setName("characterEncodingFilter");
             bean.setAsyncSupported(true);
+            bean.setOrder(Ordered.HIGHEST_PRECEDENCE);
             return bean;
         }
     }
 
     @Configuration(value = "CasFiltersResponseHeadersConfiguration", proxyBeanMethods = false)
     @EnableConfigurationProperties(CasConfigurationProperties.class)
-    @AutoConfigureAfter(CasCoreServicesConfiguration.class)
-    public static class CasFiltersResponseHeadersConfiguration {
+    @AutoConfigureAfter(CasCoreServicesAutoConfiguration.class)
+    static class CasFiltersResponseHeadersConfiguration {
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
         @Bean
         public FilterRegistrationBean<AddResponseHeadersFilter> responseHeadersFilter(final CasConfigurationProperties casProperties) {
@@ -91,7 +94,8 @@ public class CasFiltersConfiguration {
             @Qualifier(AuditableExecution.AUDITABLE_EXECUTION_REGISTERED_SERVICE_ACCESS)
             final ObjectProvider<AuditableExecution> registeredServiceAccessStrategyEnforcer,
             @Qualifier(AuthenticationServiceSelectionPlan.BEAN_NAME)
-            final ObjectProvider<AuthenticationServiceSelectionPlan> authenticationRequestServiceSelectionStrategies) {
+            final ObjectProvider<AuthenticationServiceSelectionPlan> authenticationRequestServiceSelectionStrategies,
+            final WebEndpointProperties properties) {
             val header = casProperties.getHttpWebRequest().getHeader();
             val initParams = new HashMap<String, String>();
             initParams.put(ResponseHeadersEnforcementFilter.INIT_PARAM_ENABLE_CACHE_CONTROL, BooleanUtils.toStringTrueFalse(header.isCache()));
@@ -104,12 +108,13 @@ public class CasFiltersConfiguration {
             initParams.put(ResponseHeadersEnforcementFilter.INIT_PARAM_XSS_PROTECTION, header.getXssOptions());
             initParams.put(ResponseHeadersEnforcementFilter.INIT_PARAM_CACHE_CONTROL_STATIC_RESOURCES, header.getCacheControlStaticResources());
             if (StringUtils.isNotBlank(header.getContentSecurityPolicy())) {
-                initParams.put(ResponseHeadersEnforcementFilter.INIT_PARAM_CONTENT_SECURITY_POLICY, header.getContentSecurityPolicy());
+                initParams.put(ResponseHeadersEnforcementFilter.INIT_PARAM_CONTENT_SECURITY_POLICY,
+                    SpringExpressionLanguageValueResolver.getInstance().resolve(header.getContentSecurityPolicy()));
             }
             val bean = new FilterRegistrationBean<RegisteredServiceResponseHeadersEnforcementFilter>();
             val filter = new RegisteredServiceResponseHeadersEnforcementFilter(servicesManager,
                 argumentExtractor, authenticationRequestServiceSelectionStrategies,
-                registeredServiceAccessStrategyEnforcer);
+                registeredServiceAccessStrategyEnforcer, properties);
             bean.setFilter(filter);
             bean.setUrlPatterns(CollectionUtils.wrap("/*"));
             bean.setInitParameters(initParams);
@@ -152,7 +157,7 @@ public class CasFiltersConfiguration {
     }
 
     @Configuration(value = "CasFiltersCorsConfiguration", proxyBeanMethods = false)
-    public static class CasFiltersCorsConfiguration {
+    static class CasFiltersCorsConfiguration {
         private static final BeanCondition CONDITION = BeanCondition.on("cas.http-web-request.cors.enabled").isTrue();
 
         @Bean
@@ -171,17 +176,12 @@ public class CasFiltersConfiguration {
         }
 
         @Bean
-        @ConditionalOnMissingBean(name = "casCorsFilter")
+        @ConditionalOnMissingBean(name = "corsFilter")
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
-        public FilterRegistrationBean<CorsFilter> casCorsFilter(
-            final CasConfigurationProperties casProperties,
-            @Qualifier("corsHttpWebRequestConfigurationSource") final CorsConfigurationSource corsHttpWebRequestConfigurationSource) {
-            val bean = new FilterRegistrationBean<>(new CorsFilter(corsHttpWebRequestConfigurationSource));
-            bean.setName("casCorsFilter");
-            bean.setAsyncSupported(true);
-            bean.setOrder(0);
-            bean.setEnabled(casProperties.getHttpWebRequest().getCors().isEnabled());
-            return bean;
+        public CorsFilter corsFilter(
+                final CasConfigurationProperties casProperties,
+                @Qualifier("corsHttpWebRequestConfigurationSource") final CorsConfigurationSource corsHttpWebRequestConfigurationSource) {
+            return new CorsFilter(corsHttpWebRequestConfigurationSource);
         }
 
     }

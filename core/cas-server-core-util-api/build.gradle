@@ -3,12 +3,14 @@ dependencies {
     
     api project(":api:cas-server-core-api-authentication")
     api project(":api:cas-server-core-api-configuration-model")
+    api project(":api:cas-server-core-api-audit")
     api project(":api:cas-server-core-api-ticket")
     api project(":api:cas-server-core-api-util")
     api project(":api:cas-server-core-api-mfa")
     api project(":api:cas-server-core-api-web")
     api project(":api:cas-server-core-api-webflow")
     api project(":api:cas-server-core-api-services")
+    api project(":api:cas-server-core-api-scripting")
 
     implementation libraries.jasypt
     implementation libraries.jose4j
@@ -17,7 +19,9 @@ dependencies {
     implementation libraries.oshi
     implementation libraries.apachevelocity
     implementation libraries.springsecurityweb
-
+    
     testImplementation libraries.nimbus
+
+    testImplementation project(":core:cas-server-core-scripting")
 }
 

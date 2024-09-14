@@ -5,7 +5,6 @@ import org.apereo.cas.services.RegisteredServiceTestUtils;
 import org.apereo.cas.support.oauth.OAuth20Constants;
 
 import lombok.val;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,12 +27,7 @@ class OAuth20DeviceUserCodeApprovalEndpointControllerTests extends AbstractOAuth
     @Autowired
     @Qualifier("deviceUserCodeApprovalEndpointController")
     private OAuth20DeviceUserCodeApprovalEndpointController callbackAuthorizeController;
-
-    @BeforeEach
-    public void initialize() {
-        clearAllServices();
-    }
-
+    
     @Test
     void verifyGet() throws Throwable {
         val request = new MockHttpServletRequest();
@@ -61,7 +55,7 @@ class OAuth20DeviceUserCodeApprovalEndpointControllerTests extends AbstractOAuth
         val request = new MockHttpServletRequest();
         val response = new MockHttpServletResponse();
         val devCode = defaultDeviceTokenFactory.createDeviceCode(RegisteredServiceTestUtils.getService());
-        val uc = defaultDeviceUserCodeFactory.createDeviceUserCode(devCode);
+        val uc = defaultDeviceUserCodeFactory.createDeviceUserCode(devCode.getService());
         ticketRegistry.addTicket(uc);
         request.setParameter(OAuth20DeviceUserCodeApprovalEndpointController.PARAMETER_USER_CODE, uc.getId());
         var mv = callbackAuthorizeController.handlePostRequest(request, response);

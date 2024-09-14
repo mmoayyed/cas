@@ -1,9 +1,7 @@
 package org.apereo.cas.tomcat;
 
-import org.apereo.cas.config.CasEmbeddedContainerTomcatConfiguration;
-import org.apereo.cas.config.CasEmbeddedContainerTomcatFiltersConfiguration;
+import org.apereo.cas.config.CasEmbeddedContainerTomcatAutoConfiguration;
 import org.apereo.cas.configuration.CasConfigurationProperties;
-
 import lombok.val;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -21,10 +19,8 @@ import org.springframework.boot.web.servlet.server.ConfigurableServletWebServerF
  * @author Misagh Moayyed
  * @since 6.0.0
  */
-@SpringBootTest(classes = {
-    CasEmbeddedContainerTomcatConfiguration.class,
-    CasEmbeddedContainerTomcatFiltersConfiguration.class
-},
+@SpringBootTest(
+    classes = CasEmbeddedContainerTomcatAutoConfiguration.class,
     properties = {
         "server.port=8182",
         "server.ssl.enabled=false",
@@ -59,8 +55,7 @@ import org.springframework.boot.web.servlet.server.ConfigurableServletWebServerF
         "cas.server.tomcat.basic-authn.enabled=true",
         "cas.server.tomcat.ext-access-log.enabled=true",
         "cas.server.tomcat.rewrite-valve.location=classpath:/container/tomcat/rewrite.config"
-    },
-    webEnvironment = SpringBootTest.WebEnvironment.MOCK)
+    }, webEnvironment = SpringBootTest.WebEnvironment.MOCK)
 @EnableConfigurationProperties({CasConfigurationProperties.class, ServerProperties.class})
 @Tag("WebApp")
 class CasTomcatServletWebServerFactoryTests {
@@ -76,7 +71,7 @@ class CasTomcatServletWebServerFactoryTests {
     private ServletWebServerFactoryCustomizer casTomcatEmbeddedServletContainerCustomizer;
 
     @Test
-    void verifyOperation() throws Throwable {
+    void verifyOperation() {
         casTomcatEmbeddedServletContainerCustomizer.customize(casServletWebServerFactory);
         val server = casServletWebServerFactory.getWebServer();
         try {

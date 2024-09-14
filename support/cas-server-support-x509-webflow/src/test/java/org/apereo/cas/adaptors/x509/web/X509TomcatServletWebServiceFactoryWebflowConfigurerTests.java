@@ -1,22 +1,19 @@
 package org.apereo.cas.adaptors.x509.web;
 
-import org.apereo.cas.config.CasCoreMultifactorAuthenticationConfiguration;
-import org.apereo.cas.config.CasMultifactorAuthenticationWebflowConfiguration;
-import org.apereo.cas.config.X509AuthenticationConfiguration;
-import org.apereo.cas.config.X509AuthenticationWebflowConfiguration;
-import org.apereo.cas.config.X509CertificateExtractorConfiguration;
+import org.apereo.cas.config.CasCoreMultifactorAuthenticationAutoConfiguration;
+import org.apereo.cas.config.CasCoreMultifactorAuthenticationWebflowAutoConfiguration;
+import org.apereo.cas.config.CasX509AuthenticationAutoConfiguration;
+import org.apereo.cas.config.CasX509AuthenticationWebflowAutoConfiguration;
+import org.apereo.cas.config.CasX509CertificateExtractorAutoConfiguration;
+import org.apereo.cas.util.spring.boot.SpringBootTestAutoConfigurations;
 import org.apereo.cas.web.flow.BaseWebflowConfigurerTests;
 import org.apereo.cas.web.flow.CasWebflowConfigurer;
-
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.boot.autoconfigure.web.servlet.ServletWebServerFactoryAutoConfiguration;
-import org.springframework.boot.autoconfigure.web.servlet.WebMvcAutoConfiguration;
-import org.springframework.context.annotation.Import;
+import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 import org.springframework.test.context.TestPropertySource;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -25,14 +22,13 @@ import static org.junit.jupiter.api.Assertions.*;
  * @author Misagh Moayyed
  * @since 6.3.0
  */
-@Import({
-    WebMvcAutoConfiguration.class,
-    ServletWebServerFactoryAutoConfiguration.class,
-    X509AuthenticationConfiguration.class,
-    X509CertificateExtractorConfiguration.class,
-    X509AuthenticationWebflowConfiguration.class,
-    CasCoreMultifactorAuthenticationConfiguration.class,
-    CasMultifactorAuthenticationWebflowConfiguration.class
+@SpringBootTestAutoConfigurations
+@ImportAutoConfiguration({
+    CasX509AuthenticationAutoConfiguration.class,
+    CasX509CertificateExtractorAutoConfiguration.class,
+    CasX509AuthenticationWebflowAutoConfiguration.class,
+    CasCoreMultifactorAuthenticationAutoConfiguration.class,
+    CasCoreMultifactorAuthenticationWebflowAutoConfiguration.class
 })
 @Tag("WebflowConfig")
 @TestPropertySource(properties = {

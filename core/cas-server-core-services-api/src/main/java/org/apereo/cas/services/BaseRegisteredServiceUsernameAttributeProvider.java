@@ -1,5 +1,6 @@
 package org.apereo.cas.services;
 
+import org.apereo.cas.authentication.attribute.CaseCanonicalizationMode;
 import org.apereo.cas.util.function.FunctionUtils;
 import org.apereo.cas.util.spring.ApplicationContextProvider;
 
@@ -13,7 +14,7 @@ import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.apache.commons.lang3.RegExUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.apereo.services.persondir.util.CaseCanonicalizationMode;
+
 
 import jakarta.persistence.PostLoad;
 
@@ -38,7 +39,7 @@ public abstract class BaseRegisteredServiceUsernameAttributeProvider implements 
     @Serial
     private static final long serialVersionUID = -8381275200333399951L;
 
-    private String canonicalizationMode = CaseCanonicalizationMode.NONE.name();
+    private String canonicalizationMode = "NONE";
 
     private boolean encryptUsername;
 
@@ -47,12 +48,12 @@ public abstract class BaseRegisteredServiceUsernameAttributeProvider implements 
     private String removePattern;
 
     @Override
-    public final String resolveUsername(final RegisteredServiceUsernameProviderContext context) {
+    public final String resolveUsername(final RegisteredServiceUsernameProviderContext context) throws Throwable {
         RegisteredServiceAccessStrategyUtils.ensureServiceAccessIsAllowed(context.getService(), context.getRegisteredService());
             
         val resolvedUsername = resolveUsernameInternal(context);
         if (canonicalizationMode == null) {
-            canonicalizationMode = CaseCanonicalizationMode.NONE.name();
+            canonicalizationMode = "NONE";
         }
         val removedUsername = removePatternFromUsernameIfNecessary(resolvedUsername);
         val finalUsername = scopeUsernameIfNecessary(removedUsername);
@@ -74,7 +75,7 @@ public abstract class BaseRegisteredServiceUsernameAttributeProvider implements 
      */
     @PostLoad
     public void initialize() {
-        setCanonicalizationMode(CaseCanonicalizationMode.NONE.name());
+        setCanonicalizationMode("NONE");
     }
 
     protected String removePatternFromUsernameIfNecessary(final String username) {
@@ -85,25 +86,12 @@ public abstract class BaseRegisteredServiceUsernameAttributeProvider implements 
         return FunctionUtils.doIfNotNull(scope, () -> String.format("%s@%s", resolved, scope), () -> resolved).get();
     }
 
-    /**
-     * Encrypt resolved username.
-     *
-     * @param context  the context
-     * @param username the username
-     * @return the encrypted username or null
-     */
     protected String encryptResolvedUsername(final RegisteredServiceUsernameProviderContext context, final String username) {
         val applicationContext = ApplicationContextProvider.getApplicationContext();
         val cipher = applicationContext.getBean(RegisteredServiceCipherExecutor.DEFAULT_BEAN_NAME, RegisteredServiceCipherExecutor.class);
         return cipher.encode(username, Optional.of(context.getRegisteredService()));
     }
 
-    /**
-     * Resolve username internal string.
-     *
-     * @param context the context
-     * @return the string
-     */
-    protected abstract String resolveUsernameInternal(RegisteredServiceUsernameProviderContext context);
+    protected abstract String resolveUsernameInternal(RegisteredServiceUsernameProviderContext context) throws Throwable;
 
 }

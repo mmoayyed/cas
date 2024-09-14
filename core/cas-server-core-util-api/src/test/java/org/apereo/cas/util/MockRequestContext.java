@@ -1,6 +1,10 @@
 package org.apereo.cas.util;
 
+import org.apereo.cas.util.http.HttpRequestUtils;
+import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import lombok.val;
+import org.apereo.inspektr.common.web.ClientInfo;
+import org.apereo.inspektr.common.web.ClientInfoHolder;
 import org.springframework.binding.expression.support.LiteralExpression;
 import org.springframework.binding.message.DefaultMessageContext;
 import org.springframework.binding.message.MessageContext;
@@ -19,7 +23,9 @@ import org.springframework.webflow.engine.support.DefaultTransitionCriteria;
 import org.springframework.webflow.execution.RequestContextHolder;
 import org.springframework.webflow.test.MockExternalContext;
 import org.springframework.webflow.test.MockFlowExecutionContext;
+import org.springframework.webflow.test.MockFlowSession;
 import org.springframework.webflow.test.MockRequestControlContext;
+import java.util.Locale;
 import java.util.Objects;
 import static org.mockito.Mockito.*;
 
@@ -91,6 +97,16 @@ public class MockRequestContext extends MockRequestControlContext {
         return this;
     }
 
+    public MockRequestContext setRemoteAddr(final String remoteAddr) {
+        getHttpServletRequest().setRemoteAddr(remoteAddr);
+        return this;
+    }
+
+    public MockRequestContext setLocalAddr(final String localAddr) {
+        getHttpServletRequest().setLocalAddr(localAddr);
+        return this;
+    }
+
     public MockRequestContext setSessionAttribute(final String name, final String value) {
         Objects.requireNonNull(getHttpServletRequest().getSession(true)).setAttribute(name, value);
         return this;
@@ -116,6 +132,36 @@ public class MockRequestContext extends MockRequestControlContext {
         return this;
     }
 
+    @CanIgnoreReturnValue
+    public MockRequestContext withUserAgent(final String s) {
+        addHeader(HttpRequestUtils.USER_AGENT_HEADER, s);
+        return this;
+    }
+
+    public MockRequestContext setRequestAttribute(final String name, final Object value) {
+        getHttpServletRequest().setAttribute(name, value);
+        return this;
+    }
+
+    public MockRequestContext withLocale(final Locale value) {
+        getHttpServletRequest().setAttribute("locale", value);
+        setParameter("locale", value.toLanguageTag());
+        ((MockExternalContext) getExternalContext()).setLocale(value);
+        return this;
+    }
+
+    public MockRequestContext setQueryString(final String s) {
+        getHttpServletRequest().setQueryString(s);
+        return this;
+    }
+
+    public MockRequestContext setFlowExecutionContext(final String flowIdLogin) {
+        val flow = new Flow(flowIdLogin);
+        flow.setApplicationContext(getApplicationContext());
+        val exec = new MockFlowExecutionContext(new MockFlowSession(flow));
+        setFlowExecutionContext(exec);
+        return this;
+    }
 
     public static MockRequestContext create() throws Exception {
         val staticContext = new StaticApplicationContext();
@@ -131,6 +177,7 @@ public class MockRequestContext extends MockRequestControlContext {
         externalContext.setNativeContext(new MockServletContext());
         externalContext.setNativeRequest(request);
         externalContext.setNativeResponse(response);
+        externalContext.setLocale(Locale.ENGLISH);
         requestContext.setExternalContext(externalContext);
         RequestContextHolder.setRequestContext(requestContext);
         ExternalContextHolder.setExternalContext(externalContext);
@@ -139,6 +186,11 @@ public class MockRequestContext extends MockRequestControlContext {
             flow.setApplicationContext(applicationContext);
         }
         return requestContext;
+    }
+
+    public MockRequestContext setClientInfo() {
+        ClientInfoHolder.setClientInfo(ClientInfo.from(getHttpServletRequest()));
+        return this;
     }
 
     public MockRequestContext setMessageContext(final MessageContext messageContext) throws Exception {

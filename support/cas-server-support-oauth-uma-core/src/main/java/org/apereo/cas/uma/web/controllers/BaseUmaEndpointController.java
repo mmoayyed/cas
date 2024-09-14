@@ -2,6 +2,8 @@ package org.apereo.cas.uma.web.controllers;
 
 import org.apereo.cas.authentication.AuthenticationException;
 import org.apereo.cas.support.oauth.OAuth20Constants;
+import org.apereo.cas.ticket.Ticket;
+import org.apereo.cas.ticket.accesstoken.OAuth20AccessToken;
 import org.apereo.cas.uma.UmaConfigurationContext;
 import org.apereo.cas.uma.ticket.resource.InvalidResourceSetException;
 import org.apereo.cas.uma.ticket.resource.ResourceSet;
@@ -39,14 +41,6 @@ public abstract class BaseUmaEndpointController {
 
     private final UmaConfigurationContext umaConfigurationContext;
 
-    /**
-     * Gets authenticated profile.
-     *
-     * @param request            the request
-     * @param response           the response
-     * @param requiredPermission the required permission
-     * @return the authenticated profile
-     */
     protected UserProfile getAuthenticatedProfile(final HttpServletRequest request,
                                                   final HttpServletResponse response,
                                                   final String requiredPermission) {
@@ -63,36 +57,20 @@ public abstract class BaseUmaEndpointController {
         return profile;
     }
 
-    /**
-     * Build response entity error model.
-     *
-     * @param e the e
-     * @return the multi value map
-     */
     protected MultiValueMap<String, Object> buildResponseEntityErrorModel(final InvalidResourceSetException e) {
         return buildResponseEntityErrorModel(e.getStatus(), e.getMessage());
     }
 
-    /**
-     * Build response entity error model.
-     *
-     * @param code    the code
-     * @param message the message
-     * @return the multi value map
-     */
     protected MultiValueMap<String, Object> buildResponseEntityErrorModel(final HttpStatus code, final String message) {
         return CollectionUtils.asMultiValueMap("code",
             code.value(),
             "message", message);
     }
 
+    protected OAuth20AccessToken resolveAccessToken(final Ticket token) {
+        return (OAuth20AccessToken) (token.isStateless() ? umaConfigurationContext.getTicketRegistry().getTicket(token.getId()) : token);
+    }
 
-    /**
-     * Gets resource set uri location.
-     *
-     * @param saved the saved
-     * @return the resource set uri location
-     */
     protected String getResourceSetUriLocation(final ResourceSet saved) {
         return getUmaConfigurationContext().getCasProperties()
                    .getAuthn().getOauth().getUma().getCore().getIssuer()

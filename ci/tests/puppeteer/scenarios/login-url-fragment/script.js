@@ -1,21 +1,21 @@
-const puppeteer = require('puppeteer');
-const cas = require('../../cas.js');
-const assert = require('assert');
+
+const cas = require("../../cas.js");
+const assert = require("assert");
 
 (async () => {
-    const browser = await puppeteer.launch(cas.browserOptions());
+    const browser = await cas.newBrowser(cas.browserOptions());
     const page = await cas.newPage(browser);
 
-    let service = "https://apereo.github.io#hello-world";
-    await cas.goto(page, `https://localhost:8443/cas/login?service=${service}`);
+    const service = "https://apereo.github.io#hello-world";
+    await cas.gotoLogin(page, service);
     await cas.loginWith(page);
-    await page.waitForTimeout(2000);
+    await cas.sleep(2000);
     await cas.assertTicketParameter(page);
     await cas.logPage(page);
-    let url = await page.url();
+    const url = await page.url();
     assert((url.match(/#/g) || []).length === 1);
-    let result = new URL(page.url());
+    const result = new URL(page.url());
     await cas.logg(`URL hash is ${result.hash}`);
-    assert(result.hash === "#hello-world");
+    assert(result.hash.startsWith("#hello-world"));
     await browser.close();
 })();

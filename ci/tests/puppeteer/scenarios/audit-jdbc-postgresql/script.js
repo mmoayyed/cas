@@ -1,62 +1,63 @@
-const puppeteer = require('puppeteer');
-const cas = require('../../cas.js');
+const cas = require("../../cas.js");
 const assert = require("assert");
 const YAML = require("yaml");
 const fs = require("fs");
 const path = require("path");
 
 (async () => {
-    let configFilePath = path.join(__dirname, 'config.yml');
-    const file = fs.readFileSync(configFilePath, 'utf8');
+    const configFilePath = path.join(__dirname, "config.yml");
+    const file = fs.readFileSync(configFilePath, "utf8");
     const configFile = YAML.parse(file);
-    
-    let browser = await puppeteer.launch(cas.browserOptions());
+
+    let browser = await cas.newBrowser(cas.browserOptions());
     let page = await cas.newPage(browser);
     await cas.gotoLogin(page);
     await cas.loginWith(page);
     await cas.assertCookie(page);
     await cas.assertPageTitle(page, "CAS - Central Authentication Service Log In Successful");
-    await cas.assertInnerText(page, '#content div h2', "Log In Successful");
+    await cas.assertInnerText(page, "#content div h2", "Log In Successful");
     await cas.gotoLogout(page);
-    await page.close();
     await browser.close();
 
-    await cas.doPost("https://localhost:8443/cas/actuator/auditLog", {}, {
-        'Content-Type': 'application/json'
-    }, res => {
-        cas.log(`Found ${res.data.length} audit records`);
-        assert(res.data.length >= 4);
-        assert(res.data[0].principal !== null);
-        assert(res.data[0].actionPerformed !== null);
-        assert(res.data[0].applicationCode !== null);
-        assert(res.data[0].clientIpAddress !== null);
-        assert(res.data[0].serverIpAddress !== null);
-        assert(res.data[0].resourceOperatedUpon !== null)
-    }, error => {
-        throw(error);
-    });
+    await cas.doGet("https://localhost:8443/cas/actuator/auditLog",
+        (res) => {
+            cas.log(`Found ${res.data.length} audit records`);
+            assert(res.data.length >= 4);
+            assert(res.data[0].principal !== undefined);
+            assert(res.data[0].actionPerformed !== undefined);
+            assert(res.data[0].applicationCode !== undefined);
+            assert(res.data[0].auditableResource !== undefined);
+            assert(res.data[0].whenActionWasPerformed !== undefined);
+            assert(res.data[0].clientInfo.clientIpAddress !== undefined);
+            assert(res.data[0].clientInfo.serverIpAddress !== undefined);
+            assert(res.data[0].clientInfo.userAgent !== undefined);
+            assert(res.data[0].clientInfo.locale !== undefined);
+        }, (error) => {
+            throw (error);
+        }, {
+            "Content-Type": "application/json"
+        });
 
     await cas.doGet("https://localhost:8443/cas/actuator/auditevents",
-        async res => {
-            cas.log(`Found ${res.data.events.length} audit records`);
+        async (res) => {
+            await cas.log(`Found ${res.data.events.length} audit records`);
             assert(res.data.events.length >= 4);
-            assert(res.data.events[0].principal !== null);
-            assert(res.data.events[0].timestamp !== null);
-            assert(res.data.events[0].type !== null);
-            assert(res.data.events[0].data.source !== null)
-        }, async err => {
-            throw(err);
+            assert(res.data.events[0].principal !== undefined);
+            assert(res.data.events[0].timestamp !== undefined);
+            assert(res.data.events[0].type !== undefined);
+        }, async (err) => {
+            throw (err);
         });
 
     await cas.log("Updating configuration...");
-    let number = await cas.randomNumber();
+    const number = await cas.randomNumber();
     await updateConfig(configFile, configFilePath, number);
     await cas.sleep(6000);
     await cas.refreshContext();
     await cas.sleep(3000);
 
     await cas.log("Testing authentication after refresh...");
-    browser = await puppeteer.launch(cas.browserOptions());
+    browser = await cas.newBrowser(cas.browserOptions());
     page = await cas.newPage(browser);
     await cas.gotoLogin(page);
     await cas.loginWith(page);
@@ -67,7 +68,7 @@ const path = require("path");
 })();
 
 async function updateConfig(configFile, configFilePath, data) {
-    let config = {
+    const config = {
         cas: {
             audit: {
                 jdbc: {

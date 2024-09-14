@@ -1,8 +1,9 @@
 package org.apereo.cas.configuration.model.support.passwordless;
 
+import org.apereo.cas.configuration.model.core.web.flow.WebflowAutoConfigurationProperties;
+import org.apereo.cas.configuration.model.support.captcha.GoogleRecaptchaProperties;
 import org.apereo.cas.configuration.support.RequiresModule;
 
-import com.fasterxml.jackson.annotation.JsonFilter;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
@@ -21,7 +22,7 @@ import java.io.Serializable;
 @Getter
 @Setter
 @Accessors(chain = true)
-@JsonFilter("PasswordlessAuthenticationProperties")
+
 public class PasswordlessAuthenticationProperties implements Serializable {
     @Serial
     private static final long serialVersionUID = 8726382874579042117L;
@@ -44,4 +45,15 @@ public class PasswordlessAuthenticationProperties implements Serializable {
     @NestedConfigurationProperty
     private PasswordlessAuthenticationCoreProperties core = new PasswordlessAuthenticationCoreProperties();
 
+    /**
+     * Google reCAPTCHA settings.
+     */
+    @NestedConfigurationProperty
+    private GoogleRecaptchaProperties googleRecaptcha = new GoogleRecaptchaProperties();
+
+    /**
+     * The webflow configuration.
+     */
+    @NestedConfigurationProperty
+    private WebflowAutoConfigurationProperties webflow = new WebflowAutoConfigurationProperties().setOrder(70);
 }

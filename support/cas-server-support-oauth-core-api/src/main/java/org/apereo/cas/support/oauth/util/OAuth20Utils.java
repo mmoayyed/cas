@@ -1,6 +1,7 @@
 package org.apereo.cas.support.oauth.util;
 
 import org.apereo.cas.CasProtocolConstants;
+import org.apereo.cas.authentication.principal.Principal;
 import org.apereo.cas.services.RegisteredService;
 import org.apereo.cas.services.ServicesManager;
 import org.apereo.cas.services.UnauthorizedServiceException;
@@ -11,7 +12,9 @@ import org.apereo.cas.support.oauth.OAuth20GrantTypes;
 import org.apereo.cas.support.oauth.OAuth20ResponseModeTypes;
 import org.apereo.cas.support.oauth.OAuth20ResponseTypes;
 import org.apereo.cas.support.oauth.services.OAuthRegisteredService;
+import org.apereo.cas.support.oauth.web.response.accesstoken.OAuth20TokenGeneratedResult;
 import org.apereo.cas.ticket.OAuth20Token;
+import org.apereo.cas.ticket.accesstoken.OAuth20AccessToken;
 import org.apereo.cas.util.CollectionUtils;
 import org.apereo.cas.util.function.FunctionUtils;
 import org.apereo.cas.util.serialization.JacksonObjectMapperFactory;
@@ -33,9 +36,13 @@ import org.springframework.web.servlet.ModelAndView;
 import org.springframework.web.servlet.view.json.MappingJackson2JsonView;
 import jakarta.servlet.http.HttpServletResponse;
 import java.net.URI;
+import java.time.Clock;
+import java.time.Duration;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -99,6 +106,26 @@ public class OAuth20Utils {
     }
 
     /**
+     * Gets registered oauth service by client id.
+     *
+     * @param <T>             the type parameter
+     * @param servicesManager the services manager
+     * @param clientId        the client id
+     * @param clazz           the clazz
+     * @return the registered o auth service by client id
+     */
+    public static <T extends OAuthRegisteredService> T getRegisteredOAuthServiceByClientId(final ServicesManager servicesManager,
+                                                                                           final String clientId,
+                                                                                           final Class<T> clazz) {
+        return FunctionUtils.doIfNotBlank(clientId,
+            () -> {
+                val query = RegisteredServiceQuery.of(OAuthRegisteredService.class, "clientId", clientId).withIncludeAssignableTypes(true);
+                return servicesManager.findServicesBy(query).findFirst().map(clazz::cast).orElse(null);
+            },
+            () -> null);
+    }
+
+    /**
      * Locate the requested instance of {@link OAuthRegisteredService} by the given clientId.
      *
      * @param servicesManager the service registry DAO instance.
@@ -107,12 +134,7 @@ public class OAuth20Utils {
      */
     public static OAuthRegisteredService getRegisteredOAuthServiceByClientId(final ServicesManager servicesManager,
                                                                              final String clientId) {
-        return FunctionUtils.doIfNotBlank(clientId,
-            () -> {
-                val query = RegisteredServiceQuery.of(OAuthRegisteredService.class, "clientId", clientId).withIncludeAssignableTypes(true);
-                return servicesManager.findServicesBy(query).findFirst().map(OAuthRegisteredService.class::cast).orElse(null);
-            },
-            () -> null);
+        return getRegisteredOAuthServiceByClientId(servicesManager, clientId, OAuthRegisteredService.class);
     }
 
     /**
@@ -262,8 +284,8 @@ public class OAuth20Utils {
         validateRedirectUri(redirectUri);
         if (matchingStrategy == null || !matchingStrategy.matches(registeredService, redirectUri)) {
             LOGGER.error("Unsupported [{}]: [{}] does not match what is defined for registered service: [{}]. "
-                         + "Service is considered unauthorized. Verify the service matching strategy used in the service "
-                         + "definition is correct and does in fact match the client [{}]",
+                    + "Service is considered unauthorized. Verify the service matching strategy used in the service "
+                    + "definition is correct and does in fact match the client [{}]",
                 OAuth20Constants.REDIRECT_URI, redirectUri, registeredService.getServiceId(), redirectUri);
             return false;
         }
@@ -309,7 +331,7 @@ public class OAuth20Utils {
      * @return the set
      */
     public static Set<String> parseUserInfoRequestClaims(final OAuth20Token token) {
-        return token.getClaims().getOrDefault("userinfo", new HashMap<>(0)).keySet();
+        return token != null ? token.getClaims().getOrDefault("userinfo", new HashMap<>(0)).keySet() : new HashSet<>();
     }
 
 
@@ -351,7 +373,7 @@ public class OAuth20Utils {
      * Is access token request?.
      *
      * @param webContext the web context
-     * @return the boolean
+     * @return true or false
      */
     public static boolean isAccessTokenRequest(final WebContext webContext) {
         return (Boolean) webContext.getRequestAttribute(OAuth20Constants.REQUEST_ATTRIBUTE_ACCESS_TOKEN_REQUEST).orElse(false);
@@ -371,5 +393,52 @@ public class OAuth20Utils {
         return !OAuth20Utils.isAccessTokenRequest(callContext.webContext())
             || StringUtils.isBlank(registeredService.getTokenEndpointAuthenticationMethod())
             || Arrays.stream(authenticationMethod).anyMatch(method -> StringUtils.equalsIgnoreCase(registeredService.getTokenEndpointAuthenticationMethod(), method.getType()));
+    }
+
+    /**
+     * Find stateless ticket validation result.
+     *
+     * @param manager the manager
+     * @return the ticket validation result
+     */
+    public static Boolean isStatelessAuthentication(final ProfileManager manager) {
+        return manager
+            .getProfile()
+            .stream()
+            .map(OAuth20Utils::isStatelessAuthentication)
+            .findFirst()
+            .orElse(Boolean.FALSE);
+    }
+
+    /**
+     * Find stateless ticket validation result.
+     *
+     * @param profile the profile
+     * @return the ticket validation result
+     */
+    public static Boolean isStatelessAuthentication(final UserProfile profile) {
+        val validationResult = (Boolean) profile.getAttribute("stateless");
+        val principal = profile.getAttribute(Principal.class.getName());
+        return validationResult != null && validationResult && principal != null;
+    }
+
+    /**
+     * Gets access token timeout (in seconds).
+     *
+     * @param accessTokenResult the access token result
+     * @return the access token timeout
+     */
+    public static Long getAccessTokenTimeout(final OAuth20TokenGeneratedResult accessTokenResult) {
+        return accessTokenResult
+            .getAccessToken()
+            .map(token -> {
+                if (token.isStateless()) {
+                    val duration = Duration.between(ZonedDateTime.now(Clock.systemUTC()),
+                        token.getExpirationPolicy().toMaximumExpirationTime(token));
+                    return duration.getSeconds();
+                }
+                return ((OAuth20AccessToken) token).getExpiresIn();
+            })
+            .orElse(0L);
     }
 }

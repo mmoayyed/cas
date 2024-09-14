@@ -68,6 +68,7 @@ The following settings can be specified by an attribute definition:
 | `canonicalizationMode` | (Optional) Control transformation of attribute values; allowed values are `UPPER`, `LOWER` or `NONE`.                                                                                                         |
 | `patterns`             | (Optional) A map of regular expression patterns to static/dynamic constructs to build values, in scenarios where the attribute definition is built off of an existing attribute.                              |
 | `flattened`            | (Optional) Indicate whether attribute definitions with multiple values should be flattened into a single value, separated by the assigned delimiter.                                                          |
+| `singleValue`          | (Optional) Default is `false`. Determines if the attribute should be produced as a single-value claim if it has only a single value.                                                                          |
 
 The following operations in the order given should take place, if an attribute definition is to produce values:
 
@@ -146,7 +147,7 @@ The keys can be generated via the following commands:
 ```bash
 openssl genrsa -out private.key 1024
 openssl rsa -pubout -in private.key -out public.key -inform PEM -outform DER
-openssl pkcs8 -topk8 -inform PER -outform DER -nocrypt -in private.key -out private.p8
+openssl pkcs8 -topk8 -inform PEM -outform DER -nocrypt -in private.key -out private.p8
 ```
 {% endtab %}
 
@@ -174,7 +175,7 @@ released as `urn:oid:1.3.6.1.4.1.5923.1.1.1.6` with a friendly name of `eduPerso
 
 {% endtab %}
 
-{% tab attrdefinitions Embedded Script %}
+{% tab attrdefinitions <i class="fa fa-pencil px-1"></i>Embedded Script %}
 Same use case as above, except the attribute value be additional processed by an embedded Groovy script
 
 ```json 
@@ -196,7 +197,7 @@ the final values of `eduPersonPrincipalName` would be [`Hi, casuser`]
 released as `urn:oid:1.3.6.1.4.1.5923.1.1.1.6` with a friendly name of `eduPersonPrincipalName`.
 {% endtab %}
 
-{% tab attrdefinitions External Script %}
+{% tab attrdefinitions <i class="fa fa-file-code px-1"></i>External Script %}
 Same use case as above, except the attribute value be additionally processed by an external Groovy script:
 
 ```json 
@@ -261,6 +262,8 @@ defined and on a successful match, the linked construct will be evaluated to det
 
 For example, if the resolved set of attributes are `memberships=[m1, m2, m3, m4, m9]`,
 the final values of `memberships` would be [`admins`,`users`] which would then be released under the name `affiliations`.
+
+To prepare CAS to support and integrate with Apache Groovy, please [review this guide](../integration/Apache-Groovy-Scripting.html).
 
 {% endtab %}
 

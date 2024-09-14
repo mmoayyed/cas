@@ -4,24 +4,27 @@ import org.apereo.cas.adaptors.duo.DuoSecurityUserAccount;
 import org.apereo.cas.adaptors.duo.DuoSecurityUserAccountStatus;
 import org.apereo.cas.authentication.Credential;
 import org.apereo.cas.authentication.MultifactorAuthenticationPrincipalResolver;
-import org.apereo.cas.config.CasCoreHttpConfiguration;
+import org.apereo.cas.config.CasCoreWebAutoConfiguration;
 import org.apereo.cas.configuration.CasConfigurationProperties;
 import org.apereo.cas.configuration.model.support.mfa.duo.DuoSecurityMultifactorAuthenticationProperties;
 import org.apereo.cas.services.RegisteredServiceTestUtils;
+import org.apereo.cas.test.CasTestExtension;
 import org.apereo.cas.util.MockWebServer;
 import org.apereo.cas.util.http.HttpClient;
 import org.apereo.cas.util.serialization.JacksonObjectMapperFactory;
+import org.apereo.cas.util.spring.boot.SpringBootTestAutoConfigurations;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import lombok.val;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.boot.autoconfigure.web.WebProperties;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.cloud.autoconfigure.RefreshAutoConfiguration;
 import java.io.Serial;
 import java.util.List;
 import java.util.Map;
@@ -34,13 +37,15 @@ import static org.junit.jupiter.api.Assertions.*;
  * @author Misagh Moayyed
  * @since 7.0.0
  */
-@SpringBootTest(classes = {
-    CasCoreHttpConfiguration.class,
-    RefreshAutoConfiguration.class
-}, properties = "cas.http-client.host-name-verifier=none")
-@EnableConfigurationProperties(CasConfigurationProperties.class)
+@SpringBootTestAutoConfigurations
+@SpringBootTest(classes = CasCoreWebAutoConfiguration.class, properties = "cas.http-client.host-name-verifier=none")
+@EnableConfigurationProperties({
+    CasConfigurationProperties.class,
+    WebProperties.class
+})
 @Tag("DuoSecurity")
-public class DuoSecurityAuthenticationServiceTests {
+@ExtendWith(CasTestExtension.class)
+class DuoSecurityAuthenticationServiceTests {
     private static final ObjectMapper MAPPER = JacksonObjectMapperFactory.builder()
         .defaultTypingEnabled(false).build().toObjectMapper();
 
@@ -206,7 +211,7 @@ public class DuoSecurityAuthenticationServiceTests {
         }
 
         @Override
-        protected DuoSecurityAuthenticationResult authenticateInternal(final Credential credential) throws Exception {
+        protected DuoSecurityAuthenticationResult authenticateInternal(final Credential credential) {
             return null;
         }
     }

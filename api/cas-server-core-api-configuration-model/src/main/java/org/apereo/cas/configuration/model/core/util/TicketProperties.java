@@ -7,13 +7,10 @@ import org.apereo.cas.configuration.model.core.ticket.TicketGrantingTicketProper
 import org.apereo.cas.configuration.model.core.ticket.TransientSessionTicketProperties;
 import org.apereo.cas.configuration.model.core.ticket.registry.TicketRegistryProperties;
 import org.apereo.cas.configuration.support.RequiresModule;
-import org.apereo.cas.util.crypto.CipherExecutor;
-
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
 import org.springframework.boot.context.properties.NestedConfigurationProperty;
-
 import java.io.Serial;
 import java.io.Serializable;
 
@@ -46,7 +43,10 @@ public class TicketProperties implements Serializable {
 
     /**
      * Properties and settings related to ticket encryption.
+     *
+     * @deprecated since 7.1.0.
      */
+    @Deprecated(since = "7.1.0")
     @NestedConfigurationProperty
     private EncryptionJwtSigningJwtCryptographyProperties crypto = new EncryptionJwtSigningJwtCryptographyProperties();
 
@@ -87,7 +87,7 @@ public class TicketProperties implements Serializable {
 
     public TicketProperties() {
         crypto.setEnabled(false);
-        crypto.getEncryption().setKeySize(CipherExecutor.DEFAULT_STRINGABLE_ENCRYPTION_KEY_SIZE);
-        crypto.getSigning().setKeySize(CipherExecutor.DEFAULT_STRINGABLE_SIGNING_KEY_SIZE);
+        crypto.getEncryption().setKeySize(EncryptionJwtCryptoProperties.DEFAULT_STRINGABLE_ENCRYPTION_KEY_SIZE);
+        crypto.getSigning().setKeySize(SigningJwtCryptoProperties.DEFAULT_STRINGABLE_SIGNING_KEY_SIZE);
     }
 }

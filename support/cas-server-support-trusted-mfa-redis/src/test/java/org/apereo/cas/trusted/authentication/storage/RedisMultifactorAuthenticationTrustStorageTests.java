@@ -1,12 +1,11 @@
 package org.apereo.cas.trusted.authentication.storage;
 
 
-import org.apereo.cas.config.RedisMultifactorAuthenticationTrustConfiguration;
+import org.apereo.cas.config.CasRedisMultifactorAuthenticationTrustAutoConfiguration;
 import org.apereo.cas.redis.core.CasRedisTemplate;
 import org.apereo.cas.trusted.AbstractMultifactorAuthenticationTrustStorageTests;
 import org.apereo.cas.trusted.authentication.api.MultifactorAuthenticationTrustRecord;
 import org.apereo.cas.util.junit.EnabledIfListeningOnPort;
-
 import lombok.Getter;
 import lombok.val;
 import org.junit.jupiter.api.BeforeEach;
@@ -14,15 +13,14 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.context.annotation.Import;
+import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 import org.springframework.test.context.TestPropertySource;
-
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -32,7 +30,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * @since 6.4.0
  */
 @Tag("Redis")
-@Import(RedisMultifactorAuthenticationTrustConfiguration.class)
+@ImportAutoConfiguration(CasRedisMultifactorAuthenticationTrustAutoConfiguration.class)
 @TestPropertySource(
     properties = {
         "cas.authn.mfa.trusted.redis.host=localhost",
@@ -56,30 +54,32 @@ class RedisMultifactorAuthenticationTrustStorageTests extends AbstractMultifacto
 
     @Test
     void verifySetAnExpireByKey() throws Throwable {
-        var record = MultifactorAuthenticationTrustRecord.newInstance("casuser", "geography", "fingerprint");
+        val user = UUID.randomUUID().toString();
+        var record = MultifactorAuthenticationTrustRecord.newInstance(user, "geography", "fingerprint");
         record = getMfaTrustEngine().save(record);
         assertNotNull(getMfaTrustEngine().get(record.getId()));
         
-        val records = getMfaTrustEngine().get("casuser");
+        val records = getMfaTrustEngine().get(user);
         assertEquals(1, records.size());
         getMfaTrustEngine().remove(records.stream().findFirst().get().getRecordKey());
-        assertTrue(getMfaTrustEngine().get("casuser").isEmpty());
+        assertTrue(getMfaTrustEngine().get(user).isEmpty());
     }
 
     @Test
     void verifyMultipleDevicesPerUser() throws Throwable {
-        getMfaTrustEngine().save(MultifactorAuthenticationTrustRecord.newInstance("casuser", "geography", "fingerprint"));
-        getMfaTrustEngine().save(MultifactorAuthenticationTrustRecord.newInstance("casuser", "geography bis", "fingerprint bis"));
-        getMfaTrustEngine().save(MultifactorAuthenticationTrustRecord.newInstance("casuser2", "geography2", "fingerprint2"));
-        
-        val records = getMfaTrustEngine().get("casuser");
+        val user = UUID.randomUUID().toString();
+        getMfaTrustEngine().save(MultifactorAuthenticationTrustRecord.newInstance(user, "geography", "fingerprint"));
+        getMfaTrustEngine().save(MultifactorAuthenticationTrustRecord.newInstance(user, "geography bis", "fingerprint bis"));
+        getMfaTrustEngine().save(MultifactorAuthenticationTrustRecord.newInstance(UUID.randomUUID().toString(), "geography2", "fingerprint2"));
+        val records = getMfaTrustEngine().get(user);
         assertEquals(2, records.size());
     }
 
 
     @Test
     void verifyExpireByDate() throws Throwable {
-        val r = MultifactorAuthenticationTrustRecord.newInstance("castest", "geography", "fingerprint");
+        val user = UUID.randomUUID().toString();
+        val r = MultifactorAuthenticationTrustRecord.newInstance(user, "geography", "fingerprint");
         val now = ZonedDateTime.now(ZoneOffset.UTC).truncatedTo(ChronoUnit.SECONDS);
         r.setRecordDate(now.minusDays(2));
         getMfaTrustEngine().save(r);

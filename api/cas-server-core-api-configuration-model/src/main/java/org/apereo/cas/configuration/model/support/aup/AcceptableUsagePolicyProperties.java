@@ -1,8 +1,8 @@
 package org.apereo.cas.configuration.model.support.aup;
 
+import org.apereo.cas.configuration.features.CasFeatureModule;
 import org.apereo.cas.configuration.support.RequiresModule;
 
-import com.fasterxml.jackson.annotation.JsonFilter;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
@@ -23,8 +23,8 @@ import java.util.List;
 @Getter
 @Setter
 @Accessors(chain = true)
-@JsonFilter("AcceptableUsagePolicyProperties")
-public class AcceptableUsagePolicyProperties implements Serializable {
+
+public class AcceptableUsagePolicyProperties implements CasFeatureModule, Serializable {
 
     @Serial
     private static final long serialVersionUID = -7703477581675908899L;
@@ -65,7 +65,7 @@ public class AcceptableUsagePolicyProperties implements Serializable {
     private RedisAcceptableUsagePolicyProperties redis = new RedisAcceptableUsagePolicyProperties();
 
     /**
-     * Control AUP backed by runtime's memory.
+     * Control AUP backed by runtime memory.
      */
     @NestedConfigurationProperty
     private InMemoryAcceptableUsagePolicyProperties inMemory = new InMemoryAcceptableUsagePolicyProperties();

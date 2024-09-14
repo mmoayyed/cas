@@ -53,6 +53,16 @@ public class LoggingUtils {
      * Protocol message.
      *
      * @param title   the title
+     * @param message the message
+     */
+    public static void protocolMessage(final String title, final Object message) {
+        protocolMessage(title, Map.of(), message);
+    }
+
+    /**
+     * Protocol message.
+     *
+     * @param title   the title
      * @param context the context
      * @param message the message
      */
@@ -98,7 +108,7 @@ public class LoggingUtils {
     public static void error(final Logger logger, final String msg) {
         logger.error(msg);
     }
-
+    
     /**
      * Error.
      *

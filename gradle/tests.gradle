@@ -1,121 +1,130 @@
 import java.util.regex.Pattern
+import com.gradle.develocity.agent.gradle.test.*
+import com.gradle.develocity.agent.gradle.internal.test.*
 
 enum TestCategories {
-    ActiveDirectory,
-    ActuatorEndpoint(true),
-    AmazonWebServices,
-    AMQP,
-    Attributes(true),
-    Audits(true),
-    Authentication(true),
-    AuthenticationHandler(true),
-    AuthenticationPolicy(true),
-    AuthenticationMetadata(true),
-    AuthenticationThrottling,
-    Azure,
-    CAS(true),
-    CasConfiguration(true),
-    Cassandra,
-    Cipher(true),
-    Consent(true),
-    Cookie(true),
-    Delegation(true),
-    DuoSecurity(true),
-    DynamoDb,
-    Elastic(true),
+    ActiveDirectory(false, true),
+    ActuatorEndpoint(true, true),
+    AmazonWebServices(true, true),
+    AMQP(false, true),
+    Attributes(true, true),
+    Audits(true, true),
+    Authentication(true, true),
+    AuthenticationHandler(true, true),
+    AuthenticationPolicy(true, true),
+    AuthenticationMetadata(true, true),
+    AuthenticationThrottling(false, true),
+    Azure(false, true),
+    CAS(true, true),
+    CasConfiguration(true, true),
+    Cassandra(false, true),
+    Cipher(true, true),
+    Consent(true, true),
+    Cookie(true, true),
+    Delegation(true, true),
+    DuoSecurity(true, true),
+    DynamoDb(false, true),
+    Elastic(true, true),
     ExpirationPolicy(true),
-    Events(true),
-    FileSystem,
-    GCP,
-    GeoLocation(true),
-    Git(true),
-    Groovy(true),
-    GroovyAuthentication(true),
-    GroovyMfa(true),
-    GroovyServices(true),
-    Grouper,
-    Hazelcast,
-    Hibernate,
-    Ignite,
-    Impersonation(true),
-    InfluxDb(true),
-    JDBC,
-    JDBCMFA,
-    JDBCAuthentication,
-    JMX(true),
-    Kafka(true),
-    LdapAttributes,
-    LdapAuthentication,
-    Ldap,
-    LdapServices,
-    LdapRepository,
-    Logout(true),
-    Mail,
-    MariaDb,
-    Memcached,
-    Metrics(true),
-    MFA(true),
-    MFAProvider(true),
-    MFATrigger(true),
-    MFATrustedDevices,
-    MongoDb,
-    MongoDbMFA,
-    MsSqlServer,
-    MySQL,
-    Native(true),
-    OAuth(true),
-    OAuthToken(true),
-    OAuthWeb,
-    OIDC,
-    Oracle,
-    PasswordOps(true),
-    Postgres,
-    Radius,
-    Redis,
-    RegisteredService,
-    RestfulApi,
-    RestfulApiAuthentication,
-    SAML(true),
-    SAML1(true),
-    SAML2,
-    SAML2Web,
-    SAMLMetadata(true),
-    SAMLServiceProvider(true),
-    SAMLLogout(true),
-    SAMLAttributes(true),
-    SAMLResponse(true),
-    SCIM(true),
-    SHELL(true),
-    Simple(true),
-    SMS,
-    Spnego(true),
-    Syncope(true),
-    Tickets,
-    UMA(true),
-    Utility(true),
-    Web(true),
-    WebApp(true),
-    Webflow(true),
-    WebflowActions(true),
-    WebflowAccountActions(true),
-    WebflowServiceActions(true),
-    WebflowAuthenticationActions(true),
-    WebflowConfig(true),
-    WebflowMfaConfig(true),
-    WebflowEvents(true),
+    Events(true, true),
+    FileSystem(false, true),
+    GCP(false, true),
+    GeoLocation(true, true),
+    Git(true, true),
+    Groovy(true, true),
+    GroovyAuthentication(true, true),
+    GroovyMfa(true, true),
+    GroovyServices(true, true),
+    Grouper(true, true),
+    Hazelcast(false, true),
+    Hibernate(false, true),
+    Ignite(false, true),
+    Impersonation(true, true),
+    InfluxDb(true, true),
+    JDBC(false, true),
+    JDBCMFA(false, true),
+    JDBCAuthentication(false, true),
+    JMX(true, true),
+    Kafka(true, true),
+    LdapAttributes(true, true),
+    LdapAuthentication(false, true),
+    Ldap(false, true),
+    LdapServices(false, true),
+    LdapRepository(false, true),
+    Logout(true, true),
+    Mail(true, true),
+    MariaDb(false, true),
+    Memcached(false, true),
+    Metrics(true, true),
+    MFA(true, true),
+    MFAProvider(true, true),
+    MFATrigger(true, true),
+    MFATrustedDevices(false, true),
+    MongoDb(false, true),
+    MongoDbMFA(false, true),
+    MsSqlServer(false, true),
+    MySQL(false, true),
+    Native(true, true),
+    OAuth(true, true),
+    OAuthToken(true, true),
+    OAuthWeb(false, true),
+    OIDC(false, true),
+    Oracle(false, true),
+    PasswordOps(true, true),
+    Postgres(false, true),
+    Radius(true, true),
+    Redis(false, true),
+    RegisteredService(true, true),
+    RestfulApi(false, true),
+    RestfulApiAuthentication(true, true),
+    SAML(true, true),
+    SAML1(true, true),
+    SAML2(false, true),
+    SAML2Web(false, true),
+    SAMLMetadata(true, true),
+    SAMLServiceProvider(true, true),
+    SAMLLogout(true, true),
+    SAMLAttributes(true, true),
+    SAMLResponse(false, true),
+    SCIM(true, true),
+    SHELL(true, true),
+    Simple(true, true),
+    SMS(true, true),
+    Spnego(true, true),
+    Syncope(true, true),
+    Tickets(true, true),
+    UMA(true, true),
+    Utility(true, true),
+    Web(true, true),
+    WebApp(true, true),
+    Webflow(true, true),
+    WebflowActions(true, true),
+    WebflowAccountActions(true, true),
+    WebflowServiceActions(true, true),
+    WebflowAuthenticationActions(true, true),
+    WebflowConfig(true, true),
+    WebflowMfaConfig(true, true),
+    WebflowEvents(true, true),
     WebflowMfaActions(true),
-    WSFederation,
-    X509(true),
-    ZooKeeper(true)
+    WSFederation(true, true),
+    X509(true, true),
+    ZooKeeper(true, true)
 
     boolean parallelEnabled;
-
+    private ptsEnabled;
+    
     TestCategories() {
         parallelEnabled = false
+        ptsEnabled = false
     }
 
     TestCategories(boolean parallelEnabled) {
         this.parallelEnabled = parallelEnabled
+    }
+
+    TestCategories(boolean parallelEnabled, boolean ptsEnabled) {
+        this.parallelEnabled = parallelEnabled
+        this.ptsEnabled = ptsEnabled
     }
 }
 
@@ -160,7 +169,6 @@ if (rootProject.tasks.findByName("puppeteerScenarios") == null) {
                     toScenario = scenarios.size()
                 scenarios = scenarios.subList(fromScenario, toScenario)
             }
-//            println scenarios.size()
             println(groovy.json.JsonOutput.toJson(scenarios))
         }
     }
@@ -168,26 +176,49 @@ if (rootProject.tasks.findByName("puppeteerScenarios") == null) {
 
 TestCategories.values().each({ testCategory ->
     def sourceTestDirs = project.sourceSets.test.java.srcDirs
-    def jacocoTestExecutionResultsFile = project.layout.buildDirectory.file('jacoco/jacocoTest.exec').get().asFile
     if (hasTestsOfCategory(sourceTestDirs, testCategory.name())) {
         def taskName = "test${testCategory.name()}"
         if (!tasks.getNames().contains(taskName)) {
-            // println "Creating task ${taskName} for ${project.name}"
+            def jacocoTestExecutionResultsFile = project.layout.buildDirectory.file("jacoco/jacoco-${taskName}.exec").get().asFile
+            def shouldWeTest = shouldTest(sourceTestDirs, testCategory.name())
+
             tasks.register(taskName, Test) {
                 description = "Run unit/integration tests to verify the test category: ${testCategory.name()}"
                 group = "CAS Tests"
-                enabled = shouldTest(sourceTestDirs, testCategory.name())
+
+                enabled = shouldWeTest
                 outputs.file(jacocoTestExecutionResultsFile)
+
                 useJUnitPlatform {
                     includeTags testCategory.name()
                 }
+
+                def ptsEnabled = shouldWeTest && testCategory.ptsEnabled && Boolean.valueOf(System.getProperty("PTS_ENABLED") ?: "true") && !rootProject.publishReleases
+                develocity.predictiveTestSelection {
+                    enabled = ptsEnabled
+                    // Enable PTS with code coverage support
+                    this as PredictiveTestSelectionConfigurationInternal
+                    mergeCodeCoverage = true
+                }
+                logger.info "Predictive test selection for ${project.name} with task ${taskName} is ${ptsEnabled ? 'enabled' : 'disabled'}."
+
                 if (testCategory.parallelEnabled) {
                     systemProperty("junit.jupiter.execution.parallel.enabled", true)
                     systemProperty("junit.jupiter.execution.parallel.mode.default", "concurrent")
                     systemProperty("junit.jupiter.execution.parallel.mode.classes.default", "concurrent")
                     systemProperty("junit.jupiter.execution.parallel.config.strategy", "dynamic")
-                    systemProperty("junit.jupiter.execution.parallel.config.dynamic.factor", "4")
+                    systemProperty("junit.jupiter.execution.parallel.config.dynamic.factor", "8")
                 }
+
+                if (!project.path.contains(":docs")) {
+                    jacoco {
+                        dumpOnExit = true
+                        excludes = rootProject.excludedFilesFromTestCoverage
+                        destinationFile = jacocoTestExecutionResultsFile
+                        classDumpDir = layout.buildDirectory.dir('jacoco/classpathdumps').get().asFile
+                    }
+                }
+
             }
         }
     }
@@ -201,25 +232,11 @@ tasks.named('test') {
 }
 
 tasks.withType(Test).configureEach {
-    it.inputs.property("github.repository") {
-        System.getenv("GITHUB_REPOSITORY") ?: "apereo/cas"
-    }
-
     scanForTestClasses = false
     ignoreFailures = providers.systemProperty("ignoreTestFailures").present
     forkEvery = 2000
-    maxParallelForks = project.ext.properties.get("maxParallelForksForTests", 8)
-    if (maxParallelForks != 2) {
-        logger.info "Maximum number of parallel forks is set to ${maxParallelForks}"
-    }
-    def ci = System.getenv().containsKey("CI")
-    if (ci) {
-        outputs.upToDateWhen { false }
-    }
-    systemProperty("spring.main.banner-mode", "off")
-    systemProperty("CI", ci)
-
-
+    maxParallelForks = 8
+    
     failFast = true
 
     def list = []
@@ -250,6 +267,10 @@ tasks.withType(Test).configureEach {
     list.add("--add-opens")
     list.add("java.base/java.time=ALL-UNNAMED")
     list.add("--add-opens")
+    list.add("java.base/java.util.concurrent=ALL-UNNAMED")
+    list.add("--add-opens")
+    list.add("java.base/java.util.concurrent.locks=ALL-UNNAMED")
+    list.add("--add-opens")
     list.add("java.base/java.net=ALL-UNNAMED")
     list.add("--add-opens")
     list.add("java.base/java.nio=ALL-UNNAMED")
@@ -261,68 +282,32 @@ tasks.withType(Test).configureEach {
     list.add("jdk.management/com.sun.management.internal=ALL-UNNAMED")
     list.add("--add-opens")
     list.add("java.base/sun.security.action=jdk.crypto.ec")
-
+    
     list.add("-Xms512m")
-    list.add("-Xmx4g")
+    list.add("-Xmx6g")
 
     list.add("-XX:+EnableDynamicAgentLoading")
     jvmArgs = list
 
-    classpath = it.classpath + files("${projectDir}/src/main/resources") + files("${projectDir}/src/test/resources")
-
     testLogging {
-        events "PASSED", "SKIPPED", "FAILED", "STANDARD_OUT", "STANDARD_ERROR"
+        def testLoggingEvents = providers.systemProperty("testLoggingEvents")
+                .orElse("PASSED,SKIPPED,FAILED,STANDARD_OUT,STANDARD_ERROR").get().toUpperCase().split(",")
+        events testLoggingEvents
         exceptionFormat = "full"
 
         def verbose = providers.systemProperty("verbose").present
 
-        showStandardStreams = verbose
-        showExceptions = verbose
+        showStandardStreams = verbose && testLoggingEvents.contains("STANDARD_OUT")
+        showExceptions = verbose && testLoggingEvents.contains("FAILED")
         showCauses = verbose
-        /*
-        if (verbose && ci) {
-            def ansi = project.ansi
-            beforeSuite { desc ->
-                if (!desc.parent) {
-                    ansi.cyan "Started running test suite [${desc.displayName}] @ ${new java.util.Date()} "
-                }
-            }
-
-            beforeTest { desc ->
-                ansi.cyan "Started running test [${desc.className}:${desc.displayName}] @ ${new java.util.Date()} "
-            }
-
-            afterTest { desc, result ->
-                ansi.green """
-Results for test [${desc.className}:${desc.displayName}]: ${result.resultType} @ ${new java.util.Date()} 
-(${result.testCount} tests, ${result.successfulTestCount} successes, ${result.failedTestCount} failures, ${result.skippedTestCount} skipped)
-"""
-            }
-            afterSuite { desc, result ->
-                if (!desc.parent) {
-                    ansi.green """
-Results for test suite [${desc.displayName}]: ${result.resultType} @ ${new java.util.Date()} 
-(${result.testCount} tests, ${result.successfulTestCount} successes, ${result.failedTestCount} failures, ${result.skippedTestCount} skipped)
-"""
-                }
-            }
-        }
-         */
     }
+    
     def skipRetry = providers.systemProperty('skipTestRetry').present
     if (!skipRetry) {
-        retry {
+        develocity.testRetry {
             maxRetries = 3
             maxFailures = 5
             failOnPassedAfterRetry = false
-        }
-    }
-    if (!project.path.contains(":docs")) {
-        jacoco {
-            dumpOnExit = true
-            excludes = rootProject.excludedFilesFromTestCoverage
-            destinationFile = layout.buildDirectory.file('jacoco/jacocoTest.exec').get().asFile
-            classDumpDir = layout.buildDirectory.dir('jacoco/classpathdumps').get().asFile
         }
     }
 

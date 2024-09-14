@@ -9,25 +9,28 @@ import org.apereo.cas.util.spring.boot.ConditionalOnFeatureEnabled;
 import org.apereo.cas.web.CasWebSecurityConfigurer;
 import org.apereo.cas.web.flow.CasWebflowConstants;
 import org.apereo.cas.web.security.CasWebSecurityConfigurerAdapter;
+import org.apereo.cas.web.security.CasWebflowSecurityContextRepository;
 
 import lombok.val;
-import org.apache.commons.lang3.StringUtils;
+import org.apereo.inspektr.common.web.ClientInfoExtractionOptions;
 import org.apereo.inspektr.common.web.ClientInfoThreadLocalFilter;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.actuate.autoconfigure.endpoint.web.WebEndpointProperties;
 import org.springframework.boot.actuate.endpoint.web.PathMappedEndpoints;
-import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.autoconfigure.security.SecurityProperties;
+import org.springframework.boot.autoconfigure.web.WebProperties;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
+import org.springframework.cloud.context.config.annotation.RefreshScope;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Lazy;
+import org.springframework.context.annotation.ScopedProxyMode;
 import org.springframework.core.Ordered;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -45,10 +48,11 @@ import org.springframework.security.web.context.SecurityContextHolderFilter;
 import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.web.servlet.config.annotation.ViewControllerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+import org.springframework.webflow.context.servlet.FlowUrlHandler;
+import org.springframework.webflow.executor.FlowExecutor;
 
-import javax.annotation.Nonnull;
+import jakarta.annotation.Nonnull;
 
-import java.util.HashMap;
 import java.util.List;
 
 /**
@@ -59,10 +63,10 @@ import java.util.List;
  */
 @EnableConfigurationProperties(CasConfigurationProperties.class)
 @ConditionalOnFeatureEnabled(feature = CasFeatureModule.FeatureCatalog.WebApplication)
-@AutoConfiguration
+@Configuration(value = "CasWebSecurityConfiguration", proxyBeanMethods = false)
 @EnableMethodSecurity(prePostEnabled = true, securedEnabled = true, jsr250Enabled = true)
 @EnableWebSecurity
-public class CasWebSecurityConfiguration {
+class CasWebSecurityConfiguration {
 
     @Bean
     @Lazy(false)
@@ -72,7 +76,7 @@ public class CasWebSecurityConfiguration {
 
     @Configuration(value = "CasWebAppSecurityMvcConfiguration", proxyBeanMethods = false)
     @EnableConfigurationProperties(CasConfigurationProperties.class)
-    public static class CasWebAppSecurityMvcConfiguration {
+    static class CasWebAppSecurityMvcConfiguration {
         @Bean
         @ConditionalOnMissingBean(name = "casWebAppSecurityWebMvcConfigurer")
         public WebMvcConfigurer casWebAppSecurityWebMvcConfigurer(final CasConfigurationProperties casProperties) {
@@ -91,14 +95,21 @@ public class CasWebSecurityConfiguration {
 
     @Configuration(value = "CasWebappCoreSecurityConfiguration", proxyBeanMethods = false)
     @EnableConfigurationProperties(CasConfigurationProperties.class)
-    public static class CasWebappCoreSecurityConfiguration {
+    static class CasWebappCoreSecurityConfiguration {
 
         @Bean
         @ConditionalOnMissingBean(name = "securityContextRepository")
-        public SecurityContextRepository securityContextRepository() {
+        @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
+        public SecurityContextRepository securityContextRepository(
+            final ConfigurableApplicationContext applicationContext,
+            @Qualifier("loginFlowUrlHandler")
+            final FlowUrlHandler loginFlowUrlHandler,
+            @Qualifier("loginFlowExecutor")
+            final FlowExecutor loginFlowExecutor) {
             return new DelegatingSecurityContextRepository(
                 new RequestAttributeSecurityContextRepository(),
-                new HttpSessionSecurityContextRepository()
+                new HttpSessionSecurityContextRepository(),
+                new CasWebflowSecurityContextRepository(applicationContext)
             );
         }
 
@@ -106,26 +117,19 @@ public class CasWebSecurityConfiguration {
         @ConditionalOnMissingBean(name = "casClientInfoLoggingFilter")
         public FilterRegistrationBean<ClientInfoThreadLocalFilter> casClientInfoLoggingFilter(
             final CasConfigurationProperties casProperties) {
-            val audit = casProperties.getAudit().getEngine();
-
             val bean = new FilterRegistrationBean<ClientInfoThreadLocalFilter>();
-            bean.setFilter(new ClientInfoThreadLocalFilter());
+            val audit = casProperties.getAudit().getEngine();
+            val options = ClientInfoExtractionOptions.builder()
+                .alternateLocalAddrHeaderName(audit.getAlternateClientAddrHeaderName())
+                .alternateServerAddrHeaderName(audit.getAlternateServerAddrHeaderName())
+                .useServerHostAddress(audit.isUseServerHostAddress())
+                .httpRequestHeaders(audit.getHttpRequestHeaders())
+                .build();
+            bean.setFilter(new ClientInfoThreadLocalFilter(options));
             bean.setUrlPatterns(CollectionUtils.wrap("/*"));
             bean.setName("CAS Client Info Logging Filter");
             bean.setAsyncSupported(true);
-            bean.setOrder(Ordered.HIGHEST_PRECEDENCE);
-
-            val initParams = new HashMap<String, String>();
-            if (StringUtils.isNotBlank(audit.getAlternateClientAddrHeaderName())) {
-                initParams.put(ClientInfoThreadLocalFilter.CONST_IP_ADDRESS_HEADER, audit.getAlternateClientAddrHeaderName());
-            }
-
-            if (StringUtils.isNotBlank(audit.getAlternateServerAddrHeaderName())) {
-                initParams.put(ClientInfoThreadLocalFilter.CONST_SERVER_IP_ADDRESS_HEADER, audit.getAlternateServerAddrHeaderName());
-            }
-
-            initParams.put(ClientInfoThreadLocalFilter.CONST_USE_SERVER_HOST_ADDRESS, String.valueOf(audit.isUseServerHostAddress()));
-            bean.setInitParameters(initParams);
+            bean.setOrder(Ordered.HIGHEST_PRECEDENCE + 1);
             return bean;
         }
 
@@ -138,7 +142,7 @@ public class CasWebSecurityConfiguration {
             bean.setUrlPatterns(CollectionUtils.wrap("/*"));
             bean.setName("Spring Security Context Holder Filter");
             bean.setAsyncSupported(true);
-            bean.setOrder(Ordered.HIGHEST_PRECEDENCE);
+            bean.setOrder(Ordered.HIGHEST_PRECEDENCE + 1);
             return bean;
         }
 
@@ -150,9 +154,11 @@ public class CasWebSecurityConfiguration {
             final ObjectProvider<PathMappedEndpoints> pathMappedEndpoints,
             final List<CasWebSecurityConfigurer> configurersList,
             final WebEndpointProperties webEndpointProperties,
-            final CasConfigurationProperties casProperties) {
+            final CasConfigurationProperties casProperties,
+            final WebProperties webProperties) {
             val adapter = new CasWebSecurityConfigurerAdapter(casProperties,
-                webEndpointProperties, pathMappedEndpoints, configurersList, securityContextRepository);
+                webEndpointProperties, pathMappedEndpoints, configurersList,
+                securityContextRepository, webProperties);
             return adapter::configureWebSecurity;
         }
 
@@ -166,9 +172,11 @@ public class CasWebSecurityConfiguration {
             final List<CasWebSecurityConfigurer> configurersList,
             final WebEndpointProperties webEndpointProperties,
             final SecurityProperties securityProperties,
-            final CasConfigurationProperties casProperties) throws Exception {
+            final CasConfigurationProperties casProperties,
+            final WebProperties webProperties) throws Exception {
             val adapter = new CasWebSecurityConfigurerAdapter(casProperties,
-                webEndpointProperties, pathMappedEndpoints, configurersList, securityContextRepository);
+                webEndpointProperties, pathMappedEndpoints, configurersList,
+                securityContextRepository, webProperties);
             return adapter.configureHttpSecurity(http).build();
         }
     }
@@ -177,7 +185,7 @@ public class CasWebSecurityConfiguration {
     @EnableConfigurationProperties(CasConfigurationProperties.class)
     @ConditionalOnProperty(name = "cas.monitor.endpoints.jdbc.query")
     @SuppressWarnings("ConditionalOnProperty")
-    public static class CasWebAppSecurityJdbcConfiguration {
+    static class CasWebAppSecurityJdbcConfiguration {
         @Bean
         @ConditionalOnMissingBean(name = "jdbcUserDetailsPasswordEncoder")
         public static PasswordEncoder jdbcUserDetailsPasswordEncoder(

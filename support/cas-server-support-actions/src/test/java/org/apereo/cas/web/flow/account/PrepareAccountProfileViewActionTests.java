@@ -4,8 +4,8 @@ import org.apereo.cas.audit.AuditTrailExecutionPlan;
 import org.apereo.cas.audit.AuditTrailExecutionPlanConfigurer;
 import org.apereo.cas.audit.spi.MockAuditTrailManager;
 import org.apereo.cas.authentication.CoreAuthenticationTestUtils;
-import org.apereo.cas.config.CasCoreAuditConfiguration;
-import org.apereo.cas.config.CasWebflowAccountProfileConfiguration;
+import org.apereo.cas.config.CasCoreAuditAutoConfiguration;
+import org.apereo.cas.config.CasCoreWebflowAutoConfiguration;
 import org.apereo.cas.services.RegisteredServiceTestUtils;
 import org.apereo.cas.ticket.TicketGrantingTicketImpl;
 import org.apereo.cas.ticket.expiration.NeverExpiresExpirationPolicy;
@@ -19,6 +19,7 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.TestPropertySource;
@@ -38,10 +39,10 @@ import static org.junit.jupiter.api.Assertions.*;
     "CasFeatureModule.AccountManagement.enabled=true",
     "cas.view.authorized-services-on-successful-login=true"
 })
-@Import({
-    PrepareAccountProfileViewActionTests.AuditTestConfiguration.class,
-    CasWebflowAccountProfileConfiguration.class,
-    CasCoreAuditConfiguration.class
+@Import(PrepareAccountProfileViewActionTests.AuditTestConfiguration.class)
+@ImportAutoConfiguration({
+    CasCoreWebflowAutoConfiguration.class,
+    CasCoreAuditAutoConfiguration.class
 })
 class PrepareAccountProfileViewActionTests extends AbstractWebflowActionsTests {
     @Autowired
@@ -72,7 +73,7 @@ class PrepareAccountProfileViewActionTests extends AbstractWebflowActionsTests {
         assertTrue(list.indexOf(registeredService1) > list.indexOf(registeredService2));
         assertNotNull(WebUtils.getAuthentication(context));
 
-        val session = (PrepareAccountProfileViewAction.SingleSignOnSession) WebUtils.getSingleSignOnSessions(context).getFirst();
+        val session = (AccountSingleSignOnSession) WebUtils.getSingleSignOnSessions(context).getFirst();
         assertNotNull(session.getAuthenticationDate());
         assertNotNull(session.getPayload());
         assertNotNull(session.getPrincipal());

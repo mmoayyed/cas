@@ -6,13 +6,13 @@ YELLOW="\e[33m"
 ENDCOLOR="\e[0m"
 
 function printred() {
-  printf "${RED}$1${ENDCOLOR}\n"
+  printf "🔥 ${RED}$1${ENDCOLOR}\n"
 }
 function printgreen() {
-  printf "${GREEN}$1${ENDCOLOR}\n"
+  printf "🍀 ${GREEN}$1${ENDCOLOR}\n"
 }
 function printyellow() {
-  printf "${YELLOW}$1${ENDCOLOR}\n"
+  printf "⚠️  ${YELLOW}$1${ENDCOLOR}\n"
 }
 
 function validateProjectDocumentation() {
@@ -27,8 +27,6 @@ function validateProjectDocumentation() {
     return 1
   fi
 }
-
-clear
 
 GRADLE_BUILD_OPTIONS="-q --no-daemon -x check -x test -x javadoc --configure-on-demand --max-workers=8 --no-configuration-cache "
 
@@ -53,23 +51,24 @@ userinterface=true
 
 serve=false
 
+
 while (("$#")); do
   case "$1" in
   --reset)
     printgreen "Resetting local build to allow forceful creation of documentation binary artifacts...\n"
     ./gradlew :api:cas-server-core-api-configuration-model:clean :docs:cas-server-documentation-processor:clean $GRADLE_BUILD_OPTIONS
-    printgreen "\nBuild completed. Documentation binary artifacts and configuration catalog will be rebuilt on the next attempt."
+    printgreen "Build completed. Documentation binary artifacts and configuration catalog will be rebuilt on the next attempt."
     shift 1
     ;;
   --local)
     propFilter=$2
     shift 2
-    printgreen "Generating documentation for property filter ${propFilter}\n"
+    printgreen "Generating documentation for property filter: ${propFilter}\n"
     serve=true
+    proofRead=false
     
     audit=false
-    proofRead=false
-    actuators=false 
+    actuators=false
     thirdParty=false
     serviceProps=false
     publishDocs=false
@@ -77,7 +76,7 @@ while (("$#")); do
     buildFeatures=false
     shellCommands=false
     dependencyVersions=false
-    userinterface=true
+    userinterface=false
     ;;
   --branch)
     branchVersion=$2
@@ -155,7 +154,7 @@ fi
 
 if [ -z "$GH_PAGES_TOKEN" ] && [ "${GITHUB_REPOSITORY}" != "${REPOSITORY_NAME}" ]; then
   publishDocs=false
-  printyellow "\nNo GitHub token is defined to publish documentation."
+  printyellow "No GitHub token is defined to publish documentation."
 fi
 
 if [[ "${CI}" == "true" ]]; then
@@ -167,21 +166,21 @@ fi
 
 echo "-------------------------------------------------------"
 printgreen "Branch: \t\t${branchVersion}"
-printgreen "Build: \t\t\t${buildDocs}"
-printgreen "Serve: \t\t\t${serve}"
-printgreen "Generate Data: \t\t${generateData}"
+printgreen "Build: \t\t${buildDocs}"
+printgreen "Serve: \t\t${serve}"
+printgreen "Generate Data: \t${generateData}"
 printgreen "Validate: \t\t${proofRead}"
 printgreen "Publish: \t\t${publishDocs}"
 printgreen "Filter: \t\t${propFilter}"
 printgreen "Actuators: \t\t${actuators}"
-printgreen "Third Party: \t\t${thirdParty}"
-printgreen "Dependency Versions: \t${dependencyVersions}"
+printgreen "Third Party: \t${thirdParty}"
+printgreen "Dependency Versions: ${dependencyVersions}"
 printgreen "Service Properties: \t${serviceProps}"
 printgreen "Features: \t\t${buildFeatures}"
-printgreen "Shell: \t\t\t${shellCommands}"
-printgreen "Audit: \t\t\t${audit}"
+printgreen "Shell: \t\t${shellCommands}"
+printgreen "Audit: \t\t${audit}"
 printgreen "UI: \t\t\t${userinterface}"
-printgreen "Ruby Version: \t\t$(ruby -v)"
+printgreen "Ruby Version: \t$(ruby -v)"
 echo "-------------------------------------------------------"
 
 cloneRepository=false
@@ -230,8 +229,8 @@ if [[ $cloneRepository == "true" ]]; then
 
   printgreen "Copying new docs to $branchVersion...\n"
   mv "$PWD/docs-latest/Gemfile" "$PWD/gh-pages"
-  mv "$PWD/docs-latest/Demos.md" "$PWD/gh-pages"
   mv "$PWD/docs-latest/Support.md" "$PWD/gh-pages"
+  mv "$PWD/docs-latest/404.md" "$PWD/gh-pages"
   mv "$PWD/docs-latest/_config.yml" "$PWD/gh-pages"
   rm -f "$PWD/gh-pages/Gemfile.lock"
 
@@ -336,18 +335,14 @@ if [[ ${buildDocs} == "true" ]]; then
   fi
 
   cd "$PWD/gh-pages" || exit
-  
+  ruby --version
+
   printgreen "Installing documentation dependencies...\n"
   bundle config set force_ruby_platform true
   bundle install
-  printgreen "\nBuilding documentation site for $branchVersion with data at $PWD/gh-pages/_data"
+  printgreen "Building documentation site for $branchVersion with data at $PWD/gh-pages/_data"
   echo -n "Starting at " && date
   jekyll --version
-
-  if [[ "${CI}" == "true" ]]; then
-    while sleep 30; do echo -e '\n=====[ Build is still running ]====='; done &
-    sleeppid=$!
-  fi
 
   if [[ ${serve} == "true" ]]; then
     bundle exec jekyll serve --profile --incremental --trace
@@ -355,9 +350,6 @@ if [[ ${buildDocs} == "true" ]]; then
     bundle exec jekyll build --profile --incremental --trace
   fi
   retVal=$?
-  if [[ "${CI}" == "true" ]]; then
-    kill -9 sleeppid
-  fi
 
   echo -n "Ended at " && date
   if [[ ${retVal} -eq 1 ]]; then
@@ -395,7 +387,7 @@ cd "$PWD/gh-pages" || exit
 if [[ $clone == "true" ]]; then
   rm -Rf .jekyll-cache .jekyll-metadata .sass-cache "$branchVersion/build"
   rm -Rf "$branchVersion/build"
-  printgreen "\nConfiguring git repository settings...\n"
+  printgreen "Configuring git repository settings...\n"
   rm -Rf .git
   git init
   git config init.defaultBranch master
@@ -417,7 +409,7 @@ if [[ $clone == "true" ]]; then
 fi
 
 if [ -z "$GH_PAGES_TOKEN" ] && [ "${GITHUB_REPOSITORY}" != "${REPOSITORY_NAME}" ]; then
-  printyellow "\nNo GitHub token is defined to publish documentation. Skipping..."
+  printyellow "No GitHub token is defined to publish documentation. Skipping..."
   if [[ $clone == "true" ]]; then
     rm -Rf "$PWD/gh-pages"
     exit 0

@@ -12,10 +12,10 @@ import org.apereo.cas.util.spring.boot.ConditionalOnFeatureEnabled;
 import lombok.val;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.cloud.context.config.annotation.RefreshScope;
+import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.ScopedProxyMode;
@@ -33,20 +33,21 @@ import java.util.Optional;
  */
 @EnableConfigurationProperties(CasConfigurationProperties.class)
 @ConditionalOnFeatureEnabled(feature = CasFeatureModule.FeatureCatalog.TicketRegistry)
-@AutoConfiguration
-public class CasCoreTicketsSerializationConfiguration {
+@Configuration(value = "CasCoreTicketsSerializationConfiguration", proxyBeanMethods = false)
+class CasCoreTicketsSerializationConfiguration {
 
     @Configuration(value = "CasCoreTicketsSerializationPlanConfiguration", proxyBeanMethods = false)
     @EnableConfigurationProperties(CasConfigurationProperties.class)
-    public static class CasCoreTicketsSerializationPlanConfiguration {
+    static class CasCoreTicketsSerializationPlanConfiguration {
         @Bean
         @ConditionalOnMissingBean(name = "ticketSerializationExecutionPlan")
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
         public TicketSerializationExecutionPlan ticketSerializationExecutionPlan(
+            final ConfigurableApplicationContext applicationContext,
             final ObjectProvider<List<TicketSerializationExecutionPlanConfigurer>> providerList) {
             val providers = Optional.ofNullable(providerList.getIfAvailable()).orElseGet(ArrayList::new);
             AnnotationAwareOrderComparator.sort(providers);
-            val plan = new DefaultTicketSerializationExecutionPlan();
+            val plan = new DefaultTicketSerializationExecutionPlan(applicationContext);
             providers.forEach(provider -> provider.configureTicketSerialization(plan));
             return plan;
         }
@@ -54,7 +55,7 @@ public class CasCoreTicketsSerializationConfiguration {
 
     @Configuration(value = "CasCoreTicketsSerializationManagementConfiguration", proxyBeanMethods = false)
     @EnableConfigurationProperties(CasConfigurationProperties.class)
-    public static class CasCoreTicketsSerializationManagementConfiguration {
+    static class CasCoreTicketsSerializationManagementConfiguration {
 
         @Bean
         @ConditionalOnMissingBean(name = TicketSerializationManager.BEAN_NAME)

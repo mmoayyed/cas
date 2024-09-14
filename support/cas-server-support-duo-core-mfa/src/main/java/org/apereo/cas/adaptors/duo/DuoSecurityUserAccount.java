@@ -2,11 +2,15 @@ package org.apereo.cas.adaptors.duo;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
+import lombok.AllArgsConstructor;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
+import lombok.With;
+import lombok.experimental.Accessors;
 import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
 
@@ -29,6 +33,10 @@ import java.util.Map;
 @Setter
 @EqualsAndHashCode
 @RequiredArgsConstructor
+@AllArgsConstructor
+@With
+@Accessors(chain = true)
+@NoArgsConstructor(force = true)
 public class DuoSecurityUserAccount implements Serializable {
 
     @Serial
@@ -50,6 +58,10 @@ public class DuoSecurityUserAccount implements Serializable {
     private List<DuoSecurityBypassCode> bypassCodes = new ArrayList<>();
 
     private List<DuoSecurityUserAccountGroup> groups = new ArrayList<>();
+
+    private String userId;
+
+    private String providerId;
 
     /**
      * Add groups.
@@ -132,5 +144,17 @@ public class DuoSecurityUserAccount implements Serializable {
 
     public boolean isEnrolled() {
         return BooleanUtils.toBoolean(this.metadata.getOrDefault("is_enrolled", "false"));
+    }
+
+    public String getPhone() {
+        return this.devices
+            .stream()
+            .filter(device -> StringUtils.equalsIgnoreCase(device.getType(), "phone")
+                || StringUtils.equalsIgnoreCase(device.getType(), "mobile"))
+            .map(DuoSecurityUserDevice::getNumber)
+            .filter(StringUtils::isNotBlank)
+            .findFirst()
+            .orElse(StringUtils.EMPTY);
+        
     }
 }

@@ -1,6 +1,7 @@
 package org.apereo.cas.audit.spi.entity;
 
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
 import lombok.experimental.Accessors;
@@ -11,6 +12,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.MappedSuperclass;
 import java.time.ZonedDateTime;
+import java.util.Locale;
 
 /**
  * This is {@link AuditTrailEntity} that represents the audit table.
@@ -25,6 +27,7 @@ import java.time.ZonedDateTime;
 @Accessors(chain = true)
 @Getter
 @Setter
+@NoArgsConstructor
 public class AuditTrailEntity {
 
     @org.springframework.data.annotation.Id
@@ -50,7 +53,7 @@ public class AuditTrailEntity {
     @Column(name = "APPLIC_CD")
     private String applicationCode;
 
-    @Column(name = "AUD_USERAGENT")
+    @Column(name = "AUD_USERAGENT", length = 512)
     private String userAgent;
     
     @Column(name = "AUD_GEOLOCATION")
@@ -59,7 +62,12 @@ public class AuditTrailEntity {
     @Column(name = "AUD_DATE", nullable = false)
     private ZonedDateTime recordDate;
 
-    public AuditTrailEntity() {
-        this.id = System.currentTimeMillis();
-    }
+    @Column(name = "AUD_LOCALE", nullable = false)
+    private Locale locale;
+
+    @Column(name = "AUD_HEADERS", columnDefinition = "longvarchar")
+    private String headers;
+
+    @Column(name = "AUD_EXTRA_INFO", columnDefinition = "longvarchar")
+    private String extraInfo;
 }

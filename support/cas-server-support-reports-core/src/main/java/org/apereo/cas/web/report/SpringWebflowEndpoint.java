@@ -148,7 +148,7 @@ public class SpringWebflowEndpoint extends BaseCasActuatorEndpoint {
             stateMap.put("isRedirect", viewState.getRedirect());
 
             acts = StreamSupport.stream(viewState.getRenderActionList().spliterator(), false)
-                .map(Object::toString)
+                .map(SpringWebflowEndpoint::convertActionToString)
                 .collect(Collectors.toList());
 
             if (!acts.isEmpty()) {
@@ -184,7 +184,7 @@ public class SpringWebflowEndpoint extends BaseCasActuatorEndpoint {
 
         if (state instanceof final TransitionableState stDef) {
             acts = StreamSupport.stream(stDef.getExitActionList().spliterator(), false)
-                .map(Object::toString)
+                .map(SpringWebflowEndpoint::convertActionToString)
                 .collect(Collectors.toList());
 
             if (!acts.isEmpty()) {
@@ -212,14 +212,13 @@ public class SpringWebflowEndpoint extends BaseCasActuatorEndpoint {
      */
     @ReadOperation
     @Operation(summary = "Get Spring webflow report using an optional flow id",
-        parameters = {@Parameter(name = "flowId"), @Parameter(name = "stateId")})
-    public Map<?, ?> getReport(
-        @Nullable final String flowId,
-        @Nullable final String stateId) {
+        parameters = {@Parameter(name = "flowId", description = "The webflow id"), @Parameter(name = "stateId", description = "The state id")})
+    public Map<?, ?> getReport(@Nullable final String flowId, @Nullable final String stateId) {
         val jsonMap = new LinkedHashMap<String, Object>();
 
         val executionPlan = applicationContext.getBean(CasWebflowExecutionPlan.BEAN_NAME, CasWebflowExecutionPlan.class);
         executionPlan.execute();
+        
         val map = applicationContext.getBeansOfType(FlowDefinitionRegistry.class);
         map.forEach((key, value) -> Arrays.stream(value.getFlowDefinitionIds())
             .filter(currentId -> StringUtils.isBlank(flowId) || flowId.equalsIgnoreCase(currentId))

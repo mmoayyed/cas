@@ -5,7 +5,8 @@ import org.apereo.cas.support.saml.services.SamlRegisteredService;
 import org.apereo.cas.support.saml.services.idp.metadata.cache.SamlRegisteredServiceCachingMetadataResolver;
 import org.apereo.cas.util.DateTimeUtils;
 import org.apereo.cas.util.LoggingUtils;
-
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import net.shibboleth.shared.resolver.CriteriaSet;
@@ -28,7 +29,7 @@ import org.opensaml.saml.saml2.metadata.Organization;
 import org.opensaml.saml.saml2.metadata.SPSSODescriptor;
 import org.opensaml.saml.saml2.metadata.SingleLogoutService;
 import org.opensaml.xmlsec.signature.Signature;
-
+import org.springframework.util.Assert;
 import java.time.Duration;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
@@ -49,7 +50,13 @@ import java.util.stream.Collectors;
  * @since 5.0.0
  */
 @Slf4j
-public record SamlRegisteredServiceMetadataAdaptor(SPSSODescriptor ssoDescriptor, EntityDescriptor entityDescriptor, MetadataResolver metadataResolver) {
+@RequiredArgsConstructor
+@Getter
+public class SamlRegisteredServiceMetadataAdaptor {
+
+    private final SPSSODescriptor ssoDescriptor;
+    private final EntityDescriptor entityDescriptor;
+    private final MetadataResolver metadataResolver;
 
     /**
      * Adapt saml metadata and parse. Acts as a facade.
@@ -95,7 +102,11 @@ public record SamlRegisteredServiceMetadataAdaptor(SPSSODescriptor ssoDescriptor
             LOGGER.trace("Adapting SAML metadata for CAS service [{}] issued by [{}]", registeredService.getName(), entityID);
             criteriaSet.add(new EntityIdCriterion(entityID), true);
             LOGGER.debug("Locating metadata for entityID [{}] by attempting to run through the metadata chain...", entityID);
-            val cachedMetadataResolver = resolver.resolve(registeredService, criteriaSet).getMetadataResolver();
+            val cachedResult = Objects.requireNonNull(resolver.resolve(registeredService, criteriaSet),
+                () -> "Metadata resolution resulted in a null metadata resolver entry for entity id %s".formatted(entityID));
+            
+            Assert.isTrue(cachedResult.isResolved(), "Metadata resolution resulted in an unknown metadata resolver entry for entity id %s".formatted(entityID));
+            val cachedMetadataResolver = cachedResult.getMetadataResolver();
             LOGGER.debug("Resolved metadata chain from [{}] using [{}]. Filtering the chain by entity ID [{}]",
                 registeredService.getMetadataLocation(), cachedMetadataResolver.getId(), entityID);
 
@@ -239,6 +250,7 @@ public record SamlRegisteredServiceMetadataAdaptor(SPSSODescriptor ssoDescriptor
         return getSingleLogoutServices()
             .stream()
             .filter(acs -> binding.equalsIgnoreCase(acs.getBinding()))
+            .filter(acs -> StringUtils.isNotBlank(acs.getLocation()) || StringUtils.isNotBlank(acs.getResponseLocation()))
             .findFirst()
             .orElse(null);
     }
@@ -254,6 +266,7 @@ public record SamlRegisteredServiceMetadataAdaptor(SPSSODescriptor ssoDescriptor
             .stream()
             .filter(acs -> Objects.nonNull(acs) && Objects.nonNull(acs.getBinding()))
             .filter(acs -> acs.getBinding().equalsIgnoreCase(binding))
+            .filter(acs -> StringUtils.isNotBlank(acs.getLocation()) || StringUtils.isNotBlank(acs.getResponseLocation()))
             .collect(Collectors.toList());
         return SAML2MetadataSupport.getDefaultIndexedEndpoint(acsList);
     }
@@ -267,6 +280,7 @@ public record SamlRegisteredServiceMetadataAdaptor(SPSSODescriptor ssoDescriptor
         return getAssertionConsumerServices()
             .stream()
             .map(acs -> StringUtils.defaultIfBlank(acs.getResponseLocation(), acs.getLocation()))
+            .filter(StringUtils::isNotBlank)
             .collect(Collectors.toList());
     }
 
@@ -282,6 +296,7 @@ public record SamlRegisteredServiceMetadataAdaptor(SPSSODescriptor ssoDescriptor
             .filter(acs -> Objects.nonNull(acs) && Objects.nonNull(acs.getBinding()))
             .filter(acs -> acs.getBinding().equalsIgnoreCase(binding))
             .map(acs -> StringUtils.defaultIfBlank(acs.getResponseLocation(), acs.getLocation()))
+            .filter(StringUtils::isNotBlank)
             .collect(Collectors.toList());
     }
 
@@ -298,6 +313,7 @@ public record SamlRegisteredServiceMetadataAdaptor(SPSSODescriptor ssoDescriptor
             .filter(acs -> Objects.nonNull(acs) && Objects.nonNull(acs.getBinding()))
             .filter(acs -> acs.getBinding().equalsIgnoreCase(binding) && index != null && index.equals(acs.getIndex()))
             .map(acs -> StringUtils.defaultIfBlank(acs.getResponseLocation(), acs.getLocation()))
+            .filter(StringUtils::isNotBlank)
             .findFirst();
     }
 

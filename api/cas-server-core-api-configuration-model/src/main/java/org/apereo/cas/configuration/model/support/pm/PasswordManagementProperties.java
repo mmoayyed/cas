@@ -1,10 +1,10 @@
 package org.apereo.cas.configuration.model.support.pm;
 
+import org.apereo.cas.configuration.features.CasFeatureModule;
 import org.apereo.cas.configuration.model.core.web.flow.WebflowAutoConfigurationProperties;
 import org.apereo.cas.configuration.model.support.captcha.GoogleRecaptchaProperties;
 import org.apereo.cas.configuration.support.RequiresModule;
 
-import com.fasterxml.jackson.annotation.JsonFilter;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -27,8 +27,8 @@ import java.util.List;
 @Setter
 @NoArgsConstructor
 @Accessors(chain = true)
-@JsonFilter("PasswordManagementProperties")
-public class PasswordManagementProperties implements Serializable {
+
+public class PasswordManagementProperties implements CasFeatureModule, Serializable {
 
     @Serial
     private static final long serialVersionUID = -260644582798411176L;

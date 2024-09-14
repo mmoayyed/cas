@@ -13,6 +13,12 @@ import org.apereo.cas.authentication.policy.NotPreventedAuthenticationPolicy;
 import org.apereo.cas.authentication.policy.RequiredAttributesAuthenticationPolicy;
 import org.apereo.cas.authentication.policy.RequiredAuthenticationHandlerAuthenticationPolicy;
 import org.apereo.cas.authentication.policy.RestfulAuthenticationPolicy;
+import org.apereo.cas.authentication.principal.merger.AttributeMerger;
+import org.apereo.cas.authentication.principal.merger.MultivaluedAttributeMerger;
+import org.apereo.cas.authentication.principal.merger.NoncollidingAttributeAdder;
+import org.apereo.cas.authentication.principal.merger.ReplacingAttributeAdder;
+import org.apereo.cas.authentication.principal.merger.ReturnChangesAttributeMerger;
+import org.apereo.cas.authentication.principal.merger.ReturnOriginalAttributeMerger;
 import org.apereo.cas.authentication.support.password.DefaultPasswordPolicyHandlingStrategy;
 import org.apereo.cas.authentication.support.password.GroovyPasswordPolicyHandlingStrategy;
 import org.apereo.cas.authentication.support.password.RejectResultCodePasswordPolicyHandlingStrategy;
@@ -22,14 +28,13 @@ import org.apereo.cas.configuration.model.core.authentication.PasswordPolicyProp
 import org.apereo.cas.configuration.model.core.authentication.PersonDirectoryPrincipalResolverProperties;
 import org.apereo.cas.configuration.model.core.authentication.PrincipalAttributesCoreProperties;
 import org.apereo.cas.configuration.model.core.authentication.policy.BaseAuthenticationPolicyProperties;
-import org.apereo.cas.configuration.support.Beans;
 import org.apereo.cas.util.CollectionUtils;
 import org.apereo.cas.util.nativex.CasRuntimeHintsRegistrar;
+import org.apereo.cas.util.scripting.ExecutableCompiledScriptFactory;
 import org.apereo.cas.validation.Assertion;
 import com.google.common.base.Splitter;
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.Multimap;
-import groovy.lang.GroovyClassLoader;
 import lombok.experimental.UtilityClass;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
@@ -37,13 +42,6 @@ import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.ClassUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
-import org.apereo.services.persondir.support.merger.IAttributeMerger;
-import org.apereo.services.persondir.support.merger.MultivaluedAttributeMerger;
-import org.apereo.services.persondir.support.merger.NoncollidingAttributeAdder;
-import org.apereo.services.persondir.support.merger.ReplacingAttributeAdder;
-import org.apereo.services.persondir.support.merger.ReturnChangesAdditiveAttributeMerger;
-import org.apereo.services.persondir.support.merger.ReturnOriginalAdditiveAttributeMerger;
-import org.codehaus.groovy.control.CompilerConfiguration;
 import org.springframework.context.ApplicationContext;
 import org.springframework.core.io.DefaultResourceLoader;
 import java.nio.charset.StandardCharsets;
@@ -89,7 +87,7 @@ public class CoreAuthenticationUtils {
      * @param mergingPolicy the merging policy
      * @return the attribute merger
      */
-    public static IAttributeMerger getAttributeMerger(final PrincipalAttributesCoreProperties.MergingStrategyTypes mergingPolicy) {
+    public static AttributeMerger getAttributeMerger(final PrincipalAttributesCoreProperties.MergingStrategyTypes mergingPolicy) {
         switch (mergingPolicy) {
             case MULTIVALUED -> {
                 val merger = new MultivaluedAttributeMerger();
@@ -100,10 +98,10 @@ public class CoreAuthenticationUtils {
                 return new NoncollidingAttributeAdder();
             }
             case SOURCE -> {
-                return new ReturnOriginalAdditiveAttributeMerger();
+                return new ReturnOriginalAttributeMerger();
             }
             case DESTINATION -> {
-                return new ReturnChangesAdditiveAttributeMerger();
+                return new ReturnChangesAttributeMerger();
             }
             default -> {
                 return new ReplacingAttributeAdder();
@@ -157,7 +155,7 @@ public class CoreAuthenticationUtils {
      */
     public static Map<String, List<Object>> mergeAttributes(final Map<String, List<Object>> currentAttributes,
                                                             final Map<String, List<Object>> attributesToMerge,
-                                                            final IAttributeMerger merger) {
+                                                            final AttributeMerger merger) {
         val toModify = currentAttributes.entrySet()
             .stream()
             .map(entry -> Pair.of(entry.getKey(), CollectionUtils.toCollection(entry.getValue(), ArrayList.class)))
@@ -240,14 +238,13 @@ public class CoreAuthenticationUtils {
             if (StringUtils.isBlank(selectionCriteria)) {
                 return credential -> true;
             }
-            if (selectionCriteria.endsWith(".groovy") && CasRuntimeHintsRegistrar.notInNativeImage()) {
+            val scriptFactoryInstance = ExecutableCompiledScriptFactory.findExecutableCompiledScriptFactory();
+            if (scriptFactoryInstance.isPresent() && scriptFactoryInstance.get().isExternalScript(selectionCriteria) && CasRuntimeHintsRegistrar.notInNativeImage()) {
                 val loader = new DefaultResourceLoader();
                 val resource = loader.getResource(selectionCriteria);
                 val script = IOUtils.toString(resource.getInputStream(), StandardCharsets.UTF_8);
-                val classLoader = new GroovyClassLoader(Beans.class.getClassLoader(),
-                    new CompilerConfiguration(), true);
-                val clz = classLoader.parseClass(script);
-                return (Predicate<Credential>) clz.getDeclaredConstructor().newInstance();
+                val scriptFactory = scriptFactoryInstance.get();
+                return scriptFactory.newObjectInstance(script, Predicate.class);
             }
             val predicateClazz = ClassUtils.getClass(selectionCriteria);
             return (Predicate<Credential>) predicateClazz.getDeclaredConstructor().newInstance();

@@ -1,6 +1,7 @@
 package org.apereo.cas.services;
 
 import org.apereo.cas.authentication.attribute.AttributeDefinitionStore;
+import org.apereo.cas.authentication.attribute.CaseCanonicalizationMode;
 import org.apereo.cas.authentication.principal.DefaultPrincipalAttributesRepository;
 import org.apereo.cas.authentication.principal.PrincipalResolver;
 import org.apereo.cas.authentication.principal.RegisteredServicePrincipalAttributesRepository;
@@ -18,7 +19,7 @@ import lombok.ToString;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.apache.commons.lang3.StringUtils;
-import org.apereo.services.persondir.util.CaseCanonicalizationMode;
+
 import jakarta.persistence.PostLoad;
 import java.io.Serial;
 import java.util.ArrayList;
@@ -68,7 +69,9 @@ public abstract class AbstractRegisteredServiceAttributeReleasePolicy implements
 
     private int order;
 
-    private String canonicalizationMode = CaseCanonicalizationMode.NONE.name();
+    private String canonicalizationMode = "NONE";
+
+    private RegisteredServiceAttributeReleaseActivationCriteria activationCriteria;
 
     /**
      * Post load, after having loaded the bean via JPA, etc.
@@ -81,7 +84,7 @@ public abstract class AbstractRegisteredServiceAttributeReleasePolicy implements
         if (consentPolicy == null) {
             this.consentPolicy = new DefaultRegisteredServiceConsentPolicy();
         }
-        canonicalizationMode = StringUtils.defaultIfBlank(canonicalizationMode, CaseCanonicalizationMode.NONE.name());
+        canonicalizationMode = StringUtils.defaultIfBlank(canonicalizationMode, "NONE");
     }
 
     @Override
@@ -101,9 +104,8 @@ public abstract class AbstractRegisteredServiceAttributeReleasePolicy implements
                 availableAttributes, context.getPrincipal().getId());
 
             val repository = getRegisteredServicePrincipalAttributesRepository(context);
-            repository.update(context.getPrincipal().getId(), availableAttributes, context);
-
             LOGGER.trace("Updating principal attributes repository cache for [{}] with [{}]", context.getPrincipal().getId(), availableAttributes);
+            repository.update(context.getPrincipal().getId(), availableAttributes, context);
 
             LOGGER.trace("Calling attribute policy [{}] to process attributes for [{}]",
                 getClass().getSimpleName(), context.getPrincipal().getId());
@@ -188,7 +190,8 @@ public abstract class AbstractRegisteredServiceAttributeReleasePolicy implements
         Map<String, List<Object>> attributes) throws Throwable;
 
     protected boolean supports(final RegisteredServiceAttributeReleasePolicyContext context) {
-        return true;
+        val criteria = getActivationCriteria();
+        return criteria == null || criteria.shouldActivate(context);
     }
 
     protected Map<String, List<Object>> resolveAttributesFromAttributeDefinitionStore(
@@ -225,12 +228,11 @@ public abstract class AbstractRegisteredServiceAttributeReleasePolicy implements
     }
 
     protected void insertPrincipalIdAsAttributeIfNeeded(final RegisteredServiceAttributeReleasePolicyContext context,
-                                                        final Map<String, List<Object>> attributesToRelease) {
+                                                        final Map<String, List<Object>> attributesToRelease) throws Throwable {
         if (StringUtils.isNotBlank(getPrincipalIdAttribute()) && !attributesToRelease.containsKey(getPrincipalIdAttribute())) {
             LOGGER.debug("Attempting to resolve the principal id for service [{}]", context.getRegisteredService().getServiceId());
             val usernameProvider = context.getRegisteredService().getUsernameAttributeProvider();
             if (usernameProvider != null) {
-
                 val usernameContext = RegisteredServiceUsernameProviderContext.builder()
                     .service(context.getService())
                     .principal(context.getPrincipal())

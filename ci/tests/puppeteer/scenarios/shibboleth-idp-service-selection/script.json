@@ -6,7 +6,6 @@
   "properties": [
     "--cas.server.name=https://localhost:8443",
     "--cas.server.prefix=${cas.server.name}/cas",
-    "--cas.audit.slf4j.use-single-line=true",
 
     "--cas.authn.shib-idp.server-url=https://sso.shibboleth.org/idp/Authn/External",
 
@@ -23,7 +22,7 @@
     
     "--cas.authn.mfa.simple.mail.html=false",
     "--cas.authn.mfa.simple.mail.from=cas@example.com",
-    "--cas.authn.mfa.simple.mail.subject=CAS Token",
+    "--cas.authn.mfa.simple.mail.subject=CASToken",
     "--cas.authn.mfa.simple.mail.text=${token}"
   ],
   "jvmArgs": "-Djava.net.preferIPv4Stack=true -Djava.net.preferIPv4Addresses=true",

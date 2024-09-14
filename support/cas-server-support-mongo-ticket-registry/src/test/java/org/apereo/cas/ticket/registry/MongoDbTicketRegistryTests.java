@@ -1,8 +1,7 @@
 package org.apereo.cas.ticket.registry;
 
 import org.apereo.cas.authentication.CoreAuthenticationTestUtils;
-import org.apereo.cas.config.MongoDbTicketRegistryConfiguration;
-import org.apereo.cas.config.MongoDbTicketRegistryTicketCatalogConfiguration;
+import org.apereo.cas.config.CasMongoDbTicketRegistryAutoConfiguration;
 import org.apereo.cas.mock.MockTicketGrantingTicket;
 import org.apereo.cas.ticket.DefaultTicketDefinition;
 import org.apereo.cas.ticket.Ticket;
@@ -14,7 +13,6 @@ import org.apereo.cas.ticket.serialization.TicketSerializationManager;
 import org.apereo.cas.util.TicketGrantingTicketIdGenerator;
 import org.apereo.cas.util.crypto.CipherExecutor;
 import org.apereo.cas.util.junit.EnabledIfListeningOnPort;
-
 import lombok.Getter;
 import lombok.val;
 import org.apache.commons.lang3.StringUtils;
@@ -23,11 +21,10 @@ import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.context.annotation.Import;
+import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 import org.springframework.data.mongodb.core.MongoOperations;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.test.context.TestPropertySource;
-
 import java.util.UUID;
 import java.util.stream.Stream;
 import static org.junit.jupiter.api.Assertions.*;
@@ -40,10 +37,7 @@ import static org.mockito.Mockito.*;
  * @since 5.1.0
  */
 @Tag("MongoDb")
-@Import({
-    MongoDbTicketRegistryTicketCatalogConfiguration.class,
-    MongoDbTicketRegistryConfiguration.class
-})
+@ImportAutoConfiguration(CasMongoDbTicketRegistryAutoConfiguration.class)
 @TestPropertySource(properties = {
     "cas.ticket.registry.mongo.database-name=ticket-registry",
     "cas.ticket.registry.mongo.authentication-database-name=admin",
@@ -76,6 +70,7 @@ class MongoDbTicketRegistryTests extends BaseTicketRegistryTests {
     @RepeatedTest(2)
     void verifyUpdateFirstAndClean() throws Throwable {
         val originalAuthn = CoreAuthenticationTestUtils.getAuthentication(UUID.randomUUID().toString());
+        val ticketGrantingTicketId = TestTicketIdentifiers.generate().ticketGrantingTicketId();
         val result = newTicketRegistry.updateTicket(new TicketGrantingTicketImpl(ticketGrantingTicketId,
             originalAuthn, NeverExpiresExpirationPolicy.INSTANCE));
         assertNull(result);
@@ -107,6 +102,20 @@ class MongoDbTicketRegistryTests extends BaseTicketRegistryTests {
         assertEquals(criteria2.getCount(), queryResults.size());
     }
 
+    @RepeatedTest(2)
+    void verifyCount() throws Throwable {
+        val authentication = CoreAuthenticationTestUtils.getAuthentication(UUID.randomUUID().toString());
+        val ticketGrantingTicketToAdd = Stream.generate(() -> {
+                val tgtId = new TicketGrantingTicketIdGenerator(10, StringUtils.EMPTY)
+                    .getNewTicketId(TicketGrantingTicket.PREFIX);
+                return new TicketGrantingTicketImpl(tgtId, authentication, NeverExpiresExpirationPolicy.INSTANCE);
+            })
+            .limit(5);
+        getNewTicketRegistry().addTicket(ticketGrantingTicketToAdd);
+        val count = getNewTicketRegistry().countTickets();
+        assertTrue(count > 0);
+    }
+    
     @RepeatedTest(1)
     void verifyBadTicketInCatalog() throws Throwable {
         val ticket = new MockTicketGrantingTicket("casuser");

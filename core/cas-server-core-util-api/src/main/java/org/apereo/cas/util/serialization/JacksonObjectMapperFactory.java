@@ -1,6 +1,7 @@
 package org.apereo.cas.util.serialization;
 
 import org.apereo.cas.util.function.FunctionUtils;
+import org.apereo.cas.util.spring.ApplicationContextProvider;
 import org.apereo.cas.util.spring.SpringExpressionLanguageValueResolver;
 import org.apereo.cas.util.spring.beans.BeanSupplier;
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
@@ -10,6 +11,7 @@ import com.fasterxml.jackson.annotation.PropertyAccessor;
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.json.JsonWriteFeature;
+import com.fasterxml.jackson.core.util.MinimalPrettyPrinter;
 import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.MapperFeature;
@@ -31,13 +33,13 @@ import lombok.Getter;
 import lombok.experimental.SuperBuilder;
 import lombok.val;
 import org.apache.commons.lang3.StringUtils;
-import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.core.annotation.AnnotationAwareOrderComparator;
 import java.io.Serial;
 import java.net.URI;
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.ServiceLoader;
 import java.util.stream.Collectors;
 
 /**
@@ -71,28 +73,10 @@ public class JacksonObjectMapperFactory {
     @Builder.Default
     private final Map<String, Object> injectableValues = new LinkedHashMap<>();
 
-    private final JsonFactory jsonFactory;
+    @Builder.Default
+    private final boolean minimal = false;
 
-    /**
-     * Configure an existing mapper.
-     *
-     * @param applicationContext the application context
-     * @param objectMapper       the mapper
-     */
-    public static void configure(
-        final ConfigurableApplicationContext applicationContext,
-        final ObjectMapper objectMapper) {
-        objectMapper.registerModule(new JavaTimeModule());
-        val serializers = new ArrayList<>(applicationContext.getBeansOfType(JacksonObjectMapperCustomizer.class).values());
-        AnnotationAwareOrderComparator.sort(serializers);
-        val injectedValues = (Map) serializers
-            .stream()
-            .filter(BeanSupplier::isNotProxy)
-            .map(JacksonObjectMapperCustomizer::getInjectableValues)
-            .flatMap(entry -> entry.entrySet().stream())
-            .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
-        objectMapper.setInjectableValues(new JacksonInjectableValueSupplier(() -> injectedValues));
-    }
+    private final JsonFactory jsonFactory;
 
     /**
      * Produce an object mapper for YAML serialization/de-serialization.
@@ -101,7 +85,45 @@ public class JacksonObjectMapperFactory {
      */
     public ObjectMapper toObjectMapper() {
         val mapper = determineMapperInstance();
-        return initialize(mapper);
+        val objectMapper = initialize(mapper);
+        
+        val allCustomizers = getObjectMapperCustomizers();
+        configureInjectableValues(allCustomizers, objectMapper);
+        configureObjectMapperModules(objectMapper);
+        allCustomizers.forEach(customizer -> customizer.customize(objectMapper));
+        
+        return objectMapper;
+    }
+
+    private static void configureObjectMapperModules(final ObjectMapper objectMapper) {
+        objectMapper.registerModule(new JavaTimeModule());
+    }
+
+    private void configureInjectableValues(final List<JacksonObjectMapperCustomizer> allCustomizers, final ObjectMapper objectMapper) {
+        val injectedValues = (Map) allCustomizers
+            .stream()
+            .filter(BeanSupplier::isNotProxy)
+            .map(JacksonObjectMapperCustomizer::getInjectableValues)
+            .flatMap(entry -> entry.entrySet().stream())
+            .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+        injectedValues.putAll(this.injectableValues);
+        objectMapper.setInjectableValues(new JacksonInjectableValueSupplier(() -> injectedValues));
+    }
+
+    private static List<JacksonObjectMapperCustomizer> getObjectMapperCustomizers() {
+        val customizers = ServiceLoader.load(JacksonObjectMapperCustomizer.class)
+            .stream()
+            .map(ServiceLoader.Provider::get)
+            .filter(BeanSupplier::isNotProxy)
+            .collect(Collectors.toList());
+
+        val applicationContext = ApplicationContextProvider.getApplicationContext();
+        if (applicationContext != null) {
+            val customizerBeans = applicationContext.getBeansOfType(JacksonObjectMapperCustomizer.class).values();
+            customizers.addAll(customizerBeans);
+        }
+        AnnotationAwareOrderComparator.sort(customizers);
+        return customizers;
     }
 
     /**
@@ -129,7 +151,7 @@ public class JacksonObjectMapperFactory {
             .configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, isWriteDatesAsTimestamps())
             .build();
 
-        obm.setInjectableValues(new JacksonInjectableValueSupplier(this::getInjectableValues))
+        obm
             .setSerializationInclusion(JsonInclude.Include.NON_DEFAULT)
             .setVisibility(PropertyAccessor.SETTER, JsonAutoDetect.Visibility.PROTECTED_AND_PUBLIC)
             .setVisibility(PropertyAccessor.GETTER, JsonAutoDetect.Visibility.PROTECTED_AND_PUBLIC)
@@ -142,6 +164,10 @@ public class JacksonObjectMapperFactory {
         if (isDefaultTypingEnabled()) {
             obm.activateDefaultTyping(obm.getPolymorphicTypeValidator(),
                 ObjectMapper.DefaultTyping.NON_FINAL, JsonTypeInfo.As.PROPERTY);
+        }
+
+        if (minimal) {
+            obm.setDefaultPrettyPrinter(new MinimalPrettyPrinter());
         }
         return obm;
     }

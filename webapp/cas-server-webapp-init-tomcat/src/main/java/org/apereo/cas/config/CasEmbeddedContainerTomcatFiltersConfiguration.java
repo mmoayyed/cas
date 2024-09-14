@@ -4,10 +4,10 @@ import org.apereo.cas.configuration.CasConfigurationProperties;
 import org.apereo.cas.configuration.features.CasFeatureModule;
 import org.apereo.cas.util.CollectionUtils;
 import org.apereo.cas.util.spring.boot.ConditionalOnFeatureEnabled;
-
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.val;
+import org.apache.catalina.Globals;
 import org.apache.catalina.filters.CsrfPreventionFilter;
 import org.apache.catalina.filters.RemoteAddrFilter;
 import org.apache.catalina.filters.RequestFilter;
@@ -16,20 +16,18 @@ import org.apache.juli.logging.LogFactory;
 import org.apereo.inspektr.common.web.ClientInfo;
 import org.apereo.inspektr.common.web.ClientInfoHolder;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
-import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
-import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.cloud.context.config.annotation.RefreshScope;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ScopedProxyMode;
+import org.springframework.core.Ordered;
 import org.springframework.http.HttpStatus;
-
+import jakarta.servlet.Filter;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.ServletRequest;
 import jakarta.servlet.ServletResponse;
-
 import java.io.IOException;
 import java.util.Optional;
 
@@ -39,11 +37,9 @@ import java.util.Optional;
  * @author Misagh Moayyed
  * @since 5.0.0
  */
-@EnableConfigurationProperties(CasConfigurationProperties.class)
-@ImportAutoConfiguration(CasEmbeddedContainerTomcatConfiguration.class)
 @ConditionalOnFeatureEnabled(feature = CasFeatureModule.FeatureCatalog.ApacheTomcat)
 @AutoConfiguration
-public class CasEmbeddedContainerTomcatFiltersConfiguration {
+class CasEmbeddedContainerTomcatFiltersConfiguration {
 
     @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
     @Bean
@@ -54,6 +50,7 @@ public class CasEmbeddedContainerTomcatFiltersConfiguration {
         bean.setFilter(new CsrfPreventionFilter());
         bean.setUrlPatterns(CollectionUtils.wrap("/*"));
         bean.setName("tomcatCsrfPreventionFilter");
+        bean.setAsyncSupported(true);
         bean.setEnabled(casProperties.getServer().getTomcat().getCsrf().isEnabled());
         return bean;
     }
@@ -72,6 +69,28 @@ public class CasEmbeddedContainerTomcatFiltersConfiguration {
         bean.setUrlPatterns(CollectionUtils.wrap("/*"));
         bean.setName("tomcatRemoteAddressFilter");
         bean.setEnabled(addr.isEnabled());
+        bean.setAsyncSupported(true);
+        return bean;
+    }
+
+    @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
+    @Bean
+    @ConditionalOnMissingBean(name = "tomcatAsyncRequestsFilter")
+    public FilterRegistrationBean<RemoteAddrFilter> tomcatAsyncRequestsFilter(final CasConfigurationProperties casProperties) {
+        val bean = new FilterRegistrationBean();
+        val filter = new Filter() {
+            @Override
+            public void doFilter(final ServletRequest request, final ServletResponse response, final FilterChain chain) throws IOException, ServletException {
+                request.setAttribute(Globals.ASYNC_SUPPORTED_ATTR, true);
+                chain.doFilter(request, response);
+            }
+        };
+        bean.setFilter(filter);
+        bean.setUrlPatterns(CollectionUtils.wrap("/*"));
+        bean.setName("tomcatAsyncRequestsFilter");
+        bean.setEnabled(true);
+        bean.setAsyncSupported(true);
+        bean.setOrder(Ordered.HIGHEST_PRECEDENCE + 1);
         return bean;
     }
 

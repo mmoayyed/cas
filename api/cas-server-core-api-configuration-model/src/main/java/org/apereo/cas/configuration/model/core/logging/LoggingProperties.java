@@ -1,10 +1,13 @@
 package org.apereo.cas.configuration.model.core.logging;
 
+import org.apereo.cas.configuration.model.support.aws.AmazonCloudWatchLogsProperties;
+import org.apereo.cas.configuration.model.support.aws.GoogleCloudLogsProperties;
 import org.apereo.cas.configuration.support.RequiresModule;
 
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
+import org.springframework.boot.context.properties.NestedConfigurationProperty;
 
 import java.io.Serial;
 import java.io.Serializable;
@@ -25,11 +28,20 @@ public class LoggingProperties implements Serializable {
     private static final long serialVersionUID = 7455171260665661949L;
 
     /**
-     * Allow CAS to add http request details into the logging's MDC filter.
-     * Mapped Diagnostic Context is essentially a map maintained by the logging
-     * framework where the application code provides key-value pairs which can then be
-     * inserted by the logging framework in log messages. MDC data can also be highly
-     * helpful in filtering messages or triggering certain actions.
+     * MDC logging settings.
      */
-    private boolean mdcEnabled = true;
+    @NestedConfigurationProperty
+    private MdcLoggingProperties mdc = new MdcLoggingProperties();
+
+    /**
+     * AWS CloudWatch logs settings.
+     */
+    @NestedConfigurationProperty
+    private AmazonCloudWatchLogsProperties cloudwatch = new AmazonCloudWatchLogsProperties();
+
+    /**
+     * Google Cloud logs settings.
+     */
+    @NestedConfigurationProperty
+    private GoogleCloudLogsProperties gcp = new GoogleCloudLogsProperties();
 }

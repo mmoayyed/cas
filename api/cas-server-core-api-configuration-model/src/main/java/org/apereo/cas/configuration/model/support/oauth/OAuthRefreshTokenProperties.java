@@ -3,7 +3,6 @@ package org.apereo.cas.configuration.model.support.oauth;
 import org.apereo.cas.configuration.support.DurationCapable;
 import org.apereo.cas.configuration.support.RequiresModule;
 
-import com.fasterxml.jackson.annotation.JsonFilter;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
@@ -21,7 +20,7 @@ import java.io.Serializable;
 @Getter
 @Setter
 @Accessors(chain = true)
-@JsonFilter("OAuthRefreshTokenProperties")
+
 public class OAuthRefreshTokenProperties implements Serializable {
 
     @Serial
@@ -38,5 +37,12 @@ public class OAuthRefreshTokenProperties implements Serializable {
      * in the backing ticket registry implementation.
      */
     private String storageName = "oauthRefreshTokensCache";
+
+    /**
+     * Maximum number of active refresh tokens that an application
+     * can receive. If the application requests more that this limit,
+     * the request will be denied and the access token will not be issued.
+     */
+    private long maxActiveTokensAllowed;
 
 }

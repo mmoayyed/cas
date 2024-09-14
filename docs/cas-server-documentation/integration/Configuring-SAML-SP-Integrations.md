@@ -92,7 +92,7 @@ The following SAML SP integrations, as samples, are provided by CAS:
 <a href="https://support.zendesk.com/hc/en-us/articles/203663676-Using-SAML-for-single-sign-on-Professional-and-Enterprise-">
 <img src="https://user-images.githubusercontent.com/1205228/233797108-625c0f96-9da1-4335-85a3-50241b5a811b.png" height="48" width="120"></a>
 
-<a href="https://www.gartner.com/">
+<a href="#">
 <img src="https://user-images.githubusercontent.com/1205228/233797125-6bf0d02d-0d32-4661-a05d-bfd26383d6f0.png" height="48" width="90"></a>
 
 <a href="https://www.cherwell.com/">
@@ -118,9 +118,6 @@ The following SAML SP integrations, as samples, are provided by CAS:
 
 <a href="https://www.symplicity.com/">
 <img src="https://user-images.githubusercontent.com/1205228/30271318-192b48fc-9705-11e7-9c18-3be401a39e84.png" height="48" width="200"></a>
-
-<a href="Google-Apps-Integration.html">
-<img src="https://user-images.githubusercontent.com/1205228/233797149-6c725fee-12b2-4041-bc21-4bd2f2aa72b5.png" height="48" width="120"></a>
 
 <a href="http://www.accruent.com/">
 <img src="https://user-images.githubusercontent.com/1205228/30735450-f9a12792-9f8b-11e7-941d-7ab4ac7628b9.png" height="48" width="120"></a>
@@ -242,8 +239,3 @@ service provider is the presence and definition of metadata. All other settings 
 **Note**: For InCommon and other metadata aggregates, multiple entity ids can be specified to
 filter the InCommon metadata. EntityIds can be regular expression patterns and are mapped to
 CAS' `serviceId` field in the registry. The signature location MUST BE the public key used to sign the metadata.
-
-## Google Apps
-
-The Google Apps SAML integration is also provided by 
-CAS natively [based on this guide](Google-Apps-Integration.html).

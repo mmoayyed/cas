@@ -1,23 +1,26 @@
 package org.apereo.cas.services;
 
 import org.apereo.cas.authentication.CoreAuthenticationTestUtils;
-import org.apereo.cas.config.CasCoreUtilConfiguration;
+import org.apereo.cas.config.CasCoreScriptingAutoConfiguration;
 import org.apereo.cas.configuration.CasConfigurationProperties;
+import org.apereo.cas.test.CasTestExtension;
+import org.apereo.cas.util.RandomUtils;
 import org.apereo.cas.util.serialization.JacksonObjectMapperFactory;
+import org.apereo.cas.util.spring.boot.SpringBootTestAutoConfigurations;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.val;
-import org.apache.commons.io.FileUtils;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.cloud.autoconfigure.RefreshAutoConfiguration;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.core.io.ClassPathResource;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.file.Files;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -25,14 +28,11 @@ import static org.junit.jupiter.api.Assertions.*;
  * @since 4.1
  */
 @Tag("GroovyServices")
-@SpringBootTest(classes = {
-    CasCoreUtilConfiguration.class,
-    RefreshAutoConfiguration.class
-})
+@ExtendWith(CasTestExtension.class)
+@SpringBootTestAutoConfigurations
+@SpringBootTest(classes = CasCoreScriptingAutoConfiguration.class)
 @EnableConfigurationProperties(CasConfigurationProperties.class)
 class GroovyScriptAttributeReleasePolicyTests {
-    private static final File JSON_FILE = new File(FileUtils.getTempDirectoryPath(), "groovyScriptAttributeReleasePolicy.json");
-
     private static final ObjectMapper MAPPER = JacksonObjectMapperFactory.builder()
         .defaultTypingEnabled(true).build().toObjectMapper();
 
@@ -41,9 +41,10 @@ class GroovyScriptAttributeReleasePolicyTests {
 
     @Test
     void verifySerializeAGroovyScriptAttributeReleasePolicyToJson() throws IOException {
+        val jsonFile = Files.createTempFile(RandomUtils.randomAlphabetic(8), ".json").toFile();
         val policyWritten = new GroovyScriptAttributeReleasePolicy();
-        MAPPER.writeValue(JSON_FILE, policyWritten);
-        val policyRead = MAPPER.readValue(JSON_FILE, GroovyScriptAttributeReleasePolicy.class);
+        MAPPER.writeValue(jsonFile, policyWritten);
+        val policyRead = MAPPER.readValue(jsonFile, GroovyScriptAttributeReleasePolicy.class);
         assertEquals(policyWritten, policyRead);
     }
 
@@ -51,7 +52,6 @@ class GroovyScriptAttributeReleasePolicyTests {
     void verifyAction() throws Throwable {
         val policy = new GroovyScriptAttributeReleasePolicy();
         policy.setGroovyScript("classpath:GroovyAttributeRelease.groovy");
-
         val releasePolicyContext = RegisteredServiceAttributeReleasePolicyContext.builder()
             .registeredService(CoreAuthenticationTestUtils.getRegisteredService())
             .service(CoreAuthenticationTestUtils.getService())
@@ -78,7 +78,6 @@ class GroovyScriptAttributeReleasePolicyTests {
         val attributes = policy.getAttributes(releasePolicyContext);
         assertTrue(attributes.isEmpty());
     }
-
 
     @Test
     void verifySystemPropertyInRef() throws Throwable {

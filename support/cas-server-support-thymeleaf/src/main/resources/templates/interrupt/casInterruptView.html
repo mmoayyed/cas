@@ -29,7 +29,7 @@
 </head>
 
 <body>
-<main role="main" class="container mt-3 mb-3">
+<main class="container mt-3 mb-3">
     <div id="content" layout:fragment="content" class="mdc-card card p-4 m-auto w-lg-66">
         <h1 th:text="#{screen.interrupt.title}">Authentication Interrupt</h1>
         <p th:utext="#{screen.interrupt.message(${principal.id})}">The authentication flow has been interrupted.</p>
@@ -95,18 +95,12 @@
             <input type="hidden" name="execution" th:value="${flowExecutionKey}"/>
             <input type="hidden" name="_eventId" value="proceed"/>
             <div class="form-actions d-flex align-items-center">
-                <button class="mdc-button mdc-button--raised btn btn-primary me-2"
-                        name="proceed"
-                        id="proceed"
-                        type="submit"
-                        accesskey="l">
-                    <span class="mdc-button__label" th:text="#{screen.interrupt.btn.proceed}">Proceed</span>
-                </button>
+                <div th:replace="~{fragments/submitbutton :: submitButton (messageKey='screen.interrupt.btn.proceed', id='proceed', name='proceed')}"/>
             </div>
         </form>
 
         <div th:if="${interrupt.block}">
-            <a class="mdc-button mdc-button--raised me-2 btn btn-outline-secondary" id="cancel" name="cancel" th:href="@{/login}">
+            <a class="mdc-button mdc-button--raised me-2 btn btn-outline-secondary button-cancel" id="cancel" name="cancel" th:href="@{/login}">
                 <span th:if="${interruptTriggerMode == 'AFTER_AUTHENTICATION'}" class="mdc-button__label"
                       th:text="#{screen.interrupt.btn.cancel}">Cancel</span>
 

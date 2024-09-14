@@ -1,6 +1,6 @@
 description = "Apereo CAS Consent Support via Redis"
 ext {
-    maxParallelForksForTests = 1
+
     publishMetadata = true
     projectMetadata = [
             title: "Attribute Consent via Redis",
@@ -24,6 +24,7 @@ dependencies {
     testImplementation project(":core:cas-server-core-configuration")
     testImplementation project(":core:cas-server-core-audit")
     testImplementation project(":core:cas-server-core-util")
+    testImplementation project(":core:cas-server-core-scripting")
     testImplementation project(":core:cas-server-core-web")
     testImplementation project(":core:cas-server-core-logout")
     testImplementation project(":core:cas-server-core")

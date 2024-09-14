@@ -1,17 +1,18 @@
 package org.apereo.cas.configuration.model.support.sms;
 
+import org.apereo.cas.configuration.features.CasFeatureModule;
+import org.apereo.cas.configuration.support.ExpressionLanguageCapable;
 import org.apereo.cas.configuration.support.RequiredProperty;
 import org.apereo.cas.configuration.support.RequiresModule;
 
-import com.fasterxml.jackson.annotation.JsonFilter;
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
-import org.apache.commons.lang3.StringUtils;
 
 import java.io.Serial;
 import java.io.Serializable;
+import java.util.List;
+import java.util.stream.Stream;
 
 /**
  * This is {@link SmsProperties}.
@@ -23,8 +24,8 @@ import java.io.Serializable;
 @Setter
 @RequiresModule(name = "cas-server-core-util", automated = true)
 @Accessors(chain = true)
-@JsonFilter("SmsProperties")
-public class SmsProperties implements Serializable {
+
+public class SmsProperties implements CasFeatureModule, Serializable {
 
     @Serial
     private static final long serialVersionUID = -3713886839517507306L;
@@ -42,20 +43,11 @@ public class SmsProperties implements Serializable {
     private String from;
 
     /**
-     * Principal attribute name that indicates the destination phone number
+     * Principal attribute names that indicates the destination phone number
      * for this SMS message. The attribute must already be resolved and available
      * to the CAS principal.
      */
     @RequiredProperty
-    private String attributeName = "phone";
-
-    /**
-     * Is text/from defined.
-     *
-     * @return true/false
-     */
-    @JsonIgnore
-    public boolean isDefined() {
-        return StringUtils.isNotBlank(getText()) && StringUtils.isNotBlank(getFrom());
-    }
+    @ExpressionLanguageCapable
+    private List<String> attributeName = Stream.of("phone", "phoneNumber", "telephone", "telephoneNumber").toList();
 }

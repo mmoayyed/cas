@@ -1,10 +1,10 @@
 package org.apereo.cas.mfa.simple.web.flow;
 
-import org.apereo.cas.config.SurrogateAuthenticationAuditConfiguration;
-import org.apereo.cas.config.SurrogateAuthenticationConfiguration;
-import org.apereo.cas.config.SurrogateAuthenticationWebflowConfiguration;
+import org.apereo.cas.config.CasSurrogateAuthenticationAutoConfiguration;
+import org.apereo.cas.config.CasSurrogateAuthenticationWebflowAutoConfiguration;
 import org.apereo.cas.configuration.CasConfigurationProperties;
 import org.apereo.cas.mfa.simple.BaseCasSimpleMultifactorAuthenticationTests;
+import org.apereo.cas.test.CasTestExtension;
 import org.apereo.cas.web.flow.CasWebflowConfigurer;
 import org.apereo.cas.web.flow.configurer.BaseMultifactorWebflowConfigurerTests;
 import lombok.Getter;
@@ -12,6 +12,7 @@ import lombok.val;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -29,6 +30,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * @since 6.2.0
  */
 @Tag("WebflowMfaConfig")
+@ExtendWith(CasTestExtension.class)
 class CasSimpleMultifactorWebflowConfigurerTests {
 
     @SpringBootTest(classes = BaseCasSimpleMultifactorAuthenticationTests.SharedTestConfiguration.class,
@@ -51,9 +53,8 @@ class CasSimpleMultifactorWebflowConfigurerTests {
     }
 
     @SpringBootTest(classes = {
-        SurrogateAuthenticationConfiguration.class,
-        SurrogateAuthenticationAuditConfiguration.class,
-        SurrogateAuthenticationWebflowConfiguration.class,
+        CasSurrogateAuthenticationAutoConfiguration.class,
+        CasSurrogateAuthenticationWebflowAutoConfiguration.class,
         BaseCasSimpleMultifactorAuthenticationTests.SharedTestConfiguration.class
     })
     @EnableConfigurationProperties(CasConfigurationProperties.class)

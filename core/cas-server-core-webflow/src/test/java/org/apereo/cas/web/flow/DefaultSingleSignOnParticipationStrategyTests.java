@@ -6,22 +6,26 @@ import org.apereo.cas.authentication.CoreAuthenticationTestUtils;
 import org.apereo.cas.authentication.DefaultAuthenticationServiceSelectionPlan;
 import org.apereo.cas.authentication.DefaultAuthenticationServiceSelectionStrategy;
 import org.apereo.cas.authentication.principal.Service;
-import org.apereo.cas.config.CasCoreHttpConfiguration;
+import org.apereo.cas.config.CasCoreWebAutoConfiguration;
 import org.apereo.cas.configuration.CasConfigurationProperties;
 import org.apereo.cas.configuration.model.core.sso.SingleSignOnProperties;
+import org.apereo.cas.configuration.support.TriStateBoolean;
 import org.apereo.cas.mock.MockTicketGrantingTicket;
 import org.apereo.cas.services.DefaultRegisteredServiceSingleSignOnParticipationPolicy;
 import org.apereo.cas.services.DefaultRegisteredServiceTicketGrantingTicketExpirationPolicy;
 import org.apereo.cas.services.RegisteredServiceTestUtils;
 import org.apereo.cas.services.ServicesManager;
+import org.apereo.cas.test.CasTestExtension;
 import org.apereo.cas.ticket.registry.TicketRegistrySupport;
 import org.apereo.cas.util.MockRequestContext;
-import org.apereo.cas.util.model.TriStateBoolean;
+import org.apereo.cas.util.spring.boot.SpringBootTestAutoConfigurations;
 import org.apereo.cas.web.support.WebUtils;
 import lombok.val;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.web.WebProperties;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.ConfigurableApplicationContext;
@@ -37,8 +41,10 @@ import static org.mockito.Mockito.*;
  * @since 6.1.0
  */
 @Tag("Webflow")
-@SpringBootTest(classes = CasCoreHttpConfiguration.class)
-@EnableConfigurationProperties(CasConfigurationProperties.class)
+@SpringBootTestAutoConfigurations
+@SpringBootTest(classes = CasCoreWebAutoConfiguration.class)
+@EnableConfigurationProperties({CasConfigurationProperties.class, WebProperties.class})
+@ExtendWith(CasTestExtension.class)
 class DefaultSingleSignOnParticipationStrategyTests {
 
     @Autowired

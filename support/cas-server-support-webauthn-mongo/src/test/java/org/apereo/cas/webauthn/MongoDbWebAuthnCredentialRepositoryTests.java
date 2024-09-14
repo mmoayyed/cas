@@ -1,16 +1,15 @@
 package org.apereo.cas.webauthn;
 
-import org.apereo.cas.config.MongoDbWebAuthnConfiguration;
+import org.apereo.cas.config.CasMongoDbWebAuthnAutoConfiguration;
 import org.apereo.cas.util.junit.EnabledIfListeningOnPort;
 import org.apereo.cas.webauthn.storage.BaseWebAuthnCredentialRepositoryTests;
-
 import lombok.Getter;
 import lombok.val;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.context.annotation.Import;
+import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 import org.springframework.data.mongodb.core.MongoOperations;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
@@ -36,7 +35,7 @@ import org.springframework.test.context.TestPropertySource;
 @Tag("MongoDbMFA")
 @Getter
 @EnabledIfListeningOnPort(port = 27017)
-@Import(MongoDbWebAuthnConfiguration.class)
+@ImportAutoConfiguration(CasMongoDbWebAuthnAutoConfiguration.class)
 class MongoDbWebAuthnCredentialRepositoryTests extends BaseWebAuthnCredentialRepositoryTests {
     @Autowired
     @Qualifier("mongoWebAuthnTemplate")

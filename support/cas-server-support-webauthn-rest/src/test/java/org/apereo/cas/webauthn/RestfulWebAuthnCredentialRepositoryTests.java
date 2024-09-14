@@ -1,21 +1,20 @@
 package org.apereo.cas.webauthn;
 
-import org.apereo.cas.config.RestfulWebAuthnConfiguration;
+import org.apereo.cas.config.CasRestfulWebAuthnAutoConfiguration;
 import org.apereo.cas.util.CollectionUtils;
 import org.apereo.cas.util.MockWebServer;
 import org.apereo.cas.webauthn.storage.BaseWebAuthnCredentialRepositoryTests;
-
 import lombok.val;
 import org.apache.commons.lang3.StringUtils;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
-import org.springframework.context.annotation.Import;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.HttpStatus;
 import org.springframework.test.context.TestPropertySource;
-
 import java.nio.charset.StandardCharsets;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -26,7 +25,8 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 @Tag("RestfulApiAuthentication")
 @TestPropertySource(properties = "cas.authn.mfa.web-authn.rest.url=http://localhost:9559")
-@Import(RestfulWebAuthnConfiguration.class)
+@ImportAutoConfiguration(CasRestfulWebAuthnAutoConfiguration.class)
+@Execution(ExecutionMode.SAME_THREAD)
 class RestfulWebAuthnCredentialRepositoryTests extends BaseWebAuthnCredentialRepositoryTests {
 
     @Test

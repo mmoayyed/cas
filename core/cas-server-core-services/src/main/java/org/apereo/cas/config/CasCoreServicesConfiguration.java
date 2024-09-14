@@ -10,7 +10,6 @@ import org.apereo.cas.authentication.principal.WebApplicationService;
 import org.apereo.cas.authentication.principal.WebApplicationServiceResponseBuilder;
 import org.apereo.cas.configuration.CasConfigurationProperties;
 import org.apereo.cas.configuration.features.CasFeatureModule;
-import org.apereo.cas.configuration.model.core.services.ServiceRegistryCoreProperties;
 import org.apereo.cas.configuration.support.Beans;
 import org.apereo.cas.notifications.CommunicationsManager;
 import org.apereo.cas.services.ChainingServiceRegistry;
@@ -39,8 +38,6 @@ import org.apereo.cas.services.ServicesManagerConfigurationContext;
 import org.apereo.cas.services.ServicesManagerExecutionPlanConfigurer;
 import org.apereo.cas.services.ServicesManagerRegisteredServiceLocator;
 import org.apereo.cas.services.ServicesManagerScheduledLoader;
-import org.apereo.cas.services.domain.DefaultDomainAwareServicesManager;
-import org.apereo.cas.services.domain.DefaultRegisteredServiceDomainExtractor;
 import org.apereo.cas.services.mgmt.DefaultChainingServicesManager;
 import org.apereo.cas.services.mgmt.DefaultServicesManager;
 import org.apereo.cas.services.replication.NoOpRegisteredServiceReplicationStrategy;
@@ -48,13 +45,12 @@ import org.apereo.cas.services.replication.RegisteredServiceReplicationStrategy;
 import org.apereo.cas.services.resource.DefaultRegisteredServiceResourceNamingStrategy;
 import org.apereo.cas.services.resource.RegisteredServiceResourceNamingStrategy;
 import org.apereo.cas.services.util.RegisteredServiceJsonSerializer;
-import org.apereo.cas.util.scripting.WatchableGroovyScriptResource;
+import org.apereo.cas.util.scripting.ExecutableCompiledScriptFactory;
 import org.apereo.cas.util.spring.beans.BeanCondition;
 import org.apereo.cas.util.spring.beans.BeanSupplier;
 import org.apereo.cas.util.spring.boot.ConditionalOnFeatureEnabled;
 import org.apereo.cas.util.spring.boot.ConditionalOnMissingGraalVMNativeImage;
 import org.apereo.cas.web.UrlValidator;
-
 import com.github.benmanes.caffeine.cache.Cache;
 import com.google.common.base.Predicate;
 import com.google.common.base.Predicates;
@@ -63,7 +59,6 @@ import lombok.val;
 import org.jooq.lambda.Unchecked;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.AutoConfigureAfter;
 import org.springframework.boot.autoconfigure.AutoConfigureOrder;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -81,7 +76,6 @@ import org.springframework.core.Ordered;
 import org.springframework.core.annotation.AnnotationAwareOrderComparator;
 import org.springframework.core.env.Environment;
 import org.springframework.scheduling.annotation.EnableAsync;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -97,13 +91,12 @@ import java.util.stream.Collectors;
 @EnableConfigurationProperties(CasConfigurationProperties.class)
 @Slf4j
 @EnableAsync(proxyTargetClass = false)
-@AutoConfigureOrder(Ordered.HIGHEST_PRECEDENCE)
 @ConditionalOnFeatureEnabled(feature = CasFeatureModule.FeatureCatalog.ServiceRegistry)
-@AutoConfiguration
-public class CasCoreServicesConfiguration {
+@Configuration(value = "CasCoreServicesConfiguration", proxyBeanMethods = false)
+class CasCoreServicesConfiguration {
     @Configuration(value = "CasCoreServicesResponseLocatorConfiguration", proxyBeanMethods = false)
     @EnableConfigurationProperties(CasConfigurationProperties.class)
-    public static class CasCoreServicesResponseLocatorConfiguration {
+    static class CasCoreServicesResponseLocatorConfiguration {
         @ConditionalOnMissingBean(name = "webApplicationResponseBuilderLocator")
         @Bean
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
@@ -117,7 +110,7 @@ public class CasCoreServicesConfiguration {
     @Configuration(value = "CasCoreServicesEventsConfiguration", proxyBeanMethods = false)
     @EnableConfigurationProperties(CasConfigurationProperties.class)
     @AutoConfigureOrder(Ordered.LOWEST_PRECEDENCE)
-    public static class CasCoreServicesEventsConfiguration {
+    static class CasCoreServicesEventsConfiguration {
 
         @Bean
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
@@ -134,7 +127,7 @@ public class CasCoreServicesConfiguration {
 
     @Configuration(value = "CasCoreServicesResponseBuilderConfiguration", proxyBeanMethods = false)
     @EnableConfigurationProperties(CasConfigurationProperties.class)
-    public static class CasCoreServicesResponseBuilderConfiguration {
+    static class CasCoreServicesResponseBuilderConfiguration {
         @Bean
         @ConditionalOnMissingBean(name = "webApplicationServiceResponseBuilder")
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
@@ -149,7 +142,7 @@ public class CasCoreServicesConfiguration {
 
     @Configuration(value = "CasCoreServicesBaseConfiguration", proxyBeanMethods = false)
     @EnableConfigurationProperties(CasConfigurationProperties.class)
-    public static class CasCoreServicesBaseConfiguration {
+    static class CasCoreServicesBaseConfiguration {
 
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
         @Bean
@@ -184,7 +177,8 @@ public class CasCoreServicesConfiguration {
                     .given(applicationContext.getEnvironment()))
                 .supply(() -> {
                     val location = casProperties.getAccessStrategy().getGroovy().getLocation();
-                    return new GroovyRegisteredServiceAccessStrategyEnforcer(new WatchableGroovyScriptResource(location));
+                    val scriptFactory = ExecutableCompiledScriptFactory.getExecutableCompiledScriptFactory();
+                    return new GroovyRegisteredServiceAccessStrategyEnforcer(scriptFactory.fromResource(location));
                 })
                 .otherwiseProxy()
                 .get();
@@ -193,7 +187,7 @@ public class CasCoreServicesConfiguration {
 
     @Configuration(value = "CasCoreServicesStrategyConfiguration", proxyBeanMethods = false)
     @EnableConfigurationProperties(CasConfigurationProperties.class)
-    public static class CasCoreServicesStrategyConfiguration {
+    static class CasCoreServicesStrategyConfiguration {
 
         @ConditionalOnMissingBean(name = "registeredServiceReplicationStrategy")
         @Bean
@@ -212,7 +206,7 @@ public class CasCoreServicesConfiguration {
 
     @Configuration(value = "CasCoreServiceRegistryPlanConfiguration", proxyBeanMethods = false)
     @EnableConfigurationProperties(CasConfigurationProperties.class)
-    public static class CasCoreServiceRegistryPlanConfiguration {
+    static class CasCoreServiceRegistryPlanConfiguration {
         @ConditionalOnMissingBean(name = "serviceRegistryExecutionPlan")
         @Bean
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
@@ -232,7 +226,7 @@ public class CasCoreServicesConfiguration {
 
     @Configuration(value = "CasCoreServicesListenerConfiguration", proxyBeanMethods = false)
     @EnableConfigurationProperties(CasConfigurationProperties.class)
-    public static class CasCoreServicesListenerConfiguration {
+    static class CasCoreServicesListenerConfiguration {
 
         @Bean
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
@@ -245,7 +239,7 @@ public class CasCoreServicesConfiguration {
 
     @Configuration(value = "CasCoreServiceRegistryConfiguration", proxyBeanMethods = false)
     @EnableConfigurationProperties(CasConfigurationProperties.class)
-    public static class CasCoreServiceRegistryConfiguration {
+    static class CasCoreServiceRegistryConfiguration {
 
         private static Optional<List<RegisteredService>> getInMemoryRegisteredServices(final ApplicationContext applicationContext) {
             if (applicationContext.containsBean("inMemoryRegisteredServices")) {
@@ -280,10 +274,11 @@ public class CasCoreServicesConfiguration {
 
     @Configuration(value = "CasCoreServicesManagerExecutionPlanConfiguration", proxyBeanMethods = false)
     @EnableConfigurationProperties(CasConfigurationProperties.class)
-    public static class CasCoreServicesManagerExecutionPlanConfiguration {
+    static class CasCoreServicesManagerExecutionPlanConfiguration {
         @Bean
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
         public ServicesManagerConfigurationContext servicesManagerConfigurationContext(
+            final CasConfigurationProperties casProperties,
             @Qualifier(RegisteredServicesTemplatesManager.BEAN_NAME)
             final RegisteredServicesTemplatesManager registeredServicesTemplatesManager,
             @Qualifier(ServiceRegistry.BEAN_NAME)
@@ -293,15 +288,18 @@ public class CasCoreServicesConfiguration {
             final List<ServicesManagerRegisteredServiceLocator> servicesManagerRegisteredServiceLocators,
             final Environment environment,
             final ConfigurableApplicationContext applicationContext) {
+
             AnnotationAwareOrderComparator.sortIfNecessary(servicesManagerRegisteredServiceLocators);
             val activeProfiles = Arrays.stream(environment.getActiveProfiles()).collect(Collectors.toSet());
-            return ServicesManagerConfigurationContext.builder()
+            return ServicesManagerConfigurationContext
+                .builder()
                 .serviceRegistry(serviceRegistry)
                 .applicationContext(applicationContext)
                 .environments(activeProfiles)
                 .servicesCache(servicesManagerCache)
                 .registeredServicesTemplatesManager(registeredServicesTemplatesManager)
                 .registeredServiceLocators(servicesManagerRegisteredServiceLocators)
+                .casProperties(casProperties)
                 .build();
         }
 
@@ -310,18 +308,9 @@ public class CasCoreServicesConfiguration {
         @ConditionalOnMissingBean(name = "defaultServicesManagerExecutionPlanConfigurer")
         public ServicesManagerExecutionPlanConfigurer defaultServicesManagerExecutionPlanConfigurer(
             final CasConfigurationProperties casProperties,
-            @Qualifier("servicesManagerConfigurationContext")
+            @Qualifier(ServicesManagerConfigurationContext.BEAN_NAME)
             final ServicesManagerConfigurationContext configurationContext) {
-            return BeanSupplier.of(ServicesManagerExecutionPlanConfigurer.class)
-                .alwaysMatch()
-                .supply(() -> {
-                    val managementType = casProperties.getServiceRegistry().getCore().getManagementType();
-                    if (managementType == ServiceRegistryCoreProperties.ServiceManagementTypes.DOMAIN) {
-                        return () -> new DefaultDomainAwareServicesManager(configurationContext, new DefaultRegisteredServiceDomainExtractor());
-                    }
-                    return () -> new DefaultServicesManager(configurationContext);
-                })
-                .get();
+            return () -> new DefaultServicesManager(configurationContext);
         }
 
         @Bean
@@ -335,7 +324,7 @@ public class CasCoreServicesConfiguration {
     @Configuration(value = "CasCoreServicesManagerConfiguration", proxyBeanMethods = false)
     @EnableConfigurationProperties(CasConfigurationProperties.class)
     @AutoConfigureAfter(CasCoreServiceRegistryConfiguration.class)
-    public static class CasCoreServicesManagerConfiguration {
+    static class CasCoreServicesManagerConfiguration {
 
         @ConditionalOnMissingBean(name = RegisteredServicesTemplatesManager.BEAN_NAME)
         @Bean
@@ -343,8 +332,15 @@ public class CasCoreServicesConfiguration {
         public RegisteredServicesTemplatesManager registeredServicesTemplatesManager(
             final ConfigurableApplicationContext applicationContext,
             final CasConfigurationProperties casProperties) {
-            return new DefaultRegisteredServicesTemplatesManager(casProperties.getServiceRegistry(),
-                new RegisteredServiceJsonSerializer(applicationContext));
+            return BeanSupplier.of(RegisteredServicesTemplatesManager.class)
+                .when(BeanCondition.on("cas.service-registry.templates.directory.location").exists().given(applicationContext.getEnvironment()))
+                .supply(() -> {
+                    val registeredServiceSerializer = new RegisteredServiceJsonSerializer(applicationContext);
+                    return new DefaultRegisteredServicesTemplatesManager(casProperties.getServiceRegistry(), registeredServiceSerializer);
+                })
+                .otherwise(RegisteredServicesTemplatesManager::noOp)
+                .get();
+            
         }
 
         @ConditionalOnMissingBean(name = ServicesManager.BEAN_NAME)
@@ -375,7 +371,7 @@ public class CasCoreServicesConfiguration {
     @EnableConfigurationProperties(CasConfigurationProperties.class)
     @AutoConfigureOrder(Ordered.LOWEST_PRECEDENCE)
     @AutoConfigureAfter({CasCoreServicesManagerConfiguration.class, CasCoreServiceRegistryConfiguration.class})
-    public static class CasCoreServicesSchedulingConfiguration {
+    static class CasCoreServicesSchedulingConfiguration {
         @Bean
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
         @Lazy(false)

@@ -1,8 +1,8 @@
 package org.apereo.cas.okta.web.flow;
 
 import org.apereo.cas.authentication.CoreAuthenticationTestUtils;
+import org.apereo.cas.config.CasOktaAuthenticationAutoConfiguration;
 import org.apereo.cas.config.CasPersonDirectoryTestConfiguration;
-import org.apereo.cas.config.OktaProvisioningConfiguration;
 import org.apereo.cas.services.RegisteredServiceTestUtils;
 import org.apereo.cas.util.MockRequestContext;
 import org.apereo.cas.util.MockWebServer;
@@ -18,6 +18,7 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 import org.springframework.context.annotation.Import;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.http.HttpStatus;
@@ -33,18 +34,16 @@ import static org.junit.jupiter.api.Assertions.*;
  * @author Misagh Moayyed
  * @since 7.0.0
  */
-@Import({
-    OktaProvisioningConfiguration.class,
-    CasPersonDirectoryTestConfiguration.class
-})
+@ImportAutoConfiguration(CasOktaAuthenticationAutoConfiguration.class)
 @TestPropertySource(properties = {
     "cas.authn.okta.provisioning.enabled=true",
     "cas.authn.okta.provisioning.api-token=1234567890",
     "cas.authn.okta.provisioning.organization-url=http://localhost:9125"
 })
+@Import(CasPersonDirectoryTestConfiguration.class)
 @Tag("WebflowActions")
 @Execution(ExecutionMode.SAME_THREAD)
-public class OktaPrincipalProvisionerActionTests extends BaseWebflowConfigurerTests {
+class OktaPrincipalProvisionerActionTests extends BaseWebflowConfigurerTests {
     @Autowired
     @Qualifier(CasWebflowConstants.ACTION_ID_OKTA_PRINCIPAL_PROVISIONER_ACTION)
     private Action oktaPrincipalProvisionerAction;

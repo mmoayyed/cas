@@ -1,11 +1,10 @@
 package org.apereo.cas.util;
 
-import org.apereo.cas.util.crypto.CipherExecutor;
+import org.apereo.cas.configuration.model.core.util.EncryptionJwtCryptoProperties;
 import org.apereo.cas.util.crypto.DecryptionException;
 import org.apereo.cas.util.crypto.IdentifiableKey;
 import org.apereo.cas.util.jwt.JsonWebTokenEncryptor;
 import org.apereo.cas.util.jwt.JsonWebTokenSigner;
-
 import lombok.experimental.UtilityClass;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
@@ -15,6 +14,7 @@ import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.lang3.StringUtils;
 import org.jooq.lambda.Unchecked;
 import org.jose4j.json.JsonUtil;
+import org.jose4j.jwe.ContentEncryptionAlgorithmIdentifiers;
 import org.jose4j.jwe.JsonWebEncryption;
 import org.jose4j.jwe.KeyManagementAlgorithmIdentifiers;
 import org.jose4j.jwk.JsonWebKey;
@@ -22,7 +22,6 @@ import org.jose4j.jwk.OctJwkGenerator;
 import org.jose4j.jwk.RsaJwkGenerator;
 import org.jose4j.jws.AlgorithmIdentifiers;
 import org.jose4j.jws.JsonWebSignature;
-
 import java.io.Serializable;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
@@ -80,6 +79,22 @@ public class EncodingUtils {
             val result = Hex.decodeHex(data);
             return new String(result, StandardCharsets.UTF_8);
         } catch (final Exception e) {
+            LOGGER.trace(e.getMessage(), e);
+            return null;
+        }
+    }
+
+    /**
+     * Hex decode to byte array.
+     *
+     * @param data the data
+     * @return the byte [ ]
+     */
+    public static byte[] hexDecodeToByteArray(final String data) {
+        try {
+            return Hex.decodeHex(data.toCharArray());
+        } catch (final Exception e) {
+            LOGGER.trace(e.getMessage(), e);
             return null;
         }
     }
@@ -95,6 +110,7 @@ public class EncodingUtils {
             val result = Hex.encodeHex(data.getBytes(StandardCharsets.UTF_8));
             return new String(result);
         } catch (final Exception e) {
+            LOGGER.trace(e.getMessage(), e);
             return null;
         }
     }
@@ -110,6 +126,7 @@ public class EncodingUtils {
             val result = Hex.encodeHex(data);
             return new String(result);
         } catch (final Exception e) {
+            LOGGER.trace(e.getMessage(), e);
             return null;
         }
     }
@@ -122,6 +139,17 @@ public class EncodingUtils {
      */
     public static String encodeUrlSafeBase64(final byte[] data) {
         return Base64.encodeBase64URLSafeString(data);
+    }
+
+
+    /**
+     * Encode url safe base64 string.
+     *
+     * @param data the data
+     * @return the string
+     */
+    public static String encodeUrlSafeBase64(final String data) {
+        return Base64.encodeBase64URLSafeString(data.getBytes(StandardCharsets.UTF_8));
     }
 
     /**
@@ -441,7 +469,7 @@ public class EncodingUtils {
         return JsonWebTokenEncryptor.builder()
             .key(key)
             .algorithm(KeyManagementAlgorithmIdentifiers.DIRECT)
-            .encryptionMethod(CipherExecutor.DEFAULT_CONTENT_ENCRYPTION_ALGORITHM)
+            .encryptionMethod(ContentEncryptionAlgorithmIdentifiers.AES_128_CBC_HMAC_SHA_256)
             .build()
             .encrypt(value);
     }
@@ -457,7 +485,7 @@ public class EncodingUtils {
         return JsonWebTokenEncryptor.builder()
             .key(key)
             .algorithm(KeyManagementAlgorithmIdentifiers.RSA_OAEP_256)
-            .encryptionMethod(CipherExecutor.DEFAULT_CONTENT_ENCRYPTION_ALGORITHM)
+            .encryptionMethod(EncryptionJwtCryptoProperties.DEFAULT_CONTENT_ENCRYPTION_ALGORITHM)
             .build()
             .encrypt(value);
     }

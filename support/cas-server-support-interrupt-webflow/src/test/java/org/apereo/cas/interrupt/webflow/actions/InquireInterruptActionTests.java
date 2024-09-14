@@ -5,28 +5,30 @@ import org.apereo.cas.authentication.CoreAuthenticationTestUtils;
 import org.apereo.cas.authentication.Credential;
 import org.apereo.cas.authentication.principal.Service;
 import org.apereo.cas.configuration.CasConfigurationProperties;
+import org.apereo.cas.configuration.support.TriStateBoolean;
 import org.apereo.cas.interrupt.InterruptInquirer;
 import org.apereo.cas.interrupt.InterruptInquiryExecutionPlanConfigurer;
 import org.apereo.cas.interrupt.InterruptResponse;
 import org.apereo.cas.interrupt.InterruptTrackingEngine;
 import org.apereo.cas.interrupt.webflow.InterruptUtils;
-import org.apereo.cas.services.BaseWebBasedRegisteredService;
 import org.apereo.cas.services.DefaultRegisteredServiceWebflowInterruptPolicy;
 import org.apereo.cas.services.RegisteredService;
 import org.apereo.cas.services.RegisteredServiceTestUtils;
+import org.apereo.cas.test.CasTestExtension;
 import org.apereo.cas.util.MockRequestContext;
-import org.apereo.cas.util.model.TriStateBoolean;
 import org.apereo.cas.web.flow.CasWebflowConstants;
 import org.apereo.cas.web.support.WebUtils;
 import lombok.val;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.webflow.execution.Action;
 import org.springframework.webflow.execution.RequestContext;
@@ -42,6 +44,7 @@ import static org.mockito.Mockito.*;
  * @since 6.1.0
  */
 @Tag("WebflowActions")
+@ExtendWith(CasTestExtension.class)
 class InquireInterruptActionTests {
 
     @Nested
@@ -59,12 +62,15 @@ class InquireInterruptActionTests {
         @Qualifier(InterruptTrackingEngine.BEAN_NAME)
         private InterruptTrackingEngine interruptTrackingEngine;
 
+        @Autowired
+        private ConfigurableApplicationContext applicationContext;
+
         @Test
         void verifyInterruptedByServicePrincipalAttribute() throws Throwable {
-            val context = MockRequestContext.create();
+            val context = MockRequestContext.create(applicationContext);
             WebUtils.putAuthentication(CoreAuthenticationTestUtils.getAuthentication(), context);
 
-            val registeredService = (BaseWebBasedRegisteredService) RegisteredServiceTestUtils.getRegisteredService();
+            val registeredService = RegisteredServiceTestUtils.getRegisteredService();
             val webflowInterruptPolicy = new DefaultRegisteredServiceWebflowInterruptPolicy()
                 .setAttributeName("mem...of").setAttributeValue("^st[a-z]ff$");
             registeredService.setWebflowInterruptPolicy(webflowInterruptPolicy);
@@ -80,10 +86,10 @@ class InquireInterruptActionTests {
 
         @Test
         void verifyInterrupted() throws Throwable {
-            val context = MockRequestContext.create();
+            val context = MockRequestContext.create(applicationContext);
 
             WebUtils.putAuthentication(CoreAuthenticationTestUtils.getAuthentication(), context);
-            val registeredService = (BaseWebBasedRegisteredService) RegisteredServiceTestUtils.getRegisteredService();
+            val registeredService = RegisteredServiceTestUtils.getRegisteredService();
             registeredService.setWebflowInterruptPolicy(new DefaultRegisteredServiceWebflowInterruptPolicy().setForceExecution(TriStateBoolean.TRUE));
             WebUtils.putRegisteredService(context, registeredService);
 
@@ -104,10 +110,10 @@ class InquireInterruptActionTests {
 
         @Test
         void verifyInterruptedAlreadyWithDifferentResponse() throws Throwable {
-            val context = MockRequestContext.create();
+            val context = MockRequestContext.create(applicationContext);
             val authentication = CoreAuthenticationTestUtils.getAuthentication();
             WebUtils.putAuthentication(authentication, context);
-            val registeredService = (BaseWebBasedRegisteredService) RegisteredServiceTestUtils.getRegisteredService();
+            val registeredService = RegisteredServiceTestUtils.getRegisteredService();
             WebUtils.putRegisteredService(context, registeredService);
             WebUtils.putServiceIntoFlowScope(context, CoreAuthenticationTestUtils.getWebApplicationService());
             WebUtils.putCredential(context, CoreAuthenticationTestUtils.getCredentialsWithSameUsernameAndPassword());
@@ -118,6 +124,42 @@ class InquireInterruptActionTests {
             interruptTrackingEngine.trackInterrupt(context, interruptResponse);
             context.setRequestCookiesFromResponse();
             event = action.execute(context);
+            assertEquals(CasWebflowConstants.TRANSITION_ID_INTERRUPT_REQUIRED, event.getId());
+        }
+
+        @Test
+        void verifyInterruptForInlineGroovyScript() throws Throwable {
+            val groovyScript = """
+                groovy {
+                    logger.debug("Current attributes received are [{}]", attributes)
+                    return username == 'interrupted'
+                }
+            """;
+            val context = MockRequestContext.create(applicationContext);
+
+            WebUtils.putAuthentication(CoreAuthenticationTestUtils.getAuthentication("interrupted"), context);
+            val registeredService = RegisteredServiceTestUtils.getRegisteredService();
+            registeredService.setWebflowInterruptPolicy(new DefaultRegisteredServiceWebflowInterruptPolicy().setGroovyScript(groovyScript));
+            WebUtils.putRegisteredService(context, registeredService);
+            WebUtils.putServiceIntoFlowScope(context, CoreAuthenticationTestUtils.getWebApplicationService());
+            WebUtils.putCredential(context, CoreAuthenticationTestUtils.getCredentialsWithSameUsernameAndPassword());
+
+            val event = action.execute(context);
+            assertEquals(CasWebflowConstants.TRANSITION_ID_INTERRUPT_REQUIRED, event.getId());
+        }
+
+        @Test
+        void verifyInterruptForExternalGroovyScript() throws Throwable {
+            val context = MockRequestContext.create(applicationContext);
+            WebUtils.putAuthentication(CoreAuthenticationTestUtils.getAuthentication("interrupted"), context);
+            val registeredService = RegisteredServiceTestUtils.getRegisteredService();
+            registeredService.setWebflowInterruptPolicy(new DefaultRegisteredServiceWebflowInterruptPolicy()
+                .setGroovyScript("classpath:/InterruptGroovyTrigger.groovy"));
+            WebUtils.putRegisteredService(context, registeredService);
+            WebUtils.putServiceIntoFlowScope(context, CoreAuthenticationTestUtils.getWebApplicationService());
+            WebUtils.putCredential(context, CoreAuthenticationTestUtils.getCredentialsWithSameUsernameAndPassword());
+
+            val event = action.execute(context);
             assertEquals(CasWebflowConstants.TRANSITION_ID_INTERRUPT_REQUIRED, event.getId());
         }
     }
@@ -193,7 +235,7 @@ class InquireInterruptActionTests {
             assertEquals(CasWebflowConstants.TRANSITION_ID_INTERRUPT_SKIPPED, event.getId());
         }
     }
-
+    
     @TestConfiguration(value = "InterruptTestConfiguration", proxyBeanMethods = false)
     static class InterruptActiveTestConfiguration {
         @Bean

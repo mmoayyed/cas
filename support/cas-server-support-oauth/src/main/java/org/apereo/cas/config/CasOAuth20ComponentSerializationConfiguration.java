@@ -7,6 +7,7 @@ import org.apereo.cas.support.oauth.OAuth20ResponseTypes;
 import org.apereo.cas.support.oauth.services.DefaultRegisteredServiceOAuthAccessTokenExpirationPolicy;
 import org.apereo.cas.support.oauth.services.DefaultRegisteredServiceOAuthCodeExpirationPolicy;
 import org.apereo.cas.support.oauth.services.DefaultRegisteredServiceOAuthRefreshTokenExpirationPolicy;
+import org.apereo.cas.support.oauth.services.DefaultRegisteredServiceOAuthTokenExchangePolicy;
 import org.apereo.cas.support.oauth.services.OAuthRegisteredService;
 import org.apereo.cas.ticket.accesstoken.OAuth20AccessTokenExpirationPolicy;
 import org.apereo.cas.ticket.accesstoken.OAuth20DefaultAccessToken;
@@ -20,11 +21,11 @@ import org.apereo.cas.ticket.refreshtoken.OAuth20RefreshTokenStandaloneExpiratio
 import org.apereo.cas.util.serialization.ComponentSerializationPlanConfigurer;
 import org.apereo.cas.util.spring.boot.ConditionalOnFeatureEnabled;
 
-import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.cloud.context.config.annotation.RefreshScope;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.ScopedProxyMode;
 
 /**
@@ -35,8 +36,8 @@ import org.springframework.context.annotation.ScopedProxyMode;
  */
 @EnableConfigurationProperties(CasConfigurationProperties.class)
 @ConditionalOnFeatureEnabled(feature = CasFeatureModule.FeatureCatalog.OAuth)
-@AutoConfiguration
-public class CasOAuth20ComponentSerializationConfiguration {
+@Configuration(value = "CasOAuth20ComponentSerializationConfiguration", proxyBeanMethods = false)
+class CasOAuth20ComponentSerializationConfiguration {
 
     @Bean
     @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
@@ -53,6 +54,7 @@ public class CasOAuth20ComponentSerializationConfiguration {
             plan.registerSerializableClass(DefaultRegisteredServiceOAuthCodeExpirationPolicy.class);
             plan.registerSerializableClass(DefaultRegisteredServiceOAuthAccessTokenExpirationPolicy.class);
             plan.registerSerializableClass(DefaultRegisteredServiceOAuthRefreshTokenExpirationPolicy.class);
+            plan.registerSerializableClass(DefaultRegisteredServiceOAuthTokenExchangePolicy.class);
 
             plan.registerSerializableClass(OAuth20DefaultCode.class);
             plan.registerSerializableClass(OAuth20DefaultAccessToken.class);

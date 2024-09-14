@@ -11,6 +11,7 @@ import org.apereo.cas.configuration.model.support.mfa.BaseMultifactorAuthenticat
 import org.apereo.cas.services.DefaultRegisteredServiceMultifactorPolicy;
 import org.apereo.cas.services.RegisteredServiceTestUtils;
 import org.apereo.cas.util.MockRequestContext;
+import org.apereo.cas.web.flow.util.MultifactorAuthenticationWebflowUtils;
 import org.apereo.cas.web.support.WebUtils;
 import lombok.val;
 import org.junit.jupiter.api.Nested;
@@ -21,6 +22,7 @@ import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.webflow.engine.Transition;
@@ -42,26 +44,30 @@ class MultifactorAuthenticationBypassActionTests {
     @TestConfiguration(value = "MultifactorAuthenticationTestConfiguration", proxyBeanMethods = false)
     static class MultifactorAuthenticationTestConfiguration {
         @Bean
-        public MultifactorAuthenticationProvider dummyProviderNeverBypass(final CasConfigurationProperties casProperties) {
+        public MultifactorAuthenticationProvider dummyProviderNeverBypass(final ConfigurableApplicationContext applicationContext, final CasConfigurationProperties casProperties) {
             val provider = new TestMultifactorAuthenticationProvider("mfa-never");
-            provider.setBypassEvaluator(NeverAllowMultifactorAuthenticationProviderBypassEvaluator.getInstance());
+            provider.setBypassEvaluator(new NeverAllowMultifactorAuthenticationProviderBypassEvaluator(applicationContext));
             provider.setFailureModeEvaluator(new DefaultMultifactorAuthenticationFailureModeEvaluator(casProperties));
             return provider;
         }
 
         @Bean
-        public MultifactorAuthenticationProvider dummyProviderUnavailable(final CasConfigurationProperties casProperties) {
+        public MultifactorAuthenticationProvider dummyProviderUnavailable(
+            final ConfigurableApplicationContext applicationContext,
+            final CasConfigurationProperties casProperties) {
             val provider = new TestMultifactorAuthenticationProvider("mfa-unavailable");
             provider.setAvailable(false);
-            provider.setBypassEvaluator(NeverAllowMultifactorAuthenticationProviderBypassEvaluator.getInstance());
+            provider.setBypassEvaluator(new NeverAllowMultifactorAuthenticationProviderBypassEvaluator(applicationContext));
             provider.setFailureModeEvaluator(new DefaultMultifactorAuthenticationFailureModeEvaluator(casProperties));
             return provider;
         }
 
         @Bean
-        public MultifactorAuthenticationProvider dummyProviderAlwaysBypass(final CasConfigurationProperties casProperties) {
+        public MultifactorAuthenticationProvider dummyProviderAlwaysBypass(
+            final ConfigurableApplicationContext applicationContext,
+            final CasConfigurationProperties casProperties) {
             val provider = new TestMultifactorAuthenticationProvider("mfa-always");
-            provider.setBypassEvaluator(AlwaysAllowMultifactorAuthenticationProviderBypassEvaluator.getInstance());
+            provider.setBypassEvaluator(new AlwaysAllowMultifactorAuthenticationProviderBypassEvaluator(applicationContext));
             provider.setFailureModeEvaluator(new DefaultMultifactorAuthenticationFailureModeEvaluator(casProperties));
             return provider;
         }
@@ -86,7 +92,7 @@ class MultifactorAuthenticationBypassActionTests {
             servicesManager.save(service);
             WebUtils.putRegisteredService(context, service);
             WebUtils.putAuthentication(RegisteredServiceTestUtils.getAuthentication(), context);
-            WebUtils.putMultifactorAuthenticationProvider(context, dummyProvider);
+            MultifactorAuthenticationWebflowUtils.putMultifactorAuthenticationProvider(context, dummyProvider);
 
             val transition = mock(Transition.class);
             when(transition.getId()).thenReturn(CasWebflowConstants.TRANSITION_ID_BYPASS);
@@ -119,7 +125,7 @@ class MultifactorAuthenticationBypassActionTests {
             servicesManager.save(service);
             WebUtils.putRegisteredService(context, service);
             WebUtils.putAuthentication(RegisteredServiceTestUtils.getAuthentication(), context);
-            WebUtils.putMultifactorAuthenticationProvider(context, dummyProvider);
+            MultifactorAuthenticationWebflowUtils.putMultifactorAuthenticationProvider(context, dummyProvider);
 
             val transition = mock(Transition.class);
             when(transition.getId()).thenReturn(CasWebflowConstants.TRANSITION_ID_BYPASS);
@@ -157,7 +163,7 @@ class MultifactorAuthenticationBypassActionTests {
             WebUtils.putRegisteredService(context, service);
             WebUtils.putAuthentication(RegisteredServiceTestUtils.getAuthentication(), context);
 
-            WebUtils.putMultifactorAuthenticationProvider(context, dummyProvider);
+            MultifactorAuthenticationWebflowUtils.putMultifactorAuthenticationProvider(context, dummyProvider);
             val transition = mock(Transition.class);
             when(transition.getId()).thenReturn(CasWebflowConstants.TRANSITION_ID_SUCCESS);
             context.setCurrentTransition(transition);

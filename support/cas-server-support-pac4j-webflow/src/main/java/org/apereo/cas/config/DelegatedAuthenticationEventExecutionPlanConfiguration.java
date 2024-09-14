@@ -47,21 +47,20 @@ import org.apereo.cas.web.cookie.CasCookieBuilder;
 import org.apereo.cas.web.support.CookieUtils;
 import org.apereo.cas.web.support.mgmr.DefaultCasCookieValueManager;
 import org.apereo.cas.web.support.mgmr.DefaultCookieSameSitePolicy;
+import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.apache.commons.lang3.StringUtils;
 import org.apereo.inspektr.audit.spi.AuditActionResolver;
 import org.apereo.inspektr.audit.spi.AuditResourceResolver;
+import org.pac4j.core.client.BaseClient;
 import org.pac4j.core.client.Client;
-import org.pac4j.core.client.IndirectClient;
 import org.pac4j.core.context.session.SessionStore;
 import org.pac4j.jee.context.JEEContext;
 import org.pac4j.jee.context.session.JEESessionStore;
-import org.pac4j.saml.store.SAMLMessageStoreFactory;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -88,20 +87,22 @@ import java.util.stream.Collectors;
 @EnableConfigurationProperties(CasConfigurationProperties.class)
 @Slf4j
 @ConditionalOnFeatureEnabled(feature = CasFeatureModule.FeatureCatalog.DelegatedAuthentication)
-@AutoConfiguration
-public class DelegatedAuthenticationEventExecutionPlanConfiguration {
+@Configuration(value = "DelegatedAuthenticationEventExecutionPlanConfiguration", proxyBeanMethods = false)
+class DelegatedAuthenticationEventExecutionPlanConfiguration {
 
     private static final String AUTHENTICATION_DELEGATION_PREFIX = "AuthnDelegation";
 
     @Configuration(value = "DelegatedAuthenticationEventExecutionPlanSessionConfiguration", proxyBeanMethods = false)
     @EnableConfigurationProperties(CasConfigurationProperties.class)
-    public static class DelegatedAuthenticationEventExecutionPlanSessionConfiguration {
+    static class DelegatedAuthenticationEventExecutionPlanSessionConfiguration {
+        
         @ConditionalOnMissingBean(name = "delegatedClientDistributedSessionStore")
         @Bean
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
         public SessionStore delegatedClientDistributedSessionStore(
             final CasConfigurationProperties casProperties,
-            @Qualifier("delegatedClientDistributedSessionCookieGenerator") final CasCookieBuilder delegatedClientDistributedSessionCookieGenerator,
+            @Qualifier("delegatedClientDistributedSessionCookieGenerator")
+            final CasCookieBuilder delegatedClientDistributedSessionCookieGenerator,
             @Qualifier(TicketFactory.BEAN_NAME) final TicketFactory ticketFactory,
             @Qualifier(TicketRegistry.BEAN_NAME) final TicketRegistry ticketRegistry) {
             val replicationProps = casProperties.getAuthn().getPac4j().getCore().getSessionReplication();
@@ -117,7 +118,7 @@ public class DelegatedAuthenticationEventExecutionPlanConfiguration {
 
     @Configuration(value = "DelegatedAuthenticationEventExecutionPlanCoreConfiguration", proxyBeanMethods = false)
     @EnableConfigurationProperties(CasConfigurationProperties.class)
-    public static class DelegatedAuthenticationEventExecutionPlanCoreConfiguration {
+    static class DelegatedAuthenticationEventExecutionPlanCoreConfiguration {
 
         @ConditionalOnMissingBean(name = "delegatedClientDistributedSessionCookieCipherExecutor")
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
@@ -147,11 +148,12 @@ public class DelegatedAuthenticationEventExecutionPlanConfiguration {
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
         public CasCookieBuilder delegatedClientDistributedSessionCookieGenerator(
             @Qualifier(GeoLocationService.BEAN_NAME) final ObjectProvider<GeoLocationService> geoLocationService,
-            @Qualifier("delegatedClientDistributedSessionCookieCipherExecutor") final CipherExecutor delegatedClientDistributedSessionCookieCipherExecutor,
+            @Qualifier("delegatedClientDistributedSessionCookieCipherExecutor")
+            final CipherExecutor delegatedClientDistributedSessionCookieCipherExecutor,
             final CasConfigurationProperties casProperties) {
             val cookie = casProperties.getAuthn().getPac4j().getCore().getSessionReplication().getCookie();
             if (StringUtils.isBlank(cookie.getName())) {
-                cookie.setName(CookieSessionReplicationProperties.DEFAULT_COOKIE_NAME + AUTHENTICATION_DELEGATION_PREFIX);
+                cookie.setName("%s%s".formatted(CookieSessionReplicationProperties.DEFAULT_COOKIE_NAME, AUTHENTICATION_DELEGATION_PREFIX));
             }
             return CookieUtils.buildCookieRetrievingGenerator(cookie,
                 new DefaultCasCookieValueManager(delegatedClientDistributedSessionCookieCipherExecutor,
@@ -169,7 +171,7 @@ public class DelegatedAuthenticationEventExecutionPlanConfiguration {
 
     @Configuration(value = "DelegatedAuthenticationEventExecutionPlanMetadataConfiguration", proxyBeanMethods = false)
     @EnableConfigurationProperties(CasConfigurationProperties.class)
-    public static class DelegatedAuthenticationEventExecutionPlanMetadataConfiguration {
+    static class DelegatedAuthenticationEventExecutionPlanMetadataConfiguration {
         @ConditionalOnMissingBean(name = "clientAuthenticationMetaDataPopulator")
         @Bean
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
@@ -180,7 +182,7 @@ public class DelegatedAuthenticationEventExecutionPlanConfiguration {
 
     @Configuration(value = "DelegatedAuthenticationEventExecutionPlanHandlerConfiguration", proxyBeanMethods = false)
     @EnableConfigurationProperties(CasConfigurationProperties.class)
-    public static class DelegatedAuthenticationEventExecutionPlanHandlerConfiguration {
+    static class DelegatedAuthenticationEventExecutionPlanHandlerConfiguration {
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
         @Bean
         @ConditionalOnMissingBean(name = "clientAuthenticationHandler")
@@ -205,7 +207,7 @@ public class DelegatedAuthenticationEventExecutionPlanConfiguration {
 
     @Configuration(value = "DelegatedAuthenticationEventExecutionPlanProvisionConfiguration", proxyBeanMethods = false)
     @EnableConfigurationProperties(CasConfigurationProperties.class)
-    public static class DelegatedAuthenticationEventExecutionPlanProvisionConfiguration {
+    static class DelegatedAuthenticationEventExecutionPlanProvisionConfiguration {
 
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
         @Bean
@@ -223,7 +225,7 @@ public class DelegatedAuthenticationEventExecutionPlanConfiguration {
 
     @Configuration(value = "DelegatedAuthenticationEventExecutionPlanClientFactoryConfiguration", proxyBeanMethods = false)
     @EnableConfigurationProperties(CasConfigurationProperties.class)
-    public static class DelegatedAuthenticationEventExecutionPlanClientFactoryConfiguration {
+    static class DelegatedAuthenticationEventExecutionPlanClientFactoryConfiguration {
         @Bean
         @ConditionalOnMissingBean(name = "pac4jDelegatedClientNameExtractor")
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
@@ -232,38 +234,48 @@ public class DelegatedAuthenticationEventExecutionPlanConfiguration {
         }
 
         @Bean
+        @ConditionalOnMissingBean(name = "pac4jDelegatedClientFactoryCache")
+        @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
+        public Cache<String, Collection<BaseClient>> pac4jDelegatedClientFactoryCache(
+            final CasConfigurationProperties casProperties) {
+            val core = casProperties.getAuthn().getPac4j().getCore();
+            return Caffeine.newBuilder()
+                .maximumSize(core.getCacheSize())
+                .expireAfterWrite(Beans.newDuration(core.getCacheDuration()))
+                .build();
+        }
+        
+        @Bean
         @ConditionalOnMissingBean(name = "pac4jDelegatedClientFactory")
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
         public DelegatedIdentityProviderFactory pac4jDelegatedClientFactory(
-            @Qualifier(DelegatedIdentityProviderFactory.BEAN_NAME_SAML2_CLIENT_MESSAGE_FACTORY) final ObjectProvider<SAMLMessageStoreFactory> samlMessageStoreFactory,
+            final ConfigurableApplicationContext applicationContext,
+            @Qualifier("pac4jDelegatedClientFactoryCache")
+            final Cache<String, Collection<BaseClient>> clientsCache,
             final CasConfigurationProperties casProperties,
             final ObjectProvider<List<DelegatedClientFactoryCustomizer>> customizerList,
-            @Qualifier(CasSSLContext.BEAN_NAME) final CasSSLContext casSslContext) {
-
-            val core = casProperties.getAuthn().getPac4j().getCore();
-            val clientsCache = Caffeine.newBuilder()
-                .maximumSize(core.getCacheSize())
-                .expireAfterAccess(Beans.newDuration(core.getCacheDuration()))
-                .<String, Collection<IndirectClient>>build();
+            @Qualifier(CasSSLContext.BEAN_NAME)
+            final CasSSLContext casSslContext) {
 
             val customizers = Optional.ofNullable(customizerList.getIfAvailable())
                 .map(result -> {
                     AnnotationAwareOrderComparator.sortIfNecessary(result);
                     return result;
-                }).orElseGet(() -> new ArrayList<>(0));
+                })
+                .orElseGet(() -> new ArrayList<>(0));
 
             if (StringUtils.isNotBlank(casProperties.getAuthn().getPac4j().getRest().getUrl())) {
-                return new RestfulDelegatedIdentityProviderFactory(customizers, casSslContext,
-                    casProperties, samlMessageStoreFactory, clientsCache);
+                return new RestfulDelegatedIdentityProviderFactory(customizers,
+                    casSslContext, casProperties, clientsCache, applicationContext);
             }
             return new DefaultDelegatedIdentityProviderFactory(casProperties,
-                customizers, casSslContext, samlMessageStoreFactory, clientsCache);
+                customizers, casSslContext, clientsCache, applicationContext);
         }
     }
 
     @Configuration(value = "DelegatedAuthenticationEventExecutionPlanClientConfiguration", proxyBeanMethods = false)
     @EnableConfigurationProperties(CasConfigurationProperties.class)
-    public static class DelegatedAuthenticationEventExecutionPlanClientConfiguration {
+    static class DelegatedAuthenticationEventExecutionPlanClientConfiguration {
 
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
         @Bean
@@ -285,7 +297,7 @@ public class DelegatedAuthenticationEventExecutionPlanConfiguration {
 
     @Configuration(value = "DelegatedAuthenticationEventExecutionPlanAuditConfiguration", proxyBeanMethods = false)
     @EnableConfigurationProperties(CasConfigurationProperties.class)
-    public static class DelegatedAuthenticationEventExecutionPlanAuditConfiguration {
+    static class DelegatedAuthenticationEventExecutionPlanAuditConfiguration {
         @ConditionalOnMissingBean(name = "delegatedAuthenticationAuditResourceResolver")
         @Bean
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
@@ -296,7 +308,7 @@ public class DelegatedAuthenticationEventExecutionPlanConfiguration {
 
     @Configuration(value = "DelegatedAuthenticationEventExecutionPlanAuditPlanConfiguration", proxyBeanMethods = false)
     @EnableConfigurationProperties(CasConfigurationProperties.class)
-    public static class DelegatedAuthenticationEventExecutionPlanAuditPlanConfiguration {
+    static class DelegatedAuthenticationEventExecutionPlanAuditPlanConfiguration {
 
         @Bean
         @ConditionalOnMissingBean(name = "delegatedAuthenticationAuditTrailRecordResolutionPlanConfigurer")
@@ -314,7 +326,7 @@ public class DelegatedAuthenticationEventExecutionPlanConfiguration {
 
     @Configuration(value = "DelegatedAuthenticationEventExecutionPlanLogoutConfiguration", proxyBeanMethods = false)
     @EnableConfigurationProperties(CasConfigurationProperties.class)
-    public static class DelegatedAuthenticationEventExecutionPlanLogoutConfiguration {
+    static class DelegatedAuthenticationEventExecutionPlanLogoutConfiguration {
         @Bean
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
         @ConditionalOnMissingBean(name = "delegatedAuthenticationLogoutExecutionPlanConfigurer")
@@ -339,7 +351,7 @@ public class DelegatedAuthenticationEventExecutionPlanConfiguration {
 
     @Configuration(value = "DelegatedAuthenticationEventExecutionPlanBaseConfiguration", proxyBeanMethods = false)
     @EnableConfigurationProperties(CasConfigurationProperties.class)
-    public static class DelegatedAuthenticationEventExecutionPlanBaseConfiguration {
+    static class DelegatedAuthenticationEventExecutionPlanBaseConfiguration {
         @ConditionalOnMissingBean(name = "pac4jAuthenticationEventExecutionPlanConfigurer")
         @Bean
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
@@ -363,7 +375,7 @@ public class DelegatedAuthenticationEventExecutionPlanConfiguration {
     @EnableConfigurationProperties(CasConfigurationProperties.class)
     @ConditionalOnClass(CasServerProfileCustomizer.class)
     @ConditionalOnFeatureEnabled(feature = CasFeatureModule.FeatureCatalog.Discovery)
-    public static class DelegatedAuthenticationDiscoveryConfiguration {
+    static class DelegatedAuthenticationDiscoveryConfiguration {
 
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
         @ConditionalOnMissingBean(name = "delegatedAuthenticationCasServerProfileCustomizer")

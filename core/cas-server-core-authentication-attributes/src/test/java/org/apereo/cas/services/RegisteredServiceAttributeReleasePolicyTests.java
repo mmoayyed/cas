@@ -2,32 +2,34 @@ package org.apereo.cas.services;
 
 import org.apereo.cas.CoreAttributesTestUtils;
 import org.apereo.cas.authentication.CoreAuthenticationTestUtils;
+import org.apereo.cas.authentication.attribute.MergingPersonAttributeDaoImpl;
+import org.apereo.cas.authentication.attribute.StubPersonAttributeDao;
 import org.apereo.cas.authentication.principal.DefaultPrincipalAttributesRepository;
 import org.apereo.cas.authentication.principal.Principal;
 import org.apereo.cas.authentication.principal.PrincipalAttributesRepositoryCache;
 import org.apereo.cas.authentication.principal.PrincipalFactoryUtils;
 import org.apereo.cas.authentication.principal.PrincipalResolver;
 import org.apereo.cas.authentication.principal.RegisteredServicePrincipalAttributesRepository;
+import org.apereo.cas.authentication.principal.attribute.PersonAttributeDao;
+import org.apereo.cas.authentication.principal.attribute.PersonAttributes;
 import org.apereo.cas.authentication.principal.cache.CachingPrincipalAttributesRepository;
 import org.apereo.cas.authentication.principal.cache.DefaultPrincipalAttributesRepositoryCache;
-import org.apereo.cas.config.CasCoreUtilConfiguration;
+import org.apereo.cas.config.CasCoreScriptingAutoConfiguration;
+import org.apereo.cas.config.CasCoreUtilAutoConfiguration;
+import org.apereo.cas.test.CasTestExtension;
 import org.apereo.cas.util.CollectionUtils;
 import org.apereo.cas.util.serialization.SerializationUtils;
 import org.apereo.cas.util.spring.ApplicationContextProvider;
+import org.apereo.cas.util.spring.boot.SpringBootTestAutoConfigurations;
 import com.google.common.collect.ArrayListMultimap;
 import lombok.val;
-import org.apereo.services.persondir.IPersonAttributeDao;
-import org.apereo.services.persondir.IPersonAttributes;
-import org.apereo.services.persondir.support.MergingPersonAttributeDaoImpl;
-import org.apereo.services.persondir.support.StubPersonAttributeDao;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.autoconfigure.web.servlet.WebMvcAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.cloud.autoconfigure.RefreshAutoConfiguration;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Bean;
 import java.io.Serial;
@@ -50,6 +52,7 @@ import static org.mockito.Mockito.*;
  * @since 4.0.0
  */
 @Tag("RegisteredService")
+@ExtendWith(CasTestExtension.class)
 class RegisteredServiceAttributeReleasePolicyTests {
 
     private static final String ATTR_1 = "attr1";
@@ -66,7 +69,7 @@ class RegisteredServiceAttributeReleasePolicyTests {
 
     private static final String PRINCIPAL_ID = "principalId";
 
-    @TestConfiguration(proxyBeanMethods = false)
+    @TestConfiguration(value = "CommonTestConfiguration", proxyBeanMethods = false)
     public static class CommonTestConfiguration {
         @Bean
         public PrincipalAttributesRepositoryCache principalAttributesRepositoryCache() {
@@ -75,13 +78,13 @@ class RegisteredServiceAttributeReleasePolicyTests {
     }
 
     @Nested
+    @SpringBootTestAutoConfigurations
     @SpringBootTest(classes = {
         CommonTestConfiguration.class,
-        RefreshAutoConfiguration.class,
-        WebMvcAutoConfiguration.class,
-        CasCoreUtilConfiguration.class
+        CasCoreUtilAutoConfiguration.class,
+        CasCoreScriptingAutoConfiguration.class
     })
-    public class DefaultTests {
+    class DefaultTests {
         @Autowired
         private ConfigurableApplicationContext applicationContext;
 
@@ -277,7 +280,7 @@ class RegisteredServiceAttributeReleasePolicyTests {
             attributes.put("cn", Arrays.asList(new Object[]{"commonName"}));
             attributes.put("username", Arrays.asList(new Object[]{"uid"}));
 
-            val person = mock(IPersonAttributes.class);
+            val person = mock(PersonAttributes.class);
             when(person.getName()).thenReturn("uid");
             when(person.getAttributes()).thenReturn(attributes);
 
@@ -345,14 +348,14 @@ class RegisteredServiceAttributeReleasePolicyTests {
     }
 
     @Nested
+    @SpringBootTestAutoConfigurations
     @SpringBootTest(classes = {
         CommonTestConfiguration.class,
         AttributeRepositoryTests.AttributeRepositoryTestConfiguration.class,
-        RefreshAutoConfiguration.class,
-        WebMvcAutoConfiguration.class,
-        CasCoreUtilConfiguration.class
+        CasCoreUtilAutoConfiguration.class,
+        CasCoreScriptingAutoConfiguration.class
     })
-    public class AttributeRepositoryTests {
+    class AttributeRepositoryTests {
         @Autowired
         private ConfigurableApplicationContext applicationContext;
 
@@ -380,16 +383,16 @@ class RegisteredServiceAttributeReleasePolicyTests {
             assertEquals(1, attr.size());
         }
 
-        @TestConfiguration(proxyBeanMethods = false)
+        @TestConfiguration(value = "AttributeRepositoryTestConfiguration", proxyBeanMethods = false)
         public static class AttributeRepositoryTestConfiguration {
             @Bean
-            public IPersonAttributeDao attributeRepository() {
+            public PersonAttributeDao attributeRepository() {
                 val attributes = new HashMap<String, List<Object>>();
                 attributes.put("values", Arrays.asList(new Object[]{"v1", "v2", "v3"}));
                 attributes.put("cn", Arrays.asList(new Object[]{"commonName"}));
                 attributes.put("username", Arrays.asList(new Object[]{"uid"}));
 
-                val person = mock(IPersonAttributes.class);
+                val person = mock(PersonAttributes.class);
                 when(person.getName()).thenReturn("uid");
                 when(person.getAttributes()).thenReturn(attributes);
 

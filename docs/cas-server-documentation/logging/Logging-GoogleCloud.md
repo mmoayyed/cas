@@ -12,10 +12,19 @@ category: Logs & Audits
 
 The integration here also provides automatic support for associating a web request trace ID with the corresponding log entries
 by retrieving the `X-B3-TraceId` or `x-cloud-trace-context` header values.
+   
+## JSON Layout Template
 
-## Configuration
+`JsonTemplateLayout` is a customizable, efficient, and garbage-free JSON generating layout. 
+It encodes LogEvents according to the structure described by the JSON template provided.      
 
-Support is enabled by including the following dependency in the WAR overlay:
+```xml
+<JsonTemplateLayout eventTemplateUri="classpath:GcpLayout.json"/>
+```
+
+## CAS
+
+Another option is to use a CAS-provided dedicated logger. Support is enabled by including the following dependency in the WAR overlay:
 
 {% include_cached casmodule.html group="org.apereo.cas" module="cas-server-support-gcp-logging" %}
 
@@ -66,3 +75,11 @@ This is an example of the logging configuration:
 
 </Configuration>
 ```
+
+## Actuator Endpoints
+
+The following endpoints are provided by CAS:
+
+{% include_cached actuators.html endpoints="gcpLogs" %}
+
+{% include_cached casproperties.html properties="cas.logging.gcp" %}

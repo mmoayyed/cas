@@ -1,23 +1,20 @@
-const puppeteer = require('puppeteer');
-const cas = require('../../cas.js');
+
+const cas = require("../../cas.js");
 
 (async () => {
-    const browser = await puppeteer.launch(cas.browserOptions());
+    const browser = await cas.newBrowser(cas.browserOptions());
     const page = await cas.newPage(browser);
+
+    const redirectUrl = "https://localhost:9859/anything/cas";
     const url = "https://localhost:8443/cas/oidc/oidcAuthorize?client_id=client&"
-        + "redirect_uri=https://apereo.github.io&scope=openid&state=U7yWide2Ak&nonce=8xiyRZUiYP&"
+        + `redirect_uri=${redirectUrl}&scope=openid&state=U7yWide2Ak&nonce=8xiyRZUiYP&`
         + "response_type=code";
-
     await cas.goto(page, url);
-    await page.waitForTimeout(1000);
+    await cas.sleep(1000);
     await cas.loginWith(page);
-
-    await page.waitForTimeout(10000);
-    // wait 10s before login again, the time for the TGT to be expired
+    await cas.sleep(4000);
     await cas.goto(page, url);
-    await page.waitForTimeout(1000);
-
-    // the TGT being expired (while the web session is not), the login page is displayed
-    await cas.assertVisibility(page, '#username');
+    await cas.sleep(1000);
+    await cas.assertVisibility(page, "#username");
     await browser.close();
 })();

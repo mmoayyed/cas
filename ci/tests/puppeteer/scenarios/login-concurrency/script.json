@@ -1,13 +1,11 @@
 {
-  "dependencies": "saml",
+  "dependencies": "saml,scripting",
   "properties": [
     "--cas.server.name=https://localhost:8443",
     "--cas.server.prefix=${cas.server.name}/cas",
 
-    "--logging.level.org.apereo.cas=info",
     "--logging.level.PROTOCOL_MESSAGE=off",
-    
-    "--cas.audit.engine.enabled=true",
+
     "--cas.authn.accept.users=casuser::Mellon,casadmin::Mellon",
     
     "--cas.service-registry.core.init-from-json=true",

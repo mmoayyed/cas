@@ -2,17 +2,19 @@ package org.apereo.cas.config;
 
 import org.apereo.cas.authentication.CoreAuthenticationUtils;
 import org.apereo.cas.authentication.attribute.AttributeDefinitionStore;
+import org.apereo.cas.authentication.attribute.AttributeRepositoryResolver;
 import org.apereo.cas.authentication.attribute.DefaultAttributeDefinitionStore;
+import org.apereo.cas.authentication.attribute.StubPersonAttributeDao;
 import org.apereo.cas.authentication.principal.PrincipalFactoryUtils;
 import org.apereo.cas.authentication.principal.PrincipalResolutionExecutionPlanConfigurer;
 import org.apereo.cas.authentication.principal.PrincipalResolver;
+import org.apereo.cas.authentication.principal.attribute.PersonAttributeDao;
 import org.apereo.cas.authentication.principal.resolvers.PersonDirectoryPrincipalResolver;
 import org.apereo.cas.configuration.CasConfigurationProperties;
+import org.apereo.cas.persondir.DefaultAttributeRepositoryResolver;
 import org.apereo.cas.services.ServicesManager;
 import org.apereo.cas.util.CollectionUtils;
 import lombok.val;
-import org.apereo.services.persondir.IPersonAttributeDao;
-import org.apereo.services.persondir.support.StubPersonAttributeDao;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -33,14 +35,14 @@ import java.util.Map;
     havingValue = "true", matchIfMissing = true)
 public class CasPersonDirectoryTestConfiguration {
     @Bean
-    public List<IPersonAttributeDao> attributeRepositories(
-        @Qualifier(PrincipalResolver.BEAN_NAME_ATTRIBUTE_REPOSITORY) final IPersonAttributeDao attributeRepository) {
+    public List<PersonAttributeDao> attributeRepositories(
+        @Qualifier(PrincipalResolver.BEAN_NAME_ATTRIBUTE_REPOSITORY) final PersonAttributeDao attributeRepository) {
         return CollectionUtils.wrap(attributeRepository);
     }
 
     @ConditionalOnMissingBean(name = PrincipalResolver.BEAN_NAME_ATTRIBUTE_REPOSITORY)
     @Bean
-    public IPersonAttributeDao attributeRepository() {
+    public PersonAttributeDao attributeRepository() {
         val attrs = CollectionUtils.wrap(
             "uid", CollectionUtils.wrap("uid"),
             "mail", CollectionUtils.wrap("cas@apereo.org"),
@@ -61,6 +63,14 @@ public class CasPersonDirectoryTestConfiguration {
     }
 
     @Bean
+    @ConditionalOnMissingBean(name = AttributeRepositoryResolver.BEAN_NAME)
+    public AttributeRepositoryResolver attributeRepositoryResolver(
+        final CasConfigurationProperties casProperties,
+        @Qualifier(ServicesManager.BEAN_NAME) final ServicesManager servicesManager) {
+        return new DefaultAttributeRepositoryResolver(servicesManager, casProperties);
+    }
+
+    @Bean
     public PrincipalResolutionExecutionPlanConfigurer testPersonDirectoryPrincipalResolutionExecutionPlanConfigurer(
         final ConfigurableApplicationContext applicationContext,
         @Qualifier(AttributeDefinitionStore.BEAN_NAME)
@@ -69,17 +79,18 @@ public class CasPersonDirectoryTestConfiguration {
         final ServicesManager servicesManager,
         final CasConfigurationProperties casProperties,
         @Qualifier(PrincipalResolver.BEAN_NAME_ATTRIBUTE_REPOSITORY)
-        final IPersonAttributeDao attributeRepository) {
+        final PersonAttributeDao attributeRepository,
+        @Qualifier(AttributeRepositoryResolver.BEAN_NAME)
+        final AttributeRepositoryResolver attributeRepositoryResolver) {
         return plan -> {
             val personDirectory = casProperties.getPersonDirectory();
             val attributeMerger = CoreAuthenticationUtils.getAttributeMerger(casProperties.getAuthn().getAttributeRepository().getCore().getMerger());
             val resolver = PersonDirectoryPrincipalResolver.newPersonDirectoryPrincipalResolver(
                 applicationContext,
                 PrincipalFactoryUtils.newPrincipalFactory(),
-                attributeRepository,
-                attributeMerger,
+                attributeRepository, attributeMerger,
                 servicesManager, attributeDefinitionStore,
-                personDirectory);
+                attributeRepositoryResolver, personDirectory);
             plan.registerPrincipalResolver(resolver);
         };
     }

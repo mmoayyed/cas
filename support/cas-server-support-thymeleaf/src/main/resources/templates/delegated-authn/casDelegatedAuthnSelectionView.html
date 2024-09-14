@@ -10,7 +10,7 @@
 </head>
 
 <body>
-<main role="main" class="container mt-3 mb-3">
+<main class="container mt-3 mb-3">
     <div layout:fragment="content" class="mdc-card p-4 m-auto w-lg-75">
         <script>
             function jqueryReady() {
@@ -58,7 +58,7 @@
                     <section>
                         <input type="hidden" name="execution" th:value="${flowExecutionKey}"/>
                         <input type="hidden" name="_eventId" value="cancel"/>
-                        <button id="cancelButton" class="mdc-button mdc-button--raised btn btn-primary me-2">
+                        <button id="cancelButton" class="mdc-button mdc-button--raised btn btn-primary me-2 button-cancel">
                             <span class="mdc-button__label">Cancel</span>
                         </button>
                     </section>

@@ -3,7 +3,6 @@ package org.apereo.cas.services.resource;
 import org.apereo.cas.configuration.api.CasConfigurationPropertiesSourceLocator;
 import org.apereo.cas.services.AbstractServiceRegistry;
 import org.apereo.cas.services.RegisteredService;
-import org.apereo.cas.services.RegisteredServiceDefinition;
 import org.apereo.cas.services.ResourceBasedServiceRegistry;
 import org.apereo.cas.services.ServiceRegistryListener;
 import org.apereo.cas.services.replication.NoOpRegisteredServiceReplicationStrategy;
@@ -28,6 +27,7 @@ import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.ObjectUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.apereo.inspektr.common.web.ClientInfoHolder;
 import org.springframework.beans.factory.DisposableBean;
@@ -71,9 +71,6 @@ public abstract class AbstractResourceBasedServiceRegistry extends AbstractServi
         new File(CasConfigurationPropertiesSourceLocator.DEFAULT_CAS_CONFIG_DIRECTORIES.getFirst(), "services");
 
 
-    /**
-     * The Service registry directory.
-     */
     @Getter
     protected Path serviceRegistryDirectory;
     
@@ -194,10 +191,7 @@ public abstract class AbstractResourceBasedServiceRegistry extends AbstractServi
 
     @Override
     public RegisteredService save(final RegisteredService service) {
-        if (service.getId() == RegisteredServiceDefinition.INITIAL_IDENTIFIER_VALUE) {
-            LOGGER.debug("Service id not set. Calculating id based on system time...");
-            service.setId(System.currentTimeMillis());
-        }
+        service.assignIdIfNecessary();
         val fileName = getRegisteredServiceFileName(service);
         try (val out = Files.newOutputStream(fileName.toPath())) {
             invokeServiceRegistryListenerPreSave(service);
@@ -252,7 +246,11 @@ public abstract class AbstractResourceBasedServiceRegistry extends AbstractServi
     public Collection<RegisteredService> load() {
         return lock.tryLock(() -> {
             LOGGER.trace("Loading files from [{}]", this.serviceRegistryDirectory);
-            val files = FileUtils.listFiles(this.serviceRegistryDirectory.toFile(), getExtensions(), true);
+            val serviceRegistryDirectoryFile = serviceRegistryDirectory.toFile();
+            val files = serviceRegistryDirectoryFile.exists()
+                ? FileUtils.listFiles(serviceRegistryDirectoryFile, getExtensions(), true)
+                : List.<File>of();
+            
             LOGGER.trace("Located [{}] files from [{}] are [{}]", getExtensions(), this.serviceRegistryDirectory, files);
             val clientInfo = ClientInfoHolder.getClientInfo();
 
@@ -261,6 +259,7 @@ public abstract class AbstractResourceBasedServiceRegistry extends AbstractServi
                 .map(this::load)
                 .filter(Objects::nonNull)
                 .flatMap(Collection::stream)
+                .filter(service -> StringUtils.isNotBlank(service.getServiceId()) && StringUtils.isNotBlank(service.getName()))
                 .sorted()
                 .collect(Collectors.toMap(RegisteredService::getId, Function.identity(),
                     (s1, s2) -> {
@@ -268,7 +267,7 @@ public abstract class AbstractResourceBasedServiceRegistry extends AbstractServi
                         return s1;
                     }, LinkedHashMap::new));
             val listedServices = new ArrayList<>(this.services.values());
-            val results = this.registeredServiceReplicationStrategy.updateLoadedRegisteredServicesFromCache(listedServices, this);
+            val results = registeredServiceReplicationStrategy.updateLoadedRegisteredServicesFromCache(listedServices, this);
             results.forEach(service -> publishEvent(new CasRegisteredServiceLoadedEvent(this, service, clientInfo)));
             return results;
         });
@@ -308,12 +307,13 @@ public abstract class AbstractResourceBasedServiceRegistry extends AbstractServi
 
         LOGGER.debug("Attempting to read and parse [{}]", file.getAbsoluteFile());
         try (val in = Files.newBufferedReader(file.toPath())) {
-            return this.registeredServiceSerializers
+            return registeredServiceSerializers
                 .stream()
                 .filter(serializer -> serializer.supports(file))
                 .map(serializer -> serializer.load(in))
                 .filter(Objects::nonNull)
                 .flatMap(Collection::stream)
+                .filter(service -> StringUtils.isNotBlank(service.getServiceId()) && StringUtils.isNotBlank(service.getName()))
                 .map(this::invokeServiceRegistryListenerPostLoad)
                 .filter(Objects::nonNull)
                 .collect(Collectors.toList());

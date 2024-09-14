@@ -1,17 +1,18 @@
 package org.apereo.cas.ticket.registry;
 
+import org.apereo.cas.authentication.principal.Service;
 import org.apereo.cas.ticket.AuthenticationAwareTicket;
 import org.apereo.cas.ticket.Ticket;
 import org.apereo.cas.ticket.TicketGrantingTicket;
-
 import org.jooq.lambda.Unchecked;
-
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
@@ -35,9 +36,10 @@ public interface TicketRegistry {
      * Add a ticket to the registry. Ticket storage is based on the ticket id.
      *
      * @param ticket The ticket we wish to add to the cache.
+     * @return ticket
      * @throws Exception the exception
      */
-    void addTicket(Ticket ticket) throws Exception;
+    Ticket addTicket(Ticket ticket) throws Exception;
 
     /**
      * Save.
@@ -45,8 +47,8 @@ public interface TicketRegistry {
      * @param toSave the to save
      * @throws Exception the exception
      */
-    default void addTicket(final Stream<? extends Ticket> toSave) throws Exception {
-        toSave.forEach(Unchecked.consumer(this::addTicket));
+    default List<? extends Ticket> addTicket(final Stream<? extends Ticket> toSave) throws Exception {
+        return toSave.parallel().map(Unchecked.function(this::addTicket)).filter(Objects::nonNull).collect(Collectors.toList());
     }
 
     /**
@@ -102,14 +104,18 @@ public interface TicketRegistry {
      *
      * @return the number of tickets deleted.
      */
-    long deleteAll();
+    default long deleteAll() {
+        return 0;
+    }
 
     /**
      * Retrieve all tickets from the registry.
      *
      * @return collection of tickets currently stored in the registry. Tickets might or might not be valid i.e. expired.
      */
-    Collection<? extends Ticket> getTickets();
+    default Collection<? extends Ticket> getTickets() {
+        return List.of();
+    }
 
     /**
      * Gets tickets as a stream having applied a predicate.
@@ -155,8 +161,17 @@ public interface TicketRegistry {
      *
      * @return the tickets stream
      */
+    default Stream<? extends Ticket> stream(final TicketRegistryStreamCriteria criteria) {
+        return getTickets().parallelStream();
+    }
+
+    /**
+     * Stream stream.
+     *
+     * @return the stream
+     */
     default Stream<? extends Ticket> stream() {
-        return getTickets().stream();
+        return stream(TicketRegistryStreamCriteria.builder().build());
     }
 
     /**
@@ -177,8 +192,8 @@ public interface TicketRegistry {
      */
     default Stream<? extends Ticket> getSessionsFor(final String principalId) {
         return getTickets(ticket -> ticket instanceof TicketGrantingTicket
-                                    && !ticket.isExpired()
-                                    && ((AuthenticationAwareTicket) ticket).getAuthentication().getPrincipal().getId().equals(principalId));
+            && !ticket.isExpired()
+            && ((AuthenticationAwareTicket) ticket).getAuthentication().getPrincipal().getId().equals(principalId));
     }
 
     /**
@@ -202,10 +217,31 @@ public interface TicketRegistry {
      * This operations allows one to interact with the registry
      * in raw form without a lot of post-processing of the ticket objects.
      * Registry implementations are to decide which criteria options they wish to support.
+     *
      * @param criteria the criteria
      * @return the results
      */
     default List<? extends Serializable> query(final TicketRegistryQueryCriteria criteria) {
         return new ArrayList<>();
+    }
+
+    /**
+     * Count the number of tickets, given a type or prefix
+     * that might have been issued for given application.
+     *
+     * @param service the service
+     * @return total count
+     */
+    default long countTicketsFor(final Service service) {
+        return 0;
+    }
+
+    /**
+     * Count all tickets.
+     *
+     * @return the total count.
+     */
+    default long countTickets() {
+        return stream().count();
     }
 }

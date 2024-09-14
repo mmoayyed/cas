@@ -1,9 +1,9 @@
 package org.apereo.cas.aws;
 
 import org.apereo.cas.authentication.mfa.TestMultifactorAuthenticationProvider;
-import org.apereo.cas.config.AmazonCoreConfiguration;
+import org.apereo.cas.config.CasAmazonCoreAutoConfiguration;
 import org.apereo.cas.config.CasAuthenticationEventExecutionPlanTestConfiguration;
-import org.apereo.cas.config.CasCoreRestConfiguration;
+import org.apereo.cas.config.CasCoreRestAutoConfiguration;
 import org.apereo.cas.util.junit.EnabledIfListeningOnPort;
 import org.apereo.cas.util.spring.ApplicationContextProvider;
 import org.apereo.cas.web.report.AbstractCasEndpointTests;
@@ -14,7 +14,7 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.context.ConfigurableApplicationContext;
+import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpStatus;
 import org.springframework.mock.web.MockHttpServletRequest;
@@ -41,10 +41,10 @@ class AmazonSecurityTokenServiceEndpointTests {
         "cas.authn.mfa.groovy-script.location=classpath:AmazonStsGroovyMfa.groovy",
         "management.endpoint.awsSts.enabled=true"
     })
-    @Import({
-        AmazonCoreConfiguration.class,
-        CasCoreRestConfiguration.class,
-        CasAuthenticationEventExecutionPlanTestConfiguration.class
+    @Import(CasAuthenticationEventExecutionPlanTestConfiguration.class)
+    @ImportAutoConfiguration({
+        CasAmazonCoreAutoConfiguration.class,
+        CasCoreRestAutoConfiguration.class
     })
     static class BaseAmazonSecurityTokenServiceEndpointTests extends AbstractCasEndpointTests {
     }
@@ -60,9 +60,6 @@ class AmazonSecurityTokenServiceEndpointTests {
         @Autowired
         @Qualifier("awsSecurityTokenServiceEndpoint")
         private AmazonSecurityTokenServiceEndpoint awsSecurityTokenServiceEndpoint;
-
-        @Autowired
-        private ConfigurableApplicationContext applicationContext;
 
         @BeforeEach
         public void beforeEach() {
@@ -89,9 +86,6 @@ class AmazonSecurityTokenServiceEndpointTests {
         @Autowired
         @Qualifier("awsSecurityTokenServiceEndpoint")
         private AmazonSecurityTokenServiceEndpoint awsSecurityTokenServiceEndpoint;
-
-        @Autowired
-        private ConfigurableApplicationContext applicationContext;
 
         @BeforeEach
         public void beforeEach() {
@@ -121,9 +115,6 @@ class AmazonSecurityTokenServiceEndpointTests {
         @Autowired
         @Qualifier("awsSecurityTokenServiceEndpoint")
         private AmazonSecurityTokenServiceEndpoint awsSecurityTokenServiceEndpoint;
-
-        @Autowired
-        private ConfigurableApplicationContext applicationContext;
 
         @BeforeEach
         public void beforeEach() {
@@ -193,9 +184,6 @@ class AmazonSecurityTokenServiceEndpointTests {
         @Qualifier("awsSecurityTokenServiceEndpoint")
         private AmazonSecurityTokenServiceEndpoint awsSecurityTokenServiceEndpoint;
 
-        @Autowired
-        private ConfigurableApplicationContext applicationContext;
-
         @BeforeEach
         public void beforeEach() {
             ApplicationContextProvider.holdApplicationContext(applicationContext);
@@ -226,9 +214,6 @@ class AmazonSecurityTokenServiceEndpointTests {
         @Autowired
         @Qualifier("awsSecurityTokenServiceEndpoint")
         private AmazonSecurityTokenServiceEndpoint awsSecurityTokenServiceEndpoint;
-
-        @Autowired
-        private ConfigurableApplicationContext applicationContext;
 
         @BeforeEach
         public void beforeEach() {

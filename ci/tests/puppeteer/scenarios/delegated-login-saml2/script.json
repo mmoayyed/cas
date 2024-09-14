@@ -1,12 +1,11 @@
 {
-  "dependencies": "pac4j-webflow,reports",
+  "dependencies": "pac4j-webflow,reports,pac4j-saml,scripting",
   "conditions": {
     "docker": "true"
   },
   "properties": [
     "--cas.server.name=https://localhost:8443",
     "--cas.server.prefix=https://localhost:8443/cas",
-    "--cas.audit.engine.enabled=true",
 
     "--cas.authn.pac4j.cookie.enabled=true",
     "--cas.authn.pac4j.cookie.name=Pac4jCookie",
@@ -24,11 +23,8 @@
     "--cas.authn.pac4j.saml[0].saml2-attribute-converter=file:${PWD}/ci/tests/puppeteer/scenarios/${SCENARIO}/AttributeConverter.groovy",
 
     "--cas.service-registry.core.init-from-json=true",
-    "--cas.service-registry.json.location=file:${PWD}/ci/tests/puppeteer/scenarios/${SCENARIO}/services",
-    
-    "--logging.level.org.apereo.cas=info"
+    "--cas.service-registry.json.location=file:${PWD}/ci/tests/puppeteer/scenarios/${SCENARIO}/services"
   ],
   "initScript": "${PWD}/ci/tests/puppeteer/scenarios/${SCENARIO}/init.sh"
 }
-
 

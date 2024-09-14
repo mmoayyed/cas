@@ -42,7 +42,6 @@ import org.apereo.cas.configuration.model.support.wsfed.WsFederationProperties;
 import org.apereo.cas.configuration.model.support.x509.X509Properties;
 import org.apereo.cas.configuration.support.RequiresModule;
 
-import com.fasterxml.jackson.annotation.JsonFilter;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
@@ -63,7 +62,7 @@ import java.util.List;
 @Getter
 @Setter
 @Accessors(chain = true)
-@JsonFilter("AuthenticationProperties")
+
 public class AuthenticationProperties implements Serializable {
 
     @Serial

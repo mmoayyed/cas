@@ -19,18 +19,17 @@ import org.apereo.cas.web.flow.executor.WebflowExecutorFactory;
 import lombok.val;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.cloud.context.config.annotation.RefreshScope;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.ScopedProxyMode;
 import org.springframework.web.servlet.HandlerAdapter;
 import org.springframework.web.servlet.HandlerMapping;
-import org.springframework.webflow.config.FlowDefinitionRegistryBuilder;
+import org.springframework.webflow.context.servlet.FlowUrlHandler;
 import org.springframework.webflow.definition.registry.FlowDefinitionRegistry;
-import org.springframework.webflow.engine.builder.FlowBuilder;
 import org.springframework.webflow.engine.builder.support.FlowBuilderServices;
 import org.springframework.webflow.execution.FlowExecutionListener;
 import org.springframework.webflow.executor.FlowExecutor;
@@ -48,8 +47,8 @@ import java.util.List;
     @ConditionalOnFeatureEnabled(feature = CasFeatureModule.FeatureCatalog.Webflow),
     @ConditionalOnFeatureEnabled(feature = CasFeatureModule.FeatureCatalog.AccountManagement, enabledByDefault = false)
 })
-@AutoConfiguration
-public class CasWebflowAccountProfileConfiguration {
+@Configuration(value = "CasWebflowAccountProfileConfiguration", proxyBeanMethods = false)
+class CasWebflowAccountProfileConfiguration {
     private static final FlowExecutionListener[] FLOW_EXECUTION_LISTENERS = new FlowExecutionListener[0];
 
     @ConditionalOnMissingBean(name = "accountProfileWebflowConfigurer")
@@ -59,10 +58,9 @@ public class CasWebflowAccountProfileConfiguration {
         final CasConfigurationProperties casProperties,
         final ConfigurableApplicationContext applicationContext,
         @Qualifier(CasWebflowConstants.BEAN_NAME_LOGIN_FLOW_DEFINITION_REGISTRY) final FlowDefinitionRegistry loginFlowRegistry,
-        @Qualifier(CasWebflowConstants.BEAN_NAME_ACCOUNT_PROFILE_FLOW_DEFINITION_REGISTRY) final FlowDefinitionRegistry accountProfileFlowRegistry,
         @Qualifier(CasWebflowConstants.BEAN_NAME_FLOW_BUILDER_SERVICES) final FlowBuilderServices flowBuilderServices) {
         return new AccountProfileWebflowConfigurer(flowBuilderServices,
-            accountProfileFlowRegistry, loginFlowRegistry, applicationContext, casProperties);
+            loginFlowRegistry, applicationContext, casProperties);
     }
 
     @Bean
@@ -76,32 +74,34 @@ public class CasWebflowAccountProfileConfiguration {
     @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
     @Bean
     public FlowExecutor accountProfileFlowExecutor(
+        @Qualifier("accountProfileWebflowUrlHandler")
+        final FlowUrlHandler accountProfileWebflowUrlHandler,
         final CasConfigurationProperties casProperties,
-        @Qualifier(CasWebflowConstants.BEAN_NAME_ACCOUNT_PROFILE_FLOW_DEFINITION_REGISTRY) final FlowDefinitionRegistry accountProfileFlowRegistry,
+        @Qualifier(CasWebflowConstants.BEAN_NAME_LOGIN_FLOW_DEFINITION_REGISTRY)
+        final FlowDefinitionRegistry flowDefinitionRegistry,
         @Qualifier("webflowCipherExecutor") final CipherExecutor webflowCipherExecutor) {
         val factory = new WebflowExecutorFactory(casProperties.getWebflow(),
-            accountProfileFlowRegistry, webflowCipherExecutor, FLOW_EXECUTION_LISTENERS);
+            flowDefinitionRegistry, webflowCipherExecutor, FLOW_EXECUTION_LISTENERS,
+            accountProfileWebflowUrlHandler);
         return factory.build();
     }
 
-    @Bean
     @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
-    public FlowDefinitionRegistry accountProfileFlowRegistry(
-        final ConfigurableApplicationContext applicationContext,
-        @Qualifier(CasWebflowConstants.BEAN_NAME_FLOW_BUILDER_SERVICES) final FlowBuilderServices flowBuilderServices,
-        @Qualifier(CasWebflowConstants.BEAN_NAME_FLOW_BUILDER) final FlowBuilder flowBuilder) {
-        val builder = new FlowDefinitionRegistryBuilder(applicationContext, flowBuilderServices);
-        builder.addFlowBuilder(flowBuilder, CasWebflowConfigurer.FLOW_ID_ACCOUNT);
-        return builder.build();
+    @Bean
+    public FlowUrlHandler accountProfileWebflowUrlHandler() {
+        return new CasDefaultFlowUrlHandler();
     }
 
     @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
     @Bean
     public HandlerAdapter accountProfileWebflowHandlerAdapter(
+        @Qualifier(CasWebflowExecutionPlan.BEAN_NAME) final CasWebflowExecutionPlan webflowExecutionPlan,
+        @Qualifier("accountProfileWebflowUrlHandler") final FlowUrlHandler accountProfileWebflowUrlHandler,
+        final ConfigurableApplicationContext applicationContext,
         @Qualifier("accountProfileFlowExecutor") final FlowExecutor accountProfileFlowExecutor) {
-        val handler = new CasFlowHandlerAdapter(CasWebflowConfigurer.FLOW_ID_ACCOUNT);
+        val handler = new CasFlowHandlerAdapter(CasWebflowConfigurer.FLOW_ID_ACCOUNT, webflowExecutionPlan);
         handler.setFlowExecutor(accountProfileFlowExecutor);
-        handler.setFlowUrlHandler(new CasDefaultFlowUrlHandler());
+        handler.setFlowUrlHandler(accountProfileWebflowUrlHandler);
         return handler;
     }
 
@@ -109,10 +109,11 @@ public class CasWebflowAccountProfileConfiguration {
     @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
     public HandlerMapping accountProfileFlowHandlerMapping(
         @Qualifier(CasWebflowExecutionPlan.BEAN_NAME) final CasWebflowExecutionPlan webflowExecutionPlan,
-        @Qualifier(CasWebflowConstants.BEAN_NAME_ACCOUNT_PROFILE_FLOW_DEFINITION_REGISTRY) final FlowDefinitionRegistry accountProfileFlowRegistry) {
+        @Qualifier(CasWebflowConstants.BEAN_NAME_LOGIN_FLOW_DEFINITION_REGISTRY)
+        final FlowDefinitionRegistry flowDefinitionRegistry) {
         val handler = new CasFlowHandlerMapping();
         handler.setOrder(0);
-        handler.setFlowRegistry(accountProfileFlowRegistry);
+        handler.setFlowRegistry(flowDefinitionRegistry);
         handler.setInterceptors(webflowExecutionPlan.getWebflowInterceptors().toArray());
         handler.setFlowUrlHandler(new CasDefaultFlowUrlHandler());
         return handler;

@@ -37,6 +37,7 @@ class SamlIdPAttributeDefinitionTests extends BaseSamlIdPConfigurationTests {
         assertTrue(attributeDefinitionStore.locateAttributeDefinition("eduPersonScopedAffiliation").isPresent());
         assertTrue(attributeDefinitionStore.locateAttributeDefinition("mail").isPresent());
         assertTrue(attributeDefinitionStore.locateAttributeDefinition("givenName").isPresent());
+        assertFalse(attributeDefinitionStore.locateAttributeDefinition("email").isPresent());
     }
 
     @Test
@@ -47,7 +48,7 @@ class SamlIdPAttributeDefinitionTests extends BaseSamlIdPConfigurationTests {
         assertEquals(1, values.size());
     }
 
-    private static AttributeDefinitionResolutionContext getAttributeDefinitionResolutionContext() throws Throwable {
+    private static AttributeDefinitionResolutionContext getAttributeDefinitionResolutionContext() {
         return AttributeDefinitionResolutionContext.builder()
             .principal(CoreAuthenticationTestUtils.getPrincipal())
             .registeredService(CoreAuthenticationTestUtils.getRegisteredService())

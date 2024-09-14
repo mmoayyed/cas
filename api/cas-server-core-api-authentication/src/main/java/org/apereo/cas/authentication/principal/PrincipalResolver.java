@@ -2,10 +2,9 @@ package org.apereo.cas.authentication.principal;
 
 import org.apereo.cas.authentication.AuthenticationHandler;
 import org.apereo.cas.authentication.Credential;
-
-import org.apereo.services.persondir.IPersonAttributeDao;
+import org.apereo.cas.authentication.principal.attribute.PersonAttributeDao;
+import org.apereo.cas.util.NamedObject;
 import org.springframework.core.Ordered;
-
 import java.util.Optional;
 
 /**
@@ -22,7 +21,7 @@ import java.util.Optional;
  * @see Credential
  * @since 4.0.0
  */
-public interface PrincipalResolver extends Ordered {
+public interface PrincipalResolver extends Ordered, NamedObject {
 
     /**
      * Default principal resolver bean name.
@@ -93,16 +92,10 @@ public interface PrincipalResolver extends Ordered {
      * @return the attribute repository or null.
      * @since 5.1
      */
-    IPersonAttributeDao getAttributeRepository();
-
-    /**
-     * Gets a unique name for this principal resolver.
-     *
-     * @return resolver name.
-     */
-    default String getName() {
-        return this.getClass().getSimpleName();
+    default PersonAttributeDao getAttributeRepository() {
+        return null;
     }
+    
 
     @Override
     default int getOrder() {

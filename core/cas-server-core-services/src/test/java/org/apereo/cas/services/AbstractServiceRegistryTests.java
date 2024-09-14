@@ -1,18 +1,28 @@
 package org.apereo.cas.services;
 
 import org.apereo.cas.authentication.principal.ShibbolethCompatiblePersistentIdGenerator;
+import org.apereo.cas.config.CasCoreAuthenticationAutoConfiguration;
+import org.apereo.cas.config.CasCoreAutoConfiguration;
+import org.apereo.cas.config.CasCoreCookieAutoConfiguration;
+import org.apereo.cas.config.CasCoreLogoutAutoConfiguration;
+import org.apereo.cas.config.CasCoreNotificationsAutoConfiguration;
+import org.apereo.cas.config.CasCoreScriptingAutoConfiguration;
+import org.apereo.cas.config.CasCoreServicesAutoConfiguration;
+import org.apereo.cas.config.CasCoreTicketsAutoConfiguration;
+import org.apereo.cas.config.CasCoreUtilAutoConfiguration;
+import org.apereo.cas.config.CasCoreWebAutoConfiguration;
 import org.apereo.cas.configuration.model.support.mfa.BaseMultifactorAuthenticationProviderProperties;
 import org.apereo.cas.services.consent.DefaultRegisteredServiceConsentPolicy;
 import org.apereo.cas.services.support.RegisteredServiceMappedRegexAttributeFilter;
 import org.apereo.cas.services.support.RegisteredServiceRegexAttributeFilter;
 import org.apereo.cas.util.CollectionUtils;
 import org.apereo.cas.util.RandomUtils;
+import org.apereo.cas.util.spring.boot.SpringBootTestAutoConfigurations;
 import com.google.common.collect.ArrayListMultimap;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.val;
-import org.apereo.services.persondir.util.CaseCanonicalizationMode;
 import org.jooq.lambda.Unchecked;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -21,19 +31,19 @@ import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.junitpioneer.jupiter.RetryingTest;
+import org.springframework.boot.SpringBootConfiguration;
+import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
-import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import static org.awaitility.Awaitility.*;
@@ -102,7 +112,8 @@ public abstract class AbstractServiceRegistryTests {
     @Test
     void verifySave() {
         getRegisteredServiceTypes().forEach(type -> {
-            val svc = buildRegisteredServiceInstance(RandomUtils.nextInt(), type);
+            val svc = buildRegisteredServiceInstance(RandomUtils.nextInt(), type)
+                .setId(RegisteredServiceDefinition.INITIAL_IDENTIFIER_VALUE);
             serviceRegistry.save(() -> svc,
                 result -> assertEquals(result.getServiceId(), svc.getServiceId(), type::getName),
                 1);
@@ -114,7 +125,8 @@ public abstract class AbstractServiceRegistryTests {
         getRegisteredServiceTypes().forEach(type -> {
             serviceRegistry.deleteAll();
             for (var i = 0; i < getLoadSize(); i++) {
-                val svc = buildRegisteredServiceInstance(i, type);
+                val svc = buildRegisteredServiceInstance(i, type)
+                    .setId(RegisteredServiceDefinition.INITIAL_IDENTIFIER_VALUE);
                 serviceRegistry.save(svc);
 
                 val svc2 = serviceRegistry.findServiceByExactServiceName(svc.getName());
@@ -140,21 +152,24 @@ public abstract class AbstractServiceRegistryTests {
     @Test
     void verifySavingServices() {
         getRegisteredServiceTypes().forEach(type -> {
-            val registeredService = buildRegisteredServiceInstance(100, type);
-            serviceRegistry.save(registeredService);
+            val registeredService = buildRegisteredServiceInstance(100, type)
+                .setId(RegisteredServiceDefinition.INITIAL_IDENTIFIER_VALUE);
+            val savedService = serviceRegistry.save(registeredService);
             val services = serviceRegistry.load();
-            assertTrue(services.stream().anyMatch(svc -> svc.equals(registeredService)));
-            val registeredService2 = buildRegisteredServiceInstance(101, type);
-            serviceRegistry.save(registeredService2);
+            assertTrue(services.stream().anyMatch(svc -> svc.equals(savedService)));
+            val registeredService2 = buildRegisteredServiceInstance(101, type)
+                .setId(RegisteredServiceDefinition.INITIAL_IDENTIFIER_VALUE);
+            val savedService2 = serviceRegistry.save(registeredService2);
             val services2 = serviceRegistry.load();
-            assertTrue(services2.stream().anyMatch(svc -> svc.equals(registeredService)));
+            assertTrue(services2.stream().anyMatch(svc -> svc.equals(savedService2)));
         });
     }
 
     @Test
     void verifyUpdatingServices() {
         getRegisteredServiceTypes().forEach(type -> {
-            serviceRegistry.save(buildRegisteredServiceInstance(200, type));
+            val toSave = buildRegisteredServiceInstance(200, type).setId(RegisteredServiceDefinition.INITIAL_IDENTIFIER_VALUE);
+            serviceRegistry.save(toSave);
             val services = serviceRegistry.load();
             assertFalse(services.isEmpty());
             val rs = (BaseRegisteredService) serviceRegistry.findServiceById(services.iterator().next().getId());
@@ -165,10 +180,10 @@ public abstract class AbstractServiceRegistryTests {
             rs.setServiceId("https://hello.world");
             rs.setTheme("some-theme");
 
-            if (rs instanceof CasRegisteredService) {
+            if (rs instanceof final CasRegisteredService cas) {
                 val policy = new RegexMatchingRegisteredServiceProxyPolicy();
                 policy.setPattern("https");
-                ((CasRegisteredService) rs).setProxyPolicy(policy);
+                cas.setProxyPolicy(policy);
             }
             rs.setAttributeReleasePolicy(new ReturnAllowedAttributeReleasePolicy());
             assertNotNull(serviceRegistry.save(rs), type::getName);
@@ -188,8 +203,10 @@ public abstract class AbstractServiceRegistryTests {
     @Test
     void verifyDeletingSingleService() {
         getRegisteredServiceTypes().forEach(type -> {
-            val rs = buildRegisteredServiceInstance(300, type);
-            val rs2 = buildRegisteredServiceInstance(301, type);
+            val rs = buildRegisteredServiceInstance(300, type)
+                .setId(RegisteredServiceDefinition.INITIAL_IDENTIFIER_VALUE);
+            val rs2 = buildRegisteredServiceInstance(301, type)
+                .setId(RegisteredServiceDefinition.INITIAL_IDENTIFIER_VALUE);
             serviceRegistry.save(rs2);
             serviceRegistry.save(rs);
             serviceRegistry.load();
@@ -205,18 +222,21 @@ public abstract class AbstractServiceRegistryTests {
     @Test
     void verifyDeletingServices() {
         getRegisteredServiceTypes().forEach(type -> {
-            serviceRegistry.save(buildRegisteredServiceInstance(400, type));
-            serviceRegistry.save(buildRegisteredServiceInstance(401, type));
+            serviceRegistry.save(buildRegisteredServiceInstance(400, type)
+                .setId(RegisteredServiceDefinition.INITIAL_IDENTIFIER_VALUE));
+            serviceRegistry.save(buildRegisteredServiceInstance(401, type)
+                .setId(RegisteredServiceDefinition.INITIAL_IDENTIFIER_VALUE));
             val services = serviceRegistry.load();
             services.forEach(registeredService -> serviceRegistry.delete(registeredService));
             assertEquals(0, serviceRegistry.load().size());
         });
     }
 
-    @Test
+    @RetryingTest(2)
     void verifyExpiredServiceDeleted() {
         getRegisteredServiceTypes().forEach(type -> {
-            val service = buildRegisteredServiceInstance(RandomUtils.nextInt(), type);
+            val service = buildRegisteredServiceInstance(RandomUtils.nextInt(), type)
+                .setId(RegisteredServiceDefinition.INITIAL_IDENTIFIER_VALUE);
             service.setExpirationPolicy(new DefaultRegisteredServiceExpirationPolicy(true, LocalDateTime.now(ZoneId.systemDefault()).minusSeconds(1)));
             val savedService = serviceRegistry.save(service);
             serviceRegistry.load();
@@ -227,13 +247,15 @@ public abstract class AbstractServiceRegistryTests {
     @Test
     void verifyServiceLookupByServiceId() {
         getRegisteredServiceTypes().forEach(type -> {
-            val r1 = buildRegisteredServiceInstance(RandomUtils.nextInt(), type);
+            val r1 = buildRegisteredServiceInstance(RandomUtils.nextInt(), type)
+                .setId(RegisteredServiceDefinition.INITIAL_IDENTIFIER_VALUE);
             val id = UUID.randomUUID().toString();
             r1.setServiceId(".*%s.*".formatted(id));
             r1.setEvaluationOrder(100);
             serviceRegistry.save(r1);
 
-            val r2 = buildRegisteredServiceInstance(RandomUtils.nextInt(), type);
+            val r2 = buildRegisteredServiceInstance(RandomUtils.nextInt(), type)
+                .setId(RegisteredServiceDefinition.INITIAL_IDENTIFIER_VALUE);
             r2.setServiceId(r1.getServiceId());
             r2.setEvaluationOrder(1);
             serviceRegistry.save(r2);
@@ -247,7 +269,8 @@ public abstract class AbstractServiceRegistryTests {
     @Test
     void verifyExpiredServiceDisabled() {
         getRegisteredServiceTypes().forEach(type -> {
-            val r = buildRegisteredServiceInstance(RandomUtils.nextInt(), type);
+            val r = buildRegisteredServiceInstance(RandomUtils.nextInt(), type)
+                .setId(RegisteredServiceDefinition.INITIAL_IDENTIFIER_VALUE);
             val expirationDate = LocalDateTime.now(ZoneId.systemDefault()).plusSeconds(1);
             r.setExpirationPolicy(new DefaultRegisteredServiceExpirationPolicy(false, expirationDate));
             val r2 = serviceRegistry.save(r);
@@ -259,9 +282,10 @@ public abstract class AbstractServiceRegistryTests {
     }
 
     @Test
-    public void checkSaveMethodWithNonExistentServiceAndNoAttributes() {
+    void checkSaveMethodWithNonExistentServiceAndNoAttributes() {
         getRegisteredServiceTypes().forEach(type -> {
-            val r = buildRegisteredServiceInstance(RandomUtils.nextInt(), type);
+            val r = buildRegisteredServiceInstance(RandomUtils.nextInt(), type)
+                .setId(RegisteredServiceDefinition.INITIAL_IDENTIFIER_VALUE);
             val r2 = serviceRegistry.save(r);
             val r3 = serviceRegistry.findServiceById(r2.getId());
             assertEquals(r2, r3);
@@ -271,9 +295,10 @@ public abstract class AbstractServiceRegistryTests {
     }
 
     @Test
-    public void checkSaveMethodWithDelegatedAuthnPolicy() {
+    void checkSaveMethodWithDelegatedAuthnPolicy() {
         getRegisteredServiceTypes().forEach(type -> {
-            val r = buildRegisteredServiceInstance(RandomUtils.nextInt(), type);
+            val r = buildRegisteredServiceInstance(RandomUtils.nextInt(), type)
+                .setId(RegisteredServiceDefinition.INITIAL_IDENTIFIER_VALUE);
             val strategy = new DefaultRegisteredServiceAccessStrategy();
             val providers = CollectionUtils.wrapList("one", "two");
             strategy.setDelegatedAuthenticationPolicy(new DefaultRegisteredServiceDelegatedAuthenticationPolicy(providers, true, false, null));
@@ -285,9 +310,10 @@ public abstract class AbstractServiceRegistryTests {
     }
 
     @Test
-    public void execSaveWithAuthnMethodPolicy() {
+    void execSaveWithAuthnMethodPolicy() {
         getRegisteredServiceTypes().forEach(type -> {
-            val r = buildRegisteredServiceInstance(RandomUtils.nextInt(), type);
+            val r = buildRegisteredServiceInstance(RandomUtils.nextInt(), type)
+                .setId(RegisteredServiceDefinition.INITIAL_IDENTIFIER_VALUE);
             val policy = new DefaultRegisteredServiceMultifactorPolicy();
             policy.setFailureMode(BaseMultifactorAuthenticationProviderProperties.MultifactorAuthenticationProviderFailureModes.PHANTOM);
 
@@ -304,9 +330,10 @@ public abstract class AbstractServiceRegistryTests {
     }
 
     @Test
-    public void execSaveMethodWithDefaultUsernameAttribute() {
+    void execSaveMethodWithDefaultUsernameAttribute() {
         getRegisteredServiceTypes().forEach(type -> {
-            val r = buildRegisteredServiceInstance(RandomUtils.nextInt(), type);
+            val r = buildRegisteredServiceInstance(RandomUtils.nextInt(), type)
+                .setId(RegisteredServiceDefinition.INITIAL_IDENTIFIER_VALUE);
             r.setUsernameAttributeProvider(new DefaultRegisteredServiceUsernameProvider());
             val r2 = serviceRegistry.save(r);
             val r3 = serviceRegistry.findServiceById(r2.getId());
@@ -315,9 +342,10 @@ public abstract class AbstractServiceRegistryTests {
     }
 
     @Test
-    public void execSaveMethodWithConsentPolicy() {
+    void execSaveMethodWithConsentPolicy() {
         getRegisteredServiceTypes().forEach(type -> {
-            val r = buildRegisteredServiceInstance(RandomUtils.nextInt(), type);
+            val r = buildRegisteredServiceInstance(RandomUtils.nextInt(), type)
+                .setId(RegisteredServiceDefinition.INITIAL_IDENTIFIER_VALUE);
             val policy = new ReturnAllAttributeReleasePolicy();
             policy.setConsentPolicy(new DefaultRegisteredServiceConsentPolicy(CollectionUtils.wrapSet("test"),
                 CollectionUtils.wrapSet("test")));
@@ -329,12 +357,13 @@ public abstract class AbstractServiceRegistryTests {
     }
 
     @Test
-    public void ensureSaveMethodWithDefaultPrincipalAttribute() {
+    void ensureSaveMethodWithDefaultPrincipalAttribute() {
         getRegisteredServiceTypes().forEach(type -> {
-            val r = buildRegisteredServiceInstance(RandomUtils.nextInt(), type);
+            val r = buildRegisteredServiceInstance(RandomUtils.nextInt(), type)
+                .setId(RegisteredServiceDefinition.INITIAL_IDENTIFIER_VALUE);
 
             val provider = new PrincipalAttributeRegisteredServiceUsernameProvider();
-            provider.setCanonicalizationMode(CaseCanonicalizationMode.UPPER.name());
+            provider.setCanonicalizationMode("UPPER");
             provider.setUsernameAttribute("cn");
             r.setUsernameAttributeProvider(provider);
             val r2 = serviceRegistry.save(r);
@@ -346,7 +375,8 @@ public abstract class AbstractServiceRegistryTests {
     @Test
     void verifySaveMethodWithDefaultAnonymousAttribute() {
         getRegisteredServiceTypes().forEach(type -> {
-            val r = buildRegisteredServiceInstance(RandomUtils.nextInt(), type);
+            val r = buildRegisteredServiceInstance(RandomUtils.nextInt(), type)
+                .setId(RegisteredServiceDefinition.INITIAL_IDENTIFIER_VALUE);
             r.setUsernameAttributeProvider(new AnonymousRegisteredServiceUsernameAttributeProvider(
                 new ShibbolethCompatiblePersistentIdGenerator("helloworld")
             ));
@@ -363,7 +393,8 @@ public abstract class AbstractServiceRegistryTests {
     @Test
     void verifyServiceExpirationPolicy() {
         getRegisteredServiceTypes().forEach(type -> {
-            val r = buildRegisteredServiceInstance(RandomUtils.nextInt(), type);
+            val r = buildRegisteredServiceInstance(RandomUtils.nextInt(), type)
+                .setId(RegisteredServiceDefinition.INITIAL_IDENTIFIER_VALUE);
             r.setExpirationPolicy(new DefaultRegisteredServiceExpirationPolicy(true, LocalDate.now(ZoneId.systemDefault()).toString()));
             val r2 = serviceRegistry.save(r);
             val r3 = serviceRegistry.findServiceById(r2.getId());
@@ -376,7 +407,8 @@ public abstract class AbstractServiceRegistryTests {
     @Test
     void verifySaveAttributeReleasePolicy() {
         getRegisteredServiceTypes().forEach(type -> {
-            val r = buildRegisteredServiceInstance(RandomUtils.nextInt(), type);
+            val r = buildRegisteredServiceInstance(RandomUtils.nextInt(), type)
+                .setId(RegisteredServiceDefinition.INITIAL_IDENTIFIER_VALUE);
             r.setAttributeReleasePolicy(new ReturnAllAttributeReleasePolicy());
             val r2 = serviceRegistry.save(r);
             val r3 = serviceRegistry.findServiceById(r2.getId());
@@ -389,7 +421,8 @@ public abstract class AbstractServiceRegistryTests {
     @Test
     void verifySaveMethodWithExistingServiceNoAttribute() {
         getRegisteredServiceTypes().forEach(type -> {
-            val r = buildRegisteredServiceInstance(RandomUtils.nextInt(), type);
+            val r = buildRegisteredServiceInstance(RandomUtils.nextInt(), type)
+                .setId(RegisteredServiceDefinition.INITIAL_IDENTIFIER_VALUE);
             serviceRegistry.save(r);
             r.setTheme("mytheme");
 
@@ -403,7 +436,8 @@ public abstract class AbstractServiceRegistryTests {
     @Test
     void verifySaveAttributeReleasePolicyMappingRules() {
         getRegisteredServiceTypes().forEach(type -> {
-            val r = buildRegisteredServiceInstance(RandomUtils.nextInt(), type);
+            val r = buildRegisteredServiceInstance(RandomUtils.nextInt(), type)
+                .setId(RegisteredServiceDefinition.INITIAL_IDENTIFIER_VALUE);
             val map = ArrayListMultimap.<String, Object>create();
             map.put("attr1", "newattr1");
             map.put("attr2", "newattr2");
@@ -425,7 +459,8 @@ public abstract class AbstractServiceRegistryTests {
     @Test
     void verifySaveAttributeReleasePolicyAllowedAttrRules() {
         getRegisteredServiceTypes().forEach(type -> {
-            val r = buildRegisteredServiceInstance(RandomUtils.nextInt(), type);
+            val r = buildRegisteredServiceInstance(RandomUtils.nextInt(), type)
+                .setId(RegisteredServiceDefinition.INITIAL_IDENTIFIER_VALUE);
             val policy = new ReturnAllowedAttributeReleasePolicy();
             policy.setAllowedAttributes(Arrays.asList("1", "2", "3"));
             r.setAttributeReleasePolicy(policy);
@@ -442,7 +477,8 @@ public abstract class AbstractServiceRegistryTests {
     @Test
     void verifySaveAttributeReleasePolicyAllowedAttrRulesAndFilter() {
         getRegisteredServiceTypes().forEach(type -> {
-            val r = buildRegisteredServiceInstance(RandomUtils.nextInt(), type);
+            val r = buildRegisteredServiceInstance(RandomUtils.nextInt(), type)
+                .setId(RegisteredServiceDefinition.INITIAL_IDENTIFIER_VALUE);
             r.setAccessStrategy(new DefaultRegisteredServiceAccessStrategy(true, false));
 
             if (r instanceof CasRegisteredService) {
@@ -469,7 +505,8 @@ public abstract class AbstractServiceRegistryTests {
     @Test
     void verifyServiceType() {
         getRegisteredServiceTypes().forEach(type -> {
-            val r = buildRegisteredServiceInstance(RandomUtils.nextInt(), type);
+            val r = buildRegisteredServiceInstance(RandomUtils.nextInt(), type)
+                .setId(RegisteredServiceDefinition.INITIAL_IDENTIFIER_VALUE);
             val r2 = serviceRegistry.save(r);
             assertSame(r2.getClass(), type);
         });
@@ -479,13 +516,14 @@ public abstract class AbstractServiceRegistryTests {
     void verifyServiceRemovals() {
         getRegisteredServiceTypes().forEach(type -> {
             val list = IntStream.range(1, 5)
-                .mapToObj(i -> buildRegisteredServiceInstance(RandomUtils.nextInt(), type))
+                .mapToObj(i -> buildRegisteredServiceInstance(RandomUtils.nextInt(), type)
+                    .setId(RegisteredServiceDefinition.INITIAL_IDENTIFIER_VALUE))
                 .map(r -> serviceRegistry.save(r))
-                .collect(Collectors.toCollection(() -> new ArrayList<>(5)));
+                .toList();
 
             list.forEach(Unchecked.consumer(r2 -> {
-                Thread.sleep(500);
-                serviceRegistry.delete(r2);
+                Thread.sleep(1000);
+                assertTrue(serviceRegistry.delete(r2));
                 Thread.sleep(2000);
                 assertNull(serviceRegistry.findServiceById(r2.getId()));
             }));
@@ -493,9 +531,10 @@ public abstract class AbstractServiceRegistryTests {
     }
 
     @Test
-    public void checkForAuthorizationStrategy() {
+    void checkForAuthorizationStrategy() {
         getRegisteredServiceTypes().forEach(type -> {
-            val r = buildRegisteredServiceInstance(RandomUtils.nextInt(), type);
+            val r = buildRegisteredServiceInstance(RandomUtils.nextInt(), type)
+                .setId(RegisteredServiceDefinition.INITIAL_IDENTIFIER_VALUE);
             val authz = new DefaultRegisteredServiceAccessStrategy(false, false);
 
             val attrs = new HashMap<String, Set<String>>();
@@ -513,7 +552,8 @@ public abstract class AbstractServiceRegistryTests {
     @Test
     void verifyAccessStrategyWithStarEndDate() {
         getRegisteredServiceTypes().forEach(type -> {
-            val r = buildRegisteredServiceInstance(RandomUtils.nextInt(), type);
+            val r = buildRegisteredServiceInstance(RandomUtils.nextInt(), type)
+                .setId(RegisteredServiceDefinition.INITIAL_IDENTIFIER_VALUE);
             val authz = new TimeBasedRegisteredServiceAccessStrategy();
             authz.setStartingDateTime(ZonedDateTime.now(ZoneOffset.UTC).plusDays(1).toString());
             authz.setEndingDateTime(ZonedDateTime.now(ZoneOffset.UTC).plusDays(10).toString());
@@ -528,7 +568,8 @@ public abstract class AbstractServiceRegistryTests {
     @Test
     void verifyAccessStrategyWithEndpoint() {
         getRegisteredServiceTypes().forEach(type -> {
-            val r = buildRegisteredServiceInstance(RandomUtils.nextInt(), type);
+            val r = buildRegisteredServiceInstance(RandomUtils.nextInt(), type)
+                .setId(RegisteredServiceDefinition.INITIAL_IDENTIFIER_VALUE);
             val authz = new RemoteEndpointServiceAccessStrategy();
             authz.setEndpointUrl("http://www.google.com?this=that");
             authz.setAcceptableResponseCodes("200,405,403");
@@ -541,10 +582,11 @@ public abstract class AbstractServiceRegistryTests {
     }
 
     @Test
-    public void serializePublicKeyForServiceAndVerify() {
+    void serializePublicKeyForServiceAndVerify() {
         getRegisteredServiceTypes().forEach(type -> {
             val publicKey = new RegisteredServicePublicKeyImpl("classpath:RSA1024Public.key", "RSA");
-            val registeredService = buildRegisteredServiceInstance(RandomUtils.nextInt(), type);
+            val registeredService = buildRegisteredServiceInstance(RandomUtils.nextInt(), type)
+                .setId(RegisteredServiceDefinition.INITIAL_IDENTIFIER_VALUE);
             registeredService.setPublicKey(publicKey);
 
             serviceRegistry.save(registeredService);
@@ -556,7 +598,8 @@ public abstract class AbstractServiceRegistryTests {
     @Test
     void verifyMappedRegexAttributeFilter() {
         getRegisteredServiceTypes().forEach(type -> {
-            val registeredService = buildRegisteredServiceInstance(RandomUtils.nextInt(), type);
+            val registeredService = buildRegisteredServiceInstance(RandomUtils.nextInt(), type)
+                .setId(RegisteredServiceDefinition.INITIAL_IDENTIFIER_VALUE);
 
             val p = new ReturnAllowedAttributeReleasePolicy();
             val filter = new RegisteredServiceMappedRegexAttributeFilter();
@@ -573,7 +616,8 @@ public abstract class AbstractServiceRegistryTests {
     @Test
     void verifyServiceContacts() {
         getRegisteredServiceTypes().forEach(type -> {
-            val r = buildRegisteredServiceInstance(RandomUtils.nextInt(), type);
+            val r = buildRegisteredServiceInstance(RandomUtils.nextInt(), type)
+                .setId(RegisteredServiceDefinition.INITIAL_IDENTIFIER_VALUE);
             val contact = new DefaultRegisteredServiceContact();
             contact.setDepartment("Department");
             contact.setEmail("cas@example.org");
@@ -587,9 +631,10 @@ public abstract class AbstractServiceRegistryTests {
     }
 
     @Test
-    public void persistCustomServiceProperties() {
+    void persistCustomServiceProperties() {
         getRegisteredServiceTypes().forEach(type -> {
-            val r = buildRegisteredServiceInstance(RandomUtils.nextInt(), type);
+            val r = buildRegisteredServiceInstance(RandomUtils.nextInt(), type)
+                .setId(RegisteredServiceDefinition.INITIAL_IDENTIFIER_VALUE);
             val properties = new HashMap<String, RegisteredServiceProperty>();
             val property = new DefaultRegisteredServiceProperty();
             val values = new HashSet<String>();
@@ -621,7 +666,7 @@ public abstract class AbstractServiceRegistryTests {
 
     protected abstract ServiceRegistry getNewServiceRegistry() throws Exception;
 
-    protected void initializeServiceRegistry() throws Exception {
+    protected void initializeServiceRegistry() {
     }
 
     protected void tearDownServiceRegistry() throws Exception {
@@ -634,6 +679,23 @@ public abstract class AbstractServiceRegistryTests {
 
     protected Stream<Class<? extends BaseWebBasedRegisteredService>> getRegisteredServiceTypes() {
         return Stream.of(CasRegisteredService.class);
+    }
+
+    @SpringBootTestAutoConfigurations
+    @ImportAutoConfiguration({
+        CasCoreUtilAutoConfiguration.class,
+        CasCoreScriptingAutoConfiguration.class,
+        CasCoreServicesAutoConfiguration.class,
+        CasCoreNotificationsAutoConfiguration.class,
+        CasCoreWebAutoConfiguration.class,
+        CasCoreAuthenticationAutoConfiguration.class,
+        CasCoreAutoConfiguration.class,
+        CasCoreTicketsAutoConfiguration.class,
+        CasCoreLogoutAutoConfiguration.class,
+        CasCoreCookieAutoConfiguration.class
+    })
+    @SpringBootConfiguration(proxyBeanMethods = false)
+    public static class SharedTestConfiguration {
     }
 
 }

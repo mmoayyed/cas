@@ -1,14 +1,8 @@
 package org.apereo.cas.services;
 
-import org.apereo.cas.config.CasCoreAuthenticationMetadataConfiguration;
-import org.apereo.cas.config.CasCoreHttpConfiguration;
-import org.apereo.cas.config.CasCoreNotificationsConfiguration;
-import org.apereo.cas.config.CasCoreServicesConfiguration;
-import org.apereo.cas.config.CasCoreUtilConfiguration;
-import org.apereo.cas.config.CasCoreWebConfiguration;
-import org.apereo.cas.config.CasWebApplicationServiceFactoryConfiguration;
-import org.apereo.cas.config.CosmosDbServiceRegistryConfiguration;
+import org.apereo.cas.config.CasCosmosDbServiceRegistryAutoConfiguration;
 import org.apereo.cas.cosmosdb.CosmosDbObjectFactory;
+import org.apereo.cas.test.CasTestExtension;
 import org.apereo.cas.util.spring.ApplicationContextProvider;
 import lombok.Getter;
 import lombok.val;
@@ -16,12 +10,11 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.ResourceLock;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.boot.autoconfigure.web.servlet.WebMvcAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.cloud.autoconfigure.RefreshAutoConfiguration;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -31,17 +24,10 @@ import static org.junit.jupiter.api.Assertions.*;
  * @since 5.2.0
  */
 @Tag("Azure")
+@ExtendWith(CasTestExtension.class)
 @SpringBootTest(classes = {
-    CasCoreHttpConfiguration.class,
-    CasCoreServicesConfiguration.class,
-    CasCoreUtilConfiguration.class,
-    CasCoreWebConfiguration.class,
-    CasWebApplicationServiceFactoryConfiguration.class,
-    CasCoreNotificationsConfiguration.class,
-    CasCoreAuthenticationMetadataConfiguration.class,
-    RefreshAutoConfiguration.class,
-    WebMvcAutoConfiguration.class,
-    CosmosDbServiceRegistryConfiguration.class
+    AbstractServiceRegistryTests.SharedTestConfiguration.class,
+    CasCosmosDbServiceRegistryAutoConfiguration.class
 }, properties = {
     "cas.http-client.host-name-verifier=none",
     "cas.service-registry.cosmos-db.uri=${#environmentVariables['COSMOS_DB_URL']}",

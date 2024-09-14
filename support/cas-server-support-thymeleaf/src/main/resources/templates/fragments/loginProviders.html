@@ -11,7 +11,7 @@
 </head>
 
 <body>
-<main role="main" class="container mt-3 mb-3">
+<main class="container mt-3 mb-3">
     <div th:fragment="loginProviders" th:remove="tag" class="login-providers">
         <div th:if="${#bools.isFalse(delegatedAuthenticationDynamicProviderSelection)}">
             <script type="text/javascript">
@@ -43,7 +43,6 @@
                         </div>
 
                         </p>
-                        <script>new mdc.linearProgress.MDCLinearProgress(document.querySelector('.mdc-linear-progress'));</script>
                     </div>
                 </div>
 
@@ -140,7 +139,7 @@
                                    th:attr="autoRedirectType=${#strings.toLowerCase(entry.autoRedirectType)}"
                                    th:title="${entry.name}">
 
-                                    <i class="mdi mdi-microsoft-windows"></i>
+                                    <i class="mdi mdi-microsoft-windows" aria-hidden="true"></i>
                                     <span class="mdc-button__label">[[${entry.name}]]</span>
                                 </a>
                             </li>
@@ -148,7 +147,7 @@
                     </div>
                 </div>
             </div>
-            
+
             <script type="text/javascript" th:inline="javascript">
                 /*<![CDATA[*/
 

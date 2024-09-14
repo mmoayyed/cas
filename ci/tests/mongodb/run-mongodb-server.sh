@@ -7,12 +7,13 @@ function runscript {
     return 0;
 }
 
-echo "Running MongoDb docker image..."
+export DOCKER_IMAGE="mongo:8.0-rc"
+echo "Running MongoDb docker container..."
 docker stop mongodb-server || true && docker rm mongodb-server || true
 docker run --rm -d -p 27017:27017 -e MONGO_INITDB_ROOT_USERNAME=root \
   -e MONGO_INITDB_ROOT_PASSWORD=secret --name="mongodb-server" \
   -v "$PWD"/ci/tests/mongodb/mongo-init.sh:/docker-entrypoint-initdb.d/mongo-init.sh:ro \
-  mongo:7.0.2
+  ${DOCKER_IMAGE}
 docker logs mongodb-server &
 sleep 5
 docker ps | grep "mongodb-server"

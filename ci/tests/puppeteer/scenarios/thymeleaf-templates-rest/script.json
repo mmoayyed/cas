@@ -1,6 +1,5 @@
 {
   "dependencies": "core",
-
   "properties": [
     "--cas.server.name=https://localhost:8443",
     "--cas.server.prefix=${cas.server.name}/cas",
@@ -16,6 +15,4 @@
     "--management.endpoints.enabled-by-default=true"
   ]
 }
-
-
 

@@ -1,18 +1,17 @@
 package org.apereo.cas.configuration.model.support.pm;
 
+import org.apereo.cas.configuration.features.CasFeatureModule;
+import org.apereo.cas.configuration.model.core.util.EncryptionJwtCryptoProperties;
 import org.apereo.cas.configuration.model.core.util.EncryptionJwtSigningJwtCryptographyProperties;
+import org.apereo.cas.configuration.model.core.util.SigningJwtCryptoProperties;
 import org.apereo.cas.configuration.model.support.email.EmailProperties;
 import org.apereo.cas.configuration.model.support.sms.SmsProperties;
 import org.apereo.cas.configuration.support.DurationCapable;
 import org.apereo.cas.configuration.support.RequiresModule;
-import org.apereo.cas.util.crypto.CipherExecutor;
-
-import com.fasterxml.jackson.annotation.JsonFilter;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
 import org.springframework.boot.context.properties.NestedConfigurationProperty;
-
 import java.io.Serial;
 import java.io.Serializable;
 
@@ -25,9 +24,9 @@ import java.io.Serializable;
 @RequiresModule(name = "cas-server-support-pm-webflow")
 @Getter
 @Setter
-@JsonFilter("ResetPasswordManagementProperties")
+
 @Accessors(chain = true)
-public class ResetPasswordManagementProperties implements Serializable {
+public class ResetPasswordManagementProperties implements CasFeatureModule, Serializable {
 
     @Serial
     private static final long serialVersionUID = 3453970349530670459L;
@@ -90,7 +89,7 @@ public class ResetPasswordManagementProperties implements Serializable {
         mail.setText("Reset your password via this link: ${url}");
         sms.setText("Reset your password via this link: ${url}");
         mail.setSubject("Password Reset");
-        crypto.getEncryption().setKeySize(CipherExecutor.DEFAULT_STRINGABLE_ENCRYPTION_KEY_SIZE);
-        crypto.getSigning().setKeySize(CipherExecutor.DEFAULT_STRINGABLE_SIGNING_KEY_SIZE);
+        crypto.getEncryption().setKeySize(EncryptionJwtCryptoProperties.DEFAULT_STRINGABLE_ENCRYPTION_KEY_SIZE);
+        crypto.getSigning().setKeySize(SigningJwtCryptoProperties.DEFAULT_STRINGABLE_SIGNING_KEY_SIZE);
     }
 }

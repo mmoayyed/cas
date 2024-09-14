@@ -1,21 +1,19 @@
 package org.apereo.cas.support.saml.web;
 
 import org.apereo.cas.authentication.CoreAuthenticationTestUtils;
-import org.apereo.cas.config.CasPersonDirectoryConfiguration;
-import org.apereo.cas.config.CasPersonDirectoryStubConfiguration;
-import org.apereo.cas.config.CasThemesConfiguration;
-import org.apereo.cas.config.CasThymeleafConfiguration;
-import org.apereo.cas.config.CasValidationConfiguration;
-import org.apereo.cas.config.CoreSamlConfiguration;
-import org.apereo.cas.config.SamlAuthenticationEventExecutionPlanConfiguration;
-import org.apereo.cas.config.SamlConfiguration;
-import org.apereo.cas.config.SamlServiceFactoryConfiguration;
-import org.apereo.cas.config.SamlUniqueTicketIdGeneratorConfiguration;
+import org.apereo.cas.config.CasCoreSamlAutoConfiguration;
+import org.apereo.cas.config.CasPersonDirectoryAutoConfiguration;
+import org.apereo.cas.config.CasSamlAutoConfiguration;
+import org.apereo.cas.config.CasThemesAutoConfiguration;
+import org.apereo.cas.config.CasThymeleafAutoConfiguration;
+import org.apereo.cas.config.CasValidationAutoConfiguration;
+import org.apereo.cas.test.CasTestExtension;
 import org.apereo.cas.web.CasWebSecurityConfigurer;
 import org.apereo.cas.web.report.AbstractCasEndpointTests;
 import lombok.val;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -32,22 +30,19 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 @SpringBootTest(classes = {
     AbstractCasEndpointTests.SharedTestConfiguration.class,
-    CoreSamlConfiguration.class,
-    SamlConfiguration.class,
-    CasPersonDirectoryConfiguration.class,
-    CasPersonDirectoryStubConfiguration.class,
-    SamlServiceFactoryConfiguration.class,
-    SamlUniqueTicketIdGeneratorConfiguration.class,
-    SamlAuthenticationEventExecutionPlanConfiguration.class,
-    CasThemesConfiguration.class,
-    CasThymeleafConfiguration.class,
-    CasValidationConfiguration.class
+    CasCoreSamlAutoConfiguration.class,
+    CasPersonDirectoryAutoConfiguration.class,
+    CasSamlAutoConfiguration.class,
+    CasThemesAutoConfiguration.class,
+    CasThymeleafAutoConfiguration.class,
+    CasValidationAutoConfiguration.class
 },
     properties = {
         "management.endpoints.web.exposure.include=*",
         "management.endpoint.samlValidate.enabled=true"
     })
 @Tag("SAML1")
+@ExtendWith(CasTestExtension.class)
 class SamlValidateEndpointTests extends AbstractCasEndpointTests {
     @Autowired
     @Qualifier("samlValidateEndpoint")

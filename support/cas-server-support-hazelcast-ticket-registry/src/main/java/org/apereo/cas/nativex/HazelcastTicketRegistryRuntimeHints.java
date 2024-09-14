@@ -1,6 +1,6 @@
 package org.apereo.cas.nativex;
 
-import org.apereo.cas.ticket.registry.HazelcastTicketHolder;
+import org.apereo.cas.ticket.registry.HazelcastTicketDocument;
 import org.apereo.cas.ticket.registry.MapAttributeValueExtractor;
 import org.apereo.cas.util.nativex.CasRuntimeHintsRegistrar;
 import com.hazelcast.internal.serialization.DataSerializerHook;
@@ -68,13 +68,12 @@ import com.hazelcast.shaded.org.apache.calcite.schema.SchemaPlus;
 import com.hazelcast.shaded.org.apache.calcite.schema.Schemas;
 import com.hazelcast.shaded.org.apache.calcite.schema.Statistic;
 import com.hazelcast.shaded.org.apache.calcite.schema.Table;
+import com.hazelcast.spi.properties.ClusterProperty;
 import com.hazelcast.sql.SqlService;
 import com.hazelcast.sql.impl.type.converter.Converter;
 import lombok.val;
-import org.springframework.aot.hint.MemberCategory;
 import org.springframework.aot.hint.RuntimeHints;
 import java.util.AbstractQueue;
-import java.util.Collection;
 import java.util.List;
 
 /**
@@ -88,6 +87,7 @@ public class HazelcastTicketRegistryRuntimeHints implements CasRuntimeHintsRegis
     public void registerHints(final RuntimeHints hints, final ClassLoader classLoader) {
         registerReflectionHints(hints,
             List.of(
+                ClusterProperty.class,
                 Schemas.class,
                 SchemaPlus.class,
                 Queryable.class,
@@ -200,7 +200,7 @@ public class HazelcastTicketRegistryRuntimeHints implements CasRuntimeHintsRegis
         registerProxyHints(hints,
             findSubclassesInPackage(CalciteResource.class, "com.hazelcast"));
 
-        registerSerializationHints(hints, List.of(HazelcastTicketHolder.class));
+        registerSerializationHints(hints, List.of(HazelcastTicketDocument.class));
 
         hints.resources()
             .registerPattern("com.hazelcast.shaded.org.codehaus.commons.compiler.properties")
@@ -209,26 +209,4 @@ public class HazelcastTicketRegistryRuntimeHints implements CasRuntimeHintsRegis
             .registerPattern("META-INF/services/com.hazelcast.sql.Connectors");
     }
 
-    private static void registerProxyHints(final RuntimeHints hints, final Collection<Class> subclassesInPackage) {
-        subclassesInPackage.forEach(clazz -> hints.proxies().registerJdkProxy(clazz));
-    }
-
-    private static void registerSerializationHints(final RuntimeHints hints, final Collection<Class> entries) {
-        entries.forEach(el -> hints.serialization().registerType(el));
-    }
-
-    private static void registerReflectionHints(final RuntimeHints hints, final Collection entries) {
-        val memberCategories = new MemberCategory[]{
-            MemberCategory.INTROSPECT_DECLARED_CONSTRUCTORS,
-            MemberCategory.INTROSPECT_PUBLIC_CONSTRUCTORS,
-            MemberCategory.INTROSPECT_DECLARED_METHODS,
-            MemberCategory.INTROSPECT_PUBLIC_METHODS,
-            MemberCategory.INVOKE_DECLARED_CONSTRUCTORS,
-            MemberCategory.INVOKE_PUBLIC_CONSTRUCTORS,
-            MemberCategory.INVOKE_DECLARED_METHODS,
-            MemberCategory.INVOKE_PUBLIC_METHODS,
-            MemberCategory.DECLARED_FIELDS,
-            MemberCategory.PUBLIC_FIELDS};
-        entries.forEach(el -> hints.reflection().registerType((Class) el, memberCategories));
-    }
 }

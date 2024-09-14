@@ -1,17 +1,16 @@
 package org.apereo.cas.support.geo.azure;
 
 import org.apereo.cas.authentication.adaptive.geo.GeoLocationService;
-import org.apereo.cas.config.CasGeoLocationAzureMapsConfiguration;
-import org.apereo.cas.config.CasGeoLocationConfiguration;
+import org.apereo.cas.config.CasGeoLocationAutoConfiguration;
+import org.apereo.cas.config.CasGeoLocationAzureMapsAutoConfiguration;
+import org.apereo.cas.util.spring.boot.SpringBootTestAutoConfigurations;
 import lombok.val;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.boot.autoconfigure.web.servlet.WebMvcAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.cloud.autoconfigure.RefreshAutoConfiguration;
 import java.net.InetAddress;
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -21,12 +20,11 @@ import static org.junit.jupiter.api.Assertions.*;
  * @author Misagh Moayyed
  * @since 7.0.0
  */
+@SpringBootTestAutoConfigurations
 @SpringBootTest(
     classes = {
-        RefreshAutoConfiguration.class,
-        WebMvcAutoConfiguration.class,
-        CasGeoLocationConfiguration.class,
-        CasGeoLocationAzureMapsConfiguration.class
+        CasGeoLocationAutoConfiguration.class,
+        CasGeoLocationAzureMapsAutoConfiguration.class
     },
     properties = {
         "cas.geo-location.azure.client-id=${#environmentVars['AZURE_MAPS_CLIENT_ID']}",
@@ -35,7 +33,7 @@ import static org.junit.jupiter.api.Assertions.*;
 @Tag("GeoLocation")
 @EnabledIfEnvironmentVariable(named = "AZURE_MAPS_SUBSCRIPTION_ID", matches = ".+")
 @EnabledIfEnvironmentVariable(named = "AZURE_MAPS_CLIENT_ID", matches = ".+")
-public class AzureMapsGeoLocationServiceTests {
+class AzureMapsGeoLocationServiceTests {
     @Autowired
     @Qualifier(GeoLocationService.BEAN_NAME)
     private GeoLocationService geoLocationService;

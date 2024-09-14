@@ -32,7 +32,8 @@ public class AccessTokenRefreshTokenGrantRequestExtractor extends AccessTokenAut
 
     @Override
     public boolean supports(final WebContext context) {
-        val grantType = getConfigurationContext().getRequestParameterResolver().resolveRequestParameter(context, OAuth20Constants.GRANT_TYPE).orElse(StringUtils.EMPTY);
+        val grantType = getConfigurationContext().getRequestParameterResolver()
+            .resolveRequestParameter(context, OAuth20Constants.GRANT_TYPE).orElse(StringUtils.EMPTY);
         return OAuth20Utils.isGrantType(grantType, getGrantType());
     }
 
@@ -48,17 +49,16 @@ public class AccessTokenRefreshTokenGrantRequestExtractor extends AccessTokenAut
 
     @Override
     protected AccessTokenRequestContext extractInternal(
-        final WebContext context, final AccessTokenRequestContext.AccessTokenRequestContextBuilder builder) {
+        final WebContext context, final AccessTokenRequestContext accessTokenRequestContext) {
 
         val registeredService = getOAuthRegisteredServiceBy(context);
         if (registeredService == null) {
             throw UnauthorizedServiceException.denied("Unable to locate service in registry");
         }
         val shouldRenewRefreshToken = registeredService.isGenerateRefreshToken() && registeredService.isRenewRefreshToken();
-        builder.generateRefreshToken(shouldRenewRefreshToken);
-        builder.expireOldRefreshToken(shouldRenewRefreshToken);
-
-        return super.extractInternal(context, builder);
+        return super.extractInternal(context, accessTokenRequestContext
+            .withGenerateRefreshToken(shouldRenewRefreshToken)
+            .withExpireOldRefreshToken(shouldRenewRefreshToken));
     }
     @Override
     protected OAuthRegisteredService getOAuthRegisteredServiceBy(final WebContext context) {
@@ -91,11 +91,14 @@ public class AccessTokenRefreshTokenGrantRequestExtractor extends AccessTokenAut
     protected Set<String> extractRequestedScopesByToken(final Set<String> requestedScopes,
                                                         final OAuth20Token token,
                                                         final WebContext context) {
-        if (!requestedScopes.isEmpty() && !requestedScopes.equals(token.getScopes())) {
+        if (requestedScopes.isEmpty()) {
+            return new TreeSet<>(token.getScopes());
+        }
+        if (!token.getScopes().containsAll(requestedScopes)) {
             LOGGER.error("Requested scopes [{}] exceed the granted scopes [{}] for token [{}]",
                 requestedScopes, token.getScopes(), token.getId());
             throw new OAuth20UnauthorizedScopeRequestException(token.getId());
         }
-        return new TreeSet<>(token.getScopes());
+        return new TreeSet<>(requestedScopes);
     }
 }

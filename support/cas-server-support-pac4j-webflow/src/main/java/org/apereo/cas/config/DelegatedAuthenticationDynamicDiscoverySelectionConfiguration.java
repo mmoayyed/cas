@@ -1,5 +1,6 @@
 package org.apereo.cas.config;
 
+import org.apereo.cas.authentication.principal.PrincipalFactory;
 import org.apereo.cas.authentication.principal.PrincipalResolver;
 import org.apereo.cas.configuration.CasConfigurationProperties;
 import org.apereo.cas.configuration.features.CasFeatureModule;
@@ -15,11 +16,11 @@ import org.apereo.cas.web.flow.actions.DelegatedClientAuthenticationDynamicDisco
 import org.apereo.cas.web.flow.actions.WebflowActionBeanSupplier;
 
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.cloud.context.config.annotation.RefreshScope;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.ScopedProxyMode;
 import org.springframework.webflow.execution.Action;
 
@@ -30,26 +31,30 @@ import org.springframework.webflow.execution.Action;
  * @since 6.5.0
  */
 @ConditionalOnFeatureEnabled(feature = CasFeatureModule.FeatureCatalog.DelegatedAuthentication, module = "dynamic-discovery")
-@AutoConfiguration
-public class DelegatedAuthenticationDynamicDiscoverySelectionConfiguration {
-    private static final BeanCondition CONDITION = BeanCondition.on("cas.authn.pac4j.core.discovery-selection.selection-type")
-        .havingValue("DYNAMIC");
+@Configuration(value = "DelegatedAuthenticationDynamicDiscoverySelectionConfiguration", proxyBeanMethods = false)
+class DelegatedAuthenticationDynamicDiscoverySelectionConfiguration {
+    private static final BeanCondition CONDITION = BeanCondition.on("cas.authn.pac4j.core.discovery-selection.selection-type").havingValue("DYNAMIC");
+    private static final BeanCondition CONDITION_JSON = BeanCondition.on("cas.authn.pac4j.core.discovery-selection.json.location").exists();
 
     @Bean
     @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
     @ConditionalOnMissingBean(name = "delegatedAuthenticationDynamicDiscoveryProviderLocator")
     public DelegatedAuthenticationDynamicDiscoveryProviderLocator delegatedAuthenticationDynamicDiscoveryProviderLocator(
+        @Qualifier("clientPrincipalFactory")
+        final PrincipalFactory clientPrincipalFactory,
         @Qualifier(PrincipalResolver.BEAN_NAME_PRINCIPAL_RESOLVER)
         final PrincipalResolver defaultPrincipalResolver,
         final ConfigurableApplicationContext applicationContext,
         @Qualifier(DelegatedClientAuthenticationConfigurationContext.BEAN_NAME)
         final DelegatedClientAuthenticationConfigurationContext configContext,
         final CasConfigurationProperties casProperties) {
+
         return BeanSupplier.of(DelegatedAuthenticationDynamicDiscoveryProviderLocator.class)
             .when(CONDITION.given(applicationContext.getEnvironment()))
+            .and(CONDITION_JSON.given(applicationContext.getEnvironment()))
             .supply(() -> new DefaultDelegatedAuthenticationDynamicDiscoveryProviderLocator(
                 configContext.getDelegatedClientIdentityProvidersProducer(), configContext.getIdentityProviders(),
-                defaultPrincipalResolver, casProperties))
+                defaultPrincipalResolver, clientPrincipalFactory, casProperties))
             .otherwiseProxy()
             .get();
     }

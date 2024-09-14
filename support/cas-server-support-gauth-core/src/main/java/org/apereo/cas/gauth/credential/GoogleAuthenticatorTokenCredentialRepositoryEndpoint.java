@@ -4,8 +4,7 @@ import org.apereo.cas.authentication.OneTimeTokenAccount;
 import org.apereo.cas.configuration.CasConfigurationProperties;
 import org.apereo.cas.otp.repository.credentials.OneTimeTokenCredentialRepository;
 import org.apereo.cas.util.CompressionUtils;
-import org.apereo.cas.web.BaseCasActuatorEndpoint;
-
+import org.apereo.cas.web.BaseCasRestActuatorEndpoint;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import lombok.extern.slf4j.Slf4j;
@@ -13,7 +12,8 @@ import lombok.val;
 import org.apache.commons.io.IOUtils;
 import org.jooq.lambda.Unchecked;
 import org.springframework.beans.factory.ObjectProvider;
-import org.springframework.boot.actuate.endpoint.web.annotation.RestControllerEndpoint;
+import org.springframework.boot.actuate.endpoint.annotation.Endpoint;
+import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.core.io.Resource;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
@@ -25,10 +25,9 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.ResponseBody;
-
 import jakarta.servlet.http.HttpServletRequest;
-import java.io.File;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.util.Collection;
 import java.util.Objects;
 
@@ -38,15 +37,16 @@ import java.util.Objects;
  * @author Misagh Moayyed
  * @since 6.0.0
  */
-@RestControllerEndpoint(id = "gauthCredentialRepository", enableByDefault = false)
+@Endpoint(id = "gauthCredentialRepository", enableByDefault = false)
 @Slf4j
-public class GoogleAuthenticatorTokenCredentialRepositoryEndpoint extends BaseCasActuatorEndpoint {
+public class GoogleAuthenticatorTokenCredentialRepositoryEndpoint extends BaseCasRestActuatorEndpoint {
     private final ObjectProvider<OneTimeTokenCredentialRepository> repository;
 
     public GoogleAuthenticatorTokenCredentialRepositoryEndpoint(
         final CasConfigurationProperties casProperties,
+        final ConfigurableApplicationContext applicationContext,
         final ObjectProvider<OneTimeTokenCredentialRepository> repository) {
-        super(casProperties);
+        super(casProperties, applicationContext);
         this.repository = repository;
     }
 
@@ -57,10 +57,9 @@ public class GoogleAuthenticatorTokenCredentialRepositoryEndpoint extends BaseCa
      * @return the one time token account
      */
     @GetMapping(path = "/{username}", produces = MediaType.APPLICATION_JSON_VALUE)
-    @Operation(summary = "Load and get all accounts for the user", parameters = @Parameter(name = "username", required = true))
+    @Operation(summary = "Load and get all accounts for the user", parameters = @Parameter(name = "username", required = true, description = "The username to look up"))
     public Collection<? extends OneTimeTokenAccount> get(
-        @PathVariable
-        final String username) {
+        @PathVariable final String username) {
         return repository.getObject().get(username);
     }
 
@@ -81,10 +80,9 @@ public class GoogleAuthenticatorTokenCredentialRepositoryEndpoint extends BaseCa
      * @param username the username
      */
     @DeleteMapping(path = "/{username}", produces = MediaType.APPLICATION_JSON_VALUE)
-    @Operation(summary = "Delete account for the user", parameters = @Parameter(name = "username", required = true))
+    @Operation(summary = "Delete account for the user", parameters = @Parameter(name = "username", required = true, description = "The username to look up"))
     public void delete(
-        @PathVariable
-        final String username) {
+        @PathVariable final String username) {
         repository.getObject().delete(username);
     }
 
@@ -107,12 +105,12 @@ public class GoogleAuthenticatorTokenCredentialRepositoryEndpoint extends BaseCa
     @Operation(summary = "Export accounts as a zip file")
     public ResponseEntity<Resource> exportAccounts() {
         val accounts = repository.getObject().load();
-        val serializer = new GoogleAuthenticatorAccountSerializer();
+        val serializer = new GoogleAuthenticatorAccountSerializer(applicationContext);
         val resource = CompressionUtils.toZipFile(accounts.stream(),
             Unchecked.function(entry -> {
                 val acct = (GoogleAuthenticatorAccount) entry;
                 val fileName = String.format("%s-%s", acct.getName(), acct.getId());
-                val sourceFile = File.createTempFile(fileName, ".json");
+                val sourceFile = Files.createTempFile(fileName, ".json").toFile();
                 serializer.to(sourceFile, acct);
                 return sourceFile;
             }), "gauthaccts");
@@ -130,11 +128,11 @@ public class GoogleAuthenticatorTokenCredentialRepositoryEndpoint extends BaseCa
      * @throws Exception the exception
      */
     @PostMapping(path = "/import", consumes = MediaType.APPLICATION_JSON_VALUE)
-    @Operation(summary = "Import account as a JSON document", parameters = @Parameter(name = "request"))
+    @Operation(summary = "Import account as a JSON document", parameters = @Parameter(name = "request", required = true, description = "The request"))
     public ResponseEntity importAccount(final HttpServletRequest request) throws Exception {
         val requestBody = IOUtils.toString(request.getInputStream(), StandardCharsets.UTF_8);
         LOGGER.trace("Submitted account: [{}]", requestBody);
-        val serializer = new GoogleAuthenticatorAccountSerializer();
+        val serializer = new GoogleAuthenticatorAccountSerializer(applicationContext);
         val account = serializer.from(requestBody);
         LOGGER.trace("Storing account: [{}]", account);
         repository.getObject().save(account);

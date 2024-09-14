@@ -7,12 +7,10 @@
   "properties": [
     "--cas.authn.attribute-repository.stub.attributes.phone=13477464523",
     "--cas.authn.attribute-repository.stub.attributes.mail=casuser@example.org",
-    "--cas.audit.engine.enabled=true",
 
     "--spring.mail.host=localhost",
     "--spring.mail.port=25000",
 
-    "--logging.level.org.apereo.cas=debug",
     "--cas.authn.mfa.simple.trusted-device-enabled=true",
 
     "--cas.authn.mfa.simple.token.rest.url=http://localhost:5432",
@@ -23,7 +21,4 @@
   ],
   "initScript": "${PWD}/ci/tests/mail/run-mail-server.sh"
 }
-
-
-
 

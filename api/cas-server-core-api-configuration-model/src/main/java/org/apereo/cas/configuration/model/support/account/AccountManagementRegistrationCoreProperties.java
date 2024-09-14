@@ -1,21 +1,20 @@
 package org.apereo.cas.configuration.model.support.account;
 
+import org.apereo.cas.configuration.features.CasFeatureModule;
 import org.apereo.cas.configuration.model.SpringResourceProperties;
+import org.apereo.cas.configuration.model.core.util.EncryptionJwtCryptoProperties;
 import org.apereo.cas.configuration.model.core.util.EncryptionJwtSigningJwtCryptographyProperties;
+import org.apereo.cas.configuration.model.core.util.SigningJwtCryptoProperties;
 import org.apereo.cas.configuration.support.DurationCapable;
 import org.apereo.cas.configuration.support.RegularExpressionCapable;
 import org.apereo.cas.configuration.support.RequiredProperty;
 import org.apereo.cas.configuration.support.RequiresModule;
-import org.apereo.cas.util.crypto.CipherExecutor;
-
-import com.fasterxml.jackson.annotation.JsonFilter;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
 import lombok.val;
 import org.springframework.boot.context.properties.NestedConfigurationProperty;
 import org.springframework.core.io.ClassPathResource;
-
 import java.io.Serial;
 import java.io.Serializable;
 
@@ -29,8 +28,8 @@ import java.io.Serializable;
 @Getter
 @Setter
 @Accessors(chain = true)
-@JsonFilter("AccountManagementRegistrationCoreProperties")
-public class AccountManagementRegistrationCoreProperties implements Serializable {
+
+public class AccountManagementRegistrationCoreProperties implements CasFeatureModule, Serializable {
     @Serial
     private static final long serialVersionUID = -4679683905941523034L;
 
@@ -80,7 +79,7 @@ public class AccountManagementRegistrationCoreProperties implements Serializable
     public AccountManagementRegistrationCoreProperties() {
         val resource = new ClassPathResource("account-registration-properties/registration-properties.json");
         registrationProperties.setLocation(resource);
-        crypto.getEncryption().setKeySize(CipherExecutor.DEFAULT_STRINGABLE_ENCRYPTION_KEY_SIZE);
-        crypto.getSigning().setKeySize(CipherExecutor.DEFAULT_STRINGABLE_SIGNING_KEY_SIZE);
+        crypto.getEncryption().setKeySize(EncryptionJwtCryptoProperties.DEFAULT_STRINGABLE_ENCRYPTION_KEY_SIZE);
+        crypto.getSigning().setKeySize(SigningJwtCryptoProperties.DEFAULT_STRINGABLE_SIGNING_KEY_SIZE);
     }
 }

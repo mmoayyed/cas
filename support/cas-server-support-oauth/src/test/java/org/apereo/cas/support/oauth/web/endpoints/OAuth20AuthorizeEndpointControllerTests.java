@@ -63,14 +63,14 @@ class OAuth20AuthorizeEndpointControllerTests extends AbstractOAuth20Tests {
 
     @Autowired
     @Qualifier("authorizeController")
-    private OAuth20AuthorizeEndpointController oAuth20AuthorizeEndpointController;
+    private OAuth20AuthorizeEndpointController authorizeController;
 
     @Test
     void verifyNoClientId() throws Throwable {
         val mockRequest = new MockHttpServletRequest(HttpMethod.GET.name(), CONTEXT + OAuth20Constants.AUTHORIZE_URL);
         mockRequest.setParameter(OAuth20Constants.REDIRECT_URI, REDIRECT_URI);
         val mockResponse = new MockHttpServletResponse();
-        assertThrows(UnauthorizedServiceException.class, () -> oAuth20AuthorizeEndpointController.handleRequestPost(mockRequest, mockResponse));
+        assertThrows(UnauthorizedServiceException.class, () -> authorizeController.handleRequestPost(mockRequest, mockResponse));
     }
 
     @Test
@@ -79,7 +79,7 @@ class OAuth20AuthorizeEndpointControllerTests extends AbstractOAuth20Tests {
         val mockRequest = new MockHttpServletRequest(HttpMethod.GET.name(), CONTEXT + OAuth20Constants.AUTHORIZE_URL);
         mockRequest.setParameter(OAuth20Constants.CLIENT_ID, registeredService.getClientId());
         val mockResponse = new MockHttpServletResponse();
-        assertThrows(IllegalArgumentException.class, () -> oAuth20AuthorizeEndpointController.handleRequest(mockRequest, mockResponse));
+        assertThrows(IllegalArgumentException.class, () -> authorizeController.handleRequest(mockRequest, mockResponse));
     }
 
     @Test
@@ -89,7 +89,7 @@ class OAuth20AuthorizeEndpointControllerTests extends AbstractOAuth20Tests {
         mockRequest.setParameter(OAuth20Constants.CLIENT_ID, registeredService.getClientId());
         mockRequest.setParameter(OAuth20Constants.REDIRECT_URI, REDIRECT_URI);
         val mockResponse = new MockHttpServletResponse();
-        assertThrows(IllegalArgumentException.class, () -> oAuth20AuthorizeEndpointController.handleRequest(mockRequest, mockResponse));
+        assertThrows(IllegalArgumentException.class, () -> authorizeController.handleRequest(mockRequest, mockResponse));
     }
 
     @Test
@@ -104,7 +104,7 @@ class OAuth20AuthorizeEndpointControllerTests extends AbstractOAuth20Tests {
         mockRequest.setAttribute(OAuth20Constants.ERROR_WITH_CALLBACK, true);
         val mockResponse = new MockHttpServletResponse();
 
-        val modelAndView = oAuth20AuthorizeEndpointController.handleRequest(mockRequest, mockResponse);
+        val modelAndView = authorizeController.handleRequest(mockRequest, mockResponse);
         assertInstanceOf(RedirectView.class, modelAndView.getView());
         val modelView = (RedirectView) modelAndView.getView();
         assertEquals(REDIRECT_URI, modelView.getUrl());
@@ -115,19 +115,16 @@ class OAuth20AuthorizeEndpointControllerTests extends AbstractOAuth20Tests {
 
     @Test
     void verifyNoCasService() throws Throwable {
-        clearAllServices();
         val mockRequest = new MockHttpServletRequest(HttpMethod.GET.name(), CONTEXT + OAuth20Constants.AUTHORIZE_URL);
         mockRequest.setParameter(OAuth20Constants.CLIENT_ID, UUID.randomUUID().toString());
         mockRequest.setParameter(OAuth20Constants.REDIRECT_URI, REDIRECT_URI);
         val mockResponse = new MockHttpServletResponse();
-        assertThrows(UnauthorizedServiceException.class, () -> oAuth20AuthorizeEndpointController.handleRequest(mockRequest, mockResponse));
+        assertThrows(UnauthorizedServiceException.class, () -> authorizeController.handleRequest(mockRequest, mockResponse));
     }
 
     @Test
     void verifyCasClientCanValidate() throws Throwable {
-        clearAllServices();
-
-        val service = getRegisteredService(REDIRECT_URI, SERVICE_NAME);
+        val service = getOAuthRegisteredService(REDIRECT_URI, SERVICE_NAME);
         servicesManager.save(service);
 
         val mockRequest = new MockHttpServletRequest(HttpMethod.GET.name(), CONTEXT + OAuth20Constants.AUTHORIZE_URL);
@@ -170,8 +167,7 @@ class OAuth20AuthorizeEndpointControllerTests extends AbstractOAuth20Tests {
 
     @Test
     void verifyRedirectUriDoesNotStartWithServiceId() throws Throwable {
-        clearAllServices();
-        val registeredService = getRegisteredService(OTHER_REDIRECT_URI, UUID.randomUUID().toString());
+        val registeredService = getOAuthRegisteredService(OTHER_REDIRECT_URI, UUID.randomUUID().toString());
         servicesManager.save(registeredService);
 
         val mockRequest = new MockHttpServletRequest(HttpMethod.GET.name(), CONTEXT + OAuth20Constants.AUTHORIZE_URL);
@@ -179,14 +175,12 @@ class OAuth20AuthorizeEndpointControllerTests extends AbstractOAuth20Tests {
         mockRequest.setParameter(OAuth20Constants.REDIRECT_URI, REDIRECT_URI);
         val mockResponse = new MockHttpServletResponse();
 
-        assertThrows(IllegalArgumentException.class, () -> oAuth20AuthorizeEndpointController.handleRequestPost(mockRequest, mockResponse));
+        assertThrows(IllegalArgumentException.class, () -> authorizeController.handleRequestPost(mockRequest, mockResponse));
     }
 
     @Test
     void verifyCodeNoProfile() throws Throwable {
-        clearAllServices();
-
-        val service = getRegisteredService(REDIRECT_URI, SERVICE_NAME);
+        val service = getOAuthRegisteredService(REDIRECT_URI, SERVICE_NAME);
         service.setBypassApprovalPrompt(true);
         servicesManager.save(service);
 
@@ -202,16 +196,14 @@ class OAuth20AuthorizeEndpointControllerTests extends AbstractOAuth20Tests {
         val session = new MockHttpSession();
         mockRequest.setSession(session);
 
-        assertThrows(IllegalArgumentException.class, () -> oAuth20AuthorizeEndpointController.handleRequestPost(mockRequest, mockResponse));
+        assertThrows(IllegalArgumentException.class, () -> authorizeController.handleRequestPost(mockRequest, mockResponse));
     }
 
     @Test
     void verifyMissingTicketGrantingTicket() throws Throwable {
-        clearAllServices();
-
-        val service = getRegisteredService(REDIRECT_URI, SERVICE_NAME);
+        val service = getOAuthRegisteredService(REDIRECT_URI, SERVICE_NAME);
         service.setBypassApprovalPrompt(true);
-        oAuth20AuthorizeEndpointController.getConfigurationContext().getServicesManager().save(service);
+        authorizeController.getConfigurationContext().getServicesManager().save(service);
 
         val mockRequest = new MockHttpServletRequest(HttpMethod.GET.name(), CONTEXT + OAuth20Constants.AUTHORIZE_URL);
         mockRequest.addHeader(HttpRequestUtils.USER_AGENT_HEADER, "MSIE");
@@ -229,22 +221,20 @@ class OAuth20AuthorizeEndpointControllerTests extends AbstractOAuth20Tests {
 
         val session = new MockHttpSession();
         mockRequest.setSession(session);
-        val sessionStore = oAuth20AuthorizeEndpointController.getConfigurationContext().getSessionStore();
+        val sessionStore = authorizeController.getConfigurationContext().getSessionStore();
         val context = new JEEContext(mockRequest, mockResponse);
         sessionStore.set(context, Pac4jConstants.USER_PROFILES, CollectionUtils.wrapLinkedHashMap(profile.getClientName(), profile));
 
-        val modelAndView = oAuth20AuthorizeEndpointController.handleRequest(mockRequest, mockResponse);
+        val modelAndView = authorizeController.handleRequest(mockRequest, mockResponse);
         assertEquals(CasWebflowConstants.VIEW_ID_SERVICE_ERROR, modelAndView.getViewName());
     }
 
     @Test
     void verifyServiceAccessDenied() throws Throwable {
-        clearAllServices();
-
-        val service = getRegisteredService(REDIRECT_URI, SERVICE_NAME);
+        val service = getOAuthRegisteredService(REDIRECT_URI, SERVICE_NAME);
         service.setBypassApprovalPrompt(true);
         service.setAccessStrategy(new DefaultRegisteredServiceAccessStrategy(Map.of("required", Set.of("value1"))));
-        oAuth20AuthorizeEndpointController.getConfigurationContext().getServicesManager().save(service);
+        authorizeController.getConfigurationContext().getServicesManager().save(service);
 
         val mockRequest = new MockHttpServletRequest(HttpMethod.GET.name(), CONTEXT + OAuth20Constants.AUTHORIZE_URL);
         mockRequest.addHeader(HttpRequestUtils.USER_AGENT_HEADER, "MSIE");
@@ -262,22 +252,21 @@ class OAuth20AuthorizeEndpointControllerTests extends AbstractOAuth20Tests {
 
         val session = new MockHttpSession();
         mockRequest.setSession(session);
-        val sessionStore = oAuth20AuthorizeEndpointController.getConfigurationContext().getSessionStore();
+        val sessionStore = authorizeController.getConfigurationContext().getSessionStore();
         val context = new JEEContext(mockRequest, mockResponse);
         val ticket = new MockTicketGrantingTicket("casuser");
-        oAuth20AuthorizeEndpointController.getConfigurationContext().getTicketRegistry().addTicket(ticket);
+        authorizeController.getConfigurationContext().getTicketRegistry().addTicket(ticket);
         sessionStore.set(context, Pac4jConstants.USER_PROFILES, CollectionUtils.wrapLinkedHashMap(profile.getClientName(), profile));
 
-        val modelAndView = oAuth20AuthorizeEndpointController.handleRequest(mockRequest, mockResponse);
+        val modelAndView = authorizeController.handleRequest(mockRequest, mockResponse);
         assertEquals(CasWebflowConstants.VIEW_ID_SERVICE_ERROR, modelAndView.getViewName());
     }
 
     @Test
     void verifyCodeRedirectToClient() throws Throwable {
-        clearAllServices();
-        val service = getRegisteredService(REDIRECT_URI, SERVICE_NAME);
+        val service = getOAuthRegisteredService(REDIRECT_URI, SERVICE_NAME);
         service.setBypassApprovalPrompt(true);
-        oAuth20AuthorizeEndpointController.getConfigurationContext().getServicesManager().save(service);
+        authorizeController.getConfigurationContext().getServicesManager().save(service);
 
         val mockRequest = new MockHttpServletRequest(HttpMethod.GET.name(), CONTEXT + OAuth20Constants.AUTHORIZE_URL);
         mockRequest.addHeader(HttpRequestUtils.USER_AGENT_HEADER, "MSIE");
@@ -290,21 +279,21 @@ class OAuth20AuthorizeEndpointControllerTests extends AbstractOAuth20Tests {
         mockRequest.setContextPath(StringUtils.EMPTY);
         val mockResponse = new MockHttpServletResponse();
 
-        val properties = oAuth20AuthorizeEndpointController.getConfigurationContext().getCasProperties();
+        val properties = authorizeController.getConfigurationContext().getCasProperties();
         properties.getAuthn().getOauth().getSessionReplication().getCookie().setAutoConfigureCookiePath(true);
         properties.getAuthn().getOauth().getSessionReplication().setReplicateSessions(true);
-        oAuth20AuthorizeEndpointController.getConfigurationContext()
+        authorizeController.getConfigurationContext()
             .getOauthDistributedSessionCookieGenerator().setCookiePath(StringUtils.EMPTY);
 
         val profile = buildCasProfile();
         val session = new MockHttpSession();
         mockRequest.setSession(session);
-        val sessionStore = oAuth20AuthorizeEndpointController.getConfigurationContext().getSessionStore();
+        val sessionStore = authorizeController.getConfigurationContext().getSessionStore();
         val context = new JEEContext(mockRequest, mockResponse);
 
         sessionStore.set(context, Pac4jConstants.USER_PROFILES, CollectionUtils.wrapLinkedHashMap(profile.getClientName(), profile));
 
-        val modelAndView = oAuth20AuthorizeEndpointController.handleRequest(mockRequest, mockResponse);
+        val modelAndView = authorizeController.handleRequest(mockRequest, mockResponse);
         val view = modelAndView.getView();
         assertInstanceOf(RedirectView.class, view);
         val redirectView = (RedirectView) view;
@@ -312,7 +301,7 @@ class OAuth20AuthorizeEndpointControllerTests extends AbstractOAuth20Tests {
         assertNotNull(redirectUrl);
         assertEquals(REDIRECT_URI, redirectUrl);
 
-        assertEquals("/", oAuth20AuthorizeEndpointController.getConfigurationContext()
+        assertEquals("/", authorizeController.getConfigurationContext()
             .getOauthDistributedSessionCookieGenerator().getCookiePath());
         val code = modelAndView.getModelMap().get("code");
         val oAuthCode = (OAuth20Code) this.ticketRegistry.getTicket(String.valueOf(code));
@@ -326,9 +315,7 @@ class OAuth20AuthorizeEndpointControllerTests extends AbstractOAuth20Tests {
 
     @Test
     void verifyTokenRedirectToClient() throws Throwable {
-        clearAllServices();
-
-        val service = getRegisteredService(REDIRECT_URI, SERVICE_NAME);
+        val service = getOAuthRegisteredService(REDIRECT_URI, SERVICE_NAME);
         service.setBypassApprovalPrompt(true);
         servicesManager.save(service);
 
@@ -343,17 +330,17 @@ class OAuth20AuthorizeEndpointControllerTests extends AbstractOAuth20Tests {
         mockRequest.setContextPath(StringUtils.EMPTY);
         val mockResponse = new MockHttpServletResponse();
 
-        val oauthContext = oAuth20AuthorizeEndpointController.getConfigurationContext();
+        val oauthContext = authorizeController.getConfigurationContext();
         oauthContext.getCasProperties().getAuthn().getOauth().getSessionReplication().getCookie().setAutoConfigureCookiePath(false);
         oauthContext.getOauthDistributedSessionCookieGenerator().setCookiePath(StringUtils.EMPTY);
 
         val profile = buildCasProfile();
-        val sessionStore = oAuth20AuthorizeEndpointController.getConfigurationContext().getSessionStore();
+        val sessionStore = authorizeController.getConfigurationContext().getSessionStore();
         val context = new JEEContext(mockRequest, mockResponse);
 
         sessionStore.set(context, Pac4jConstants.USER_PROFILES, CollectionUtils.wrapLinkedHashMap(profile.getClientName(), profile));
 
-        val modelAndView = oAuth20AuthorizeEndpointController.handleRequest(mockRequest, mockResponse);
+        val modelAndView = authorizeController.handleRequest(mockRequest, mockResponse);
         val view = modelAndView.getView();
         assertInstanceOf(RedirectView.class, view);
         val redirectView = (RedirectView) view;
@@ -361,7 +348,7 @@ class OAuth20AuthorizeEndpointControllerTests extends AbstractOAuth20Tests {
         assertNotNull(redirectUrl);
         assertTrue(redirectUrl.startsWith(REDIRECT_URI + "#access_token="));
 
-        assertEquals("/", oAuth20AuthorizeEndpointController.getConfigurationContext()
+        assertEquals("/", authorizeController.getConfigurationContext()
             .getOauthDistributedSessionCookieGenerator().getCookiePath());
         val code = StringUtils.substringBetween(redirectUrl, "#access_token=", "&token_type=Bearer");
         val accessToken = ticketRegistry.getTicket(code, OAuth20AccessToken.class);
@@ -377,9 +364,7 @@ class OAuth20AuthorizeEndpointControllerTests extends AbstractOAuth20Tests {
 
     @Test
     void verifyPerServiceExpiration() throws Throwable {
-        clearAllServices();
-
-        val service = getRegisteredService(REDIRECT_URI, SERVICE_NAME);
+        val service = getOAuthRegisteredService(REDIRECT_URI, SERVICE_NAME);
         service.setBypassApprovalPrompt(true);
         val expirationPolicy = new DefaultRegisteredServiceOAuthAccessTokenExpirationPolicy();
         expirationPolicy.setMaxTimeToLive("5005");
@@ -400,12 +385,12 @@ class OAuth20AuthorizeEndpointControllerTests extends AbstractOAuth20Tests {
 
         val profile = buildCasProfile();
 
-        val sessionStore = oAuth20AuthorizeEndpointController.getConfigurationContext().getSessionStore();
+        val sessionStore = authorizeController.getConfigurationContext().getSessionStore();
         val context = new JEEContext(mockRequest, mockResponse);
 
         sessionStore.set(context, Pac4jConstants.USER_PROFILES, CollectionUtils.wrapLinkedHashMap(profile.getClientName(), profile));
 
-        val modelAndView = oAuth20AuthorizeEndpointController.handleRequest(mockRequest, mockResponse);
+        val modelAndView = authorizeController.handleRequest(mockRequest, mockResponse);
         val view = modelAndView.getView();
         assertInstanceOf(RedirectView.class, view);
         val redirectView = (RedirectView) view;
@@ -431,9 +416,9 @@ class OAuth20AuthorizeEndpointControllerTests extends AbstractOAuth20Tests {
 
     @Test
     void verifyCodeRedirectToClientWithState() throws Throwable {
-        clearAllServices();
 
-        val service = getRegisteredService(REDIRECT_URI, SERVICE_NAME);
+
+        val service = getOAuthRegisteredService(REDIRECT_URI, SERVICE_NAME);
         service.setBypassApprovalPrompt(true);
         servicesManager.save(service);
 
@@ -451,12 +436,12 @@ class OAuth20AuthorizeEndpointControllerTests extends AbstractOAuth20Tests {
         val profile = buildCasProfile();
         val session = new MockHttpSession();
         mockRequest.setSession(session);
-        val sessionStore = oAuth20AuthorizeEndpointController.getConfigurationContext().getSessionStore();
+        val sessionStore = authorizeController.getConfigurationContext().getSessionStore();
         val context = new JEEContext(mockRequest, mockResponse);
 
         sessionStore.set(context, Pac4jConstants.USER_PROFILES, CollectionUtils.wrapLinkedHashMap(profile.getClientName(), profile));
 
-        val modelAndView = oAuth20AuthorizeEndpointController.handleRequest(mockRequest, mockResponse);
+        val modelAndView = authorizeController.handleRequest(mockRequest, mockResponse);
         val view = modelAndView.getView();
         assertInstanceOf(RedirectView.class, view);
         val redirectView = (RedirectView) view;
@@ -477,9 +462,9 @@ class OAuth20AuthorizeEndpointControllerTests extends AbstractOAuth20Tests {
 
     @Test
     void verifyTokenRedirectToClientWithState() throws Throwable {
-        clearAllServices();
 
-        val service = getRegisteredService(REDIRECT_URI, SERVICE_NAME);
+
+        val service = getOAuthRegisteredService(REDIRECT_URI, SERVICE_NAME);
         service.setBypassApprovalPrompt(true);
         servicesManager.save(service);
 
@@ -497,12 +482,12 @@ class OAuth20AuthorizeEndpointControllerTests extends AbstractOAuth20Tests {
         val profile = buildCasProfile();
         val session = new MockHttpSession();
         mockRequest.setSession(session);
-        val sessionStore = oAuth20AuthorizeEndpointController.getConfigurationContext().getSessionStore();
+        val sessionStore = authorizeController.getConfigurationContext().getSessionStore();
         val context = new JEEContext(mockRequest, mockResponse);
 
         sessionStore.set(context, Pac4jConstants.USER_PROFILES, CollectionUtils.wrapLinkedHashMap(profile.getClientName(), profile));
 
-        val modelAndView = oAuth20AuthorizeEndpointController.handleRequest(mockRequest, mockResponse);
+        val modelAndView = authorizeController.handleRequest(mockRequest, mockResponse);
         val view = modelAndView.getView();
         assertInstanceOf(RedirectView.class, view);
         val redirectView = (RedirectView) view;
@@ -525,9 +510,9 @@ class OAuth20AuthorizeEndpointControllerTests extends AbstractOAuth20Tests {
 
     @Test
     void verifyCodeRedirectToClientApproved() throws Throwable {
-        clearAllServices();
 
-        val service = getRegisteredService(REDIRECT_URI, SERVICE_NAME);
+
+        val service = getOAuthRegisteredService(REDIRECT_URI, SERVICE_NAME);
         service.setBypassApprovalPrompt(false);
         servicesManager.save(service);
 
@@ -544,12 +529,12 @@ class OAuth20AuthorizeEndpointControllerTests extends AbstractOAuth20Tests {
         val profile = buildCasProfile();
         val session = new MockHttpSession();
         mockRequest.setSession(session);
-        val sessionStore = oAuth20AuthorizeEndpointController.getConfigurationContext().getSessionStore();
+        val sessionStore = authorizeController.getConfigurationContext().getSessionStore();
         val context = new JEEContext(mockRequest, mockResponse);
         sessionStore.set(context, Pac4jConstants.USER_PROFILES, CollectionUtils.wrapLinkedHashMap(profile.getClientName(), profile));
         sessionStore.set(context, OAuth20Constants.BYPASS_APPROVAL_PROMPT, "true");
 
-        val modelAndView = oAuth20AuthorizeEndpointController.handleRequest(mockRequest, mockResponse);
+        val modelAndView = authorizeController.handleRequest(mockRequest, mockResponse);
         val view = modelAndView.getView();
         assertInstanceOf(RedirectView.class, view);
         val redirectView = (RedirectView) view;
@@ -569,9 +554,9 @@ class OAuth20AuthorizeEndpointControllerTests extends AbstractOAuth20Tests {
 
     @Test
     void verifyTokenRedirectToClientApproved() throws Throwable {
-        clearAllServices();
 
-        val service = getRegisteredService(REDIRECT_URI, SERVICE_NAME);
+
+        val service = getOAuthRegisteredService(REDIRECT_URI, SERVICE_NAME);
         service.setBypassApprovalPrompt(false);
         servicesManager.save(service);
 
@@ -589,13 +574,13 @@ class OAuth20AuthorizeEndpointControllerTests extends AbstractOAuth20Tests {
 
         val session = new MockHttpSession();
         mockRequest.setSession(session);
-        val sessionStore = oAuth20AuthorizeEndpointController.getConfigurationContext().getSessionStore();
+        val sessionStore = authorizeController.getConfigurationContext().getSessionStore();
         val context = new JEEContext(mockRequest, mockResponse);
 
         sessionStore.set(context, Pac4jConstants.USER_PROFILES, CollectionUtils.wrapLinkedHashMap(profile.getClientName(), profile));
         sessionStore.set(context, OAuth20Constants.BYPASS_APPROVAL_PROMPT, "true");
 
-        val modelAndView = oAuth20AuthorizeEndpointController.handleRequest(mockRequest, mockResponse);
+        val modelAndView = authorizeController.handleRequest(mockRequest, mockResponse);
         val view = modelAndView.getView();
         assertInstanceOf(RedirectView.class, view);
         val redirectView = (RedirectView) view;
@@ -615,9 +600,9 @@ class OAuth20AuthorizeEndpointControllerTests extends AbstractOAuth20Tests {
 
     @Test
     void verifyRedirectToApproval() throws Throwable {
-        clearAllServices();
 
-        val service = getRegisteredService(REDIRECT_URI, SERVICE_NAME);
+
+        val service = getOAuthRegisteredService(REDIRECT_URI, SERVICE_NAME);
         service.setBypassApprovalPrompt(false);
         servicesManager.save(service);
 
@@ -636,12 +621,12 @@ class OAuth20AuthorizeEndpointControllerTests extends AbstractOAuth20Tests {
 
         val session = new MockHttpSession();
         mockRequest.setSession(session);
-        val sessionStore = oAuth20AuthorizeEndpointController.getConfigurationContext().getSessionStore();
+        val sessionStore = authorizeController.getConfigurationContext().getSessionStore();
         val context = new JEEContext(mockRequest, mockResponse);
 
         sessionStore.set(context, Pac4jConstants.USER_PROFILES, CollectionUtils.wrapLinkedHashMap(profile.getClientName(), profile));
 
-        val modelAndView = oAuth20AuthorizeEndpointController.handleRequest(mockRequest, mockResponse);
+        val modelAndView = authorizeController.handleRequest(mockRequest, mockResponse);
         assertEquals(OAuth20Constants.CONFIRM_VIEW, modelAndView.getViewName());
         val model = modelAndView.getModel();
         assertEquals(AUTHORIZE_URL + '?' + OAuth20Constants.BYPASS_APPROVAL_PROMPT + "=true", model.get("callbackUrl"));
@@ -650,9 +635,9 @@ class OAuth20AuthorizeEndpointControllerTests extends AbstractOAuth20Tests {
 
     @Test
     void verifyTokenRedirectToClientApprovedWithJwtToken() throws Throwable {
-        clearAllServices();
 
-        val service = getRegisteredService(REDIRECT_URI, SERVICE_NAME);
+
+        val service = getOAuthRegisteredService(REDIRECT_URI, SERVICE_NAME);
         service.setBypassApprovalPrompt(true);
         service.setJwtAccessToken(true);
         servicesManager.save(service);
@@ -671,14 +656,14 @@ class OAuth20AuthorizeEndpointControllerTests extends AbstractOAuth20Tests {
 
         val session = new MockHttpSession();
         mockRequest.setSession(session);
-        val sessionStore = oAuth20AuthorizeEndpointController.getConfigurationContext().getSessionStore();
+        val sessionStore = authorizeController.getConfigurationContext().getSessionStore();
         val context = new JEEContext(mockRequest, mockResponse);
         val ticket = new MockTicketGrantingTicket("casuser");
-        oAuth20AuthorizeEndpointController.getConfigurationContext().getTicketRegistry().addTicket(ticket);
+        authorizeController.getConfigurationContext().getTicketRegistry().addTicket(ticket);
         sessionStore.set(context, Pac4jConstants.USER_PROFILES, CollectionUtils.wrapLinkedHashMap(profile.getClientName(), profile));
         sessionStore.set(context, OAuth20Constants.BYPASS_APPROVAL_PROMPT, "true");
 
-        val modelAndView = oAuth20AuthorizeEndpointController.handleRequest(mockRequest, mockResponse);
+        val modelAndView = authorizeController.handleRequest(mockRequest, mockResponse);
         val view = modelAndView.getView();
         assertInstanceOf(RedirectView.class, view);
         val redirectView = (RedirectView) view;
@@ -713,27 +698,21 @@ class OAuth20AuthorizeEndpointControllerTests extends AbstractOAuth20Tests {
         attributes.put(Authentication.class.getName(), CoreAuthenticationTestUtils.getAuthentication());
 
         val ticket = new MockTicketGrantingTicket("casuser");
-        oAuth20AuthorizeEndpointController.getConfigurationContext().getTicketRegistry().addTicket(ticket);
+        authorizeController.getConfigurationContext().getTicketRegistry().addTicket(ticket);
         attributes.put(TicketGrantingTicket.class.getName(), ticket.getId());
 
 
         profile.addAttributes(attributes);
         return profile;
     }
-
-    protected static OAuthRegisteredService getRegisteredService(final String serviceId, final String name) {
+    
+    protected static OAuthRegisteredService getOAuthRegisteredService(final String serviceId, final String name) {
         val service = new OAuthRegisteredService();
         service.setName(name);
         service.setServiceId(serviceId);
         service.setClientId(UUID.randomUUID().toString());
         service.setAttributeReleasePolicy(new ReturnAllowedAttributeReleasePolicy(List.of(FIRST_NAME_ATTRIBUTE)));
         return service;
-    }
-
-    @Override
-    protected void clearAllServices() {
-        val col = servicesManager.getAllServices();
-        col.forEach(r -> servicesManager.delete(r.getId()));
     }
 
     private static void assertEqualsWithDelta(final long expected, final long actual, final long delta) {

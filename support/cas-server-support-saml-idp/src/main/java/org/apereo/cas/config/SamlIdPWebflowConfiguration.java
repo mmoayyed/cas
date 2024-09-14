@@ -11,12 +11,12 @@ import org.apereo.cas.consent.ConsentActivationStrategy;
 import org.apereo.cas.consent.ConsentEngine;
 import org.apereo.cas.consent.ConsentableAttributeBuilder;
 import org.apereo.cas.services.ServicesManager;
-import org.apereo.cas.support.saml.OpenSamlConfigBean;
 import org.apereo.cas.support.saml.services.idp.metadata.cache.SamlRegisteredServiceCachingMetadataResolver;
 import org.apereo.cas.support.saml.web.consent.SamlIdPConsentSingleSignOnParticipationStrategy;
 import org.apereo.cas.support.saml.web.consent.SamlIdPConsentableAttributeBuilder;
 import org.apereo.cas.support.saml.web.flow.SamlIdPMetadataUIAction;
 import org.apereo.cas.support.saml.web.flow.SamlIdPWebflowConfigurer;
+import org.apereo.cas.support.saml.web.idp.profile.SamlProfileHandlerConfigurationContext;
 import org.apereo.cas.support.saml.web.idp.web.SamlIdPMultifactorAuthenticationTrigger;
 import org.apereo.cas.support.saml.web.idp.web.SamlIdPSingleSignOnParticipationStrategy;
 import org.apereo.cas.ticket.registry.TicketRegistrySupport;
@@ -30,11 +30,9 @@ import org.apereo.cas.web.flow.resolver.CasDelegatingWebflowEventResolver;
 import org.apereo.cas.web.flow.resolver.CasWebflowEventResolver;
 import org.apereo.cas.web.flow.resolver.impl.CasWebflowEventResolutionConfigurationContext;
 import org.apereo.cas.web.flow.resolver.impl.mfa.DefaultMultifactorAuthenticationProviderWebflowEventResolver;
-
 import lombok.val;
-import org.pac4j.core.context.session.SessionStore;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -47,7 +45,6 @@ import org.springframework.context.annotation.ScopedProxyMode;
 import org.springframework.webflow.definition.registry.FlowDefinitionRegistry;
 import org.springframework.webflow.engine.builder.support.FlowBuilderServices;
 import org.springframework.webflow.execution.Action;
-
 import java.util.Objects;
 
 /**
@@ -58,12 +55,12 @@ import java.util.Objects;
  */
 @EnableConfigurationProperties(CasConfigurationProperties.class)
 @ConditionalOnFeatureEnabled(feature = CasFeatureModule.FeatureCatalog.SAMLIdentityProvider)
-@AutoConfiguration
-public class SamlIdPWebflowConfiguration {
+@Configuration(value = "SamlIdPWebflowConfiguration", proxyBeanMethods = false)
+class SamlIdPWebflowConfiguration {
 
     @Configuration(value = "SamlIdPWebflowCoreConfiguration", proxyBeanMethods = false)
     @EnableConfigurationProperties(CasConfigurationProperties.class)
-    public static class SamlIdPWebflowCoreConfiguration {
+    static class SamlIdPWebflowCoreConfiguration {
         @Bean
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
         @ConditionalOnMissingBean(name = "samlIdPCasWebflowExecutionPlanConfigurer")
@@ -89,7 +86,7 @@ public class SamlIdPWebflowConfiguration {
 
     @Configuration(value = "SamlIdPWebflowActionsConfiguration", proxyBeanMethods = false)
     @EnableConfigurationProperties(CasConfigurationProperties.class)
-    public static class SamlIdPWebflowActionsConfiguration {
+    static class SamlIdPWebflowActionsConfiguration {
 
         @ConditionalOnMissingBean(name = CasWebflowConstants.ACTION_ID_SAML_IDP_METADATA_UI_PARSER)
         @Bean
@@ -107,7 +104,7 @@ public class SamlIdPWebflowConfiguration {
 
     @Configuration(value = "SamlIdPWebflowSingleSignOnConfiguration", proxyBeanMethods = false)
     @EnableConfigurationProperties(CasConfigurationProperties.class)
-    public static class SamlIdPWebflowSingleSignOnConfiguration {
+    static class SamlIdPWebflowSingleSignOnConfiguration {
         @Bean
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
         @ConditionalOnMissingBean(name = "samlIdPSingleSignOnParticipationStrategy")
@@ -130,7 +127,7 @@ public class SamlIdPWebflowConfiguration {
 
     @Configuration(value = "SamlIdPWebflowSingleSignOnPlanConfiguration", proxyBeanMethods = false)
     @EnableConfigurationProperties(CasConfigurationProperties.class)
-    public static class SamlIdPWebflowSingleSignOnPlanConfiguration {
+    static class SamlIdPWebflowSingleSignOnPlanConfiguration {
         @Bean
         @ConditionalOnMissingBean(name = "samlIdPSingleSignOnParticipationStrategyConfigurer")
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
@@ -143,24 +140,20 @@ public class SamlIdPWebflowConfiguration {
 
     @Configuration(value = "SamlIdPWebflowMultifactorAuthenticationConfiguration", proxyBeanMethods = false)
     @EnableConfigurationProperties(CasConfigurationProperties.class)
-    public static class SamlIdPWebflowMultifactorAuthenticationConfiguration {
+    static class SamlIdPWebflowMultifactorAuthenticationConfiguration {
         @Bean
         @ConditionalOnMissingBean(name = "samlIdPMultifactorAuthenticationTrigger")
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
         public MultifactorAuthenticationTrigger samlIdPMultifactorAuthenticationTrigger(
-            final CasConfigurationProperties casProperties,
-            final ConfigurableApplicationContext applicationContext,
-            @Qualifier(OpenSamlConfigBean.DEFAULT_BEAN_NAME)
-            final OpenSamlConfigBean openSamlConfigBean,
-            @Qualifier("samlIdPDistributedSessionStore")
-            final SessionStore samlIdPDistributedSessionStore) {
-            return new SamlIdPMultifactorAuthenticationTrigger(openSamlConfigBean, samlIdPDistributedSessionStore, applicationContext, casProperties);
+            @Qualifier("samlProfileHandlerConfigurationContext")
+            final ObjectProvider<SamlProfileHandlerConfigurationContext> samlProfileHandlerConfigurationContext) {
+            return new SamlIdPMultifactorAuthenticationTrigger(samlProfileHandlerConfigurationContext);
         }
     }
 
     @Configuration(value = "SamlIdPWebflowEventsConfiguration", proxyBeanMethods = false)
     @EnableConfigurationProperties(CasConfigurationProperties.class)
-    public static class SamlIdPWebflowEventsConfiguration {
+    static class SamlIdPWebflowEventsConfiguration {
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
         @Bean
         @ConditionalOnMissingBean(name = "samlIdPAuthenticationContextWebflowEventResolver")
@@ -181,7 +174,7 @@ public class SamlIdPWebflowConfiguration {
 
     @Configuration(value = "SamlIdPConsentWebflowConfiguration", proxyBeanMethods = false)
     @ConditionalOnBean(name = ConsentEngine.BEAN_NAME)
-    public static class SamlIdPConsentWebflowConfiguration {
+    static class SamlIdPConsentWebflowConfiguration {
         @Bean
         @ConditionalOnMissingBean(name = "samlIdPConsentableAttributeBuilder")
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
@@ -195,7 +188,7 @@ public class SamlIdPWebflowConfiguration {
     @Configuration(value = "SamlIdPConsentSingleSignOnWebflowConfiguration", proxyBeanMethods = false)
     @EnableConfigurationProperties(CasConfigurationProperties.class)
     @ConditionalOnBean(name = ConsentEngine.BEAN_NAME)
-    public static class SamlIdPConsentSingleSignOnWebflowConfiguration {
+    static class SamlIdPConsentSingleSignOnWebflowConfiguration {
         @Bean
         @ConditionalOnMissingBean(name = "samlIdPConsentSingleSignOnParticipationStrategyConfigurer")
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)

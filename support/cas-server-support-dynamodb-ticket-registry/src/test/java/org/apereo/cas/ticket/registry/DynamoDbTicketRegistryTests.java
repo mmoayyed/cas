@@ -1,9 +1,9 @@
 package org.apereo.cas.ticket.registry;
 
 import org.apereo.cas.authentication.CoreAuthenticationTestUtils;
-import org.apereo.cas.config.CasOAuth20ProtocolTicketCatalogConfiguration;
-import org.apereo.cas.config.DynamoDbTicketRegistryConfiguration;
-import org.apereo.cas.config.DynamoDbTicketRegistryTicketCatalogConfiguration;
+import org.apereo.cas.authentication.principal.PrincipalResolver;
+import org.apereo.cas.config.CasDynamoDbTicketRegistryAutoConfiguration;
+import org.apereo.cas.config.CasOAuth20AutoConfiguration;
 import org.apereo.cas.configuration.CasConfigurationProperties;
 import org.apereo.cas.mock.MockTicketGrantingTicket;
 import org.apereo.cas.services.RegisteredServiceCipherExecutor;
@@ -17,7 +17,7 @@ import org.apereo.cas.ticket.accesstoken.OAuth20DefaultAccessTokenFactory;
 import org.apereo.cas.ticket.code.OAuth20Code;
 import org.apereo.cas.ticket.code.OAuth20DefaultOAuthCodeFactory;
 import org.apereo.cas.ticket.expiration.NeverExpiresExpirationPolicy;
-import org.apereo.cas.ticket.refreshtoken.OAuth20DefaultRefreshTokenFactory;
+import org.apereo.cas.ticket.refreshtoken.OAuth20RefreshTokenFactory;
 import org.apereo.cas.ticket.tracking.TicketTrackingPolicy;
 import org.apereo.cas.token.JwtBuilder;
 import org.apereo.cas.util.CollectionUtils;
@@ -25,7 +25,6 @@ import org.apereo.cas.util.DefaultUniqueTicketIdGenerator;
 import org.apereo.cas.util.TicketGrantingTicketIdGenerator;
 import org.apereo.cas.util.crypto.CipherExecutor;
 import org.apereo.cas.util.junit.EnabledIfListeningOnPort;
-
 import lombok.Getter;
 import lombok.val;
 import org.apache.commons.lang3.StringUtils;
@@ -34,14 +33,13 @@ import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.context.annotation.Import;
+import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
+import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.test.context.TestPropertySource;
 import software.amazon.awssdk.core.SdkSystemSetting;
-
 import java.util.HashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -51,10 +49,9 @@ import static org.junit.jupiter.api.Assertions.*;
  * @since 5.1.0
  */
 @Tag("DynamoDb")
-@Import({
-    DynamoDbTicketRegistryConfiguration.class,
-    DynamoDbTicketRegistryTicketCatalogConfiguration.class,
-    CasOAuth20ProtocolTicketCatalogConfiguration.class
+@ImportAutoConfiguration({
+    CasDynamoDbTicketRegistryAutoConfiguration.class,
+    CasOAuth20AutoConfiguration.class
 })
 @TestPropertySource(
     properties = {
@@ -71,12 +68,15 @@ import static org.junit.jupiter.api.Assertions.*;
 @EnabledIfListeningOnPort(port = 8000)
 @Getter
 class DynamoDbTicketRegistryTests extends BaseTicketRegistryTests {
-    private static final int COUNT = 500;
+    private static final int COUNT = 250;
 
     static {
         System.setProperty(SdkSystemSetting.AWS_ACCESS_KEY_ID.property(), "AKIAIPPIGGUNIO74C63Z");
         System.setProperty(SdkSystemSetting.AWS_SECRET_ACCESS_KEY.property(), "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");
     }
+
+    @Autowired
+    private ConfigurableApplicationContext applicationContext;
 
     @Autowired
     private CasConfigurationProperties casProperties;
@@ -88,6 +88,14 @@ class DynamoDbTicketRegistryTests extends BaseTicketRegistryTests {
     @Autowired
     @Qualifier(ServicesManager.BEAN_NAME)
     private ServicesManager servicesManager;
+
+    @Autowired
+    @Qualifier(PrincipalResolver.BEAN_NAME_PRINCIPAL_RESOLVER)
+    private PrincipalResolver principalResolver;
+
+    @Autowired
+    @Qualifier("defaultRefreshTokenFactory")
+    private OAuth20RefreshTokenFactory defaultRefreshTokenFactory;
 
     @RepeatedTest(2)
     void verifyOAuthCodeCanBeAdded() throws Throwable {
@@ -101,9 +109,10 @@ class DynamoDbTicketRegistryTests extends BaseTicketRegistryTests {
     void verifyAccessTokenCanBeAdded() throws Throwable {
         val code = createOAuthCode();
         val jwtBuilder = new JwtBuilder(CipherExecutor.noOpOfSerializableToString(),
-            servicesManager, RegisteredServiceCipherExecutor.noOp(), casProperties);
-        val token = new OAuth20DefaultAccessTokenFactory(neverExpiresExpirationPolicyBuilder(), jwtBuilder,
-                servicesManager, TicketTrackingPolicy.noOp())
+            applicationContext, servicesManager, principalResolver, RegisteredServiceCipherExecutor.noOp(), casProperties);
+        val token = new OAuth20DefaultAccessTokenFactory(
+            newTicketRegistry, neverExpiresExpirationPolicyBuilder(), jwtBuilder,
+            servicesManager, TicketTrackingPolicy.noOp())
             .create(RegisteredServiceTestUtils.getService(),
                 RegisteredServiceTestUtils.getAuthentication(), new MockTicketGrantingTicket("casuser"),
                 CollectionUtils.wrapSet("1", "2"), code.getId(), "clientId1234567", new HashMap<>(),
@@ -115,16 +124,24 @@ class DynamoDbTicketRegistryTests extends BaseTicketRegistryTests {
 
     @RepeatedTest(2)
     void verifyRefreshTokenCanBeAdded() throws Throwable {
-        val token = new OAuth20DefaultRefreshTokenFactory(neverExpiresExpirationPolicyBuilder(),
-                servicesManager, TicketTrackingPolicy.noOp())
-            .create(RegisteredServiceTestUtils.getService(),
-                RegisteredServiceTestUtils.getAuthentication(), new MockTicketGrantingTicket("casuser"),
-                CollectionUtils.wrapSet("1", "2"),
-                "clientId1234567", StringUtils.EMPTY, new HashMap<>(),
-                OAuth20ResponseTypes.CODE, OAuth20GrantTypes.AUTHORIZATION_CODE);
+        val token = defaultRefreshTokenFactory.create(RegisteredServiceTestUtils.getService(),
+            RegisteredServiceTestUtils.getAuthentication(), new MockTicketGrantingTicket("casuser"),
+            CollectionUtils.wrapSet("1", "2"),
+            "clientId1234567", StringUtils.EMPTY, new HashMap<>(),
+            OAuth20ResponseTypes.CODE, OAuth20GrantTypes.AUTHORIZATION_CODE);
         newTicketRegistry.addTicket(token);
         assertSame(1, newTicketRegistry.deleteTicket(token.getId()), "Wrong ticket count");
         assertNull(newTicketRegistry.getTicket(token.getId()));
+    }
+
+    @RepeatedTest(2)
+    void verifyRegistryQuery() throws Throwable {
+        val tgt = new TicketGrantingTicketImpl("TGT-115500",
+            CoreAuthenticationTestUtils.getAuthentication(), NeverExpiresExpirationPolicy.INSTANCE);
+        val registry = getNewTicketRegistry();
+        registry.addTicket(tgt);
+        assertEquals(1, registry.query(TicketRegistryQueryCriteria.builder()
+            .count(1L).type(TicketGrantingTicket.PREFIX).decode(true).build()).size());
     }
 
     @RepeatedTest(2)

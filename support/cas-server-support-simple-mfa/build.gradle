@@ -35,6 +35,8 @@ dependencies {
     compileOnly project(":support:cas-server-support-surrogate-api")
     compileOnly project(":core:cas-server-core-rest-api")
 
+    testImplementation libraries.springboottomcat
+    
     testImplementation project(":core:cas-server-core-tickets")
     testImplementation project(":core:cas-server-core-configuration")
     testImplementation project(":core:cas-server-core-services-authentication")
@@ -53,7 +55,7 @@ dependencies {
     testImplementation project(":core:cas-server-core-util")
     testImplementation project(":core:cas-server-core-rest")
     testImplementation project(":core:cas-server-core-rest-api")
-
+    testImplementation project(":core:cas-server-core-scripting")
 
     testImplementation project(":support:cas-server-support-person-directory")
     testImplementation project(":support:cas-server-support-trusted-mfa")

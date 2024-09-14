@@ -1,6 +1,7 @@
 package org.apereo.cas.web.support.filters;
 
 import org.apereo.cas.services.RegisteredService;
+import org.apereo.cas.util.RandomUtils;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
@@ -14,6 +15,7 @@ import jakarta.servlet.ServletRequest;
 import jakarta.servlet.ServletResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+
 import java.io.IOException;
 import java.util.Enumeration;
 import java.util.HashSet;
@@ -91,6 +93,14 @@ public class ResponseHeadersEnforcementFilter extends AbstractSecurityFilter imp
      */
     public static final String INIT_PARAM_CACHE_CONTROL_STATIC_RESOURCES = "cacheControlStaticResources";
 
+    /**
+     * Consent security policy generated nonce.
+     */
+    public static final String CSP_GENERATED_NONCE = "contentSecurityPolicyGeneratedNonce";
+
+    private static final String CSP_DYNAMIC_NONCE = "@nonce@";
+    private static final int CSP_DYNAMIC_NONCE_SIZE = 32;
+
     private Pattern cacheControlStaticResourcesPattern;
 
     private boolean enableCacheControl;
@@ -116,7 +126,7 @@ public class ResponseHeadersEnforcementFilter extends AbstractSecurityFilter imp
 
     private String xssProtection = "1; mode=block";
 
-    private String contentSecurityPolicy;
+    private String contentSecurityPolicy = "script-src 'self' 'unsafe-inline' 'unsafe-eval'; object-src 'none'; worker-src 'self' 'unsafe-inline';";
 
     private static void throwIfUnrecognizedParamName(final Enumeration initParamNames) {
         val recognizedParameterNames = new HashSet<String>();
@@ -187,7 +197,7 @@ public class ResponseHeadersEnforcementFilter extends AbstractSecurityFilter imp
                 decideInsertContentSecurityPolicyHeader(response, request, result);
                 filterChain.doFilter(servletRequest, servletResponse);
             } catch (final Throwable e) {
-                throwException(e, response);
+                throwException(e, response, request);
             }
         }
     }
@@ -220,8 +230,17 @@ public class ResponseHeadersEnforcementFilter extends AbstractSecurityFilter imp
                                                      final HttpServletRequest httpServletRequest,
                                                      final String contentSecurityPolicy) {
         val uri = httpServletRequest.getRequestURI();
-        httpServletResponse.addHeader("Content-Security-Policy", contentSecurityPolicy);
-        LOGGER.trace("Adding Content-Security-Policy response header [{}] for [{}]", contentSecurityPolicy, uri);
+        var currentContentSecurityPolicy = contentSecurityPolicy;
+        if (contentSecurityPolicy != null && contentSecurityPolicy.contains(CSP_DYNAMIC_NONCE)) {
+            var generatedNonce = (String) httpServletRequest.getAttribute(CSP_GENERATED_NONCE);
+            if (StringUtils.isBlank(generatedNonce)) {
+                generatedNonce = RandomUtils.randomAlphanumeric(CSP_DYNAMIC_NONCE_SIZE);
+                httpServletRequest.setAttribute(CSP_GENERATED_NONCE, generatedNonce);
+            }
+            currentContentSecurityPolicy = currentContentSecurityPolicy.replace(CSP_DYNAMIC_NONCE, generatedNonce);
+        }
+        httpServletResponse.addHeader("Content-Security-Policy", currentContentSecurityPolicy);
+        LOGGER.trace("Adding Content-Security-Policy response header [{}] for [{}]", currentContentSecurityPolicy, uri);
     }
 
     protected void decideInsertXSSProtectionHeader(final HttpServletResponse httpServletResponse,

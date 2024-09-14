@@ -6,18 +6,13 @@ import org.apereo.cas.authentication.principal.Principal;
 import org.apereo.cas.authentication.principal.PrincipalFactory;
 import org.apereo.cas.authentication.principal.PrincipalResolver;
 import org.apereo.cas.authentication.principal.Service;
-
 import lombok.RequiredArgsConstructor;
 import lombok.ToString;
-import org.apereo.services.persondir.IPersonAttributeDao;
-
+import lombok.val;
 import java.util.Optional;
 
 /**
- * Provides the most basic means of principal resolution by mapping
- * {@link Credential#getId()} onto
- * {@link Principal#getId()}.
- *
+ * Provides the most basic means of principal resolution.
  * @author Marvin S. Addison
  * @since 4.0.0
  */
@@ -30,16 +25,12 @@ public class ProxyingPrincipalResolver implements PrincipalResolver {
     @Override
     public Principal resolve(final Credential credential, final Optional<Principal> currentPrincipal,
                              final Optional<AuthenticationHandler> handler, final Optional<Service> service) throws Throwable {
-        return this.principalFactory.createPrincipal(credential.getId());
+        val id = currentPrincipal.map(Principal::getId).orElseGet(credential::getId);
+        return principalFactory.createPrincipal(id);
     }
 
     @Override
     public boolean supports(final Credential credential) {
         return credential.getId() != null;
-    }
-
-    @Override
-    public IPersonAttributeDao getAttributeRepository() {
-        return null;
     }
 }

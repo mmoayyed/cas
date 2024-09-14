@@ -1,9 +1,9 @@
-const puppeteer = require('puppeteer');
-const path = require('path');
-const cas = require('../../cas.js');
+
+const path = require("path");
+const cas = require("../../cas.js");
 
 async function getActuatorEndpoint(entityId, password = "Mellon") {
-    let baseEndpoint = "https://localhost:8443/cas/actuator/samlPostProfileResponse";
+    const baseEndpoint = "https://localhost:8443/cas/actuator/samlPostProfileResponse";
     let actuator = `${baseEndpoint}?username=casuser&entityId=${entityId}&encrypt=false`;
     if (password !== undefined && password !== "") {
         actuator = `${actuator}&password=${password}`;
@@ -12,7 +12,7 @@ async function getActuatorEndpoint(entityId, password = "Mellon") {
 }
 
 (async () => {
-    const browser = await puppeteer.launch(cas.browserOptions());
+    const browser = await cas.newBrowser(cas.browserOptions());
     const page = await cas.newPage(browser);
 
     const entityId = "http://localhost:9443/simplesaml/module.php/saml/sp/metadata.php/default-sp";
@@ -22,17 +22,14 @@ async function getActuatorEndpoint(entityId, password = "Mellon") {
     await cas.log(`Navigating to ${url}`);
     await cas.goto(page, url);
     await cas.screenshot(page);
-    await page.waitForTimeout(4000);
+    await cas.sleep(4000);
     await cas.loginWith(page);
-    await page.waitForTimeout(4000);
+    await cas.sleep(4000);
     await cas.assertPageTitle(page, "CAS - Central Authentication Service Log In Successful");
-    await cas.assertInnerText(page, '#content div h2', "Log In Successful");
+    await cas.assertInnerText(page, "#content div h2", "Log In Successful");
     await browser.close();
 
     let endpoint = await getActuatorEndpoint(entityId);
-    await cas.log("===================================");
-    await cas.log(`Trying ${endpoint} via GET`);
-    await cas.log(await cas.doRequest(endpoint, "GET", {}, 200));
     await cas.log("===================================");
     await cas.log(`Trying ${endpoint} via POST`);
     await cas.log(await cas.doRequest(endpoint, "POST", {}, 200));
@@ -41,7 +38,6 @@ async function getActuatorEndpoint(entityId, password = "Mellon") {
     await cas.log(`Trying ${endpoint} via POST without password`);
     await cas.log(await cas.doRequest(endpoint, "POST", {}, 200));
 
-    await cas.removeDirectoryOrFile(path.join(__dirname, '/saml-md'));
+    await cas.removeDirectoryOrFile(path.join(__dirname, "/saml-md"));
 })();
-
 

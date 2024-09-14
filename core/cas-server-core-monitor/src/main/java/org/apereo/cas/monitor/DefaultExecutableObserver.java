@@ -7,9 +7,10 @@ import io.micrometer.observation.ObservationRegistry;
 import lombok.RequiredArgsConstructor;
 import lombok.val;
 import org.apache.commons.lang3.StringUtils;
+import org.jooq.lambda.fi.util.function.CheckedSupplier;
+import org.springframework.beans.factory.ObjectProvider;
 
 import java.util.Map;
-import java.util.function.Supplier;
 
 /**
  * This is {@link DefaultExecutableObserver}.
@@ -21,7 +22,7 @@ import java.util.function.Supplier;
 public class DefaultExecutableObserver implements ExecutableObserver {
     private static final KeyValue[] EMPTY_KEY_VALUES_ARRAY = {};
 
-    private final ObservationRegistry observationRegistry;
+    private final ObjectProvider<ObservationRegistry> observationRegistry;
 
     @Override
     public void run(final MonitorableTask task, final Runnable runnable) {
@@ -29,14 +30,14 @@ public class DefaultExecutableObserver implements ExecutableObserver {
     }
 
     @Override
-    public <T> T supply(final MonitorableTask task, final Supplier<T> supplier) throws Throwable {
-        return prepareObservation(task).observe(supplier);
+    public <T> T supply(final MonitorableTask task, final CheckedSupplier<T> supplier) throws Throwable {
+        return prepareObservation(task).observe(CheckedSupplier.sneaky(supplier));
     }
 
     protected Observation prepareObservation(final MonitorableTask task) {
         val highCardinalityValues = toKeyValueArray(task.getUnboundedValues());
         val lowCardinalityValues = toKeyValueArray(task.getBoundedValues());
-        return Observation.createNotStarted(task.getName(), observationRegistry)
+        return Observation.createNotStarted(task.getName(), observationRegistry.getObject())
             .lowCardinalityKeyValues(KeyValues.of(lowCardinalityValues))
             .highCardinalityKeyValues(KeyValues.of(highCardinalityValues))
             .contextualName(task.getName());

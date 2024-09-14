@@ -1,5 +1,5 @@
 {
-  "dependencies": "saml-idp,reports,monitor",
+  "dependencies": "saml-idp,reports,monitor,sentry,scripting,metrics",
   "conditions": {
     "docker": "true"
   },
@@ -19,7 +19,6 @@
     "--cas.authn.saml-idp.metadata.http.force-metadata-refresh=false",
 
     "--cas.authn.attribute-repository.attribute-definition-store.json.location=file:${PWD}/ci/tests/puppeteer/scenarios/${SCENARIO}/definitions.json",
-    "--cas.audit.slf4j.use-single-line=true",
 
     "--cas.server.name=https://localhost:8443",
     "--cas.server.prefix=https://localhost:8443/cas",
@@ -28,7 +27,6 @@
     "--cas.http-client.host-name-verifier=none",
 
     "--logging.level.PROTOCOL_MESSAGE=info",
-    "--logging.level.org.apereo.cas=info",
 
     "--cas.service-registry.core.init-from-json=true",
     "--cas.service-registry.json.location=file:${PWD}/ci/tests/puppeteer/scenarios/${SCENARIO}/services",

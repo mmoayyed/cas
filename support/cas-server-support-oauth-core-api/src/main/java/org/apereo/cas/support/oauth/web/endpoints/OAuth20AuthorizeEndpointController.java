@@ -19,7 +19,6 @@ import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.apache.commons.lang3.StringUtils;
 import org.jooq.lambda.Unchecked;
-import org.pac4j.core.context.WebContext;
 import org.pac4j.core.profile.ProfileManager;
 import org.pac4j.core.profile.UserProfile;
 import org.pac4j.jee.context.JEEContext;
@@ -130,28 +129,6 @@ public class OAuth20AuthorizeEndpointController<T extends OAuth20ConfigurationCo
         return handleRequest(request, response);
     }
 
-    /**
-     * Is the request authenticated?
-     *
-     * @param manager           the Profile Manager
-     * @param context           the context
-     * @param registeredService the registered service
-     * @return whether the request is authenticated or not
-     */
-    protected boolean isRequestAuthenticated(final ProfileManager manager, final WebContext context,
-                                             final OAuthRegisteredService registeredService) {
-        return manager.getProfile().isPresent();
-    }
-
-    /**
-     * Gets registered service by client id.
-     *
-     * @param clientId the client id
-     * @return the registered service by client id
-     */
-    protected OAuthRegisteredService getRegisteredServiceByClientId(final String clientId) {
-        return OAuth20Utils.getRegisteredOAuthServiceByClientId(getConfigurationContext().getServicesManager(), clientId);
-    }
 
     protected ModelAndView redirectToCallbackRedirectUrl(final ProfileManager manager,
                                                          final OAuthRegisteredService registeredService,
@@ -203,19 +180,9 @@ public class OAuth20AuthorizeEndpointController<T extends OAuth20ConfigurationCo
                     casProperties.getServer().getPrefix())));
     }
 
-    /**
-     * Build callback url for request string.
-     *
-     * @param registeredService the registered service
-     * @param context           the context
-     * @param service           the service
-     * @param authentication    the authentication
-     * @return the model and view
-     */
     protected ModelAndView buildAuthorizationForRequest(
         final OAuthRegisteredService registeredService,
-        final JEEContext context,
-        final Service service,
+        final JEEContext context, final Service service,
         final Authentication authentication) {
 
         val registeredBuilders = getConfigurationContext().getOauthAuthorizationResponseBuilders().getObject();
@@ -240,10 +207,11 @@ public class OAuth20AuthorizeEndpointController<T extends OAuth20ConfigurationCo
             .stream()
             .filter(BeanSupplier::isNotProxy)
             .sorted(OrderComparator.INSTANCE)
-            .filter(bldr -> bldr.supports(authzRequest))
+            .filter(builder -> builder.supports(authzRequest))
             .findFirst()
             .map(Unchecked.function(builder -> {
-                if (authzRequest.isSingleSignOnSessionRequired() && payload.getTicketGrantingTicket() == null) {
+                if (authzRequest.isSingleSignOnSessionRequired() && payload.getTicketGrantingTicket() == null
+                    && !OAuth20Utils.isStatelessAuthentication(payload.getUserProfile())) {
                     val message = String.format("Missing ticket-granting-ticket for client id [%s] and service [%s]",
                         authzRequest.getClientId(), registeredService.getName());
                     LOGGER.error(message);
@@ -263,17 +231,6 @@ public class OAuth20AuthorizeEndpointController<T extends OAuth20ConfigurationCo
         return result;
     }
 
-    /**
-     * Build access token request context.
-     *
-     * @param authzRequest      the authz request
-     * @param registeredService the registered service
-     * @param context           the context
-     * @param service           the service
-     * @param authentication    the authentication
-     * @return the access token request context
-     * @throws Exception the exception
-     */
     protected AccessTokenRequestContext prepareAccessTokenRequestContext(
         final OAuth20AuthorizationRequest authzRequest,
         final OAuthRegisteredService registeredService,
@@ -286,14 +243,16 @@ public class OAuth20AuthorizeEndpointController<T extends OAuth20ConfigurationCo
             val tgt = getConfigurationContext().fetchTicketGrantingTicketFrom(context);
             payloadBuilder = payloadBuilder.ticketGrantingTicket(tgt);
         }
-        val redirectUri = getConfigurationContext().getRequestParameterResolver().resolveRequestParameter(context, OAuth20Constants.REDIRECT_URI)
+        val requestParameterResolver = getConfigurationContext().getRequestParameterResolver();
+        val redirectUri = requestParameterResolver
+            .resolveRequestParameter(context, OAuth20Constants.REDIRECT_URI)
             .map(String::valueOf)
             .orElse(StringUtils.EMPTY);
         val grantType = context.getRequestParameter(OAuth20Constants.GRANT_TYPE)
             .map(String::valueOf)
             .orElseGet(OAuth20GrantTypes.AUTHORIZATION_CODE::getType)
             .toUpperCase(Locale.ENGLISH);
-        val scopes = getConfigurationContext().getRequestParameterResolver().resolveRequestScopes(context);
+        val scopes = requestParameterResolver.resolveRequestScopes(context);
         val codeChallenge = context.getRequestParameter(OAuth20Constants.CODE_CHALLENGE)
             .map(String::valueOf).orElse(StringUtils.EMPTY);
 
@@ -305,13 +264,13 @@ public class OAuth20AuthorizeEndpointController<T extends OAuth20ConfigurationCo
             .toUpperCase(Locale.ENGLISH);
 
         val userProfile = OAuth20Utils.getAuthenticatedUserProfile(context, getConfigurationContext().getSessionStore());
-        val claims = getConfigurationContext().getRequestParameterResolver().resolveRequestClaims(context);
+        val claims = requestParameterResolver.resolveRequestClaims(context);
         val holder = payloadBuilder
             .service(service)
             .authentication(authentication)
             .registeredService(registeredService)
-            .grantType(getConfigurationContext().getRequestParameterResolver().resolveGrantType(context))
-            .responseType(getConfigurationContext().getRequestParameterResolver().resolveResponseType(context))
+            .grantType(requestParameterResolver.resolveGrantType(context))
+            .responseType(requestParameterResolver.resolveResponseType(context))
             .codeChallenge(codeChallenge)
             .codeChallengeMethod(codeChallengeMethod)
             .scopes(scopes)
@@ -319,7 +278,7 @@ public class OAuth20AuthorizeEndpointController<T extends OAuth20ConfigurationCo
             .redirectUri(redirectUri)
             .userProfile(userProfile)
             .claims(claims)
-            .responseMode(getConfigurationContext().getRequestParameterResolver().resolveResponseModeType(context))
+            .responseMode(requestParameterResolver.resolveResponseModeType(context))
             .build();
         context.getRequestParameters().keySet()
             .forEach(key -> context.getRequestParameter(key).ifPresent(value -> holder.getParameters().put(key, value)));
@@ -327,4 +286,5 @@ public class OAuth20AuthorizeEndpointController<T extends OAuth20ConfigurationCo
             grantType, scopes, authzRequest.getClientId());
         return holder;
     }
+    
 }

@@ -1,15 +1,15 @@
 package org.apereo.cas.discovery;
 
-import org.apereo.cas.config.CasDiscoveryProfileConfiguration;
+import org.apereo.cas.config.CasDiscoveryProfileAutoConfiguration;
+import org.apereo.cas.test.CasTestExtension;
 import org.apereo.cas.web.report.AbstractCasEndpointTests;
-
 import lombok.val;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -20,13 +20,14 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 @SpringBootTest(classes = {
     AbstractCasEndpointTests.SharedTestConfiguration.class,
-    CasDiscoveryProfileConfiguration.class
+    CasDiscoveryProfileAutoConfiguration.class
 },
     properties = {
         "management.endpoints.web.exposure.include=*",
         "management.endpoint.discoveryProfile.enabled=true"
     })
 @Tag("ActuatorEndpoint")
+@ExtendWith(CasTestExtension.class)
 class CasServerDiscoveryProfileEndpointTests extends AbstractCasEndpointTests {
     @Autowired
     @Qualifier("discoveryProfileEndpoint")

@@ -13,7 +13,7 @@ public interface ThrottledSubmissionsStore<T extends ThrottledSubmission> {
     /**
      * Default bean name.
      */
-    String BEAN_NAME = "throttleSubmissionMap";
+    String BEAN_NAME = "throttleSubmissionStore";
 
     /**
      * Remove element passing the given condition.
@@ -74,4 +74,9 @@ public interface ThrottledSubmissionsStore<T extends ThrottledSubmission> {
      * @param thresholdRate the threshold rate
      */
     void release(double thresholdRate);
+
+    /**
+     * Clear all store records.
+     */
+    void clear();
 }

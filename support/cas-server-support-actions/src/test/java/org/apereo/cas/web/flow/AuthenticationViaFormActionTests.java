@@ -35,7 +35,7 @@ class AuthenticationViaFormActionTests extends AbstractWebflowActionsTests {
     private Action action;
 
     @Autowired
-    @Qualifier("warnCookieGenerator")
+    @Qualifier(CasCookieBuilder.BEAN_NAME_WARN_COOKIE_BUILDER)
     private CasCookieBuilder warnCookieGenerator;
 
     @Test
@@ -54,7 +54,7 @@ class AuthenticationViaFormActionTests extends AbstractWebflowActionsTests {
 
         context.setParameter(USERNAME_PARAM, TEST);
         context.setParameter(PASSWORD_PARAM, TEST);
-        context.setParameter("warn", "true");
+        context.setParameter(CasWebflowConstants.ATTRIBUTE_WARN_ON_REDIRECT, "true");
 
         val credentials = CoreAuthenticationTestUtils.getCredentialsWithSameUsernameAndPassword();
         putCredentialInRequestScope(context, credentials);
@@ -68,7 +68,7 @@ class AuthenticationViaFormActionTests extends AbstractWebflowActionsTests {
 
         context.setParameter(USERNAME_PARAM, TEST);
         context.setParameter(PASSWORD_PARAM, TEST);
-        context.setParameter("warn", "true");
+        context.setParameter(CasWebflowConstants.ATTRIBUTE_WARN_ON_REDIRECT, "true");
         context.setParameter(CasProtocolConstants.PARAMETER_SERVICE, TEST);
 
         val credentials = CoreAuthenticationTestUtils.getCredentialsWithSameUsernameAndPassword();

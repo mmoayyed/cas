@@ -10,7 +10,7 @@
 </head>
 
 <body>
-<main role="main" class="container mt-3 mb-3">
+<main class="container mt-3 mb-3">
     <div layout:fragment="content" class="banner mdc-card card p-4 m-auto w-lg-66">
         <h2 th:utext="#{cas.inwebo.error.heading}">An Inwebo error has occured.</h2>
         <div id="errorPanel" class="banner banner-danger alert-dismissible mb-4"
@@ -24,11 +24,7 @@
             <form id="retryForm" method="POST">
                 <input type="hidden" name="execution" th:value="${flowExecutionKey}"/>
                 <input type="hidden" name="_eventId" value="retry"/>
-                <button class="mdc-button mdc-button--raised btn btn-primary" name="retry"
-                        type="submit" value="retry"
-                        th:value="#{cas.inwebo.retry.button}">
-                    <span class="mdc-button__label" th:text="#{cas.inwebo.retry.button}">Retry the Inwebo multi-factor authentication</span>
-                </button>
+                <div th:replace="~{fragments/submitbutton :: submitButton (messageKey='cas.inwebo.retry.button', name='retry', id='retry')}"/>
             </form>
         </div>
         <div th:if="${mustEnroll}">
@@ -43,7 +39,7 @@
                 <input type="hidden" name="_eventId" th:value="${browserAuthenticator}"/>
             </form>
             <div id="enrollError" class="banner banner-danger alert alert-danger banner-dismissible" style="display:none;">
-                <p th:utext="#{cas.inwebo.enroll.failure}">The enrollment failed</p>
+                <p th:utext="#{cas.inwebo.enroll.failure}">The enrollment failed.</p>
             </div>
             <div id="enrollBadPinConfirmation" class="banner banner-danger alert alert-danger banner-dismissible" style="display:none;">
                 <p th:utext="#{cas.inwebo.enroll.badpinconfirmation}">Bad code PIN confirmation</p>

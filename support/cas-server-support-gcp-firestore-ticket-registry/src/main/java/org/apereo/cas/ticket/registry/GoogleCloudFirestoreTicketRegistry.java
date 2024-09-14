@@ -1,5 +1,7 @@
 package org.apereo.cas.ticket.registry;
 
+import org.apereo.cas.authentication.principal.Service;
+import org.apereo.cas.ticket.ServiceAwareTicket;
 import org.apereo.cas.ticket.ServiceTicket;
 import org.apereo.cas.ticket.Ticket;
 import org.apereo.cas.ticket.TicketCatalog;
@@ -68,7 +70,7 @@ public class GoogleCloudFirestoreTicketRegistry extends AbstractTicketRegistry {
             if (documentSnapshot != null) {
                 val document = documentSnapshot.toObject(GoogleCloudFirestoreTicketDocument.class);
                 if (document != null) {
-                    val decoded = deserializeTicketFromDocument(Objects.requireNonNull(document));
+                    val decoded = deserializeTicket(document.getJson(), document.getType());
                     val result = decodeTicket(decoded);
 
                     if (predicate.test(result)) {
@@ -106,7 +108,7 @@ public class GoogleCloudFirestoreTicketRegistry extends AbstractTicketRegistry {
                     .map(doc -> doc.toObject(GoogleCloudFirestoreTicketDocument.class));
             })
             .map(doc -> {
-                val ticket = deserializeTicketFromDocument(doc);
+                val ticket = deserializeTicket(doc.getJson(), doc.getType());
                 return decodeTicket(ticket);
             })
             .filter(ticket -> !ticket.isExpired())
@@ -146,7 +148,7 @@ public class GoogleCloudFirestoreTicketRegistry extends AbstractTicketRegistry {
     }
 
     @Override
-    protected void addTicketInternal(final Ticket ticket) {
+    protected Ticket addSingleTicket(final Ticket ticket) {
         FunctionUtils.doAndHandle(__ -> {
             LOGGER.debug("Adding ticket [{}]", ticket.getId());
             val ticketDocument = buildTicketAsDocument(ticket);
@@ -165,6 +167,7 @@ public class GoogleCloudFirestoreTicketRegistry extends AbstractTicketRegistry {
                 LOGGER.debug("Added ticket [{}] to [{}] @ [{}]", ticket.getId(), collectionName, writeResult.getUpdateTime());
             }
         });
+        return ticket;
     }
 
     @Override
@@ -194,9 +197,27 @@ public class GoogleCloudFirestoreTicketRegistry extends AbstractTicketRegistry {
                 return StreamSupport.stream(spliterator, false);
             }))
             .map(document -> document.toObject(GoogleCloudFirestoreTicketDocument.class))
-            .map(this::deserializeTicketFromDocument)
+            .map(document -> deserializeTicket(document.getJson(), document.getType()))
             .map(this::decodeTicket)
             .filter(ticket -> !ticket.isExpired());
+    }
+
+    @Override
+    public long countTicketsFor(final Service service) {
+        return ticketCatalog
+            .findAll()
+            .stream()
+            .map(Unchecked.function(definition -> {
+                val collection = getTicketCollectionInstanceByMetadata(definition);
+                val spliterator = firestore.collection(collection)
+                    .whereEqualTo("service", service.getId())
+                    .get()
+                    .get()
+                    .spliterator();
+                return StreamSupport.stream(spliterator, false);
+            }))
+            .mapToLong(Stream::count)
+            .sum();
     }
 
     @Override
@@ -226,7 +247,7 @@ public class GoogleCloudFirestoreTicketRegistry extends AbstractTicketRegistry {
                 return StreamSupport.stream(spliterator, false);
             }))
             .map(document -> document.toObject(GoogleCloudFirestoreTicketDocument.class))
-            .map(this::deserializeTicketFromDocument)
+            .map(document -> deserializeTicket(document.getJson(), document.getType()))
             .map(this::decodeTicket)
             .filter(ticket -> !ticket.isExpired());
     }
@@ -251,8 +272,10 @@ public class GoogleCloudFirestoreTicketRegistry extends AbstractTicketRegistry {
     protected GoogleCloudFirestoreTicketDocument buildTicketAsDocument(final Ticket ticket) throws Exception {
         val encTicket = encodeTicket(ticket);
         val json = serializeTicket(encTicket);
-        LOGGER.trace("Serialized ticket into a JSON document as\n [{}]",
-            JsonValue.readJSON(json).toString(Stringify.FORMATTED));
+        if (LOGGER.isTraceEnabled()) {
+            LOGGER.trace("Serialized ticket into a JSON document as\n [{}]",
+                JsonValue.readJSON(json).toString(Stringify.FORMATTED));
+        }
         val principal = getPrincipalIdFrom(ticket);
 
         val expireAt = getExpireAt(ticket);
@@ -266,13 +289,10 @@ public class GoogleCloudFirestoreTicketRegistry extends AbstractTicketRegistry {
             .principal(digestIdentifier(principal))
             .attributes(collectAndDigestTicketAttributes(ticket))
             .expireAt(expireAt)
+            .service(ticket instanceof final ServiceAwareTicket sat && Objects.nonNull(sat.getService()) ? sat.getService().getId() : StringUtils.EMPTY)
             .build();
     }
 
-    /**
-     * Calculate the time at which the ticket is eligible
-     * for automated deletion by the registry.
-     */
     protected Date getExpireAt(final Ticket ticket) {
         val expirationPolicy = ticket.getExpirationPolicy();
         val ttl = expirationPolicy.getTimeToLive(ticket);
@@ -282,9 +302,5 @@ public class GoogleCloudFirestoreTicketRegistry extends AbstractTicketRegistry {
         }
         val exp = System.currentTimeMillis() + TimeUnit.SECONDS.toMillis(ttl);
         return DateTimeUtils.dateOf(Instant.ofEpochMilli(exp));
-    }
-    
-    protected Ticket deserializeTicketFromDocument(final GoogleCloudFirestoreTicketDocument document) {
-        return ticketSerializationManager.deserializeTicket(document.getJson(), document.getType());
     }
 }

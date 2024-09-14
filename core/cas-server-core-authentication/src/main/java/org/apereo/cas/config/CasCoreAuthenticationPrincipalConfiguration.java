@@ -17,20 +17,17 @@ import org.apereo.cas.authentication.principal.PrincipalResolutionExecutionPlanC
 import org.apereo.cas.authentication.principal.PrincipalResolver;
 import org.apereo.cas.authentication.principal.RegisteredServicePrincipalAttributesRepository;
 import org.apereo.cas.authentication.principal.cache.CachingPrincipalAttributesRepository;
+import org.apereo.cas.authentication.principal.merger.AttributeMerger;
 import org.apereo.cas.authentication.principal.resolvers.ChainingPrincipalResolver;
 import org.apereo.cas.authentication.principal.resolvers.EchoingPrincipalResolver;
 import org.apereo.cas.configuration.CasConfigurationProperties;
 import org.apereo.cas.configuration.features.CasFeatureModule;
 import org.apereo.cas.util.spring.beans.BeanSupplier;
 import org.apereo.cas.util.spring.boot.ConditionalOnFeatureEnabled;
-
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
-import org.apereo.services.persondir.support.merger.IAttributeMerger;
 import org.jooq.lambda.Unchecked;
-import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.cloud.context.config.annotation.RefreshScope;
@@ -39,11 +36,9 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.ScopedProxyMode;
 import org.springframework.core.annotation.AnnotationAwareOrderComparator;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
-import java.util.Optional;
 
 /**
  * This is {@link CasCoreAuthenticationPrincipalConfiguration}.
@@ -54,27 +49,26 @@ import java.util.Optional;
 @EnableConfigurationProperties(CasConfigurationProperties.class)
 @Slf4j
 @ConditionalOnFeatureEnabled(feature = CasFeatureModule.FeatureCatalog.Authentication)
-@AutoConfiguration
-public class CasCoreAuthenticationPrincipalConfiguration {
+@Configuration(value = "CasCoreAuthenticationPrincipalConfiguration", proxyBeanMethods = false)
+class CasCoreAuthenticationPrincipalConfiguration {
     @Configuration(value = "CasCoreAuthenticationPrincipalResolutionConfiguration", proxyBeanMethods = false)
     @EnableConfigurationProperties(CasConfigurationProperties.class)
-    public static class CasCoreAuthenticationPrincipalResolutionConfiguration {
+    static class CasCoreAuthenticationPrincipalResolutionConfiguration {
 
         @Bean
         @ConditionalOnMissingBean(name = PrincipalResolver.BEAN_NAME_PRINCIPAL_RESOLVER)
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
         public PrincipalResolver defaultPrincipalResolver(
-            final ObjectProvider<List<PrincipalResolutionExecutionPlanConfigurer>> configurers,
+            final List<PrincipalResolutionExecutionPlanConfigurer> configurers,
             final CasConfigurationProperties casProperties,
-            @Qualifier(PrincipalElectionStrategy.BEAN_NAME) final PrincipalElectionStrategy principalElectionStrategy) {
+            @Qualifier(PrincipalElectionStrategy.BEAN_NAME)
+            final PrincipalElectionStrategy principalElectionStrategy) {
             val plan = new DefaultPrincipalResolutionExecutionPlan();
-            val sortedConfigurers = new ArrayList<>(
-                Optional.ofNullable(configurers.getIfAvailable()).orElseGet(() -> new ArrayList<>(0)));
+            val sortedConfigurers = new ArrayList<>(configurers);
             AnnotationAwareOrderComparator.sortIfNecessary(sortedConfigurers);
-
-            sortedConfigurers.forEach(Unchecked.consumer(c -> {
-                LOGGER.trace("Configuring principal resolution execution plan [{}]", c.getName());
-                c.configurePrincipalResolutionExecutionPlan(plan);
+            sortedConfigurers.forEach(Unchecked.consumer(cfg -> {
+                LOGGER.trace("Configuring principal resolution execution plan [{}]", cfg.getName());
+                cfg.configurePrincipalResolutionExecutionPlan(plan);
             }));
             plan.registerPrincipalResolver(new EchoingPrincipalResolver());
 
@@ -87,13 +81,13 @@ public class CasCoreAuthenticationPrincipalConfiguration {
 
     @Configuration(value = "CasCoreAuthenticationPrincipalElectionConfiguration", proxyBeanMethods = false)
     @EnableConfigurationProperties(CasConfigurationProperties.class)
-    public static class CasCoreAuthenticationPrincipalElectionConfiguration {
+    static class CasCoreAuthenticationPrincipalElectionConfiguration {
         @ConditionalOnMissingBean(name = PrincipalElectionStrategy.BEAN_NAME)
         @Bean
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
         public PrincipalElectionStrategy principalElectionStrategy(
             final List<PrincipalElectionStrategyConfigurer> configurers,
-            @Qualifier("principalElectionAttributeMerger") final IAttributeMerger attributeMerger) {
+            @Qualifier("principalElectionAttributeMerger") final AttributeMerger attributeMerger) {
             LOGGER.trace("Building principal election strategies from [{}]", configurers);
             val chain = new ChainingPrincipalElectionStrategy();
             chain.setAttributeMerger(attributeMerger);
@@ -109,7 +103,7 @@ public class CasCoreAuthenticationPrincipalConfiguration {
         @Bean
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
         @ConditionalOnMissingBean(name = "principalElectionAttributeMerger")
-        public IAttributeMerger principalElectionAttributeMerger(final CasConfigurationProperties casProperties) {
+        public AttributeMerger principalElectionAttributeMerger(final CasConfigurationProperties casProperties) {
             return CoreAuthenticationUtils.getAttributeMerger(casProperties.getAuthn().getAttributeRepository().getCore().getMerger());
         }
 
@@ -125,9 +119,8 @@ public class CasCoreAuthenticationPrincipalConfiguration {
         @Bean
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
         public PrincipalElectionStrategyConfigurer defaultPrincipalElectionStrategyConfigurer(
-            @Qualifier(PrincipalElectionStrategyConflictResolver.BEAN_NAME)
-            final PrincipalElectionStrategyConflictResolver defaultPrincipalElectionStrategyConflictResolver,
-            @Qualifier("principalElectionAttributeMerger") final IAttributeMerger attributeMerger,
+            @Qualifier(PrincipalElectionStrategyConflictResolver.BEAN_NAME) final PrincipalElectionStrategyConflictResolver defaultPrincipalElectionStrategyConflictResolver,
+            @Qualifier("principalElectionAttributeMerger") final AttributeMerger attributeMerger,
             final CasConfigurationProperties casProperties,
             @Qualifier(PrincipalFactory.BEAN_NAME) final PrincipalFactory principalFactory) {
             return chain -> {
@@ -140,7 +133,7 @@ public class CasCoreAuthenticationPrincipalConfiguration {
 
     @Configuration(value = "CasCoreAuthenticationPrincipalFactoryConfiguration", proxyBeanMethods = false)
     @EnableConfigurationProperties(CasConfigurationProperties.class)
-    public static class CasCoreAuthenticationPrincipalFactoryConfiguration {
+    static class CasCoreAuthenticationPrincipalFactoryConfiguration {
 
         @ConditionalOnMissingBean(name = PrincipalFactory.BEAN_NAME)
         @Bean
@@ -166,22 +159,25 @@ public class CasCoreAuthenticationPrincipalConfiguration {
 
     @Configuration(value = "CasCoreAuthenticationAttributeDefinitionConfiguration", proxyBeanMethods = false)
     @EnableConfigurationProperties(CasConfigurationProperties.class)
-    public static class CasCoreAuthenticationAttributeDefinitionConfiguration {
+    static class CasCoreAuthenticationAttributeDefinitionConfiguration {
         @ConditionalOnMissingBean(name = AttributeDefinitionStore.BEAN_NAME)
         @Bean
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
         public AttributeDefinitionStore attributeDefinitionStore(
             final ConfigurableApplicationContext applicationContext,
             final CasConfigurationProperties casProperties) throws Exception {
-            val resource = casProperties.getAuthn().getAttributeRepository().getAttributeDefinitionStore().getJson().getLocation();
-            val store = new DefaultAttributeDefinitionStore(resource);
-            store.setScope(casProperties.getServer().getScope());
             val builders = applicationContext.getBeansOfType(AttributeDefinitionStoreConfigurer.class).values();
+            val store = new DefaultAttributeDefinitionStore();
+            store.setScope(casProperties.getServer().getScope());
             builders
                 .stream()
                 .filter(BeanSupplier::isNotProxy)
                 .sorted(AnnotationAwareOrderComparator.INSTANCE)
-                .forEach(cfg -> cfg.configure(store));
+                .map(AttributeDefinitionStoreConfigurer::load)
+                .forEach(store::registerAttributeDefinitions);
+            val resource = casProperties.getAuthn().getAttributeRepository().getAttributeDefinitionStore().getJson().getLocation();
+            store.importStore(resource);
+            store.watchStore(resource);
             return store;
         }
     }

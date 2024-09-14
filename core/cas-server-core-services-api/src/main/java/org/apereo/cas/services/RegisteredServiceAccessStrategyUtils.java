@@ -105,7 +105,12 @@ public class RegisteredServiceAccessStrategyUtils {
                     "Service [{}] is not allowed to use SSO. The ticket-granting ticket [{}] is not proxied and it's been used at least once. "
                         + "The authentication request must provide credentials before access can be granted", ticketGrantingTicket.getId(), service.getId());
             }
-            throw new UnauthorizedSsoServiceException();
+            if (ticketGrantingTicket.getCountOfUses() == 0 && credentialsProvided) {
+                LOGGER.debug("The ticket-granting ticket [{}] has never been used before and "
+                    + "the authentication request has supplied credentials to access service [{}]", ticketGrantingTicket.getId(), service.getId());
+            } else {
+                throw new UnauthorizedSsoServiceException();
+            }
         }
         LOGGER.debug("Current authentication via ticket [{}] allows service [{}] to participate in the existing SSO session",
             ticketGrantingTicket.getId(), service.getId());
@@ -138,7 +143,7 @@ public class RegisteredServiceAccessStrategyUtils {
         if (!registeredService.getAccessStrategy().authorizeRequest(accessRequest)) {
             LOGGER.warn("Cannot grant access to service [{}]; it is not authorized for use by [{}].", serviceId, principalId);
             val handlerErrors = new HashMap<String, Throwable>();
-            val message = String.format("Cannot grant service access %s to %s", serviceId, principalId);
+            val message = String.format("Cannot authorize principal %s to access service %s, likely due to insufficient permissions", principalId, serviceId);
             val exception = new UnauthorizedServiceForPrincipalException(message, registeredService, principalId, attributes);
             handlerErrors.put(UnauthorizedServiceForPrincipalException.class.getSimpleName(), exception);
             throw new PrincipalException(message, handlerErrors, new HashMap<>(0));

@@ -1,25 +1,22 @@
 package org.apereo.cas.consent;
 
 import org.apereo.cas.authentication.CoreAuthenticationTestUtils;
-import org.apereo.cas.config.CasConsentCoreConfiguration;
+import org.apereo.cas.config.CasConsentCoreAutoConfiguration;
 import org.apereo.cas.services.RegisteredServiceTestUtils;
 import org.apereo.cas.util.serialization.JacksonObjectMapperFactory;
 import org.apereo.cas.web.report.AbstractCasEndpointTests;
-
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.val;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.context.annotation.Import;
+import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 import org.springframework.http.HttpStatus;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.test.context.TestPropertySource;
-
 import java.nio.charset.StandardCharsets;
 import java.util.UUID;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -30,7 +27,7 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 @TestPropertySource(properties = "management.endpoint.attributeConsent.enabled=true")
 @Tag("ActuatorEndpoint")
-@Import(CasConsentCoreConfiguration.class)
+@ImportAutoConfiguration(CasConsentCoreAutoConfiguration.class)
 class AttributeConsentReportEndpointTests extends AbstractCasEndpointTests {
     private static final ObjectMapper MAPPER = JacksonObjectMapperFactory.builder()
         .defaultTypingEnabled(false).build().toObjectMapper();
@@ -56,6 +53,8 @@ class AttributeConsentReportEndpointTests extends AbstractCasEndpointTests {
         consentRepository.storeConsentDecision(desc);
 
         var results = attributeConsentReportEndpoint.consentDecisions(uid);
+        assertFalse(results.isEmpty());
+        results = attributeConsentReportEndpoint.consentDecisions();
         assertFalse(results.isEmpty());
 
         val entity = attributeConsentReportEndpoint.export();

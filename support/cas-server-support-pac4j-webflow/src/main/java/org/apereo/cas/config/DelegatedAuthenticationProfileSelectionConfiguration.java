@@ -4,23 +4,20 @@ import org.apereo.cas.authentication.principal.DelegatedClientAuthenticationCred
 import org.apereo.cas.authentication.principal.ldap.LdapDelegatedClientAuthenticationCredentialResolver;
 import org.apereo.cas.configuration.CasConfigurationProperties;
 import org.apereo.cas.configuration.features.CasFeatureModule;
-import org.apereo.cas.util.LdapUtils;
 import org.apereo.cas.util.spring.beans.BeanCondition;
 import org.apereo.cas.util.spring.beans.BeanSupplier;
 import org.apereo.cas.util.spring.boot.ConditionalOnFeatureEnabled;
 import org.apereo.cas.web.flow.DelegatedClientAuthenticationConfigurationContext;
-
 import lombok.extern.slf4j.Slf4j;
-import lombok.val;
 import org.ldaptive.ConnectionFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.cloud.context.config.annotation.RefreshScope;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.ScopedProxyMode;
 
 /**
@@ -31,10 +28,10 @@ import org.springframework.context.annotation.ScopedProxyMode;
  */
 @EnableConfigurationProperties(CasConfigurationProperties.class)
 @ConditionalOnFeatureEnabled(feature = CasFeatureModule.FeatureCatalog.DelegatedAuthentication)
-@AutoConfiguration
+@Configuration(value = "DelegatedAuthenticationProfileSelectionConfiguration", proxyBeanMethods = false)
 @Slf4j
 @ConditionalOnClass(ConnectionFactory.class)
-public class DelegatedAuthenticationProfileSelectionConfiguration {
+class DelegatedAuthenticationProfileSelectionConfiguration {
     @Bean
     @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
     @ConditionalOnMissingBean(name = "ldapDelegatedClientAuthenticationCredentialResolver")
@@ -44,14 +41,8 @@ public class DelegatedAuthenticationProfileSelectionConfiguration {
         @Qualifier(DelegatedClientAuthenticationConfigurationContext.BEAN_NAME)
         final DelegatedClientAuthenticationConfigurationContext configContext) {
         return BeanSupplier.of(DelegatedClientAuthenticationCredentialResolver.class)
-            .when(BeanCondition.on("cas.authn.pac4j.profile-selection.ldap.ldap-url")
-                .given(applicationContext.getEnvironment()))
-            .supply(() -> {
-                val ldap = casProperties.getAuthn().getPac4j().getProfileSelection().getLdap();
-                val connectionFactory = LdapUtils.newLdaptiveConnectionFactory(ldap);
-                LOGGER.debug("Configured LDAP delegated authentication profile selection via [{}]", ldap.getLdapUrl());
-                return new LdapDelegatedClientAuthenticationCredentialResolver(configContext, connectionFactory);
-            })
+            .when(BeanCondition.on("cas.authn.pac4j.profile-selection.ldap[0].ldap-url").given(applicationContext.getEnvironment()))
+            .supply(() -> new LdapDelegatedClientAuthenticationCredentialResolver(configContext))
             .otherwiseProxy()
             .get();
     }

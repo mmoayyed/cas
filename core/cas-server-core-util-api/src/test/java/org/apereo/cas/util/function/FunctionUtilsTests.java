@@ -1,15 +1,15 @@
 package org.apereo.cas.util.function;
 
+import org.apereo.cas.util.CompressionUtils;
 import com.google.common.base.Suppliers;
 import lombok.val;
 import org.jooq.lambda.fi.util.function.CheckedFunction;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
-
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -20,6 +20,26 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 @Tag("Utility")
 class FunctionUtilsTests {
+
+    @Test
+    void verifyDoAndRetry() throws Throwable {
+        val count = new AtomicInteger();
+        assertThrows(IllegalArgumentException.class, () -> FunctionUtils.doAndRetry(retryContext -> {
+            count.incrementAndGet();
+            throw new IllegalArgumentException("Failed to execute");
+        }, 2));
+        assertEquals(2, count.get());
+    }
+
+    @Test
+    void verifyDoAndNeverRetry() throws Throwable {
+        val count = new AtomicInteger();
+        assertThrows(IllegalArgumentException.class, () -> FunctionUtils.doAndRetry(retryContext -> {
+            count.incrementAndGet();
+            throw new IllegalArgumentException("Failed to execute");
+        }, -1));
+        assertEquals(1, count.get());
+    }
 
     @Test
     void verifyDoIf0() throws Throwable {
@@ -132,5 +152,10 @@ class FunctionUtilsTests {
             throw new IllegalArgumentException();
         });
         assertFalse(supplier);
+
+        assertThrows(IllegalArgumentException.class,
+            () -> FunctionUtils.doAndThrowUnchecked(() -> CompressionUtils.compress((byte[]) null), o -> {
+                throw new IllegalArgumentException();
+            }));
     }
 }

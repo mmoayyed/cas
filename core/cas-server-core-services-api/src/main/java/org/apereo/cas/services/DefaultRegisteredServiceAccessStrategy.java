@@ -69,12 +69,6 @@ public class DefaultRegisteredServiceAccessStrategy extends BaseRegisteredServic
     protected URI unauthorizedRedirectUrl;
 
     /**
-     * The delegated authn policy.
-     */
-    protected RegisteredServiceDelegatedAuthenticationPolicy delegatedAuthenticationPolicy =
-        new DefaultRegisteredServiceDelegatedAuthenticationPolicy();
-
-    /**
      * Defines the attribute aggregation behavior when checking for required attributes.
      * Default requires that all attributes be present and match the principal's.
      */
@@ -155,7 +149,8 @@ public class DefaultRegisteredServiceAccessStrategy extends BaseRegisteredServic
     public boolean authorizeRequest(final RegisteredServiceAccessStrategyRequest request) throws Throwable {
         val proceed = activationCriteria == null || activationCriteria.shouldActivate(request);
         if (proceed) {
-            return RegisteredServiceAccessStrategyEvaluator.builder()
+            return RegisteredServiceAccessStrategyEvaluator
+                .builder()
                 .caseInsensitive(this.caseInsensitive)
                 .requireAllAttributes(this.requireAllAttributes)
                 .requiredAttributes(this.requiredAttributes)

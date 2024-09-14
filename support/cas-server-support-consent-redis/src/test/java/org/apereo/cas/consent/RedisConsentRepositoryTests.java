@@ -1,18 +1,17 @@
 package org.apereo.cas.consent;
 
-import org.apereo.cas.config.CasConsentRedisConfiguration;
+import org.apereo.cas.config.CasConsentRedisAutoConfiguration;
+import org.apereo.cas.test.CasTestExtension;
 import org.apereo.cas.util.junit.EnabledIfListeningOnPort;
-
 import lombok.Getter;
 import lombok.val;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
-
 import java.util.UUID;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -22,7 +21,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * @since 5.3.0
  */
 @SpringBootTest(classes = {
-    CasConsentRedisConfiguration.class,
+    CasConsentRedisAutoConfiguration.class,
     BaseConsentRepositoryTests.SharedTestConfiguration.class
 },
     properties = {
@@ -32,6 +31,7 @@ import static org.junit.jupiter.api.Assertions.*;
         "cas.consent.redis.pool.enabled=true"
     })
 @Tag("Redis")
+@ExtendWith(CasTestExtension.class)
 @Getter
 @EnabledIfListeningOnPort(port = 6379)
 class RedisConsentRepositoryTests extends BaseConsentRepositoryTests {

@@ -1,6 +1,8 @@
 package org.apereo.cas.ticket;
 
 import org.apereo.cas.configuration.CasConfigurationProperties;
+import org.apereo.cas.util.NamedObject;
+import org.springframework.core.Ordered;
 
 /**
  * This is {@link TicketCatalogConfigurer}.
@@ -9,7 +11,7 @@ import org.apereo.cas.configuration.CasConfigurationProperties;
  * @since 5.1.0
  */
 @FunctionalInterface
-public interface TicketCatalogConfigurer {
+public interface TicketCatalogConfigurer extends Ordered, NamedObject {
     /**
      * configure the plan.
      *
@@ -19,12 +21,8 @@ public interface TicketCatalogConfigurer {
      */
     void configureTicketCatalog(TicketCatalog plan, CasConfigurationProperties casProperties) throws Throwable;
 
-    /**
-     * Gets name.
-     *
-     * @return the name
-     */
-    default String getName() {
-        return getClass().getSimpleName();
+    @Override
+    default int getOrder() {
+        return Ordered.LOWEST_PRECEDENCE;
     }
 }

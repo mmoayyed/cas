@@ -1,5 +1,7 @@
 package org.apereo.cas.util.cipher;
 
+import org.apereo.cas.configuration.model.core.util.EncryptionJwtCryptoProperties;
+import org.apereo.cas.configuration.model.core.util.SigningJwtCryptoProperties;
 import org.apereo.cas.util.EncodingUtils;
 import org.apereo.cas.util.LoggingUtils;
 import org.apereo.cas.util.ResourceUtils;
@@ -7,7 +9,6 @@ import org.apereo.cas.util.crypto.CipherExecutor;
 import org.apereo.cas.util.crypto.PropertyBoundCipherExecutor;
 import org.apereo.cas.util.function.FunctionUtils;
 import org.apereo.cas.util.jwt.JsonWebTokenEncryptor;
-
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -15,14 +16,15 @@ import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.apache.commons.lang3.StringUtils;
+import org.jooq.lambda.Unchecked;
 import org.jose4j.json.JsonUtil;
 import org.jose4j.jwe.KeyManagementAlgorithmIdentifiers;
 import org.jose4j.jwk.PublicJsonWebKey;
-
 import java.io.Serializable;
 import java.nio.charset.StandardCharsets;
 import java.security.Key;
 import java.util.LinkedHashMap;
+import java.util.concurrent.Executors;
 
 /**
  * The {@link BaseStringCipherExecutor} is the default
@@ -48,9 +50,9 @@ public abstract class BaseStringCipherExecutor extends AbstractCipherExecutor<Se
 
     private boolean signingEnabled = true;
 
-    private int encryptionKeySize = CipherExecutor.DEFAULT_STRINGABLE_ENCRYPTION_KEY_SIZE;
+    private int encryptionKeySize = EncryptionJwtCryptoProperties.DEFAULT_STRINGABLE_ENCRYPTION_KEY_SIZE;
 
-    private int signingKeySize = CipherExecutor.DEFAULT_STRINGABLE_SIGNING_KEY_SIZE;
+    private int signingKeySize = SigningJwtCryptoProperties.DEFAULT_STRINGABLE_SIGNING_KEY_SIZE;
 
     private String secretKeyEncryption;
 
@@ -63,7 +65,7 @@ public abstract class BaseStringCipherExecutor extends AbstractCipherExecutor<Se
     protected BaseStringCipherExecutor(final String secretKeyEncryption, final String secretKeySigning,
                                        final boolean encryptionEnabled, final boolean signingEnabled,
                                        final int signingKeySize, final int encryptionKeySize) {
-        this(secretKeyEncryption, secretKeySigning, CipherExecutor.DEFAULT_CONTENT_ENCRYPTION_ALGORITHM,
+        this(secretKeyEncryption, secretKeySigning, EncryptionJwtCryptoProperties.DEFAULT_CONTENT_ENCRYPTION_ALGORITHM,
             encryptionEnabled, signingEnabled, signingKeySize, encryptionKeySize);
     }
 
@@ -84,7 +86,7 @@ public abstract class BaseStringCipherExecutor extends AbstractCipherExecutor<Se
 
     protected BaseStringCipherExecutor(final String secretKeyEncryption, final String secretKeySigning,
                                        final int signingKeySize, final int encryptionKeySize) {
-        this(secretKeyEncryption, secretKeySigning, CipherExecutor.DEFAULT_CONTENT_ENCRYPTION_ALGORITHM,
+        this(secretKeyEncryption, secretKeySigning, EncryptionJwtCryptoProperties.DEFAULT_CONTENT_ENCRYPTION_ALGORITHM,
             true, true, signingKeySize, encryptionKeySize);
     }
 
@@ -101,9 +103,9 @@ public abstract class BaseStringCipherExecutor extends AbstractCipherExecutor<Se
         this.signingEnabled = signingEnabled || StringUtils.isNotBlank(secretKeySigning);
         this.encryptionEnabled = encryptionEnabled || StringUtils.isNotBlank(secretKeyEncryption);
         this.signingKeySize = signingKeyLength <= 0
-            ? CipherExecutor.DEFAULT_STRINGABLE_SIGNING_KEY_SIZE : signingKeyLength;
+            ? SigningJwtCryptoProperties.DEFAULT_STRINGABLE_SIGNING_KEY_SIZE : signingKeyLength;
         this.encryptionKeySize = encryptionKeyLength <= 0
-            ? CipherExecutor.DEFAULT_STRINGABLE_ENCRYPTION_KEY_SIZE : encryptionKeyLength;
+            ? EncryptionJwtCryptoProperties.DEFAULT_STRINGABLE_ENCRYPTION_KEY_SIZE : encryptionKeyLength;
         this.contentEncryptionAlgorithmIdentifier = contentEncryptionAlgorithmIdentifier;
         initialize();
     }
@@ -131,16 +133,24 @@ public abstract class BaseStringCipherExecutor extends AbstractCipherExecutor<Se
 
     protected void initialize() {
         if (!initialized) {
-            if (this.encryptionEnabled) {
-                configureEncryptionParameters(secretKeyEncryption, contentEncryptionAlgorithmIdentifier);
-            } else {
-                LOGGER.debug("Encryption is not enabled for [{}]. The cipher [{}] will only attempt to produce signed objects",
-                    getName(), getClass().getSimpleName());
-            }
-            if (this.signingEnabled) {
-                configureSigningParameters(secretKeySigning);
-            } else {
-                LOGGER.info("Signing is not enabled for [{}]. The cipher [{}] will attempt to produce plain objects", getName(), getClass().getSimpleName());
+            try (val executor = Executors.newVirtualThreadPerTaskExecutor()) {
+                val signingCertTask = Unchecked.runnable(() -> {
+                    if (this.signingEnabled) {
+                        configureSigningParameters(secretKeySigning);
+                    } else {
+                        LOGGER.info("Signing is not enabled for [{}]. The cipher [{}] will attempt to produce plain objects", getName(), getClass().getSimpleName());
+                    }
+                });
+                val encryptionCertTask = Unchecked.runnable(() -> {
+                    if (this.encryptionEnabled) {
+                        configureEncryptionParameters(secretKeyEncryption, contentEncryptionAlgorithmIdentifier);
+                    } else {
+                        LOGGER.debug("Encryption is not enabled for [{}]. The cipher [{}] will only attempt to produce signed objects",
+                            getName(), getClass().getSimpleName());
+                    }
+                });
+                executor.execute(signingCertTask);
+                executor.execute(encryptionCertTask);
             }
             this.initialized = true;
         }
@@ -151,11 +161,6 @@ public abstract class BaseStringCipherExecutor extends AbstractCipherExecutor<Se
         return super.isEnabled() || isEncryptionPossible(this.encryptionKey);
     }
 
-    /**
-     * Configure encryption key from public key resource.
-     *
-     * @param secretKeyToUse the secret key to use
-     */
     protected void configureEncryptionKeyFromPublicKeyResource(final String secretKeyToUse) {
         val object = extractPublicKeyFromResource(secretKeyToUse);
         LOGGER.debug("Located encryption key resource [{}]", secretKeyToUse);
@@ -163,12 +168,6 @@ public abstract class BaseStringCipherExecutor extends AbstractCipherExecutor<Se
         setEncryptionAlgorithm(KeyManagementAlgorithmIdentifiers.RSA_OAEP_256);
     }
 
-    /**
-     * Is encryption possible?
-     *
-     * @param key the key
-     * @return true /false
-     */
     protected boolean isEncryptionPossible(final Key key) {
         return this.encryptionEnabled && key != null;
     }
@@ -246,7 +245,7 @@ public abstract class BaseStringCipherExecutor extends AbstractCipherExecutor<Se
                 setEncryptionKey(EncodingUtils.generateJsonWebKey(secretKeyToUse));
             }
             if (StringUtils.isBlank(contentEncryptionAlgorithmIdentifier)) {
-                setContentEncryptionAlgorithmIdentifier(CipherExecutor.DEFAULT_CONTENT_ENCRYPTION_ALGORITHM);
+                setContentEncryptionAlgorithmIdentifier(EncryptionJwtCryptoProperties.DEFAULT_CONTENT_ENCRYPTION_ALGORITHM);
             } else {
                 setContentEncryptionAlgorithmIdentifier(contentEncryptionAlgorithmIdentifier);
             }

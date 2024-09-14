@@ -3,23 +3,20 @@ package org.apereo.cas.impl.token;
 import org.apereo.cas.api.PasswordlessAuthenticationRequest;
 import org.apereo.cas.api.PasswordlessTokenRepository;
 import org.apereo.cas.api.PasswordlessUserAccount;
-import org.apereo.cas.config.CasHibernateJpaConfiguration;
-import org.apereo.cas.config.JpaPasswordlessAuthenticationConfiguration;
+import org.apereo.cas.config.CasHibernateJpaAutoConfiguration;
+import org.apereo.cas.config.CasJpaPasswordlessAuthenticationAutoConfiguration;
 import org.apereo.cas.impl.BasePasswordlessUserAccountStoreTests;
-
 import lombok.Getter;
 import lombok.val;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 import org.springframework.context.annotation.EnableAspectJAutoProxy;
-import org.springframework.context.annotation.Import;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
-
 import java.util.UUID;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -32,9 +29,9 @@ import static org.junit.jupiter.api.Assertions.*;
 @EnableAspectJAutoProxy(proxyTargetClass = false)
 @Getter
 @Tag("JDBC")
-@Import({
-    CasHibernateJpaConfiguration.class,
-    JpaPasswordlessAuthenticationConfiguration.class
+@ImportAutoConfiguration({
+    CasHibernateJpaAutoConfiguration.class,
+    CasJpaPasswordlessAuthenticationAutoConfiguration.class
 })
 @TestPropertySource(properties = "cas.jdbc.show-sql=false")
 class JpaPasswordlessTokenRepositoryTests extends BasePasswordlessUserAccountStoreTests {

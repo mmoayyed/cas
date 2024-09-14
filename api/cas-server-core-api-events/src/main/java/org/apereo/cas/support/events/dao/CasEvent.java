@@ -1,19 +1,18 @@
 package org.apereo.cas.support.events.dao;
 
 import org.apereo.cas.authentication.adaptive.geo.GeoLocationRequest;
-
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
 import lombok.experimental.Accessors;
 import lombok.val;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.data.annotation.Id;
-
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
 import jakarta.persistence.ElementCollection;
@@ -21,7 +20,6 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.MapKeyColumn;
 import jakarta.persistence.MappedSuperclass;
 import jakarta.persistence.Transient;
-
 import java.io.Serial;
 import java.io.Serializable;
 import java.util.HashMap;
@@ -37,8 +35,9 @@ import java.util.Map;
 @ToString
 @Getter
 @Setter
-@AllArgsConstructor
+@NoArgsConstructor
 @Accessors(chain = true)
+@AllArgsConstructor
 public class CasEvent implements Serializable {
 
     /**
@@ -89,10 +88,12 @@ public class CasEvent implements Serializable {
     @Serial
     private static final long serialVersionUID = -4206712375316470417L;
 
+    private static final String FIELD_DEVICE_FINGERPRINT = "deviceFingerprint";
+
     @Id
     @JsonProperty
     @Transient
-    private long id = -1;
+    private long id;
 
     @JsonProperty("type")
     @Column(nullable = false)
@@ -109,13 +110,9 @@ public class CasEvent implements Serializable {
     @JsonProperty("properties")
     @ElementCollection
     @MapKeyColumn(name = "name")
-    @Column(name = "value")
+    @Column(name = "value", length = 4_000)
     @CollectionTable(name = "events_properties", joinColumns = @JoinColumn(name = "eventId"))
-    private Map<String, String> properties = new HashMap<>(0);
-
-    public CasEvent() {
-        this.id = System.currentTimeMillis();
-    }
+    private Map<String, String> properties = new HashMap<>();
 
     /**
      * Put timestamp.
@@ -235,6 +232,25 @@ public class CasEvent implements Serializable {
     }
 
     /**
+     * Put device fingerprint into cas event.
+     *
+     * @param value the value
+     * @return the cas event
+     */
+    public CasEvent putDeviceFingerprint(final String value) {
+        return put(FIELD_DEVICE_FINGERPRINT, value);
+    }
+
+    /**
+     * Gets device fingerprint.
+     *
+     * @return the device fingerprint
+     */
+    public String getDeviceFingerprint() {
+        return get(FIELD_DEVICE_FINGERPRINT);
+    }
+
+    /**
      * Gets geo location.
      *
      * @return the geo location
@@ -252,12 +268,10 @@ public class CasEvent implements Serializable {
     private CasEvent putGeoLatitude(final String s) {
         return put(FIELD_GEO_LATITUDE, s);
     }
-
-
+    
     private CasEvent putGeoLongitude(final String s) {
         return put(FIELD_GEO_LONGITUDE, s);
     }
-
 
     private CasEvent putGeoAccuracy(final String s) {
         return put(FIELD_GEO_ACCURACY, s);
@@ -265,5 +279,18 @@ public class CasEvent implements Serializable {
 
     private CasEvent putGeoTimestamp(final String s) {
         return put(FIELD_GEO_TIMESTAMP, s);
+    }
+
+    /**
+     * Assign id if undefined.
+     *
+     * @return the registered service
+     */
+    @CanIgnoreReturnValue
+    public CasEvent assignIdIfNecessary() {
+        if (getId() <= 0) {
+            setId(System.currentTimeMillis());
+        }
+        return this;
     }
 }

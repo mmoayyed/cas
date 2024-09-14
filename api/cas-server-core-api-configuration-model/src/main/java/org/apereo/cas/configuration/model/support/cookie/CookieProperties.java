@@ -1,8 +1,9 @@
 package org.apereo.cas.configuration.model.support.cookie;
 
+import org.apereo.cas.configuration.features.CasFeatureModule;
+import org.apereo.cas.configuration.support.DurationCapable;
 import org.apereo.cas.configuration.support.RequiresModule;
 
-import com.fasterxml.jackson.annotation.JsonFilter;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
@@ -21,8 +22,8 @@ import java.io.Serializable;
 @Getter
 @Setter
 @Accessors(chain = true)
-@JsonFilter("CookieProperties")
-public class CookieProperties implements Serializable {
+
+public class CookieProperties implements CasFeatureModule, Serializable {
 
     @Serial
     private static final long serialVersionUID = 6804770601645126835L;
@@ -77,7 +78,8 @@ public class CookieProperties implements Serializable {
      * A negative value means that the cookie is not stored persistently and will be deleted when the Web browser exits.
      * A zero value causes the cookie to be deleted.
      */
-    private int maxAge = -1;
+    @DurationCapable
+    private String maxAge = "-1";
 
     /**
      * If a cookie is only intended to be accessed in a first party context, the

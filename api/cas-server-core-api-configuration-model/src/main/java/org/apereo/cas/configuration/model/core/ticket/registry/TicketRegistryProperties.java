@@ -7,6 +7,7 @@ import org.apereo.cas.configuration.model.support.gcp.GoogleCloudFirestoreTicket
 import org.apereo.cas.configuration.model.support.hazelcast.HazelcastTicketRegistryProperties;
 import org.apereo.cas.configuration.model.support.ignite.IgniteProperties;
 import org.apereo.cas.configuration.model.support.jpa.ticketregistry.JpaTicketRegistryProperties;
+import org.apereo.cas.configuration.model.support.kafka.KafkaTicketRegistryProperties;
 import org.apereo.cas.configuration.model.support.memcached.MemcachedTicketRegistryProperties;
 import org.apereo.cas.configuration.model.support.mongo.ticketregistry.MongoDbTicketRegistryProperties;
 import org.apereo.cas.configuration.model.support.quartz.ScheduledJobProperties;
@@ -67,6 +68,12 @@ public class TicketRegistryProperties implements Serializable {
     private HazelcastTicketRegistryProperties hazelcast = new HazelcastTicketRegistryProperties();
 
     /**
+     * Kafka registry settings.
+     */
+    @NestedConfigurationProperty
+    private KafkaTicketRegistryProperties kafka = new KafkaTicketRegistryProperties();
+
+    /**
      * Apache Ignite registry settings.
      */
     @NestedConfigurationProperty
@@ -80,7 +87,9 @@ public class TicketRegistryProperties implements Serializable {
 
     /**
      * Memcached registry settings.
+     * @deprecated Since 6.2
      */
+    @Deprecated(since = "6.2.0")
     @NestedConfigurationProperty
     private MemcachedTicketRegistryProperties memcached = new MemcachedTicketRegistryProperties();
 
@@ -101,6 +110,12 @@ public class TicketRegistryProperties implements Serializable {
      */
     @NestedConfigurationProperty
     private InMemoryTicketRegistryProperties inMemory = new InMemoryTicketRegistryProperties();
+
+    /**
+     * Settings relevant for the default stateless ticket registry.
+     */
+    @NestedConfigurationProperty
+    private StatelessTicketRegistryProperties stateless = new StatelessTicketRegistryProperties();
 
     /**
      * Ticket registry cleaner settings.

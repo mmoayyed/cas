@@ -2,6 +2,7 @@ package org.apereo.cas.tomcat;
 
 import org.apereo.cas.configuration.CasConfigurationProperties;
 import org.apereo.cas.configuration.model.core.web.tomcat.CasEmbeddedApacheTomcatClusteringProperties;
+import org.apereo.cas.monitor.NotMonitorable;
 
 import lombok.Getter;
 import lombok.ToString;
@@ -27,6 +28,7 @@ import org.apache.catalina.tribes.membership.cloud.CloudMembershipService;
 import org.apache.catalina.tribes.transport.ReplicationTransmitter;
 import org.apache.catalina.tribes.transport.nio.NioReceiver;
 import org.apache.catalina.tribes.transport.nio.PooledParallelSender;
+import org.apache.catalina.webresources.ExtractingRoot;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.tomcat.util.descriptor.web.SecurityCollection;
 import org.apache.tomcat.util.descriptor.web.SecurityConstraint;
@@ -46,6 +48,7 @@ import java.util.Locale;
  * @since 5.3.0
  */
 @Slf4j
+@NotMonitorable
 public class CasTomcatServletWebServerFactory extends TomcatServletWebServerFactory {
 
     private final CasConfigurationProperties casProperties;
@@ -73,6 +76,8 @@ public class CasTomcatServletWebServerFactory extends TomcatServletWebServerFact
                 securityConstraint.addCollection(collection);
                 context.addConstraint(securityConstraint);
             });
+        context.setReloadable(false);
+        context.setResources(new ExtractingRoot());
     }
 
     @Override

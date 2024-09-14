@@ -1,24 +1,21 @@
 package org.apereo.cas.support.saml.authentication.principal;
 
 import org.apereo.cas.authentication.principal.ServiceFactory;
-import org.apereo.cas.config.SamlAuthenticationEventExecutionPlanConfiguration;
-import org.apereo.cas.config.SamlConfiguration;
-import org.apereo.cas.config.SamlServiceFactoryConfiguration;
+import org.apereo.cas.config.CasSamlAutoConfiguration;
 import org.apereo.cas.support.saml.AbstractOpenSamlTests;
 import org.apereo.cas.support.saml.SamlProtocolConstants;
-
+import org.apereo.cas.test.CasTestExtension;
 import lombok.val;
 import org.apache.commons.lang3.NotImplementedException;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.HttpMethod;
 import org.springframework.mock.web.MockHttpServletRequest;
-
 import java.nio.charset.StandardCharsets;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -28,12 +25,11 @@ import static org.junit.jupiter.api.Assertions.*;
  * @since 4.2
  */
 @SpringBootTest(classes = {
-    SamlAuthenticationEventExecutionPlanConfiguration.class,
-    SamlServiceFactoryConfiguration.class,
-    SamlConfiguration.class,
+    CasSamlAutoConfiguration.class,
     AbstractOpenSamlTests.SharedTestConfiguration.class
-}, properties = "spring.main.allow-bean-definition-overriding=true")
+})
 @Tag("SAML")
+@ExtendWith(CasTestExtension.class)
 class SamlServiceFactoryTests extends AbstractOpenSamlTests {
 
     private static final String BODY = "<!--    Licensed to Jasig under one or more contributor license    agreements. See the NOTICE file distributed with this work"

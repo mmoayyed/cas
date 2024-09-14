@@ -1,12 +1,11 @@
 package org.apereo.cas.ticket.registry;
 
 import org.apereo.cas.authentication.CoreAuthenticationTestUtils;
-import org.apereo.cas.config.GoogleCloudFirestoreTicketRegistryConfiguration;
+import org.apereo.cas.config.CasGoogleCloudFirestoreTicketRegistryAutoConfiguration;
 import org.apereo.cas.ticket.TicketGrantingTicket;
 import org.apereo.cas.ticket.TicketGrantingTicketImpl;
 import org.apereo.cas.ticket.expiration.NeverExpiresExpirationPolicy;
 import org.apereo.cas.util.TicketGrantingTicketIdGenerator;
-
 import com.google.api.gax.grpc.InstantiatingGrpcChannelProvider;
 import com.google.cloud.firestore.FirestoreOptions;
 import com.google.cloud.spring.autoconfigure.core.GcpContextAutoConfiguration;
@@ -22,15 +21,14 @@ import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.TestPropertySource;
-
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
-
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
@@ -42,9 +40,9 @@ import static org.mockito.Mockito.*;
  */
 @Getter
 @Tag("GCP")
-@Import({
-    GoogleCloudFirestoreTicketRegistryTests.GoogleCloudFirestoreTestConfiguration.class,
-    GoogleCloudFirestoreTicketRegistryConfiguration.class,
+@Import(GoogleCloudFirestoreTicketRegistryTests.GoogleCloudFirestoreTestConfiguration.class)
+@ImportAutoConfiguration({
+    CasGoogleCloudFirestoreTicketRegistryAutoConfiguration.class,
     GcpFirestoreAutoConfiguration.class,
     GcpContextAutoConfiguration.class
 })

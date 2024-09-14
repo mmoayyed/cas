@@ -1,6 +1,6 @@
 package org.apereo.cas.authentication.principal;
 
-import org.apereo.cas.util.jpa.MapToJsonAttributeConverter;
+import org.apereo.cas.util.jpa.MultivaluedMapToJsonAttributeConverter;
 import org.apereo.cas.validation.ValidationResponseType;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AccessLevel;
@@ -19,7 +19,6 @@ import jakarta.persistence.Inheritance;
 import jakarta.persistence.Table;
 import java.io.Serial;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 /**
@@ -69,8 +68,8 @@ public abstract class AbstractWebApplicationService implements WebApplicationSer
     private ValidationResponseType format = ValidationResponseType.XML;
 
     @Column(columnDefinition = "json")
-    @Convert(converter = MapToJsonAttributeConverter.class)
-    private Map<String, List<Object>> attributes = new HashMap<>(0);
+    @Convert(converter = MultivaluedMapToJsonAttributeConverter.class)
+    private Map<String, Object> attributes = new HashMap<>(0);
 
     protected AbstractWebApplicationService(final String id, final String originalUrl, final String artifactId) {
         this.id = id;

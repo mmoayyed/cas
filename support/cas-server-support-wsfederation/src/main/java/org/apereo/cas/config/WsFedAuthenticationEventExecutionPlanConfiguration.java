@@ -4,9 +4,11 @@ import org.apereo.cas.authentication.AuthenticationEventExecutionPlanConfigurer;
 import org.apereo.cas.authentication.CoreAuthenticationUtils;
 import org.apereo.cas.authentication.adaptive.geo.GeoLocationService;
 import org.apereo.cas.authentication.attribute.AttributeDefinitionStore;
+import org.apereo.cas.authentication.attribute.AttributeRepositoryResolver;
 import org.apereo.cas.authentication.principal.PrincipalFactory;
 import org.apereo.cas.authentication.principal.PrincipalFactoryUtils;
 import org.apereo.cas.authentication.principal.PrincipalResolver;
+import org.apereo.cas.authentication.principal.attribute.PersonAttributeDao;
 import org.apereo.cas.authentication.principal.resolvers.PersonDirectoryPrincipalResolver;
 import org.apereo.cas.configuration.CasConfigurationProperties;
 import org.apereo.cas.configuration.features.CasFeatureModule;
@@ -20,23 +22,22 @@ import org.apereo.cas.support.wsfederation.attributes.WsFederationAttributeMutat
 import org.apereo.cas.support.wsfederation.authentication.handler.support.WsFederationAuthenticationHandler;
 import org.apereo.cas.support.wsfederation.authentication.principal.WsFederationCredentialsToPrincipalResolver;
 import org.apereo.cas.support.wsfederation.web.WsFederationCookieCipherExecutor;
-import org.apereo.cas.support.wsfederation.web.WsFederationCookieGenerator;
 import org.apereo.cas.util.cipher.CipherExecutorUtils;
 import org.apereo.cas.util.crypto.CipherExecutor;
 import org.apereo.cas.util.function.FunctionUtils;
-import org.apereo.cas.util.scripting.WatchableGroovyScriptResource;
+import org.apereo.cas.util.scripting.ExecutableCompiledScriptFactory;
 import org.apereo.cas.util.spring.SpringExpressionLanguageValueResolver;
 import org.apereo.cas.util.spring.beans.BeanContainer;
 import org.apereo.cas.util.spring.boot.ConditionalOnFeatureEnabled;
 import org.apereo.cas.web.cookie.CasCookieBuilder;
+import org.apereo.cas.web.support.CookieUtils;
+import org.apereo.cas.web.support.gen.CookieRetrievingCookieGenerator;
 import org.apereo.cas.web.support.mgmr.DefaultCasCookieValueManager;
 import org.apereo.cas.web.support.mgmr.DefaultCookieSameSitePolicy;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.apache.commons.lang3.StringUtils;
-import org.apereo.services.persondir.IPersonAttributeDao;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.cloud.context.config.annotation.RefreshScope;
@@ -56,17 +57,20 @@ import java.util.stream.Collectors;
 @EnableConfigurationProperties(CasConfigurationProperties.class)
 @Slf4j
 @ConditionalOnFeatureEnabled(feature = CasFeatureModule.FeatureCatalog.WsFederation)
-@AutoConfiguration
-public class WsFedAuthenticationEventExecutionPlanConfiguration {
+@Configuration(value = "WsFedAuthenticationEventExecutionPlanConfiguration", proxyBeanMethods = false)
+class WsFedAuthenticationEventExecutionPlanConfiguration {
 
     @Configuration(value = "WsFedAuthenticationProvidersConfiguration", proxyBeanMethods = false)
     @EnableConfigurationProperties(CasConfigurationProperties.class)
-    public static class WsFedAuthenticationProvidersConfiguration {
+    static class WsFedAuthenticationProvidersConfiguration {
         private static WsFederationAttributeMutator getAttributeMutatorForWsFederationConfig(final WsFederationDelegationProperties wsfed) {
             val location = wsfed.getAttributeMutatorScript().getLocation();
-            return location != null
-                ? new GroovyWsFederationAttributeMutator(new WatchableGroovyScriptResource(location))
-                : WsFederationAttributeMutator.noOp();
+            val scriptFactory = ExecutableCompiledScriptFactory.findExecutableCompiledScriptFactory();
+            if (location != null && scriptFactory.isPresent()) {
+                val watchableScript = scriptFactory.get().fromResource(location);
+                return new GroovyWsFederationAttributeMutator(watchableScript);
+            }
+            return WsFederationAttributeMutator.noOp();
         }
 
         private static WsFederationConfiguration getWsFederationConfiguration(
@@ -109,8 +113,9 @@ public class WsFedAuthenticationEventExecutionPlanConfiguration {
             val cookie = wsfed.getCookie();
             val cipher = getCipherExecutorForWsFederationConfig(cookie);
             val geoLocationService = applicationContext.getBeanProvider(GeoLocationService.class);
-            return new WsFederationCookieGenerator(new DefaultCasCookieValueManager(cipher, geoLocationService,
-                DefaultCookieSameSitePolicy.INSTANCE, cookie), cookie);
+            val valueManager = new DefaultCasCookieValueManager(cipher, geoLocationService,
+                DefaultCookieSameSitePolicy.INSTANCE, cookie);
+            return new CookieRetrievingCookieGenerator(CookieUtils.buildCookieGenerationContext(cookie), valueManager);
         }
 
         private static CipherExecutor getCipherExecutorForWsFederationConfig(final WsFederationDelegatedCookieProperties cookie) {
@@ -140,7 +145,7 @@ public class WsFedAuthenticationEventExecutionPlanConfiguration {
 
     @Configuration(value = "WsFedAuthenticationEventExecutionPlanPrincipalConfiguration", proxyBeanMethods = false)
     @EnableConfigurationProperties(CasConfigurationProperties.class)
-    public static class WsFedAuthenticationEventExecutionPlanPrincipalConfiguration {
+    static class WsFedAuthenticationEventExecutionPlanPrincipalConfiguration {
         @ConditionalOnMissingBean(name = "wsfedPrincipalFactory")
         @Bean
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
@@ -153,7 +158,7 @@ public class WsFedAuthenticationEventExecutionPlanConfiguration {
 
     @Configuration(value = "WsFedAuthenticationEventExecutionPlanBaseConfiguration", proxyBeanMethods = false)
     @EnableConfigurationProperties(CasConfigurationProperties.class)
-    public static class WsFedAuthenticationEventExecutionPlanBaseConfiguration {
+    static class WsFedAuthenticationEventExecutionPlanBaseConfiguration {
         @ConditionalOnMissingBean(name = "wsfedAuthenticationEventExecutionPlanConfigurer")
         @Bean
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
@@ -167,9 +172,11 @@ public class WsFedAuthenticationEventExecutionPlanConfiguration {
             @Qualifier("wsFederationConfigurations")
             final BeanContainer<WsFederationConfiguration> wsFederationConfigurations,
             @Qualifier(PrincipalResolver.BEAN_NAME_ATTRIBUTE_REPOSITORY)
-            final IPersonAttributeDao attributeRepository,
+            final PersonAttributeDao attributeRepository,
             @Qualifier(ServicesManager.BEAN_NAME)
-            final ServicesManager servicesManager) {
+            final ServicesManager servicesManager,
+            @Qualifier(AttributeRepositoryResolver.BEAN_NAME)
+            final AttributeRepositoryResolver attributeRepositoryResolver) {
             val personDirectory = casProperties.getPersonDirectory();
             return plan -> casProperties.getAuthn()
                 .getWsfed()
@@ -192,7 +199,7 @@ public class WsFedAuthenticationEventExecutionPlanConfiguration {
                             applicationContext, wsfedPrincipalFactory, attributeRepository,
                             CoreAuthenticationUtils.getAttributeMerger(casProperties.getAuthn().getAttributeRepository().getCore().getMerger()),
                             WsFederationCredentialsToPrincipalResolver.class, servicesManager, attributeDefinitionStore,
-                            principal, personDirectory);
+                            attributeRepositoryResolver, principal, personDirectory);
                         resolver.setConfiguration(cfg);
                         plan.registerAuthenticationHandlerWithPrincipalResolver(handler, resolver);
                     } else {

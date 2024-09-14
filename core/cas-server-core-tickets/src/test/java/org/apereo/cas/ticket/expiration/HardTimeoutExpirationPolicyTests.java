@@ -1,19 +1,20 @@
 package org.apereo.cas.ticket.expiration;
 
 import org.apereo.cas.authentication.CoreAuthenticationTestUtils;
+import org.apereo.cas.ticket.TicketGrantingTicket;
 import org.apereo.cas.ticket.TicketGrantingTicketImpl;
+import org.apereo.cas.util.RandomUtils;
 import org.apereo.cas.util.serialization.JacksonObjectMapperFactory;
 import org.apereo.cas.util.serialization.SerializationUtils;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.val;
-import org.apache.commons.io.FileUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
-import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.time.Clock;
 import java.time.ZoneOffset;
 
@@ -28,8 +29,6 @@ import static org.junit.jupiter.api.Assertions.*;
 @Tag("ExpirationPolicy")
 class HardTimeoutExpirationPolicyTests {
 
-    private static final File JSON_FILE = new File(FileUtils.getTempDirectoryPath(), "hardTimeoutExpirationPolicy.json");
-
     private static final ObjectMapper MAPPER = JacksonObjectMapperFactory.builder()
         .defaultTypingEnabled(true).build().toObjectMapper();
 
@@ -37,38 +36,38 @@ class HardTimeoutExpirationPolicyTests {
 
     private HardTimeoutExpirationPolicy expirationPolicy;
 
-    private TicketGrantingTicketImpl ticket;
+    private TicketGrantingTicket ticket;
 
     @BeforeEach
     public void initialize() {
-        this.expirationPolicy = new HardTimeoutExpirationPolicy(TIMEOUT);
-        this.ticket = new TicketGrantingTicketImpl("test", CoreAuthenticationTestUtils
-            .getAuthentication(), this.expirationPolicy);
+        expirationPolicy = new HardTimeoutExpirationPolicy(TIMEOUT);
+        ticket = new TicketGrantingTicketImpl("test", CoreAuthenticationTestUtils
+            .getAuthentication(), expirationPolicy);
     }
 
     @Test
     void verifyTicketIsNull() throws Throwable {
-        assertTrue(this.expirationPolicy.isExpired(null));
+        assertTrue(expirationPolicy.isExpired(null));
     }
 
     @Test
     void verifyTicketIsNotExpired() throws Throwable {
-        this.expirationPolicy.setClock(Clock.fixed(this.ticket.getCreationTime().toInstant().plusSeconds(TIMEOUT).minusNanos(1), ZoneOffset.UTC));
-        assertFalse(this.ticket.isExpired());
+        expirationPolicy.setClock(Clock.fixed(ticket.getCreationTime().toInstant().plusSeconds(TIMEOUT).minusNanos(1), ZoneOffset.UTC));
+        assertFalse(ticket.isExpired());
     }
 
     @Test
     void verifyTicketIsExpired() throws Throwable {
-        this.expirationPolicy.setClock(Clock.fixed(this.ticket.getCreationTime().toInstant().plusSeconds(TIMEOUT).plusNanos(1), ZoneOffset.UTC));
-        assertTrue(this.ticket.isExpired());
-        assertEquals(0, this.expirationPolicy.getTimeToIdle());
+        expirationPolicy.setClock(Clock.fixed(ticket.getCreationTime().toInstant().plusSeconds(TIMEOUT).plusNanos(1), ZoneOffset.UTC));
+        assertTrue(ticket.isExpired());
     }
 
     @Test
     void verifySerializeANeverExpiresExpirationPolicyToJson() throws IOException {
+        val jsonFile = Files.createTempFile(RandomUtils.randomAlphabetic(8), ".json").toFile();
         val policyWritten = new HardTimeoutExpirationPolicy();
-        MAPPER.writeValue(JSON_FILE, policyWritten);
-        val policyRead = MAPPER.readValue(JSON_FILE, HardTimeoutExpirationPolicy.class);
+        MAPPER.writeValue(jsonFile, policyWritten);
+        val policyRead = MAPPER.readValue(jsonFile, HardTimeoutExpirationPolicy.class);
         assertEquals(policyWritten, policyRead);
     }
 

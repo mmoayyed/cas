@@ -1,11 +1,10 @@
 {
-  "dependencies": "pac4j-webflow,saml-idp",
+  "dependencies": "pac4j-webflow,saml-idp,pac4j-saml,scripting",
   "conditions": {
     "docker": "true"
   },
-
   "properties": [
-    "--cas.authn.saml-idp.core.entity-id=https://cas.apereo.org/saml/idp/%{random}",
+    "--cas.authn.saml-idp.core.entity-id=https://cas.apereo.org/saml/idp",
     "--cas.authn.saml-idp.metadata.file-system.location=file:${PWD}/ci/tests/puppeteer/scenarios/${SCENARIO}/saml-md",
 
     "--cas.authn.attribute-repository.stub.attributes.email=casuser@example.org",
@@ -13,8 +12,7 @@
     "--cas.server.name=https://localhost:8443",
     "--cas.server.prefix=https://localhost:8443/cas",
     "--cas.server.scope=example.net",
-    
-    "--cas.audit.engine.enabled=true",
+
     "--cas.authn.accept.name=STATIC",
     
     "--cas.service-registry.core.init-from-json=true",
@@ -32,7 +30,4 @@
   "initScript": "${PWD}/ci/tests/puppeteer/scenarios/${SCENARIO}/init.sh",
   "readyScript": "${PWD}/ci/tests/puppeteer/scenarios/${SCENARIO}/ready.sh"
 }
-
-
-
 

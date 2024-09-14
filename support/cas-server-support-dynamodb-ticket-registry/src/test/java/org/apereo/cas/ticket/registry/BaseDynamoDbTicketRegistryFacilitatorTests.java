@@ -1,36 +1,23 @@
 package org.apereo.cas.ticket.registry;
 
-import org.apereo.cas.config.CasCoreAuthenticationConfiguration;
-import org.apereo.cas.config.CasCoreAuthenticationHandlersConfiguration;
-import org.apereo.cas.config.CasCoreAuthenticationMetadataConfiguration;
-import org.apereo.cas.config.CasCoreAuthenticationPolicyConfiguration;
-import org.apereo.cas.config.CasCoreAuthenticationPrincipalConfiguration;
-import org.apereo.cas.config.CasCoreAuthenticationServiceSelectionStrategyConfiguration;
-import org.apereo.cas.config.CasCoreAuthenticationSupportConfiguration;
-import org.apereo.cas.config.CasCoreConfiguration;
-import org.apereo.cas.config.CasCoreHttpConfiguration;
-import org.apereo.cas.config.CasCoreLogoutConfiguration;
-import org.apereo.cas.config.CasCoreNotificationsConfiguration;
-import org.apereo.cas.config.CasCoreServicesAuthenticationConfiguration;
-import org.apereo.cas.config.CasCoreServicesConfiguration;
-import org.apereo.cas.config.CasCoreTicketCatalogConfiguration;
-import org.apereo.cas.config.CasCoreTicketIdGeneratorsConfiguration;
-import org.apereo.cas.config.CasCoreTicketsConfiguration;
-import org.apereo.cas.config.CasCoreTicketsSerializationConfiguration;
-import org.apereo.cas.config.CasCoreUtilConfiguration;
-import org.apereo.cas.config.CasCoreWebConfiguration;
-import org.apereo.cas.config.CasPersonDirectoryConfiguration;
-import org.apereo.cas.config.CasPersonDirectoryStubConfiguration;
-import org.apereo.cas.config.CasWebApplicationServiceFactoryConfiguration;
-import org.apereo.cas.config.DynamoDbCoreConfiguration;
-import org.apereo.cas.config.DynamoDbTicketRegistryConfiguration;
-import org.apereo.cas.config.DynamoDbTicketRegistryTicketCatalogConfiguration;
-
+import org.apereo.cas.config.CasCoreAuthenticationAutoConfiguration;
+import org.apereo.cas.config.CasCoreAutoConfiguration;
+import org.apereo.cas.config.CasCoreLogoutAutoConfiguration;
+import org.apereo.cas.config.CasCoreNotificationsAutoConfiguration;
+import org.apereo.cas.config.CasCoreScriptingAutoConfiguration;
+import org.apereo.cas.config.CasCoreServicesAutoConfiguration;
+import org.apereo.cas.config.CasCoreTicketsAutoConfiguration;
+import org.apereo.cas.config.CasCoreUtilAutoConfiguration;
+import org.apereo.cas.config.CasCoreWebAutoConfiguration;
+import org.apereo.cas.config.CasDynamoDbCoreAutoConfiguration;
+import org.apereo.cas.config.CasDynamoDbTicketRegistryAutoConfiguration;
+import org.apereo.cas.config.CasPersonDirectoryAutoConfiguration;
+import org.apereo.cas.test.CasTestExtension;
+import org.apereo.cas.util.spring.boot.SpringBootTestAutoConfigurations;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.boot.autoconfigure.web.servlet.WebMvcAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.cloud.autoconfigure.RefreshAutoConfiguration;
 import software.amazon.awssdk.core.SdkSystemSetting;
 
 /**
@@ -39,41 +26,28 @@ import software.amazon.awssdk.core.SdkSystemSetting;
  * @author Misagh Moayyed
  * @since 6.4.0
  */
+@SpringBootTestAutoConfigurations
 @SpringBootTest(classes = {
-    DynamoDbCoreConfiguration.class,
-    DynamoDbTicketRegistryConfiguration.class,
-    DynamoDbTicketRegistryTicketCatalogConfiguration.class,
-    CasCoreTicketsConfiguration.class,
-    CasCoreTicketCatalogConfiguration.class,
-    CasCoreTicketsSerializationConfiguration.class,
-    CasCoreLogoutConfiguration.class,
-    CasCoreHttpConfiguration.class,
-    CasCoreServicesConfiguration.class,
-    CasCoreAuthenticationConfiguration.class,
-    CasCoreTicketIdGeneratorsConfiguration.class,
-    CasCoreServicesAuthenticationConfiguration.class,
-    CasCoreConfiguration.class,
-    CasCoreNotificationsConfiguration.class,
-    CasCoreWebConfiguration.class,
-    CasCoreUtilConfiguration.class,
-    CasWebApplicationServiceFactoryConfiguration.class,
-    CasCoreAuthenticationServiceSelectionStrategyConfiguration.class,
-    CasCoreAuthenticationHandlersConfiguration.class,
-    CasCoreAuthenticationMetadataConfiguration.class,
-    CasCoreAuthenticationPolicyConfiguration.class,
-    CasCoreAuthenticationPrincipalConfiguration.class,
-    CasCoreAuthenticationSupportConfiguration.class,
-    CasPersonDirectoryConfiguration.class,
-    CasPersonDirectoryStubConfiguration.class,
-    WebMvcAutoConfiguration.class,
-    RefreshAutoConfiguration.class
-    },
+    CasDynamoDbCoreAutoConfiguration.class,
+    CasDynamoDbTicketRegistryAutoConfiguration.class,
+    CasCoreTicketsAutoConfiguration.class,
+    CasCoreLogoutAutoConfiguration.class,
+    CasCoreServicesAutoConfiguration.class,
+    CasCoreAutoConfiguration.class,
+    CasCoreNotificationsAutoConfiguration.class,
+    CasCoreWebAutoConfiguration.class,
+    CasCoreUtilAutoConfiguration.class,
+    CasCoreScriptingAutoConfiguration.class,
+    CasCoreAuthenticationAutoConfiguration.class,
+    CasPersonDirectoryAutoConfiguration.class
+},
     properties = {
         "cas.ticket.registry.dynamo-db.endpoint=http://localhost:8000",
         "cas.ticket.registry.dynamo-db.drop-tables-on-startup=true",
         "cas.ticket.registry.dynamo-db.local-instance=true",
         "cas.ticket.registry.dynamo-db.region=us-east-1"
     })
+@ExtendWith(CasTestExtension.class)
 public abstract class BaseDynamoDbTicketRegistryFacilitatorTests {
 
     static {

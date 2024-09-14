@@ -11,11 +11,14 @@ import org.apereo.cas.services.AllAuthenticationHandlersRegisteredServiceAuthent
 import org.apereo.cas.services.AnonymousRegisteredServiceUsernameAttributeProvider;
 import org.apereo.cas.services.AnyAuthenticationHandlerRegisteredServiceAuthenticationPolicyCriteria;
 import org.apereo.cas.services.AttributeBasedRegisteredServiceAccessStrategyActivationCriteria;
+import org.apereo.cas.services.AttributeBasedRegisteredServiceAttributeReleaseActivationCriteria;
+import org.apereo.cas.services.AttributeBasedRegisteredServiceSingleSignOnParticipationPolicy;
 import org.apereo.cas.services.CasProtocolVersions;
 import org.apereo.cas.services.CasRegisteredService;
 import org.apereo.cas.services.ChainingAttributeReleasePolicy;
 import org.apereo.cas.services.ChainingRegisteredServiceAccessStrategy;
 import org.apereo.cas.services.ChainingRegisteredServiceAccessStrategyActivationCriteria;
+import org.apereo.cas.services.ChainingRegisteredServiceAttributeReleaseActivationCriteria;
 import org.apereo.cas.services.ChainingRegisteredServiceDelegatedAuthenticationPolicy;
 import org.apereo.cas.services.DefaultRegisteredServiceAcceptableUsagePolicy;
 import org.apereo.cas.services.DefaultRegisteredServiceAccessStrategy;
@@ -24,10 +27,12 @@ import org.apereo.cas.services.DefaultRegisteredServiceContact;
 import org.apereo.cas.services.DefaultRegisteredServiceDelegatedAuthenticationPolicy;
 import org.apereo.cas.services.DefaultRegisteredServiceExpirationPolicy;
 import org.apereo.cas.services.DefaultRegisteredServiceMultifactorPolicy;
+import org.apereo.cas.services.DefaultRegisteredServicePasswordlessPolicy;
 import org.apereo.cas.services.DefaultRegisteredServiceProperty;
 import org.apereo.cas.services.DefaultRegisteredServiceProxyGrantingTicketExpirationPolicy;
 import org.apereo.cas.services.DefaultRegisteredServiceProxyTicketExpirationPolicy;
 import org.apereo.cas.services.DefaultRegisteredServiceServiceTicketExpirationPolicy;
+import org.apereo.cas.services.DefaultRegisteredServiceSurrogatePolicy;
 import org.apereo.cas.services.DefaultRegisteredServiceTicketGrantingTicketExpirationPolicy;
 import org.apereo.cas.services.DefaultRegisteredServiceUsernameProvider;
 import org.apereo.cas.services.DefaultRegisteredServiceWebflowInterruptPolicy;
@@ -35,7 +40,9 @@ import org.apereo.cas.services.DenyAllAttributeReleasePolicy;
 import org.apereo.cas.services.FullRegexRegisteredServiceMatchingStrategy;
 import org.apereo.cas.services.GroovyRegisteredServiceAccessStrategy;
 import org.apereo.cas.services.GroovyRegisteredServiceAccessStrategyActivationCriteria;
+import org.apereo.cas.services.GroovyRegisteredServiceAttributeReleaseActivationCriteria;
 import org.apereo.cas.services.GroovyRegisteredServiceAuthenticationPolicyCriteria;
+import org.apereo.cas.services.GroovyRegisteredServiceSingleSignOnParticipationPolicy;
 import org.apereo.cas.services.GroovyRegisteredServiceUsernameProvider;
 import org.apereo.cas.services.GroovyScriptAttributeReleasePolicy;
 import org.apereo.cas.services.LiteralRegisteredServiceMatchingStrategy;
@@ -64,11 +71,11 @@ import org.apereo.cas.services.support.RegisteredServiceScriptedAttributeFilter;
 import org.apereo.cas.util.serialization.ComponentSerializationPlanConfigurer;
 import org.apereo.cas.util.spring.boot.ConditionalOnFeatureEnabled;
 
-import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.cloud.context.config.annotation.RefreshScope;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.ScopedProxyMode;
 
 /**
@@ -79,8 +86,8 @@ import org.springframework.context.annotation.ScopedProxyMode;
  */
 @EnableConfigurationProperties(CasConfigurationProperties.class)
 @ConditionalOnFeatureEnabled(feature = CasFeatureModule.FeatureCatalog.ServiceRegistry)
-@AutoConfiguration
-public class CasCoreServicesComponentSerializationConfiguration {
+@Configuration(value = "CasCoreServicesComponentSerializationConfiguration", proxyBeanMethods = false)
+class CasCoreServicesComponentSerializationConfiguration {
     @Bean
     @ConditionalOnMissingBean(name = "casCoreServicesComponentSerializationPlanConfigurer")
     @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
@@ -93,6 +100,7 @@ public class CasCoreServicesComponentSerializationConfiguration {
             plan.registerSerializableClass(DefaultRegisteredServiceProperty.class);
             plan.registerSerializableClass(DefaultRegisteredServiceDelegatedAuthenticationPolicy.class);
             plan.registerSerializableClass(ChainingRegisteredServiceDelegatedAuthenticationPolicy.class);
+            plan.registerSerializableClass(ChainingRegisteredServiceAttributeReleaseActivationCriteria.class);
             plan.registerSerializableClass(DefaultRegisteredServiceExpirationPolicy.class);
             plan.registerSerializableClass(DefaultRegisteredServiceServiceTicketExpirationPolicy.class);
             plan.registerSerializableClass(DefaultRegisteredServiceProxyTicketExpirationPolicy.class);
@@ -127,7 +135,11 @@ public class CasCoreServicesComponentSerializationConfiguration {
             plan.registerSerializableClass(RegisteredServiceScriptedAttributeFilter.class);
             plan.registerSerializableClass(ChainingRegisteredServiceAccessStrategyActivationCriteria.class);
             plan.registerSerializableClass(AttributeBasedRegisteredServiceAccessStrategyActivationCriteria.class);
+            plan.registerSerializableClass(AttributeBasedRegisteredServiceSingleSignOnParticipationPolicy.class);
             plan.registerSerializableClass(GroovyRegisteredServiceAccessStrategyActivationCriteria.class);
+            plan.registerSerializableClass(GroovyRegisteredServiceAttributeReleaseActivationCriteria.class);
+            plan.registerSerializableClass(AttributeBasedRegisteredServiceAttributeReleaseActivationCriteria.class);
+            plan.registerSerializableClass(GroovyRegisteredServiceSingleSignOnParticipationPolicy.class);
 
             plan.registerSerializableClass(ChainingAttributeReleasePolicy.class);
             plan.registerSerializableClass(DenyAllAttributeReleasePolicy.class);
@@ -140,6 +152,8 @@ public class CasCoreServicesComponentSerializationConfiguration {
             plan.registerSerializableClass(PatternMatchingAttributeReleasePolicy.class);
             plan.registerSerializableClass(PatternMatchingAttributeReleasePolicy.Rule.class);
 
+            plan.registerSerializableClass(DefaultRegisteredServicePasswordlessPolicy.class);
+            plan.registerSerializableClass(DefaultRegisteredServiceSurrogatePolicy.class);
             plan.registerSerializableClass(DefaultRegisteredServiceMultifactorPolicy.class);
             plan.registerSerializableClass(BaseMultifactorAuthenticationProviderProperties.MultifactorAuthenticationProviderFailureModes.class);
 

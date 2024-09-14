@@ -10,7 +10,7 @@
 </head>
 
 <body>
-<main role="main" class="container mt-3 mb-3">
+<main class="container mt-3 mb-3">
     <div layout:fragment="content" id="login" class="mdc-card card mdc-card-content w-lg-50 p-4 m-auto">
 
         <p th:utext="#{screen.authentication.gauth.selecteddevice(${registeredDevice.name})}"></p>
@@ -19,7 +19,7 @@
             <div id="msg" class="banner banner-danger alert alert-danger my-2" th:if="${#fields.hasErrors('*')}">
                 <span th:each="err : ${#fields.errors('*')}" th:utext="${err + ' '}"/>
             </div>
-            <input type="hidden" name="_eventId_submit" value="Login"/>
+            <input type="hidden" name="_eventId" value="submit"/>
             <input type="hidden" name="execution" th:value="${flowExecutionKey}"/>
             <input type="hidden" name="geolocation"/>
             <section class="cas-field form-group my-3 mdc-input-group">
@@ -27,7 +27,7 @@
                     <div class="w-100 mdc-input-group-field mdc-input-group-field-append">
                         <div class="d-flex">
                             <input type="hidden" id="accountId" name="accountId" size="25" autocomplete="off" th:field="*{accountId}" />
-                    
+
                             <label for="token"
                                 class="mdc-text-field caps-check mdc-text-field--outlined control-label mdc-text-field--with-trailing-icon">
                                 <span class="mdc-notched-outline">
@@ -40,8 +40,8 @@
                                 <input class="mdc-text-field__input form-control pwd" type="password" name="token" id="token"
                                     th:field="*{token}" size="25" autocomplete="off" required />
                             </label>
-                    
-                    
+
+
                             <script type="text/javascript" th:inline="javascript">
                                 /*<![CDATA[*/
                                 let accountId = /*[[${registeredDevice.id}]]*/;
@@ -54,7 +54,7 @@
                         class="reveal-password align-self-end mdc-button mdc-button--raised btn btn-primary mdc-input-group-append mdc-icon-button"
                         tabindex="-1"
                         type="button">
-                        <i class="mdi mdi-eye fas fa-eye reveal-password-icon"></i>
+                        <i class="mdi mdi-eye fas fa-eye reveal-password-icon" aria-hidden="true"></i>
                         <span class="visually-hidden">Toggle Token</span>
                     </button>
                 </div>
@@ -65,10 +65,10 @@
                     </p>
                 </div>
             </section>
-            <button id="login" class="mdc-button mdc-button--raised btn btn-primary" accesskey="l">
+            <button id="loginButton" class="mdc-button mdc-button--raised btn btn-primary" accesskey="l">
                 <span class="mdc-button__label" th:text="#{screen.welcome.button.login}">Login</span>
             </button>
-            <a class="mdc-button mdc-button--raised btn btn-primary" id="cancel" name="cancel"
+            <a class="mdc-button mdc-button--raised btn btn-primary button-cancel" id="cancel" name="cancel"
                onclick="location.href = location.href;">
                 <span class="mdc-button__label" th:utext="#{screen.authentication.gauth.cancel}">Cancel</span>
             </a>
@@ -78,19 +78,22 @@
             <hr width="75%">
             <p th:utext="#{screen.authentication.gauth.selanotherdevice(${registeredDevice.name})}"></p>
             <form method="post" id="fm3">
-                <input type="hidden" name="_eventId_select" value="select"/>
+                <input type="hidden" name="_eventId" value="select"/>
                 <input type="hidden" name="execution" th:value="${flowExecutionKey}"/>
                 <button id="selectDeviceButton" class="mdc-button mdc-button--raised btn btn-primary me-2" accesskey="s">
                     <span class="mdc-button__label" th:text="#{screen.authentication.gauth.selectdevice}">Select Device</span>
                 </button>
             </form>
         </span>
-        
-        <div th:if="${gauthMultipleDeviceRegistrationEnabled}">
+
+        <div id="deviceRegistrationDiv"
+             th:if="${gauthMultipleDeviceRegistrationEnabled && #bools.isTrue(#objects.nullSafe(mfaDeviceRegistrationEnabled, true))}">
             <p>
             <hr width="75%">
             <p th:utext="#{screen.authentication.gauth.reganotherdevice}"></p>
-            <button class="mdc-button mdc-button--raised btn btn-primary me-2" name="registerButton" id="registerButton">
+            <button class="mdc-button mdc-button--raised btn btn-primary me-2"
+                    onclick="cas.openDialog('confirm-reg-dialog')"
+                    name="registerButton" id="registerButton">
                 <span class="mdc-button__label" th:text="#{screen.welcome.button.register}">Register</span>
             </button>
 
@@ -107,14 +110,14 @@
                             <div class="mdc-dialog__content" id="notif-dialog-content">
                                 <div class="mdc-typography--body1">
                                     <div class="banner banner-danger alert alert-danger banner-dismissible"
-                                         style="display: none" id="errorPanel">
+                                         role="alert" style="display: none" id="errorPanel">
                                         <h3>Failure</h3>
                                         <p th:utext="#{screen.authentication.gauth.invalidtoken}">
                                     </div>
 
-                                    <p th:utext="#{screen.authentication.gauth.confirm.desc}">Description</p>
+                                    <p class="text-justify" th:utext="#{screen.authentication.gauth.confirm.desc}">Description</p>
 
-                                    <input type="hidden" name="_eventId_confirm" value="Confirm"/>
+                                    <input type="hidden" name="_eventId" value="confirm"/>
                                     <input type="hidden" name="execution" th:value="${flowExecutionKey}"/>
 
                                     <section class="cas-field form-group my-3 mdc-input-group">
@@ -139,16 +142,16 @@
                                                            aria-required="true"
                                                            autocomplete="off"
                                                            required />
-                                                    <div class="mdc-text-field-helper-line invalid-feedback">
-                                                        <div class="mdc-text-field-helper-text mdc-text-field-helper-text--validation-msg" aria-hidden="true">
+                                                    <span class="mdc-text-field-helper-line invalid-feedback">
+                                                        <span class="mdc-text-field-helper-text mdc-text-field-helper-text--validation-msg" aria-hidden="true">
                                                             <span th:utext="#{username.required}"></span>
-                                                        </div>
-                                                    </div>
+                                                        </span>
+                                                    </span>
                                                 </label>
                                                 <button class="reveal-password align-self-end mdc-button mdc-button--raised btn btn-primary mdc-input-group-append mdc-icon-button"
                                                         tabindex="-1"
                                                         type="button">
-                                                    <i class="mdi mdi-eye fas fa-eye reveal-password-icon"></i>
+                                                    <i class="mdi mdi-eye fas fa-eye reveal-password-icon" aria-hidden="true"></i>
                                                     <span class="visually-hidden">Toggle Token</span>
                                                 </button>
                                             </div>
@@ -209,7 +212,7 @@
                                 <button class="mdc-button mdc-button--raised btn btn-primary me-2" name="verifyButton" id="verifyButton">
                                     <span class="mdc-button__label" th:text="#{screen.welcome.button.login}">Login</span>
                                 </button>
-                                <button type="button" class="mdc-button mdc-button--outline btn btn-outline-secondary"
+                                <button type="button" class="mdc-button mdc-button--outline btn btn-outline-secondary button-cancel"
                                         data-mdc-dialog-action="accept" data-mdc-dialog-button-default>
                                     <span class="mdc-button__label">Cancel</span>
                                 </button>
@@ -245,22 +248,6 @@
                 </script>
             </div>
             <!-- Confirmation Dialog -->
-
-            
-            <script type="text/javascript">
-                (material => {
-                    document.addEventListener('DOMContentLoaded', () => {
-                        let element = document.getElementById('confirm-reg-dialog');
-                        let dialog = material.dialog.MDCDialog.attachTo(element);
-                        let btn = document.getElementById('registerButton');
-                        btn.addEventListener('click', event => {
-                            dialog.open();
-                            event.preventDefault();
-                        }, false);
-                    });
-                })(mdc);
-            </script>
-            
         </div>
         </p>
     </div>

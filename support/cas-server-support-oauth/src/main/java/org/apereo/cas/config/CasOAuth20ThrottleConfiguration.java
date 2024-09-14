@@ -13,20 +13,17 @@ import org.apereo.cas.throttle.AuthenticationThrottlingExecutionPlan;
 import org.apereo.cas.ticket.registry.TicketRegistry;
 import org.apereo.cas.util.spring.RefreshableHandlerInterceptor;
 import org.apereo.cas.util.spring.boot.ConditionalOnFeatureEnabled;
+import org.apereo.cas.web.SecurityLogicInterceptor;
 import org.apereo.cas.web.cookie.CasCookieBuilder;
 
 import lombok.val;
-import org.pac4j.core.authorization.authorizer.DefaultAuthorizers;
 import org.pac4j.core.client.Client;
 import org.pac4j.core.client.DirectClient;
 import org.pac4j.core.config.Config;
 import org.pac4j.core.context.session.SessionStore;
 import org.pac4j.core.engine.DefaultSecurityLogic;
-import org.pac4j.core.matching.matcher.DefaultMatchers;
-import org.pac4j.springframework.web.SecurityInterceptor;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.AutoConfigureOrder;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -39,7 +36,7 @@ import org.springframework.web.servlet.HandlerInterceptor;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
-import javax.annotation.Nonnull;
+import jakarta.annotation.Nonnull;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -54,12 +51,12 @@ import static org.apereo.cas.support.oauth.OAuth20Constants.*;
  */
 @EnableConfigurationProperties(CasConfigurationProperties.class)
 @ConditionalOnFeatureEnabled(feature = CasFeatureModule.FeatureCatalog.OAuth)
-@AutoConfiguration
-public class CasOAuth20ThrottleConfiguration {
+@Configuration(value = "CasOAuth20ThrottleConfiguration", proxyBeanMethods = false)
+class CasOAuth20ThrottleConfiguration {
     @Configuration(value = "CasOAuth20ThrottlePlanConfiguration", proxyBeanMethods = false)
     @EnableConfigurationProperties(CasConfigurationProperties.class)
     @AutoConfigureOrder(Ordered.LOWEST_PRECEDENCE)
-    public static class CasOAuth20ThrottlePlanConfiguration {
+    static class CasOAuth20ThrottlePlanConfiguration {
         @Bean
         @ConditionalOnMissingBean(name = "oauthThrottleWebMvcConfigurer")
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
@@ -82,7 +79,7 @@ public class CasOAuth20ThrottleConfiguration {
 
     @Configuration(value = "CasOAuth20ThrottleMvcConfiguration", proxyBeanMethods = false)
     @EnableConfigurationProperties(CasConfigurationProperties.class)
-    public static class CasOAuth20ThrottleMvcConfiguration {
+    static class CasOAuth20ThrottleMvcConfiguration {
 
         @ConditionalOnMissingBean(name = "oauthHandlerInterceptorAdapter")
         @Bean
@@ -126,7 +123,7 @@ public class CasOAuth20ThrottleConfiguration {
 
     @Configuration(value = "CasOAuth20ThrottleInterceptorConfiguration", proxyBeanMethods = false)
     @EnableConfigurationProperties(CasConfigurationProperties.class)
-    public static class CasOAuth20ThrottleInterceptorConfiguration {
+    static class CasOAuth20ThrottleInterceptorConfiguration {
         @ConditionalOnMissingBean(name = "requiresAuthenticationAuthorizeInterceptor")
         @Bean
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
@@ -135,9 +132,7 @@ public class CasOAuth20ThrottleConfiguration {
             @Qualifier(CasCookieBuilder.BEAN_NAME_TICKET_GRANTING_COOKIE_BUILDER) final CasCookieBuilder ticketGrantingTicketCookieGenerator,
             @Qualifier(TicketRegistry.BEAN_NAME) final TicketRegistry ticketRegistry) {
             val logic = new OAuth20TicketGrantingTicketAwareSecurityLogic(ticketGrantingTicketCookieGenerator, ticketRegistry);
-            return new SecurityInterceptor(oauthSecConfig.withSecurityLogic(logic),
-                Authenticators.CAS_OAUTH_CLIENT,
-                DefaultAuthorizers.IS_FULLY_AUTHENTICATED, DefaultMatchers.SECURITYHEADERS);
+            return new SecurityLogicInterceptor(oauthSecConfig.withSecurityLogic(logic), Authenticators.CAS_OAUTH_CLIENT);
         }
 
         @ConditionalOnMissingBean(name = "requiresAuthenticationAccessTokenInterceptor")
@@ -151,11 +146,9 @@ public class CasOAuth20ThrottleConfiguration {
                 .filter(DirectClient.class::isInstance)
                 .map(Client::getName)
                 .collect(Collectors.joining(","));
-
             val logic = new DefaultSecurityLogic();
             logic.setLoadProfilesFromSession(false);
-            return new SecurityInterceptor(oauthSecConfig.withSecurityLogic(logic), clients,
-                DefaultAuthorizers.IS_FULLY_AUTHENTICATED, DefaultMatchers.SECURITYHEADERS);
+            return new SecurityLogicInterceptor(oauthSecConfig.withSecurityLogic(logic), clients);
         }
     }
 }

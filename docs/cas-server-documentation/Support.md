@@ -66,7 +66,7 @@ Commercial support for CAS is provided by the following entities:
 
 Please take the following steps to obtain support from the CAS user community.
 
-<div class="alert alert-info"><strong>Community Etiquette</strong><p>Remember that activity on the mailing lists and all other support channels
+<div class="alert alert-info">:information_source: <strong>Community Etiquette</strong><p>Remember that activity on the mailing lists and all other support channels
 is entirely voluntary. There are no SLAs. There are no guarantees. You may opt into professional support agreements with 
 Apereo commercial service providers if that is unacceptable. Also unless explicitly asked, please <b>avoid</b> contacting individual project members directly.</p></div>
 
@@ -75,7 +75,7 @@ Apereo commercial service providers if that is unacceptable. Also unless explici
 The CAS community chat room is provided by [Gitter][casgitter]. Apereo also has an 
 official [Slack chat workspace](https://apereo.slack.com) where you may find a `#cas` 
 channel. The sign-up page is [available here](https://apereo.slack.com/signup). A 
-specific `cas` tag is also available for [StackOverflow](https://stackoverflow.com/questions/tagged/cas).
+specific `cas` tag is also available for StackOverflow.
 
 ### Mailing Lists
 

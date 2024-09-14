@@ -1,9 +1,9 @@
 package org.apereo.cas.web.support;
 
 import org.apereo.cas.adaptors.ldap.LdapIntegrationTestsOperations;
-import org.apereo.cas.config.CasLdapThrottlingConfiguration;
+import org.apereo.cas.config.CasLdapThrottlingAutoConfiguration;
+import org.apereo.cas.test.CasTestExtension;
 import org.apereo.cas.util.junit.EnabledIfListeningOnPort;
-
 import com.unboundid.ldap.sdk.LDAPConnection;
 import lombok.val;
 import org.apereo.inspektr.common.web.ClientInfo;
@@ -11,6 +11,7 @@ import org.apereo.inspektr.common.web.ClientInfoHolder;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.ldaptive.BindConnectionInitializer;
 import org.ldaptive.Credential;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,7 +19,6 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.mock.web.MockHttpServletRequest;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -28,7 +28,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * @since 6.6.0
  */
 @SpringBootTest(classes = {
-    CasLdapThrottlingConfiguration.class,
+    CasLdapThrottlingAutoConfiguration.class,
     BaseThrottledSubmissionHandlerInterceptorAdapterTests.SharedTestConfiguration.class
 },
     properties = {
@@ -40,6 +40,7 @@ import static org.junit.jupiter.api.Assertions.*;
         "cas.authn.throttle.ldap.account-locked-attribute=postalCode"
     })
 @Tag("LdapAuthentication")
+@ExtendWith(CasTestExtension.class)
 @EnabledIfListeningOnPort(port = 11389)
 class LdapThrottledSubmissionReceiverTests {
     private static final int LDAP_PORT = 11389;

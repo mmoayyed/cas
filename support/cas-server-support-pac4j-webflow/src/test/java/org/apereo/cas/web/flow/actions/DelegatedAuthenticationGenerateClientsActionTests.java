@@ -1,6 +1,7 @@
 package org.apereo.cas.web.flow.actions;
 
-import org.apereo.cas.util.http.HttpRequestUtils;
+import org.apereo.cas.test.CasTestExtension;
+import org.apereo.cas.util.MockRequestContext;
 import org.apereo.cas.web.BaseDelegatedAuthenticationTests;
 import org.apereo.cas.web.flow.CasWebflowConstants;
 import org.apereo.cas.web.flow.DelegationWebflowUtils;
@@ -9,19 +10,13 @@ import lombok.val;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.HttpStatus;
-import org.springframework.mock.web.MockHttpServletRequest;
-import org.springframework.mock.web.MockHttpServletResponse;
-import org.springframework.mock.web.MockServletContext;
-import org.springframework.webflow.context.ExternalContextHolder;
-import org.springframework.webflow.context.servlet.ServletExternalContext;
 import org.springframework.webflow.execution.Action;
 import org.springframework.webflow.execution.RequestContext;
-import org.springframework.webflow.execution.RequestContextHolder;
-import org.springframework.webflow.test.MockRequestContext;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -33,9 +28,9 @@ import static org.junit.jupiter.api.Assertions.*;
 @Tag("Delegation")
 class DelegatedAuthenticationGenerateClientsActionTests {
 
-    @SpringBootTest(classes = BaseDelegatedAuthenticationTests.SharedTestConfiguration.class,
-        properties = "cas.authn.pac4j.core.discovery-selection.selection-type=MENU")
+    @SpringBootTest(classes = BaseDelegatedAuthenticationTests.SharedTestConfiguration.class, properties = "cas.authn.pac4j.core.discovery-selection.selection-type=MENU")
     @Nested
+    @ExtendWith(CasTestExtension.class)
     class MenuSelectionTests {
         @Autowired
         @Qualifier(CasWebflowConstants.ACTION_ID_DELEGATED_AUTHENTICATION_CREATE_CLIENTS)
@@ -61,20 +56,13 @@ class DelegatedAuthenticationGenerateClientsActionTests {
         }
     }
 
-    private static RequestContext getMockRequestContext() {
-        val context = new MockRequestContext();
-        val request = new MockHttpServletRequest();
-        request.addHeader(HttpRequestUtils.USER_AGENT_HEADER, "Mozilla/5.0 (Windows NT 10.0; WOW64)");
-        val response = new MockHttpServletResponse();
-        context.setExternalContext(new ServletExternalContext(new MockServletContext(), request, response));
-        RequestContextHolder.setRequestContext(context);
-        ExternalContextHolder.setExternalContext(context.getExternalContext());
-        return context;
+    private static RequestContext getMockRequestContext() throws Exception {
+        return MockRequestContext.create().withUserAgent("Mozilla/5.0 (Windows NT 10.0; WOW64");
     }
 
-    @SpringBootTest(classes = BaseDelegatedAuthenticationTests.SharedTestConfiguration.class,
-        properties = "cas.authn.pac4j.core.discovery-selection.selection-type=DYNAMIC")
+    @SpringBootTest(classes = BaseDelegatedAuthenticationTests.SharedTestConfiguration.class, properties = "cas.authn.pac4j.core.discovery-selection.selection-type=DYNAMIC")
     @Nested
+    @ExtendWith(CasTestExtension.class)
     class DynamicSelectionTests {
         @Autowired
         @Qualifier(CasWebflowConstants.ACTION_ID_DELEGATED_AUTHENTICATION_CREATE_CLIENTS)

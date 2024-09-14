@@ -4,15 +4,14 @@ import org.apereo.cas.configuration.model.core.authentication.PersonDirectoryPri
 import org.apereo.cas.configuration.model.support.email.EmailProperties;
 import org.apereo.cas.configuration.model.support.sms.SmsProperties;
 import org.apereo.cas.configuration.support.RequiresModule;
-
-import com.fasterxml.jackson.annotation.JsonFilter;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
 import org.springframework.boot.context.properties.NestedConfigurationProperty;
-
 import java.io.Serial;
 import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * This is {@link SurrogateAuthenticationProperties}.
@@ -24,16 +23,17 @@ import java.io.Serializable;
 @Getter
 @Setter
 @Accessors(chain = true)
-@JsonFilter("SurrogateAuthenticationProperties")
+
 public class SurrogateAuthenticationProperties implements Serializable {
 
     @Serial
     private static final long serialVersionUID = -2088813217398883623L;
 
     /**
-     * The separator character used to distinguish between the surrogate account and the admin account.
+     * Core settings that drive surrogate authentication.
      */
-    private String separator = "+";
+    @NestedConfigurationProperty
+    private SurrogateCoreAuthenticationProperties core = new SurrogateCoreAuthenticationProperties();
 
     /**
      * Locate surrogate accounts via CAS configuration, hardcoded as properties.
@@ -54,10 +54,9 @@ public class SurrogateAuthenticationProperties implements Serializable {
     private SurrogateGroovyAuthenticationProperties groovy = new SurrogateGroovyAuthenticationProperties();
 
     /**
-     * Locate surrogate accounts via an LDAP server.
+     * Locate surrogate accounts via an LDAP servers.
      */
-    @NestedConfigurationProperty
-    private SurrogateLdapAuthenticationProperties ldap = new SurrogateLdapAuthenticationProperties();
+    private List<SurrogateLdapAuthenticationProperties> ldap = new ArrayList<>();
 
     /**
      * Locate surrogate accounts via a JDBC resource.

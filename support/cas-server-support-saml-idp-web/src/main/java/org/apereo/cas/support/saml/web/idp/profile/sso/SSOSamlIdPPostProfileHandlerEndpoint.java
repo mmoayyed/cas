@@ -24,11 +24,13 @@ import org.apereo.cas.support.saml.web.idp.profile.builders.AuthenticatedAsserti
 import org.apereo.cas.support.saml.web.idp.profile.builders.SamlProfileBuilderContext;
 import org.apereo.cas.support.saml.web.idp.profile.builders.SamlProfileObjectBuilder;
 import org.apereo.cas.util.CollectionUtils;
+import org.apereo.cas.util.EncodingUtils;
 import org.apereo.cas.util.LoggingUtils;
 import org.apereo.cas.util.RandomUtils;
-import org.apereo.cas.web.BaseCasActuatorEndpoint;
+import org.apereo.cas.web.BaseCasRestActuatorEndpoint;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -60,11 +62,11 @@ import org.opensaml.saml.saml2.core.impl.AuthnRequestBuilder;
 import org.opensaml.saml.saml2.metadata.SPSSODescriptor;
 import org.opensaml.saml.saml2.metadata.SingleLogoutService;
 import org.opensaml.saml.saml2.metadata.SingleSignOnService;
-import org.springframework.boot.actuate.endpoint.web.annotation.RestControllerEndpoint;
+import org.springframework.boot.actuate.endpoint.annotation.Endpoint;
+import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -88,8 +90,8 @@ import java.util.UUID;
  * @since 6.1.0
  */
 @Slf4j
-@RestControllerEndpoint(id = "samlPostProfileResponse", enableByDefault = false)
-public class SSOSamlIdPPostProfileHandlerEndpoint extends BaseCasActuatorEndpoint {
+@Endpoint(id = "samlPostProfileResponse", enableByDefault = false)
+public class SSOSamlIdPPostProfileHandlerEndpoint extends BaseCasRestActuatorEndpoint {
 
     private final ServicesManager servicesManager;
 
@@ -110,6 +112,7 @@ public class SSOSamlIdPPostProfileHandlerEndpoint extends BaseCasActuatorEndpoin
     private final MetadataResolver samlIdPMetadataResolver;
 
     public SSOSamlIdPPostProfileHandlerEndpoint(final CasConfigurationProperties casProperties,
+                                                final ConfigurableApplicationContext applicationContext,
                                                 final ServicesManager servicesManager,
                                                 final AuthenticationSystemSupport authenticationSystemSupport,
                                                 final ServiceFactory<WebApplicationService> serviceFactory,
@@ -119,7 +122,7 @@ public class SSOSamlIdPPostProfileHandlerEndpoint extends BaseCasActuatorEndpoin
                                                 final AbstractSaml20ObjectBuilder saml20ObjectBuilder,
                                                 final PrincipalResolver principalResolver,
                                                 final MetadataResolver samlIdPMetadataResolver) {
-        super(casProperties);
+        super(casProperties, applicationContext);
         this.servicesManager = servicesManager;
         this.authenticationSystemSupport = authenticationSystemSupport;
         this.serviceFactory = serviceFactory;
@@ -139,35 +142,13 @@ public class SSOSamlIdPPostProfileHandlerEndpoint extends BaseCasActuatorEndpoin
      * @param samlRequest the saml request
      * @return the response entity
      */
-    @GetMapping(produces = MediaType.APPLICATION_XML_VALUE)
-    @ResponseBody
-    @Operation(summary = "Produce SAML2 response entity", parameters = {
-        @Parameter(name = "username", required = true),
-        @Parameter(name = "password", required = true),
-        @Parameter(name = SamlProtocolConstants.PARAMETER_ENTITY_ID, required = true),
-        @Parameter(name = "encrypt")
-    })
-    public ResponseEntity<Object> produceGet(final HttpServletRequest request, final HttpServletResponse response,
-                                             @ModelAttribute
-                                             final SamlRequest samlRequest) {
-        return produce(request, response, samlRequest);
-    }
-
-    /**
-     * Produce response entity.
-     *
-     * @param request     the request
-     * @param response    the response
-     * @param samlRequest the saml request
-     * @return the response entity
-     */
     @PostMapping(produces = MediaType.APPLICATION_XML_VALUE)
     @ResponseBody
     @Operation(summary = "Produce SAML2 response entity", parameters = {
-        @Parameter(name = "username", required = true),
-        @Parameter(name = "password", required = false),
-        @Parameter(name = SamlProtocolConstants.PARAMETER_ENTITY_ID, required = true),
-        @Parameter(name = "encrypt")
+        @Parameter(name = "username", required = true, description = "The username to authenticate"),
+        @Parameter(name = "password", required = false, description = "The password to authenticate"),
+        @Parameter(name = SamlProtocolConstants.PARAMETER_ENTITY_ID, required = true, description = "The entity id"),
+        @Parameter(name = "encrypt", schema = @Schema(type = "boolean"), description = "Whether to encrypt the response")
     })
     public ResponseEntity<Object> producePost(final HttpServletRequest request,
                                               final HttpServletResponse response,
@@ -187,7 +168,7 @@ public class SSOSamlIdPPostProfileHandlerEndpoint extends BaseCasActuatorEndpoin
      */
     @PostMapping(value = "/logout/post", produces = MediaType.TEXT_HTML_VALUE)
     @Operation(summary = "Produce SAML2 logout request for the given SAML2 SP",
-               parameters = @Parameter(name = SamlProtocolConstants.PARAMETER_ENTITY_ID, required = true))
+               parameters = @Parameter(name = SamlProtocolConstants.PARAMETER_ENTITY_ID, required = true, description = "The entity id"))
     public ResponseEntity<Object> produceLogoutRequestPost(
         @RequestParam(SamlProtocolConstants.PARAMETER_ENTITY_ID) final String entityId,
         final HttpServletResponse response) throws Exception {
@@ -234,10 +215,15 @@ public class SSOSamlIdPPostProfileHandlerEndpoint extends BaseCasActuatorEndpoin
         endpoint.setLocation(sloEndpointDestination);
         endpointContext.setEndpoint(endpoint);
 
+        val encodedRequest = EncodingUtils.encodeBase64(SamlUtils.transformSamlObject(
+            saml20ObjectBuilder.getOpenSamlConfigBean(), logoutRequest, true).toString());
+        response.setHeader("LogoutRequest", encodedRequest);
+        
         messageContext.setMessage(logoutRequest);
         encoder.setMessageContext(messageContext);
         encoder.initialize();
         encoder.encode();
+
         return ResponseEntity.ok().build();
     }
 

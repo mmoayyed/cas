@@ -1,18 +1,19 @@
 package org.apereo.cas.web;
 
 import org.apereo.cas.bucket4j.consumer.BucketConsumer;
-import org.apereo.cas.config.CasBucket4jThrottlingConfiguration;
+import org.apereo.cas.config.CasBucket4jThrottlingAutoConfiguration;
+import org.apereo.cas.test.CasTestExtension;
 import org.apereo.cas.throttle.ThrottledRequestExecutor;
+import org.apereo.cas.util.spring.boot.SpringBootTestAutoConfigurations;
 import lombok.val;
 import org.apereo.inspektr.common.web.ClientInfo;
 import org.apereo.inspektr.common.web.ClientInfoHolder;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.boot.autoconfigure.web.servlet.WebMvcAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.cloud.autoconfigure.RefreshAutoConfiguration;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import static org.junit.jupiter.api.Assertions.*;
@@ -23,11 +24,9 @@ import static org.junit.jupiter.api.Assertions.*;
  * @author Misagh Moayyed
  * @since 6.5.0
  */
-@SpringBootTest(classes = {
-    RefreshAutoConfiguration.class,
-    WebMvcAutoConfiguration.class,
-    CasBucket4jThrottlingConfiguration.class
-})
+@SpringBootTestAutoConfigurations
+@SpringBootTest(classes = CasBucket4jThrottlingAutoConfiguration.class)
+@ExtendWith(CasTestExtension.class)
 public abstract class BaseBucket4jThrottledRequestTests {
     @Autowired
     @Qualifier(ThrottledRequestExecutor.DEFAULT_BEAN_NAME)

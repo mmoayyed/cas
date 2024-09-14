@@ -8,8 +8,7 @@ import org.apereo.cas.authentication.principal.Service;
 import org.apereo.cas.configuration.CasConfigurationProperties;
 import org.apereo.cas.services.RegisteredService;
 import org.apereo.cas.util.ResourceUtils;
-import org.apereo.cas.util.scripting.ScriptingUtils;
-
+import org.apereo.cas.util.scripting.ExecutableCompiledScriptFactory;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
@@ -17,10 +16,8 @@ import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.springframework.context.ApplicationContext;
 import org.springframework.core.Ordered;
-
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-
 import java.util.Comparator;
 import java.util.Optional;
 import java.util.function.Predicate;
@@ -50,8 +47,8 @@ public class PredicatedPrincipalAttributeMultifactorAuthenticationTrigger implem
                                                                    final HttpServletRequest httpServletRequest,
                                                                    final HttpServletResponse response,
                                                                    final Service service) {
-        val predicateResource = casProperties.getAuthn().getMfa().getTriggers()
-            .getPrincipal().getGlobalPrincipalAttributePredicate().getLocation();
+        val properties = casProperties.getAuthn().getMfa().getTriggers().getPrincipal();
+        val predicateResource = properties.getGlobalPrincipalAttributePredicate().getLocation();
 
         if (!ResourceUtils.doesResourceExist(predicateResource)) {
             LOGGER.trace("No predicate is defined to decide which multifactor authentication provider should be chosen");
@@ -68,9 +65,8 @@ public class PredicatedPrincipalAttributeMultifactorAuthenticationTrigger implem
 
         val principal = authentication.getPrincipal();
         val args = new Object[]{service, principal, providers, LOGGER};
-        val predicate = ScriptingUtils.getObjectInstanceFromGroovyResource(predicateResource,
-            PREDICATE_CTOR_PARAMETERS, args, Predicate.class);
-
+        val scriptFactory = ExecutableCompiledScriptFactory.getExecutableCompiledScriptFactory();
+        val predicate = scriptFactory.newObjectInstance(predicateResource, PREDICATE_CTOR_PARAMETERS, args, Predicate.class);
         if (predicate == null) {
             LOGGER.debug("No multifactor authentication provider is determined by the predicate");
             return Optional.empty();

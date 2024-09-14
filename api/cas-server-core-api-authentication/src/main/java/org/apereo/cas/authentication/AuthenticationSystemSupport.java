@@ -1,5 +1,7 @@
 package org.apereo.cas.authentication;
 
+import org.apereo.cas.authentication.principal.PrincipalFactory;
+import org.apereo.cas.authentication.principal.PrincipalResolver;
 import org.apereo.cas.authentication.principal.Service;
 
 import java.util.Collection;
@@ -26,6 +28,13 @@ public interface AuthenticationSystemSupport {
     String BEAN_NAME = "defaultAuthenticationSystemSupport";
 
     /**
+     * Gets principal factory.
+     *
+     * @return the principal factory
+     */
+    PrincipalFactory getPrincipalFactory();
+
+    /**
      * Gets authentication transaction manager.
      *
      * @return the authentication transaction manager
@@ -38,6 +47,13 @@ public interface AuthenticationSystemSupport {
      * @return the principal election strategy
      */
     PrincipalElectionStrategy getPrincipalElectionStrategy();
+
+    /**
+     * Gets principal resolver.
+     *
+     * @return the principal resolver
+     */
+    PrincipalResolver getPrincipalResolver();
 
     /**
      * Gets authentication transaction factory.

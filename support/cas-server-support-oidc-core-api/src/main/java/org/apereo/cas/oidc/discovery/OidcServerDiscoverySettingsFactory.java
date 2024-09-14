@@ -20,18 +20,24 @@ import java.util.stream.Collectors;
  */
 @RequiredArgsConstructor
 public class OidcServerDiscoverySettingsFactory implements FactoryBean<OidcServerDiscoverySettings> {
-    private final CasConfigurationProperties casProperties;
+    protected final CasConfigurationProperties casProperties;
 
-    private final OidcIssuerService issuerService;
+    protected final OidcIssuerService issuerService;
 
-    private final ConfigurableApplicationContext applicationContext;
+    protected final ConfigurableApplicationContext applicationContext;
 
     @Override
     public OidcServerDiscoverySettings getObject() {
+        return populateDiscovery(createDiscovery());
+    }
+
+    protected OidcServerDiscoverySettings createDiscovery() {
+        return new OidcServerDiscoverySettings(issuerService.determineIssuer(Optional.empty()));
+    }
+
+    protected OidcServerDiscoverySettings populateDiscovery(final OidcServerDiscoverySettings discovery) {
         val oidc = casProperties.getAuthn().getOidc();
         val discoveryConfig = oidc.getDiscovery();
-
-        val discovery = new OidcServerDiscoverySettings(issuerService.determineIssuer(Optional.empty()));
 
         discovery.setClaimsSupported(new LinkedHashSet<>(discoveryConfig.getClaims()));
         discovery.setScopesSupported(new LinkedHashSet<>(discoveryConfig.getScopes()));
@@ -106,6 +112,10 @@ public class OidcServerDiscoverySettingsFactory implements FactoryBean<OidcServe
         discovery.setElectronicRecordsSupported(discoveryConfig.getElectronicRecordsSupported());
         discovery.setClaimsInVerifiedClaimsSupported(discoveryConfig.getClaimsInVerifiedClaimsSupported());
         
+        discovery.setBackchannelUserCodeParameterSupported(discoveryConfig.isBackchannelUserCodeParameterSupported());
+        discovery.setBackchannelTokenDeliveryModesSupported(new LinkedHashSet<>(discoveryConfig.getBackchannelTokenDeliveryModesSupported()));
+        discovery.setBackchannelAuthenticationRequestSigningAlgValuesSupported(new LinkedHashSet<>(discoveryConfig.getBackchannelAuthenticationRequestSigningAlgValuesSupported()));
+
         return discovery;
     }
 

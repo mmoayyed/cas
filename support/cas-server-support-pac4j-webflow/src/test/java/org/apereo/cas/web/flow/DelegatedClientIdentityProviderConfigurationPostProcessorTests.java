@@ -1,17 +1,17 @@
 package org.apereo.cas.web.flow;
 
+import org.apereo.cas.test.CasTestExtension;
 import org.apereo.cas.util.MockRequestContext;
 import org.apereo.cas.web.BaseDelegatedAuthenticationTests;
 
 import lombok.val;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.ConfigurableApplicationContext;
-import org.springframework.webflow.context.ExternalContextHolder;
-import org.springframework.webflow.execution.RequestContextHolder;
 
 import java.util.Set;
 
@@ -23,6 +23,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * @author Misagh Moayyed
  * @since 6.5.0
  */
+@ExtendWith(CasTestExtension.class)
 @SpringBootTest(classes = BaseDelegatedAuthenticationTests.SharedTestConfiguration.class)
 @Tag("Delegation")
 class DelegatedClientIdentityProviderConfigurationPostProcessorTests {
@@ -38,8 +39,6 @@ class DelegatedClientIdentityProviderConfigurationPostProcessorTests {
         assertNotNull(delegatedClientIdentityProviderConfigurationPostProcessor);
         assertDoesNotThrow(() -> {
             val context = MockRequestContext.create(applicationContext);
-            RequestContextHolder.setRequestContext(context);
-            ExternalContextHolder.setExternalContext(context.getExternalContext());
             delegatedClientIdentityProviderConfigurationPostProcessor.process(context, Set.of());
             delegatedClientIdentityProviderConfigurationPostProcessor.destroy();
         });

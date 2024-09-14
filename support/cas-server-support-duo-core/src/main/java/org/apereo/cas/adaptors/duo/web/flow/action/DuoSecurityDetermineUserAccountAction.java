@@ -1,9 +1,11 @@
 package org.apereo.cas.adaptors.duo.web.flow.action;
 
+import org.apereo.cas.adaptors.duo.DuoSecurityUserAccount;
 import org.apereo.cas.adaptors.duo.DuoSecurityUserAccountStatus;
 import org.apereo.cas.adaptors.duo.authn.DuoSecurityAuthenticationRegistrationCipherExecutor;
 import org.apereo.cas.adaptors.duo.authn.DuoSecurityMultifactorAuthenticationProvider;
 import org.apereo.cas.authentication.principal.Principal;
+import org.apereo.cas.authentication.principal.PrincipalResolver;
 import org.apereo.cas.configuration.CasConfigurationProperties;
 import org.apereo.cas.services.ServicesManager;
 import org.apereo.cas.token.JwtBuilder;
@@ -11,7 +13,6 @@ import org.apereo.cas.util.cipher.CipherExecutorUtils;
 import org.apereo.cas.web.flow.CasWebflowConstants;
 import org.apereo.cas.web.flow.actions.AbstractMultifactorAuthenticationAction;
 import org.apereo.cas.web.support.WebUtils;
-
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
@@ -20,7 +21,6 @@ import org.apache.hc.core5.net.URIBuilder;
 import org.springframework.webflow.action.EventFactorySupport;
 import org.springframework.webflow.execution.Event;
 import org.springframework.webflow.execution.RequestContext;
-
 import java.util.Set;
 import java.util.UUID;
 
@@ -38,14 +38,13 @@ public class DuoSecurityDetermineUserAccountAction extends AbstractMultifactorAu
 
     private final ServicesManager servicesManager;
 
+    private final PrincipalResolver principalResolver;
+
     @Override
-    protected Event doExecuteInternal(final RequestContext requestContext) throws Exception {
+    protected Event doExecuteInternal(final RequestContext requestContext) throws Throwable {
         val authentication = WebUtils.getAuthentication(requestContext);
         val principal = resolvePrincipal(authentication.getPrincipal(), requestContext);
-
-        val duoAuthenticationService = provider.getDuoAuthenticationService();
-        val account = duoAuthenticationService.getUserAccount(principal.getId());
-
+        val account = getDuoSecurityUserAccount(principal);
         val eventFactorySupport = new EventFactorySupport();
         if (account.getStatus() == DuoSecurityUserAccountStatus.ENROLL) {
             if (StringUtils.isNotBlank(provider.getRegistration().getRegistrationUrl())) {
@@ -68,14 +67,26 @@ public class DuoSecurityDetermineUserAccountAction extends AbstractMultifactorAu
         return success();
     }
 
+    protected DuoSecurityUserAccount getDuoSecurityUserAccount(final Principal principal) {
+        val duoAuthenticationService = provider.getDuoAuthenticationService();
+        if (!duoAuthenticationService.getProperties().isAccountStatusEnabled()) {
+            LOGGER.debug("Checking Duo Security for user's [{}] account status is disabled", principal.getId());
+            val account = new DuoSecurityUserAccount(principal.getId());
+            account.setStatus(DuoSecurityUserAccountStatus.AUTH);
+            return account;
+        }
+        return duoAuthenticationService.getUserAccount(principal.getId());
+    }
+
     protected String buildDuoRegistrationUrlFor(final RequestContext requestContext,
                                                 final DuoSecurityMultifactorAuthenticationProvider provider,
-                                                final Principal principal) throws Exception {
+                                                final Principal principal) throws Throwable {
+        val applicationContext = requestContext.getActiveFlow().getApplicationContext();
         val cipher = CipherExecutorUtils.newStringCipherExecutor(provider.getRegistration().getCrypto(),
             DuoSecurityAuthenticationRegistrationCipherExecutor.class);
         val builder = new URIBuilder(provider.getRegistration().getRegistrationUrl());
         if (cipher.isEnabled()) {
-            val jwtBuilder = new JwtBuilder(cipher, servicesManager, casProperties);
+            val jwtBuilder = new JwtBuilder(cipher, applicationContext, servicesManager, principalResolver, casProperties);
             val jwtRequest = JwtBuilder.JwtRequest
                 .builder()
                 .serviceAudience(Set.of(builder.getHost()))

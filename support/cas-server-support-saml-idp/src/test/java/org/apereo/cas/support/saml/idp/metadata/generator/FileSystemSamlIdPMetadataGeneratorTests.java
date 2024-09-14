@@ -4,7 +4,6 @@ import org.apereo.cas.support.saml.BaseSamlIdPConfigurationTests;
 import org.apereo.cas.support.saml.services.SamlRegisteredService;
 import org.apereo.cas.util.RandomUtils;
 import lombok.val;
-import org.apache.commons.io.FileUtils;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -24,7 +23,7 @@ class FileSystemSamlIdPMetadataGeneratorTests {
     @Nested
     @TestPropertySource(properties = {
         "cas.authn.saml-idp.core.entity-id=https://cas.example.org/idp",
-        "cas.authn.saml-idp.core.cache-expiration=0",
+        "cas.authn.saml-idp.metadata.core.cache-expiration=0",
         "cas.authn.saml-idp.metadata.file-system.sign-metadata=true",
         "cas.authn.saml-idp.metadata.file-system.location=${#systemProperties['java.io.tmpdir']}/idp-metadata456"
     })
@@ -38,8 +37,6 @@ class FileSystemSamlIdPMetadataGeneratorTests {
             assertNotNull(samlIdPMetadataLocator.resolveEncryptionKey(Optional.empty()));
             assertNotNull(samlIdPMetadataLocator.resolveSigningCertificate(Optional.empty()));
             assertNotNull(samlIdPMetadataLocator.resolveSigningKey(Optional.empty()));
-
-            FileUtils.delete(metadata.getFile());
             assertNotNull(samlIdPMetadataGenerator.generate(Optional.empty()));
         }
     }
@@ -47,7 +44,7 @@ class FileSystemSamlIdPMetadataGeneratorTests {
     @Nested
     @TestPropertySource(properties = {
         "cas.authn.saml-idp.core.entity-id=https://cas.example.org/idp",
-        "cas.authn.saml-idp.core.cache-expiration=0",
+        "cas.authn.saml-idp.metadata.core.cache-expiration=0",
         "cas.authn.saml-idp.metadata.file-system.sign-metadata=true",
         "cas.authn.saml-idp.metadata.file-system.location=${#systemProperties['java.io.tmpdir']}/idp-metadata599"
     })

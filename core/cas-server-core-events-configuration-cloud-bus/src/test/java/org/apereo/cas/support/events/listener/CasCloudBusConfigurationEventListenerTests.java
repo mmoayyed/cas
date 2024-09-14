@@ -1,19 +1,19 @@
 package org.apereo.cas.support.events.listener;
 
-import org.apereo.cas.config.CasCloudBusEventsConfigEnvironmentConfiguration;
-import org.apereo.cas.config.CasCoreEnvironmentBootstrapConfiguration;
+import org.apereo.cas.config.CasCoreCloudBusEventsConfigEnvironmentAutoConfiguration;
+import org.apereo.cas.config.CasCoreEnvironmentBootstrapAutoConfiguration;
 import org.apereo.cas.configuration.CasConfigurationProperties;
-
+import org.apereo.cas.test.CasTestExtension;
+import org.apereo.cas.util.spring.boot.SpringBootTestAutoConfigurations;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.cloud.autoconfigure.RefreshAutoConfiguration;
 import org.springframework.cloud.bus.event.RefreshRemoteApplicationEvent;
 import org.springframework.context.ConfigurableApplicationContext;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -22,13 +22,14 @@ import static org.junit.jupiter.api.Assertions.*;
  * @author Misagh Moayyed
  * @since 6.3.0
  */
+@SpringBootTestAutoConfigurations
 @SpringBootTest(classes = {
-    CasCloudBusEventsConfigEnvironmentConfiguration.class,
-    CasCoreEnvironmentBootstrapConfiguration.class,
-    RefreshAutoConfiguration.class
+    CasCoreCloudBusEventsConfigEnvironmentAutoConfiguration.class,
+    CasCoreEnvironmentBootstrapAutoConfiguration.class
 })
 @EnableConfigurationProperties(CasConfigurationProperties.class)
 @Tag("CasConfiguration")
+@ExtendWith(CasTestExtension.class)
 class CasCloudBusConfigurationEventListenerTests {
     @Autowired
     @Qualifier("casCloudBusConfigurationEventListener")

@@ -6,7 +6,7 @@
 </head>
 
 <body id="cas">
-<div layout:fragment="content" class="banner banner-success mdc-card card p-4 m-auto w-lg-66">
+<div layout:fragment="content" class="banner mdc-card card p-4 m-auto w-lg-66">
     <h1 th:text="#{screen.oauth.confirm.header}"/>
 
     <div class="d-flex flex-column align-items-center mb-2">
@@ -15,7 +15,7 @@
     </div>
 
     <div id="dynamic" th:if="${dynamic}" class="my-2 banner banner-warning alert alert-warning d-flex align-items-center">
-        <i class="mdi mdi-alert fas fa-exclamation-triangle me-2"></i>
+        <i class="mdi mdi-alert fas fa-exclamation-triangle me-2" aria-hidden="true"></i>
         <strong th:utext="#{screen.oidc.confirm.dynamic(${dynamicTime})}"/>
     </div>
     <div id="scopes" th:unless="${#sets.isEmpty(scopes)}">
@@ -66,7 +66,7 @@
             <span class="mdc-button__label" th:utext="#{screen.oauth.confirm.allow}"></span>
         </a>
 
-        <a class="mdc-button mdc-button--outline btn btn-outline-secondary" id="cancel" name="cancel"
+        <a class="mdc-button mdc-button--outline btn btn-outline-secondary button-cancel" id="cancel" name="cancel"
            th:href="@{/login}">
             <span class="mdc-button__label" th:text="#{screen.oauth.confirm.deny}">Cancel</span>
         </a>

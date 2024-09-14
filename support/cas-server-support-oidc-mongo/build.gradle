@@ -17,7 +17,7 @@ dependencies {
 
     implementation project(":support:cas-server-support-oidc-core")
     implementation project(":support:cas-server-support-oidc-core-api")
-    implementation project(":support:cas-server-support-oauth-core")
+
     implementation project(":support:cas-server-support-token-core-api")
     implementation project(":support:cas-server-support-oidc-services")
     implementation project(":support:cas-server-support-oauth-api")
@@ -44,6 +44,7 @@ dependencies {
     implementation libraries.nimbus
 
     testImplementation project(":core:cas-server-core-util")
+    testImplementation project(":core:cas-server-core-scripting")
     testImplementation project(":core:cas-server-core-services-authentication")
     testImplementation project(":core:cas-server-core")
     testImplementation project(":core:cas-server-core-logout")

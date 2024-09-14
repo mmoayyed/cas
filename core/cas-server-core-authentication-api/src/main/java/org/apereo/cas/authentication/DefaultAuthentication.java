@@ -7,6 +7,7 @@ import lombok.AllArgsConstructor;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
 import lombok.val;
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import java.io.Serial;
@@ -15,6 +16,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * Immutable authentication event whose attributes may not change after creation.
@@ -30,6 +32,7 @@ import java.util.Map;
 @Getter
 @EqualsAndHashCode
 @AllArgsConstructor
+@ToString(of = {"principal", "authenticationDate", "attributes"})
 public class DefaultAuthentication implements Authentication {
     @Serial
     private static final long serialVersionUID = 3206127526058061391L;
@@ -81,14 +84,21 @@ public class DefaultAuthentication implements Authentication {
 
     @Override
     public void updateAttributes(final Authentication authentication) {
-        attributes.putAll(authentication.getAttributes());
         authenticationDate = authentication.getAuthenticationDate();
-        principal.getAttributes().putAll(authentication.getPrincipal().getAttributes());
+
+        val finalAuthnAttributes = CoreAuthenticationUtils.mergeAttributes(attributes, authentication.getAttributes());
+        attributes.clear();
+        attributes.putAll(finalAuthnAttributes);
+
+        val finalPrincipalAttributes = CoreAuthenticationUtils.mergeAttributes(principal.getAttributes(), authentication.getPrincipal().getAttributes());
+        principal.getAttributes().clear();
+        principal.getAttributes().putAll(finalPrincipalAttributes);
     }
 
     @Override
     public void replaceAttributes(final Authentication authentication) {
         attributes.clear();
+        principal.getAttributes().clear();
         updateAttributes(authentication);
     }
 
@@ -102,5 +112,14 @@ public class DefaultAuthentication implements Authentication {
         builder.append(getCredentials(), auth2.getCredentials());
         builder.append(getSuccesses(), auth2.getSuccesses());
         return builder.isEquals();
+    }
+
+    @Override
+    public Object getSingleValuedAttribute(final String name) {
+        if (containsAttribute(name)) {
+            val values = getAttributes().get(name);
+            return values.stream().filter(Objects::nonNull).findFirst().orElse(null);
+        }
+        return null;
     }
 }

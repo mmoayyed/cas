@@ -4,76 +4,59 @@ import org.apereo.cas.authentication.CoreAuthenticationTestUtils;
 import org.apereo.cas.authentication.DefaultAuthenticationResultBuilder;
 import org.apereo.cas.authentication.PrincipalElectionStrategy;
 import org.apereo.cas.authentication.principal.SimpleWebApplicationServiceImpl;
-import org.apereo.cas.config.CasCookieConfiguration;
-import org.apereo.cas.config.CasCoreAuditConfiguration;
-import org.apereo.cas.config.CasCoreAuthenticationConfiguration;
-import org.apereo.cas.config.CasCoreAuthenticationHandlersConfiguration;
-import org.apereo.cas.config.CasCoreAuthenticationMetadataConfiguration;
-import org.apereo.cas.config.CasCoreAuthenticationPolicyConfiguration;
-import org.apereo.cas.config.CasCoreAuthenticationPrincipalConfiguration;
-import org.apereo.cas.config.CasCoreAuthenticationServiceSelectionStrategyConfiguration;
-import org.apereo.cas.config.CasCoreAuthenticationSupportConfiguration;
-import org.apereo.cas.config.CasCoreConfiguration;
-import org.apereo.cas.config.CasCoreHttpConfiguration;
-import org.apereo.cas.config.CasCoreLogoutConfiguration;
-import org.apereo.cas.config.CasCoreMultifactorAuthenticationConfiguration;
-import org.apereo.cas.config.CasCoreNotificationsConfiguration;
-import org.apereo.cas.config.CasCoreServicesAuthenticationConfiguration;
-import org.apereo.cas.config.CasCoreServicesConfiguration;
-import org.apereo.cas.config.CasCoreTicketCatalogConfiguration;
-import org.apereo.cas.config.CasCoreTicketIdGeneratorsConfiguration;
-import org.apereo.cas.config.CasCoreTicketsConfiguration;
-import org.apereo.cas.config.CasCoreTicketsSerializationConfiguration;
-import org.apereo.cas.config.CasCoreUtilConfiguration;
-import org.apereo.cas.config.CasCoreValidationConfiguration;
-import org.apereo.cas.config.CasCoreWebConfiguration;
-import org.apereo.cas.config.CasCoreWebflowConfiguration;
-import org.apereo.cas.config.CasDefaultServiceTicketIdGeneratorsConfiguration;
-import org.apereo.cas.config.CasFiltersConfiguration;
-import org.apereo.cas.config.CasLoggingConfiguration;
-import org.apereo.cas.config.CasMultifactorAuthenticationWebflowConfiguration;
-import org.apereo.cas.config.CasPersonDirectoryConfiguration;
-import org.apereo.cas.config.CasPersonDirectoryStubConfiguration;
-import org.apereo.cas.config.CasPropertiesConfiguration;
-import org.apereo.cas.config.CasSupportActionsConfiguration;
-import org.apereo.cas.config.CasThemesConfiguration;
-import org.apereo.cas.config.CasThymeleafConfiguration;
-import org.apereo.cas.config.CasWebAppConfiguration;
-import org.apereo.cas.config.CasWebApplicationServiceFactoryConfiguration;
-import org.apereo.cas.config.CasWebflowContextConfiguration;
+import org.apereo.cas.config.CasCoreAuditAutoConfiguration;
+import org.apereo.cas.config.CasCoreAuthenticationAutoConfiguration;
+import org.apereo.cas.config.CasCoreAutoConfiguration;
+import org.apereo.cas.config.CasCoreCookieAutoConfiguration;
+import org.apereo.cas.config.CasCoreLoggingAutoConfiguration;
+import org.apereo.cas.config.CasCoreLogoutAutoConfiguration;
+import org.apereo.cas.config.CasCoreMultifactorAuthenticationAutoConfiguration;
+import org.apereo.cas.config.CasCoreMultifactorAuthenticationWebflowAutoConfiguration;
+import org.apereo.cas.config.CasCoreNotificationsAutoConfiguration;
+import org.apereo.cas.config.CasCoreScriptingAutoConfiguration;
+import org.apereo.cas.config.CasCoreServicesAutoConfiguration;
+import org.apereo.cas.config.CasCoreTicketsAutoConfiguration;
+import org.apereo.cas.config.CasCoreUtilAutoConfiguration;
+import org.apereo.cas.config.CasCoreValidationAutoConfiguration;
+import org.apereo.cas.config.CasCoreWebAutoConfiguration;
+import org.apereo.cas.config.CasCoreWebflowAutoConfiguration;
+import org.apereo.cas.config.CasPersonDirectoryAutoConfiguration;
+import org.apereo.cas.config.CasSupportActionsAutoConfiguration;
+import org.apereo.cas.config.CasThemesAutoConfiguration;
+import org.apereo.cas.config.CasThymeleafAutoConfiguration;
+import org.apereo.cas.config.CasWebAppAutoConfiguration;
 import org.apereo.cas.configuration.CasConfigurationProperties;
+import org.apereo.cas.test.CasTestExtension;
+import org.apereo.cas.util.MockRequestContext;
 import org.apereo.cas.util.function.FunctionUtils;
+import org.apereo.cas.util.spring.boot.SpringBootTestAutoConfigurations;
+import org.apereo.cas.web.flow.CasWebflowExecutionPlan;
 import org.apereo.cas.web.flow.actions.BaseCasWebflowAction;
 import org.apereo.cas.web.support.WebUtils;
 import lombok.val;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.boot.autoconfigure.aop.AopAutoConfiguration;
-import org.springframework.boot.autoconfigure.web.servlet.WebMvcAutoConfiguration;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.cloud.autoconfigure.RefreshAutoConfiguration;
 import org.springframework.cloud.context.config.annotation.RefreshScope;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.EnableAspectJAutoProxy;
 import org.springframework.context.annotation.ScopedProxyMode;
-import org.springframework.mock.web.MockHttpServletRequest;
-import org.springframework.mock.web.MockHttpServletResponse;
-import org.springframework.mock.web.MockServletContext;
-import org.springframework.webflow.context.servlet.ServletExternalContext;
 import org.springframework.webflow.core.collection.LocalAttributeMap;
 import org.springframework.webflow.execution.Action;
 import org.springframework.webflow.execution.Event;
 import org.springframework.webflow.execution.RequestContext;
 import org.springframework.webflow.executor.FlowExecutor;
-import org.springframework.webflow.test.MockRequestContext;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.TreeMap;
 import java.util.concurrent.ConcurrentSkipListSet;
 import static org.junit.jupiter.api.Assertions.*;
@@ -84,71 +67,55 @@ import static org.junit.jupiter.api.Assertions.*;
  * @author Misagh Moayyed
  * @since 5.0.0
  */
+@SpringBootTestAutoConfigurations
 @SpringBootTest(classes = {
-    AopAutoConfiguration.class,
-    RefreshAutoConfiguration.class,
-    WebMvcAutoConfiguration.class,
-    CasCoreWebflowConfiguration.class,
-    CasWebflowContextConfiguration.class,
-    CasThemesConfiguration.class,
-    CasThymeleafConfiguration.class,
-    CasFiltersConfiguration.class,
-    CasPropertiesConfiguration.class,
-    CasWebAppConfiguration.class,
-    BaseCasWebflowSessionContextConfigurationTests.TestWebflowContextConfiguration.class,
-    CasMultifactorAuthenticationWebflowConfiguration.class,
-    CasCoreTicketIdGeneratorsConfiguration.class,
-    CasDefaultServiceTicketIdGeneratorsConfiguration.class,
-    CasWebApplicationServiceFactoryConfiguration.class,
-    CasCoreAuthenticationConfiguration.class,
-    CasCoreServicesAuthenticationConfiguration.class,
-    CasCoreAuthenticationPrincipalConfiguration.class,
-    CasCoreAuthenticationPolicyConfiguration.class,
-    CasCoreAuthenticationMetadataConfiguration.class,
-    CasCoreAuthenticationSupportConfiguration.class,
-    CasCoreAuthenticationHandlersConfiguration.class,
-    CasCoreHttpConfiguration.class,
-    CasCoreTicketsConfiguration.class,
-    CasCoreTicketCatalogConfiguration.class,
-    CasCoreTicketsSerializationConfiguration.class,
-    CasLoggingConfiguration.class,
-    CasCoreServicesConfiguration.class,
-    CasSupportActionsConfiguration.class,
-    CasCoreUtilConfiguration.class,
-    CasCoreLogoutConfiguration.class,
-    CasCookieConfiguration.class,
-    CasCoreWebConfiguration.class,
-    CasCoreValidationConfiguration.class,
-    CasCoreConfiguration.class,
-    CasCoreAuthenticationServiceSelectionStrategyConfiguration.class,
-    CasCoreAuditConfiguration.class,
-    CasCoreNotificationsConfiguration.class,
-    CasPersonDirectoryConfiguration.class,
-    CasPersonDirectoryStubConfiguration.class,
-    CasCoreMultifactorAuthenticationConfiguration.class
-}, properties = "spring.main.allow-bean-definition-overriding=true")
+    CasCoreWebflowAutoConfiguration.class,
+    CasThemesAutoConfiguration.class,
+    CasThymeleafAutoConfiguration.class,
+    CasWebAppAutoConfiguration.class,
+    BaseCasWebflowSessionContextConfigurationTests.WebflowContextTestConfiguration.class,
+    CasCoreMultifactorAuthenticationWebflowAutoConfiguration.class,
+    CasCoreServicesAutoConfiguration.class,
+    CasCoreAuthenticationAutoConfiguration.class,
+    CasCoreTicketsAutoConfiguration.class,
+    CasCoreLoggingAutoConfiguration.class,
+    CasSupportActionsAutoConfiguration.class,
+    CasCoreUtilAutoConfiguration.class,
+    CasCoreLogoutAutoConfiguration.class,
+    CasCoreCookieAutoConfiguration.class,
+    CasCoreWebAutoConfiguration.class,
+    CasCoreValidationAutoConfiguration.class,
+    CasCoreAutoConfiguration.class,
+    CasCoreAuditAutoConfiguration.class,
+    CasCoreNotificationsAutoConfiguration.class,
+    CasPersonDirectoryAutoConfiguration.class,
+    CasCoreMultifactorAuthenticationAutoConfiguration.class,
+    CasCoreScriptingAutoConfiguration.class
+})
 @EnableConfigurationProperties(CasConfigurationProperties.class)
 @EnableAspectJAutoProxy(proxyTargetClass = false)
+@ExtendWith(CasTestExtension.class)
 public abstract class BaseCasWebflowSessionContextConfigurationTests {
-    private static MockRequestContext getMockRequestContext() {
-        val ctx = new MockRequestContext();
-        val request = new MockHttpServletRequest();
-        val response = new MockHttpServletResponse();
-        val sCtx = new MockServletContext();
-        ctx.setExternalContext(new ServletExternalContext(sCtx, request, response));
-        return ctx;
+
+    @Autowired
+    @Qualifier(CasWebflowExecutionPlan.BEAN_NAME)
+    protected CasWebflowExecutionPlan casWebflowExecutionPlan;
+
+    @BeforeEach
+    void setup() {
+        casWebflowExecutionPlan.execute();
     }
 
     @Test
-    void verifyExecutorsAreBeans() throws Throwable {
+    void verifyExecutorsAreBeans() {
         assertNotNull(getFlowExecutor());
     }
 
     @Test
     void verifyFlowExecutorByClient() throws Throwable {
-        val ctx = getMockRequestContext();
+        val context = MockRequestContext.create().withLocale(Locale.ENGLISH);
         val map = new LocalAttributeMap<>();
-        getFlowExecutor().launchExecution("login", map, ctx.getExternalContext());
+        getFlowExecutor().launchExecution("login", map, context.getExternalContext());
     }
 
     public abstract FlowExecutor getFlowExecutor();
@@ -156,8 +123,8 @@ public abstract class BaseCasWebflowSessionContextConfigurationTests {
     /**
      * The type Test webflow context configuration.
      */
-    @TestConfiguration(value = "testWebflowContextConfiguration", proxyBeanMethods = false)
-    static class TestWebflowContextConfiguration {
+    @TestConfiguration(value = "WebflowContextTestConfiguration", proxyBeanMethods = false)
+    static class WebflowContextTestConfiguration {
         private static final String TEST = "test";
 
         @Autowired

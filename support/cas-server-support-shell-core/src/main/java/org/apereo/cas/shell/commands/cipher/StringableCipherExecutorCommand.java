@@ -1,9 +1,9 @@
 package org.apereo.cas.shell.commands.cipher;
 
+import org.apereo.cas.configuration.model.core.util.EncryptionJwtCryptoProperties;
+import org.apereo.cas.configuration.model.core.util.SigningJwtCryptoProperties;
 import org.apereo.cas.util.cipher.BaseStringCipherExecutor;
-import org.apereo.cas.util.crypto.CipherExecutor;
 import org.apereo.cas.util.function.FunctionUtils;
-
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.apache.commons.io.FileUtils;
@@ -12,7 +12,6 @@ import org.springframework.shell.standard.ShellCommandGroup;
 import org.springframework.shell.standard.ShellComponent;
 import org.springframework.shell.standard.ShellMethod;
 import org.springframework.shell.standard.ShellOption;
-
 import java.io.File;
 import java.nio.charset.StandardCharsets;
 
@@ -45,13 +44,15 @@ public class StringableCipherExecutorCommand {
         final String value,
         @ShellOption(value = { "encryption-key", "--encryption-key" }, defaultValue = ShellOption.NULL, help = "Encryption key")
         final String secretKeyEncryption,
+        @ShellOption(value = { "encryption-alg", "--encryption-alg" }, defaultValue = EncryptionJwtCryptoProperties.DEFAULT_CONTENT_ENCRYPTION_ALGORITHM, help = "Encryption alg")
+        final String encryptionAlg,
         @ShellOption(value = { "signing-key", "--signing-key" }, defaultValue = ShellOption.NULL, help = "Signing key")
         final String secretKeySigning,
         @ShellOption(value = { "encryption-key-size", "--encryption-key-size" },
-            defaultValue = StringUtils.EMPTY + CipherExecutor.DEFAULT_STRINGABLE_ENCRYPTION_KEY_SIZE, help = "Encryption key size")
+            defaultValue = StringUtils.EMPTY + EncryptionJwtCryptoProperties.DEFAULT_STRINGABLE_ENCRYPTION_KEY_SIZE, help = "Encryption key size")
         final int secretKeyEncryptionSize,
         @ShellOption(value = { "signing-key-size", "--signing-key-size" },
-            defaultValue = StringUtils.EMPTY + CipherExecutor.DEFAULT_STRINGABLE_SIGNING_KEY_SIZE, help = "Signing key size")
+            defaultValue = StringUtils.EMPTY + SigningJwtCryptoProperties.DEFAULT_STRINGABLE_SIGNING_KEY_SIZE, help = "Signing key size")
         final int secretKeySigningSize,
         @ShellOption(value = { "enable-encryption", "--enable-encryption" }, defaultValue = "true", help = "Whether value should be encrypted")
         final boolean encryptionEnabled,
@@ -66,6 +67,7 @@ public class StringableCipherExecutorCommand {
         if (StringUtils.isNotBlank(toEncode)) {
             val cipher = new ShellStringCipherExecutor(secretKeyEncryption, secretKeySigning,
                 encryptionEnabled, signingEnabled, secretKeySigningSize, secretKeyEncryptionSize);
+            cipher.setContentEncryptionAlgorithmIdentifier(encryptionAlg);
             val encoded = cipher.encode(toEncode);
             LOGGER.info("Encoded value: [{}]", encoded);
             return encoded;
@@ -91,13 +93,15 @@ public class StringableCipherExecutorCommand {
         final String value,
         @ShellOption(value = { "encryption-key", "--encryption-key" }, defaultValue = ShellOption.NULL, help = "Encryption key")
         final String secretKeyEncryption,
+        @ShellOption(value = { "encryption-alg", "--encryption-alg" }, defaultValue = EncryptionJwtCryptoProperties.DEFAULT_CONTENT_ENCRYPTION_ALGORITHM, help = "Encryption alg")
+        final String encryptionAlg,
         @ShellOption(value = { "signing-key", "--signing-key" }, defaultValue = ShellOption.NULL, help = "Signing key")
         final String secretKeySigning,
         @ShellOption(value = { "encryption-key-size", "--encryption-key-size" },
-            defaultValue = StringUtils.EMPTY + CipherExecutor.DEFAULT_STRINGABLE_ENCRYPTION_KEY_SIZE, help = "Encryption key size")
+            defaultValue = StringUtils.EMPTY + EncryptionJwtCryptoProperties.DEFAULT_STRINGABLE_ENCRYPTION_KEY_SIZE, help = "Encryption key size")
         final int secretKeyEncryptionSize,
         @ShellOption(value = { "signing-key-size", "--signing-key-size" },
-            defaultValue = StringUtils.EMPTY + CipherExecutor.DEFAULT_STRINGABLE_SIGNING_KEY_SIZE, help = "Signing key size")
+            defaultValue = StringUtils.EMPTY + SigningJwtCryptoProperties.DEFAULT_STRINGABLE_SIGNING_KEY_SIZE, help = "Signing key size")
         final int secretKeySigningSize,
         @ShellOption(value = { "enable-encryption", "--enable-encryption" }, defaultValue = "true", help = "Whether value should be encrypted")
         final boolean encryptionEnabled,
@@ -112,6 +116,7 @@ public class StringableCipherExecutorCommand {
         if (StringUtils.isNotBlank(toEncode)) {
             val cipher = new ShellStringCipherExecutor(secretKeyEncryption, secretKeySigning,
                 encryptionEnabled, signingEnabled, secretKeySigningSize, secretKeyEncryptionSize);
+            cipher.setContentEncryptionAlgorithmIdentifier(encryptionAlg);
             val decoded = cipher.decode(toEncode);
             LOGGER.info("Decoded value: [{}]", decoded);
             return decoded;
@@ -123,7 +128,8 @@ public class StringableCipherExecutorCommand {
         ShellStringCipherExecutor(final String secretKeyEncryption, final String secretKeySigning,
                                   final boolean encryptionEnabled, final boolean signingEnabled,
                                   final int signingKeySize, final int encryptionKeySize) {
-            super(secretKeyEncryption, secretKeySigning, encryptionEnabled, signingEnabled, signingKeySize, encryptionKeySize);
+            super(secretKeyEncryption, secretKeySigning, encryptionEnabled,
+                signingEnabled, signingKeySize, encryptionKeySize);
         }
     }
 }

@@ -1,5 +1,6 @@
 package org.apereo.cas.config;
 
+import org.apereo.cas.authentication.principal.attribute.PersonAttributeDao;
 import org.apereo.cas.configuration.CasConfigurationProperties;
 import org.apereo.cas.configuration.features.CasFeatureModule;
 import org.apereo.cas.persondir.PersonDirectoryAttributeRepositoryPlanConfigurer;
@@ -9,17 +10,15 @@ import org.apereo.cas.util.spring.beans.BeanCondition;
 import org.apereo.cas.util.spring.beans.BeanContainer;
 import org.apereo.cas.util.spring.beans.BeanSupplier;
 import org.apereo.cas.util.spring.boot.ConditionalOnFeatureEnabled;
-
 import com.google.common.base.Splitter;
 import lombok.val;
-import org.apereo.services.persondir.IPersonAttributeDao;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.cloud.context.config.annotation.RefreshScope;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.ScopedProxyMode;
 
 /**
@@ -30,15 +29,15 @@ import org.springframework.context.annotation.ScopedProxyMode;
  */
 @EnableConfigurationProperties(CasConfigurationProperties.class)
 @ConditionalOnFeatureEnabled(feature = CasFeatureModule.FeatureCatalog.PersonDirectory, module = "syncope")
-@AutoConfiguration
-public class SyncopePersonDirectoryConfiguration {
+@Configuration(value = "SyncopePersonDirectoryConfiguration", proxyBeanMethods = false)
+class SyncopePersonDirectoryConfiguration {
     private static final BeanCondition CONDITION = BeanCondition.on("cas.authn.attribute-repository.syncope.url").isUrl();
 
     @ConditionalOnMissingBean(name = "syncopePersonAttributeDaos")
     @Bean
     @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
     @SuppressWarnings("unchecked")
-    public BeanContainer<IPersonAttributeDao> syncopePersonAttributeDaos(
+    public BeanContainer<PersonAttributeDao> syncopePersonAttributeDaos(
         final ConfigurableApplicationContext applicationContext,
         final CasConfigurationProperties casProperties) throws Exception {
 
@@ -68,8 +67,8 @@ public class SyncopePersonDirectoryConfiguration {
     @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
     public PersonDirectoryAttributeRepositoryPlanConfigurer syncopeAttributeRepositoryPlanConfigurer(
         @Qualifier("syncopePersonAttributeDaos")
-        final BeanContainer<IPersonAttributeDao> syncopePersonAttributeDaos) {
+        final BeanContainer<PersonAttributeDao> syncopePersonAttributeDaos) {
         return plan -> syncopePersonAttributeDaos.toList().stream()
-            .filter(IPersonAttributeDao::isEnabled).forEach(plan::registerAttributeRepository);
+            .filter(PersonAttributeDao::isEnabled).forEach(plan::registerAttributeRepository);
     }
 }

@@ -1,8 +1,6 @@
 {
   "dependencies": "reports,yubikey,gauth,trusted-mfa",
   "properties": [
-
-    
     "--cas.server.name=https://localhost:8443",
     "--cas.server.prefix=${cas.server.name}/cas",
 
@@ -17,20 +15,18 @@
     "--cas.authn.mfa.yubikey.secret-key=iBIehjui22aK8x82oe6qzGeb0As=",
     "--cas.authn.mfa.yubikey.trusted-device-enabled=true",
 
-    "--cas.authn.mfa.core.provider-selection-enabled=true",
-
-    "--cas.audit.engine.enabled=true",
-
+    "--cas.authn.mfa.core.provider-selection.provider-selection-enabled=true",
+    "--cas.authn.mfa.core.provider-selection.cookie.enabled=false",
+    
     "--cas.authn.mfa.trusted.core.device-registration-enabled=true",
     "--cas.authn.mfa.trusted.core.auto-assign-device-name=true",
 
+    "--cas.authn.mfa.trusted.crypto.alg=A128CBC-HS256",
     "--cas.authn.mfa.trusted.crypto.encryption.key=7U2haahe2ldSKJa3zv7-4Sirg_Natui3dbb-hNBYgOw",
     "--cas.authn.mfa.trusted.crypto.signing.key=osgd4FIwmfhYBBE0sv1qaBqQ0hnFSWbTiGDNjcwkfSZN1k4MjC_8g3pkUhOgUkg-Z1OCwWzSmr2xNr3tbZ8PwA",
 
     "--cas.monitor.endpoints.endpoint.defaults.access=ANONYMOUS",
     "--management.endpoints.web.exposure.include=*",
-    "--management.endpoints.enabled-by-default=true",
-
-    "--logging.level.org.apereo.cas=info"
+    "--management.endpoints.enabled-by-default=true"
   ]
 }

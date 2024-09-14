@@ -12,16 +12,19 @@ import org.apereo.cas.authentication.bypass.RegisteredServicePrincipalAttributeM
 import org.apereo.cas.authentication.bypass.RestMultifactorAuthenticationProviderBypassEvaluator;
 import org.apereo.cas.configuration.CasConfigurationProperties;
 import org.apereo.cas.configuration.features.CasFeatureModule;
+import org.apereo.cas.util.spring.beans.BeanCondition;
+import org.apereo.cas.util.spring.beans.BeanSupplier;
 import org.apereo.cas.util.spring.boot.ConditionalOnFeatureEnabled;
 
 import lombok.val;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.cloud.context.config.annotation.RefreshScope;
+import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.ScopedProxyMode;
 
 /**
@@ -32,13 +35,14 @@ import org.springframework.context.annotation.ScopedProxyMode;
  */
 @EnableConfigurationProperties(CasConfigurationProperties.class)
 @ConditionalOnFeatureEnabled(feature = CasFeatureModule.FeatureCatalog.WebAuthn)
-@AutoConfiguration
-public class WebAuthnMultifactorProviderBypassConfiguration {
+@Configuration(value = "WebAuthnMultifactorProviderBypassConfiguration", proxyBeanMethods = false)
+class WebAuthnMultifactorProviderBypassConfiguration {
 
     @ConditionalOnMissingBean(name = "webAuthnBypassEvaluator")
     @Bean
     @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
     public MultifactorAuthenticationProviderBypassEvaluator webAuthnBypassEvaluator(
+        final ConfigurableApplicationContext applicationContext,
         final CasConfigurationProperties casProperties,
         @Qualifier("webAuthnPrincipalMultifactorAuthenticationProviderBypass")
         final MultifactorAuthenticationProviderBypassEvaluator webAuthnPrincipalMultifactorAuthenticationProviderBypass,
@@ -56,7 +60,7 @@ public class WebAuthnMultifactorProviderBypassConfiguration {
         final MultifactorAuthenticationProviderBypassEvaluator webAuthnGroovyMultifactorAuthenticationProviderBypass,
         @Qualifier("webAuthnRestMultifactorAuthenticationProviderBypass")
         final MultifactorAuthenticationProviderBypassEvaluator webAuthnRestMultifactorAuthenticationProviderBypass) {
-        val bypass = new DefaultChainingMultifactorAuthenticationBypassProvider();
+        val bypass = new DefaultChainingMultifactorAuthenticationBypassProvider(applicationContext);
         val props = casProperties.getAuthn().getMfa().getWebAuthn().getBypass();
         if (StringUtils.isNotBlank(props.getPrincipalAttributeName())) {
             bypass.addMultifactorAuthenticationProviderBypassEvaluator(webAuthnPrincipalMultifactorAuthenticationProviderBypass);
@@ -86,70 +90,92 @@ public class WebAuthnMultifactorProviderBypassConfiguration {
     @Bean
     @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
     public MultifactorAuthenticationProviderBypassEvaluator webAuthnRegisteredServicePrincipalAttributeMultifactorAuthenticationProviderBypassEvaluator(
+        final ConfigurableApplicationContext applicationContext,
         final CasConfigurationProperties casProperties) {
         val webAuthn = casProperties.getAuthn().getMfa().getWebAuthn();
-        return new RegisteredServicePrincipalAttributeMultifactorAuthenticationProviderBypassEvaluator(webAuthn.getId());
+        return new RegisteredServicePrincipalAttributeMultifactorAuthenticationProviderBypassEvaluator(webAuthn.getId(), applicationContext);
     }
 
     @ConditionalOnMissingBean(name = "webAuthnRestMultifactorAuthenticationProviderBypass")
     @Bean
     @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
-    public MultifactorAuthenticationProviderBypassEvaluator webAuthnRestMultifactorAuthenticationProviderBypass(final CasConfigurationProperties casProperties) {
+    public MultifactorAuthenticationProviderBypassEvaluator webAuthnRestMultifactorAuthenticationProviderBypass(
+        final ConfigurableApplicationContext applicationContext,
+        final CasConfigurationProperties casProperties) {
         val webAuthn = casProperties.getAuthn().getMfa().getWebAuthn();
         val props = webAuthn.getBypass();
-        return new RestMultifactorAuthenticationProviderBypassEvaluator(props, webAuthn.getId());
+        return new RestMultifactorAuthenticationProviderBypassEvaluator(props, webAuthn.getId(), applicationContext);
     }
 
     @ConditionalOnMissingBean(name = "webAuthnGroovyMultifactorAuthenticationProviderBypass")
     @Bean
     @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
-    public MultifactorAuthenticationProviderBypassEvaluator webAuthnGroovyMultifactorAuthenticationProviderBypass(final CasConfigurationProperties casProperties) {
-        val webAuthn = casProperties.getAuthn().getMfa().getWebAuthn();
-        val props = webAuthn.getBypass();
-        return new GroovyMultifactorAuthenticationProviderBypassEvaluator(props, webAuthn.getId());
+    public MultifactorAuthenticationProviderBypassEvaluator webAuthnGroovyMultifactorAuthenticationProviderBypass(
+        final ConfigurableApplicationContext applicationContext,
+        final CasConfigurationProperties casProperties) {
+
+        return BeanSupplier.of(MultifactorAuthenticationProviderBypassEvaluator.class)
+            .when(BeanCondition.on("cas.authn.mfa.web-authn.bypass.groovy.location").exists().given(applicationContext.getEnvironment()))
+            .supply(() -> {
+                val webAuthn = casProperties.getAuthn().getMfa().getWebAuthn();
+                val props = webAuthn.getBypass();
+                return new GroovyMultifactorAuthenticationProviderBypassEvaluator(props, webAuthn.getId(), applicationContext);
+            })
+            .otherwiseProxy()
+            .get();
     }
 
     @ConditionalOnMissingBean(name = "webAuthnHttpRequestMultifactorAuthenticationProviderBypass")
     @Bean
     @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
-    public MultifactorAuthenticationProviderBypassEvaluator webAuthnHttpRequestMultifactorAuthenticationProviderBypass(final CasConfigurationProperties casProperties) {
+    public MultifactorAuthenticationProviderBypassEvaluator webAuthnHttpRequestMultifactorAuthenticationProviderBypass(
+        final ConfigurableApplicationContext applicationContext,
+        final CasConfigurationProperties casProperties) {
         val webAuthn = casProperties.getAuthn().getMfa().getWebAuthn();
         val props = webAuthn.getBypass();
-        return new HttpRequestMultifactorAuthenticationProviderBypassEvaluator(props, webAuthn.getId());
+        return new HttpRequestMultifactorAuthenticationProviderBypassEvaluator(props, webAuthn.getId(), applicationContext);
     }
 
     @Bean
     @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
     @ConditionalOnMissingBean(name = "webAuthnCredentialMultifactorAuthenticationProviderBypass")
-    public MultifactorAuthenticationProviderBypassEvaluator webAuthnCredentialMultifactorAuthenticationProviderBypass(final CasConfigurationProperties casProperties) {
+    public MultifactorAuthenticationProviderBypassEvaluator webAuthnCredentialMultifactorAuthenticationProviderBypass(
+        final ConfigurableApplicationContext applicationContext,
+        final CasConfigurationProperties casProperties) {
         val webAuthn = casProperties.getAuthn().getMfa().getWebAuthn();
         val props = webAuthn.getBypass();
-        return new CredentialMultifactorAuthenticationProviderBypassEvaluator(props, webAuthn.getId());
+        return new CredentialMultifactorAuthenticationProviderBypassEvaluator(props, webAuthn.getId(), applicationContext);
     }
 
     @Bean
     @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
     @ConditionalOnMissingBean(name = "webAuthnRegisteredServiceMultifactorAuthenticationProviderBypass")
-    public MultifactorAuthenticationProviderBypassEvaluator webAuthnRegisteredServiceMultifactorAuthenticationProviderBypass(final CasConfigurationProperties casProperties) {
+    public MultifactorAuthenticationProviderBypassEvaluator webAuthnRegisteredServiceMultifactorAuthenticationProviderBypass(
+        final ConfigurableApplicationContext applicationContext,
+        final CasConfigurationProperties casProperties) {
         val webAuthn = casProperties.getAuthn().getMfa().getWebAuthn();
-        return new RegisteredServiceMultifactorAuthenticationProviderBypassEvaluator(webAuthn.getId());
+        return new RegisteredServiceMultifactorAuthenticationProviderBypassEvaluator(webAuthn.getId(), applicationContext);
     }
 
     @Bean
     @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
     @ConditionalOnMissingBean(name = "webAuthnPrincipalMultifactorAuthenticationProviderBypass")
-    public MultifactorAuthenticationProviderBypassEvaluator webAuthnPrincipalMultifactorAuthenticationProviderBypass(final CasConfigurationProperties casProperties) {
+    public MultifactorAuthenticationProviderBypassEvaluator webAuthnPrincipalMultifactorAuthenticationProviderBypass(
+        final ConfigurableApplicationContext applicationContext,
+        final CasConfigurationProperties casProperties) {
         val webAuthn = casProperties.getAuthn().getMfa().getWebAuthn();
         val props = webAuthn.getBypass();
-        return new PrincipalMultifactorAuthenticationProviderBypassEvaluator(props, webAuthn.getId());
+        return new PrincipalMultifactorAuthenticationProviderBypassEvaluator(props, webAuthn.getId(), applicationContext);
     }
 
     @Bean
     @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
     @ConditionalOnMissingBean(name = "webAuthnAuthenticationMultifactorAuthenticationProviderBypass")
-    public MultifactorAuthenticationProviderBypassEvaluator webAuthnAuthenticationMultifactorAuthenticationProviderBypass(final CasConfigurationProperties casProperties) {
+    public MultifactorAuthenticationProviderBypassEvaluator webAuthnAuthenticationMultifactorAuthenticationProviderBypass(
+        final ConfigurableApplicationContext applicationContext,
+        final CasConfigurationProperties casProperties) {
         val webAuthn = casProperties.getAuthn().getMfa().getWebAuthn();
         val props = webAuthn.getBypass();
-        return new AuthenticationMultifactorAuthenticationProviderBypassEvaluator(props, webAuthn.getId());
+        return new AuthenticationMultifactorAuthenticationProviderBypassEvaluator(props, webAuthn.getId(), applicationContext);
     }
 }

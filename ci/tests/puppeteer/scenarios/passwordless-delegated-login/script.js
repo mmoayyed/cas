@@ -1,52 +1,60 @@
-const puppeteer = require('puppeteer');
-const assert = require('assert');
-const cas = require('../../cas.js');
+
+const assert = require("assert");
+const cas = require("../../cas.js");
 
 async function startAuthFlow(page, username) {
     await cas.log("Removing previous sessions and logging out");
     await cas.gotoLogout(page);
     await cas.log(`Starting authentication flow for ${username}`);
     await cas.gotoLogin(page);
-    await page.waitForTimeout(1000);
-    let pswd = await page.$('#password');
-    assert(pswd == null);
-    await cas.type(page, '#username', username);
+    await cas.sleep(1000);
+    const pswd = await page.$("#password");
+    assert(pswd === null);
+    await cas.type(page, "#username", username);
     await cas.pressEnter(page);
-    await page.waitForNavigation();
-    await page.waitForTimeout(1000);
-    const url = await page.url();
+    await cas.sleep(5000);
+    await cas.screenshot(page);
     await cas.logPage(page);
-    assert(url.startsWith("https://localhost:8444"));
-    await page.waitForTimeout(1000);
+    const url = await page.url();
 
-    await cas.loginWith(page);
-    await page.waitForTimeout(5000);
-    await cas.log(`Page url: ${await page.url()}`);
+    let expectedUser = "casuser";
+    if (username.endsWith("-saml")) {
+        expectedUser = "user1@example.com";
+        await cas.loginWith(page, "user1", "password");
+    } else {
+        assert(url.startsWith("https://localhost:8444"));
+        await cas.sleep(1000);
+        await cas.loginWith(page);
+    }
+    await cas.sleep(5000);
+    await cas.logPage(page);
     await cas.assertCookie(page);
-    await cas.assertInnerTextStartsWith(page, "#content div p", "You, casuser, have successfully logged in");
+    
+    await cas.assertInnerTextStartsWith(page, "#content div p", `You, ${expectedUser}, have successfully logged in`);
 
     await cas.click(page, "#auth-tab");
-    await page.waitForTimeout(1000);
+    await cas.sleep(1000);
     await cas.type(page, "#attribute-tab-1 input[type=search]", "surrogate");
-    await page.waitForTimeout(1000);
+    await cas.sleep(1000);
     await cas.screenshot(page);
 
-    let surrogateEnabled = await page.$('#surrogateEnabled');
-    assert(surrogateEnabled == null);
-    let surrogatePrincipal = await page.$('#surrogatePrincipal');
-    assert(surrogatePrincipal == null);
-    let surrogateUser = await page.$('#surrogateUser');
-    assert(surrogateUser == null);
-    await page.waitForTimeout(1000);
+    const surrogateEnabled = await page.$("#surrogateEnabled");
+    assert(surrogateEnabled === null);
+    const surrogatePrincipal = await page.$("#surrogatePrincipal");
+    assert(surrogatePrincipal === null);
+    const surrogateUser = await page.$("#surrogateUser");
+    assert(surrogateUser === null);
+    await cas.sleep(1000);
 }
 
 (async () => {
-    const browser = await puppeteer.launch(cas.browserOptions());
-    const page = await cas.newPage(browser);
-
-    await startAuthFlow(page, "casuser-server");
-    await startAuthFlow(page, "casuser-none");
-    await startAuthFlow(page, "casuser-client");
-
+    const browser = await cas.newBrowser(cas.browserOptions());
+    const users = ["casuser-server", "casuser-none", "casuser-client", "casuser-saml"];
+    for (const user of users) {
+        const context = await browser.createBrowserContext();
+        const page = await cas.newPage(context);
+        await startAuthFlow(page, user);
+        await context.close();
+    }
     await browser.close();
 })();

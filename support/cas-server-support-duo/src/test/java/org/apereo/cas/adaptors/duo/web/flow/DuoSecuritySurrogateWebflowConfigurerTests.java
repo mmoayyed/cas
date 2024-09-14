@@ -1,13 +1,10 @@
 package org.apereo.cas.adaptors.duo.web.flow;
 
-import org.apereo.cas.config.CasCoreMultifactorAuthenticationConfiguration;
-import org.apereo.cas.config.CasMultifactorAuthenticationWebflowConfiguration;
-import org.apereo.cas.config.DuoSecurityAuthenticationEventExecutionPlanConfiguration;
-import org.apereo.cas.config.DuoSecurityConfiguration;
-import org.apereo.cas.config.DuoSecurityMultifactorProviderBypassConfiguration;
-import org.apereo.cas.config.SurrogateAuthenticationAuditConfiguration;
-import org.apereo.cas.config.SurrogateAuthenticationConfiguration;
-import org.apereo.cas.config.SurrogateAuthenticationWebflowConfiguration;
+import org.apereo.cas.config.CasCoreMultifactorAuthenticationAutoConfiguration;
+import org.apereo.cas.config.CasCoreMultifactorAuthenticationWebflowAutoConfiguration;
+import org.apereo.cas.config.CasDuoSecurityAutoConfiguration;
+import org.apereo.cas.config.CasSurrogateAuthenticationAutoConfiguration;
+import org.apereo.cas.config.CasSurrogateAuthenticationWebflowAutoConfiguration;
 import org.apereo.cas.web.flow.BaseWebflowConfigurerTests;
 import org.apereo.cas.web.flow.CasWebflowConfigurer;
 import org.apereo.cas.web.flow.configurer.CasMultifactorWebflowCustomizer;
@@ -18,7 +15,7 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.context.annotation.Import;
+import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.webflow.engine.Flow;
 import org.springframework.webflow.engine.TransitionableState;
@@ -34,18 +31,17 @@ import static org.junit.jupiter.api.Assertions.*;
 @Tag("DuoSecurity")
 class DuoSecuritySurrogateWebflowConfigurerTests {
 
-    @Import({
-        CasCoreMultifactorAuthenticationConfiguration.class,
-        CasMultifactorAuthenticationWebflowConfiguration.class,
-        SurrogateAuthenticationConfiguration.class,
-        SurrogateAuthenticationAuditConfiguration.class,
-        SurrogateAuthenticationWebflowConfiguration.class
+    @ImportAutoConfiguration({
+        CasCoreMultifactorAuthenticationAutoConfiguration.class,
+        CasCoreMultifactorAuthenticationWebflowAutoConfiguration.class,
+        CasSurrogateAuthenticationAutoConfiguration.class,
+        CasSurrogateAuthenticationWebflowAutoConfiguration.class
     })
-    static class SharedTestConfiguration {
+    public static class SharedTestAutoConfiguration {
     }
 
     @Nested
-    @Import(DuoSecuritySurrogateWebflowConfigurerTests.SharedTestConfiguration.class)
+    @ImportAutoConfiguration(SharedTestAutoConfiguration.class)
     class DefaultTests extends BaseWebflowConfigurerTests {
 
         @Test
@@ -63,11 +59,9 @@ class DuoSecuritySurrogateWebflowConfigurerTests {
     }
 
     @Nested
-    @Import({
-        DuoSecurityConfiguration.class,
-        DuoSecurityAuthenticationEventExecutionPlanConfiguration.class,
-        DuoSecurityMultifactorProviderBypassConfiguration.class,
-        DuoSecuritySurrogateWebflowConfigurerTests.SharedTestConfiguration.class
+    @ImportAutoConfiguration({
+        CasDuoSecurityAutoConfiguration.class,
+        SharedTestAutoConfiguration.class
     })
     @TestPropertySource(properties = {
         "cas.authn.mfa.duo[0].duo-secret-key=aGKL0OndjtknbnVOWaFKosbbinNFEKXHxgXCJEBz",

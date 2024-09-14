@@ -10,7 +10,7 @@ dependencies {
     api project(":api:cas-server-core-api-throttle")
     api project(":api:cas-server-core-api")
 
-    implementation project(":support:cas-server-support-oauth-core")
+
     implementation project(":support:cas-server-support-oauth-core-api")
     implementation project(":support:cas-server-support-oauth-uma-core")
     implementation project(":support:cas-server-support-oauth-uma")
@@ -43,6 +43,7 @@ dependencies {
     testImplementation project(":support:cas-server-support-throttle")
     testImplementation project(":support:cas-server-support-thymeleaf")
     testImplementation project(":core:cas-server-core-util")
+    testImplementation project(":core:cas-server-core-scripting")
     testImplementation project(":core:cas-server-core")
     testImplementation project(":core:cas-server-core-authentication")
     testImplementation project(":core:cas-server-core-configuration")

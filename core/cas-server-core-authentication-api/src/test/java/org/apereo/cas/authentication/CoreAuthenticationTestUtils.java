@@ -1,6 +1,7 @@
 package org.apereo.cas.authentication;
 
 import org.apereo.cas.CasProtocolConstants;
+import org.apereo.cas.authentication.attribute.StubPersonAttributeDao;
 import org.apereo.cas.authentication.credential.HttpBasedServiceCredential;
 import org.apereo.cas.authentication.credential.UsernamePasswordCredential;
 import org.apereo.cas.authentication.handler.support.SimpleTestUsernamePasswordAuthenticationHandler;
@@ -10,6 +11,7 @@ import org.apereo.cas.authentication.principal.Principal;
 import org.apereo.cas.authentication.principal.PrincipalFactoryUtils;
 import org.apereo.cas.authentication.principal.Service;
 import org.apereo.cas.authentication.principal.WebApplicationService;
+import org.apereo.cas.authentication.principal.resolvers.EchoingPrincipalResolver;
 import org.apereo.cas.services.CasModelRegisteredService;
 import org.apereo.cas.services.RegisteredServiceAccessStrategy;
 import org.apereo.cas.services.RegisteredServiceAuthenticationPolicy;
@@ -18,7 +20,6 @@ import org.apereo.cas.util.CollectionUtils;
 import org.apereo.cas.util.function.FunctionUtils;
 import lombok.experimental.UtilityClass;
 import lombok.val;
-import org.apereo.services.persondir.support.StubPersonAttributeDao;
 import org.springframework.context.ApplicationEventPublisher;
 import java.net.URI;
 import java.time.ZonedDateTime;
@@ -93,9 +94,9 @@ public class CoreAuthenticationTestUtils {
 
     public static WebApplicationService getWebApplicationService(final String id) {
         val svc = mock(WebApplicationService.class);
-        when(svc.getId()).thenReturn(id);
-        when(svc.getOriginalUrl()).thenReturn(id);
-        when(svc.getSource()).thenReturn(CasProtocolConstants.PARAMETER_SERVICE);
+        lenient().when(svc.getId()).thenReturn(id);
+        lenient().when(svc.getOriginalUrl()).thenReturn(id);
+        lenient().when(svc.getSource()).thenReturn(CasProtocolConstants.PARAMETER_SERVICE);
         return svc;
     }
 
@@ -176,20 +177,20 @@ public class CoreAuthenticationTestUtils {
 
     public static CasModelRegisteredService getRegisteredService(final String name, final String url) {
         val service = mock(CasModelRegisteredService.class);
-        when(service.getFriendlyName()).thenCallRealMethod();
-        when(service.getServiceId()).thenReturn(url);
-        when(service.getName()).thenReturn(name);
-        when(service.getId()).thenReturn(Long.MAX_VALUE);
-        when(service.getDescription()).thenReturn("service description");
+        lenient().when(service.getFriendlyName()).thenCallRealMethod();
+        lenient().when(service.getServiceId()).thenReturn(url);
+        lenient().when(service.getName()).thenReturn(name);
+        lenient().when(service.getId()).thenReturn(Long.MAX_VALUE);
+        lenient().when(service.getDescription()).thenReturn("service description");
 
         val access = mock(RegisteredServiceAccessStrategy.class);
-        when(access.isServiceAccessAllowed(any(), any())).thenReturn(true);
-        when(access.isServiceAccessAllowedForSso(any())).thenReturn(true);
-        when(service.getAccessStrategy()).thenReturn(access);
+        lenient().when(access.isServiceAccessAllowed(any(), any())).thenReturn(true);
+        lenient().when(access.isServiceAccessAllowedForSso(any())).thenReturn(true);
+        lenient().when(service.getAccessStrategy()).thenReturn(access);
 
         val authnPolicy = mock(RegisteredServiceAuthenticationPolicy.class);
-        when(authnPolicy.getRequiredAuthenticationHandlers()).thenReturn(Set.of());
-        when(service.getAuthenticationPolicy()).thenReturn(authnPolicy);
+        lenient().when(authnPolicy.getRequiredAuthenticationHandlers()).thenReturn(Set.of());
+        lenient().when(service.getAuthenticationPolicy()).thenReturn(authnPolicy);
         return service;
     }
 
@@ -202,12 +203,12 @@ public class CoreAuthenticationTestUtils {
         return getAuthenticationResult(support, service, getCredentialsWithSameUsernameAndPassword());
     }
 
-    public static AuthenticationResult getAuthenticationResult(final AuthenticationSystemSupport support) throws Throwable {
+    public static AuthenticationResult getAuthenticationResult(final AuthenticationSystemSupport support) {
         return getAuthenticationResult(support, getWebApplicationService(), getCredentialsWithSameUsernameAndPassword());
     }
 
     public static AuthenticationResult getAuthenticationResult(final AuthenticationSystemSupport support,
-                                                               final Credential... credentials) throws Throwable {
+                                                               final Credential... credentials) {
         return getAuthenticationResult(support, getWebApplicationService(), credentials);
     }
 
@@ -216,11 +217,11 @@ public class CoreAuthenticationTestUtils {
         return FunctionUtils.doUnchecked(() -> support.finalizeAuthenticationTransaction(service, credentials));
     }
 
-    public static AuthenticationResult getAuthenticationResult() throws Throwable {
+    public static AuthenticationResult getAuthenticationResult() {
         return getAuthenticationResult(getWebApplicationService(), getAuthentication());
     }
 
-    public static AuthenticationResult getAuthenticationResult(final Service service) throws Throwable {
+    public static AuthenticationResult getAuthenticationResult(final Service service) {
         return getAuthenticationResult(service, getAuthentication());
     }
 
@@ -235,7 +236,7 @@ public class CoreAuthenticationTestUtils {
         return result;
     }
 
-    public static AuthenticationBuilder getAuthenticationBuilder() throws Throwable {
+    public static AuthenticationBuilder getAuthenticationBuilder() {
         return getAuthenticationBuilder(getPrincipal());
     }
 
@@ -260,7 +261,7 @@ public class CoreAuthenticationTestUtils {
 
     public static AuthenticationSystemSupport getAuthenticationSystemSupport() {
         val authSupport = mock(AuthenticationSystemSupport.class);
-        when(authSupport.getPrincipalElectionStrategy()).thenReturn(new DefaultPrincipalElectionStrategy());
+        lenient().when(authSupport.getPrincipalElectionStrategy()).thenReturn(new DefaultPrincipalElectionStrategy());
         return authSupport;
     }
 
@@ -272,7 +273,9 @@ public class CoreAuthenticationTestUtils {
             new DefaultPrincipalElectionStrategy(),
             new DefaultAuthenticationResultBuilderFactory(),
             getAuthenticationTransactionFactory(servicesManager),
-            servicesManager);
+            servicesManager,
+            new EchoingPrincipalResolver(),
+            PrincipalFactoryUtils.newPrincipalFactory());
     }
 
     public static AuthenticationTransactionFactory getAuthenticationTransactionFactory(final ServicesManager servicesManager) {

@@ -1,7 +1,6 @@
 {
   "dependencies": "reports,palantir",
   "properties": [
-
     
     "--cas.server.name=https://localhost:8443",
     "--cas.server.prefix=${cas.server.name}/cas",
@@ -11,6 +10,8 @@
 
     "--spring.security.user.name=casadmin",
     "--spring.security.user.password=password",
+
+    "--cas.http-web-request.header.content-security-policy=",
     
     "--cas.monitor.endpoints.endpoint.defaults.access=ANONYMOUS",
     "--management.endpoints.web.exposure.include=*",

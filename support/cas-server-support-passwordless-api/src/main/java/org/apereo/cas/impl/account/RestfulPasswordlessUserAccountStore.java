@@ -1,5 +1,6 @@
 package org.apereo.cas.impl.account;
 
+import org.apereo.cas.api.PasswordlessAuthenticationRequest;
 import org.apereo.cas.api.PasswordlessUserAccount;
 import org.apereo.cas.api.PasswordlessUserAccountStore;
 import org.apereo.cas.configuration.model.support.passwordless.account.PasswordlessAuthenticationRestAccountsProperties;
@@ -12,10 +13,12 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.hc.core5.http.HttpEntityContainer;
 import org.apache.hc.core5.http.HttpResponse;
 import org.hjson.JsonValue;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Locale;
@@ -36,25 +39,27 @@ public class RestfulPasswordlessUserAccountStore implements PasswordlessUserAcco
     private final PasswordlessAuthenticationRestAccountsProperties restProperties;
 
     @Override
-    public Optional<PasswordlessUserAccount> findUser(final String username) {
+    public Optional<PasswordlessUserAccount> findUser(final PasswordlessAuthenticationRequest request) {
         HttpResponse response = null;
         try {
             val parameters = new HashMap<String, String>();
-            parameters.put("username", username);
+            parameters.put("username", request.getUsername());
 
             val exec = HttpExecutionRequest.builder()
                 .basicAuthPassword(restProperties.getBasicAuthPassword())
                 .basicAuthUsername(restProperties.getBasicAuthUsername())
                 .method(HttpMethod.valueOf(restProperties.getMethod().toUpperCase(Locale.ENGLISH).trim()))
-                .url(restProperties.getUrl())
+                .url(StringUtils.appendIfMissing(restProperties.getUrl(), "/").concat(request.getUsername()))
                 .parameters(parameters)
                 .build();
             response = HttpUtils.execute(exec);
 
-            if (response != null && ((HttpEntityContainer) response).getEntity() != null) {
-                val result = IOUtils.toString(((HttpEntityContainer) response).getEntity().getContent(), StandardCharsets.UTF_8);
-                val account = MAPPER.readValue(JsonValue.readHjson(result).toString(), PasswordlessUserAccount.class);
-                return Optional.ofNullable(account);
+            if (response != null && HttpStatus.valueOf(response.getCode()).is2xxSuccessful() && ((HttpEntityContainer) response).getEntity() != null) {
+                try (val content = ((HttpEntityContainer) response).getEntity().getContent()) {
+                    val result = IOUtils.toString(content, StandardCharsets.UTF_8);
+                    val account = MAPPER.readValue(JsonValue.readHjson(result).toString(), PasswordlessUserAccount.class);
+                    return Optional.ofNullable(account);
+                }
             }
         } catch (final Exception e) {
             LoggingUtils.error(LOGGER, e);

@@ -1,11 +1,11 @@
 package org.apereo.cas.web.flow.actions.logout;
 
-import org.apereo.cas.authentication.principal.Principal;
+import org.apereo.cas.authentication.principal.Service;
 import org.apereo.cas.pac4j.client.DelegatedIdentityProviders;
+import org.apereo.cas.support.pac4j.authentication.DelegatedAuthenticationClientLogoutRequest;
 import org.apereo.cas.web.flow.DelegationWebflowUtils;
 import org.apereo.cas.web.flow.actions.BaseCasWebflowAction;
 import org.apereo.cas.web.support.WebUtils;
-
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
@@ -17,10 +17,8 @@ import org.pac4j.core.profile.ProfileManager;
 import org.pac4j.core.profile.UserProfile;
 import org.pac4j.jee.context.JEEContext;
 import org.pac4j.jee.http.adapter.JEEHttpActionAdapter;
-import org.pac4j.saml.state.SAML2StateGenerator;
 import org.springframework.webflow.execution.Event;
 import org.springframework.webflow.execution.RequestContext;
-
 import java.util.Optional;
 
 /**
@@ -55,7 +53,6 @@ public class DelegatedAuthenticationClientLogoutAction extends BaseCasWebflowAct
             val client = clientResult.get();
             LOGGER.debug("Handling logout for delegated authentication client [{}]", client);
             DelegationWebflowUtils.putDelegatedAuthenticationClientName(requestContext, client.getName());
-            sessionStore.set(context, SAML2StateGenerator.SAML_RELAY_STATE_ATTRIBUTE, client.getName());
         }
         return null;
     }
@@ -72,7 +69,7 @@ public class DelegatedAuthenticationClientLogoutAction extends BaseCasWebflowAct
             val client = clientResult.get();
             LOGGER.trace("Located client [{}]", client);
             val service = WebUtils.getService(requestContext);
-            val targetUrl = Optional.ofNullable(service).map(Principal::getId).orElse(null);
+            val targetUrl = Optional.ofNullable(service).map(Service::getId).orElse(null);
             LOGGER.debug("Logout target url based on service [{}] is [{}]", service, targetUrl);
 
             val callContext = new CallContext(context, sessionStore);

@@ -80,19 +80,19 @@
                                     </div>
                                     <ul class="nav nav-tabs">
                                         <li class="nav-item">
-                                            <a class="nav-link active" data-bs-toggle='tab' href="#simpleproperty{{ singlePropertyKey }}">Java Property</a>
+                                            <a class="nav-link active" data-bs-toggle='tab' href="#simpleproperty{{ singlePropertyKey }}"><i class="fa-brands fa-java px-1"></i>Java Property</a>
                                         </li>
                                         <li class="nav-item">
-                                            <a class="nav-link" data-bs-toggle='tab' href="#yamlproperty{{ singlePropertyKey }}">YAML Property</a>
+                                            <a class="nav-link" data-bs-toggle='tab' href="#yamlproperty{{ singlePropertyKey }}"><i class="fa fa-file-code px-1"></i>YAML Property</a>
                                         </li>
                                         <li class="nav-item">
-                                            <a class="nav-link" data-bs-toggle='tab' href="#systemproperty{{ singlePropertyKey }}">System Property</a>
+                                            <a class="nav-link" data-bs-toggle='tab' href="#systemproperty{{ singlePropertyKey }}"><i class="fa fa-laptop px-1"></i>System Property</a>
                                         </li>
                                         <li class="nav-item">
-                                            <a class="nav-link" data-bs-toggle='tab' href="#envvar{{ singlePropertyKey }}">Environment Variable</a>
+                                            <a class="nav-link" data-bs-toggle='tab' href="#envvar{{ singlePropertyKey }}"><i class="fa fa-laptop-code px-1"></i>Environment Variable</a>
                                         </li>
                                         <li class="nav-item">
-                                            <a class="nav-link" data-bs-toggle='tab' href="#cmdarg{{ singlePropertyKey }}">Commandline Argument</a>
+                                            <a class="nav-link" data-bs-toggle='tab' href="#cmdarg{{ singlePropertyKey }}"><i class="fa fa-terminal px-1"></i>Command-line Argument</a>
                                         </li>
                                     </ul>
                                     <div class='tab-content'>
@@ -131,12 +131,7 @@
                                                     {%- assign indentation = indentation | append: " " -%}
                                                 {%- endfor -%}
 
-                                                {%- assign listIndicator = "" -%}
-                                                {%- if word contains "[]" -%}
-                                                    {%- assign listIndicator = "- " -%}
-                                                {%- endif -%}
-
-                                                {%- assign path = path | append: indentation | append: listIndicator | append: word | replace: "[]", "" | append: ": " -%}
+                                                {%- assign path = path | append: indentation | append: word | replace: "[]", "[0]" | append: ": " -%}
 
                                                 {%- if forloop.index == totalWords -%}
                                                     {%- assign path = path | append: propertyValueFormatted -%}
@@ -217,9 +212,9 @@ java -jar build/libs/cas.war --{{ include.name | replace: "[]", "[0]"}}={{ prope
         {%- if include.deprecationLevel.size > 0 -%}
         <p/><p class="small text-left"><i class="fas fa-skull"></i> Deprecation status is <code>{{ include.deprecationLevel }}</code>
         {%- if include.deprecationReplacement.size > 0 -%}
-        with a replacement setting: <code>{{ include.deprecationReplacement | default: "N/A" }}</code>.
+         with a replacement setting: <code>{{ include.deprecationReplacement | default: "N/A" }}</code>.
         {%- else -%}
-        without a replacement setting.
+         without a replacement setting.
         {%- endif -%}
     </p>
         {%- endif -%}

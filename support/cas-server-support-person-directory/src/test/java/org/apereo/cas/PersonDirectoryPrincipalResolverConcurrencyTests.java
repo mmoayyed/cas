@@ -2,19 +2,22 @@ package org.apereo.cas;
 
 import org.apereo.cas.authentication.CoreAuthenticationUtils;
 import org.apereo.cas.authentication.attribute.AttributeDefinitionStore;
+import org.apereo.cas.authentication.attribute.AttributeRepositoryResolver;
 import org.apereo.cas.authentication.credential.UsernamePasswordCredential;
 import org.apereo.cas.authentication.principal.PrincipalFactoryUtils;
 import org.apereo.cas.authentication.principal.PrincipalResolver;
+import org.apereo.cas.authentication.principal.attribute.PersonAttributeDao;
 import org.apereo.cas.authentication.principal.resolvers.PersonDirectoryPrincipalResolver;
 import org.apereo.cas.configuration.CasConfigurationProperties;
 import org.apereo.cas.services.ServicesManager;
+import org.apereo.cas.test.CasTestExtension;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
-import org.apereo.services.persondir.IPersonAttributeDao;
 import org.jooq.lambda.fi.lang.CheckedRunnable;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -35,21 +38,23 @@ import static org.junit.jupiter.api.Assertions.*;
  *
  * @since 6.2
  */
-@SpringBootTest(classes = BasePrincipalAttributeRepositoryTests.SharedTestConfiguration.class, properties = {
-    "cas.authn.attribute-repository.stub.attributes.uid=cas",
-    "cas.authn.attribute-repository.stub.attributes.givenName=apereo-cas",
-    "cas.authn.attribute-repository.stub.attributes.phone=123456789",
+@SpringBootTest(classes = BasePrincipalAttributeRepositoryTests.SharedTestConfiguration.class,
+    properties = {
+        "cas.authn.attribute-repository.stub.attributes.uid=cas",
+        "cas.authn.attribute-repository.stub.attributes.givenName=apereo-cas",
+        "cas.authn.attribute-repository.stub.attributes.phone=123456789",
 
-    "cas.authn.attribute-repository.json[0].location=classpath:/json-attribute-repository.json",
-    "cas.authn.attribute-repository.json[0].order=1",
+        "cas.authn.attribute-repository.json[0].location=classpath:/json-attribute-repository.json",
+        "cas.authn.attribute-repository.json[0].order=1",
 
-    "cas.authn.attribute-repository.groovy[0].location=classpath:/GroovyAttributeDao.groovy",
-    "cas.authn.attribute-repository.groovy[0].order=2",
+        "cas.authn.attribute-repository.groovy[0].location=classpath:/GroovyAttributeDao.groovy",
+        "cas.authn.attribute-repository.groovy[0].order=2",
 
-    "cas.authn.attribute-repository.core.aggregation=MERGE",
-    "cas.authn.attribute-repository.core.merger=MULTIVALUED"
-})
+        "cas.authn.attribute-repository.core.aggregation=MERGE",
+        "cas.authn.attribute-repository.core.merger=MULTIVALUED"
+    })
 @Tag("Attributes")
+@ExtendWith(CasTestExtension.class)
 class PersonDirectoryPrincipalResolverConcurrencyTests {
 
     private static final int NUM_USERS = 100;
@@ -61,7 +66,7 @@ class PersonDirectoryPrincipalResolverConcurrencyTests {
 
     @Autowired
     @Qualifier(PrincipalResolver.BEAN_NAME_ATTRIBUTE_REPOSITORY)
-    private IPersonAttributeDao attributeRepository;
+    private PersonAttributeDao attributeRepository;
 
     @Autowired
     private CasConfigurationProperties casProperties;
@@ -73,6 +78,10 @@ class PersonDirectoryPrincipalResolverConcurrencyTests {
     @Autowired
     @Qualifier(ServicesManager.BEAN_NAME)
     private ServicesManager servicesManager;
+
+    @Autowired
+    @Qualifier(AttributeRepositoryResolver.BEAN_NAME)
+    private AttributeRepositoryResolver attributeRepositoryResolver;
 
     private PrincipalResolver personDirectoryResolver;
 
@@ -120,17 +129,11 @@ class PersonDirectoryPrincipalResolverConcurrencyTests {
         val attributeMerger = CoreAuthenticationUtils.getAttributeMerger(casProperties.getAuthn().getAttributeRepository().getCore().getMerger());
         personDirectoryResolver = PersonDirectoryPrincipalResolver.newPersonDirectoryPrincipalResolver(
             applicationContext, PrincipalFactoryUtils.newPrincipalFactory(),
-            attributeRepository, attributeMerger,
-            servicesManager, attributeDefinitionStore,
-            casProperties.getPersonDirectory()
+            attributeRepository, attributeMerger, servicesManager, attributeDefinitionStore,
+            attributeRepositoryResolver, casProperties.getPersonDirectory()
         );
     }
 
-    /**
-     * Create a PersonAttrGetter for each user and run them in parallel
-     *
-     * @throws Exception concurrency assertion failed
-     */
     @Test
     void validatePersonDirConcurrency() throws Throwable {
         val userList = IntStream.range(0, NUM_USERS).mapToObj(i -> "user_" + i)
@@ -150,7 +153,7 @@ class PersonDirectoryPrincipalResolverConcurrencyTests {
             val upc = new UsernamePasswordCredential(username, "password");
             for (var i = 0; i < EXECUTIONS_PER_USER; i++) {
                 try {
-                    val person = this.personDirectoryResolver.resolve(upc);
+                    val person = personDirectoryResolver.resolve(upc);
                     val attributes = person.getAttributes();
                     assertEquals(username, person.getId());
                     LOGGER.debug("Fetched person: [{}] [{}], last-name [{}]", attributes.get("uid"),

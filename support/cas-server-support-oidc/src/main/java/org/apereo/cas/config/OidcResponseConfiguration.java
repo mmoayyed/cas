@@ -7,18 +7,26 @@ import org.apereo.cas.authentication.principal.WebApplicationService;
 import org.apereo.cas.configuration.CasConfigurationProperties;
 import org.apereo.cas.configuration.features.CasFeatureModule;
 import org.apereo.cas.oidc.OidcConfigurationContext;
-import org.apereo.cas.oidc.issuer.OidcIssuerService;
 import org.apereo.cas.oidc.ticket.OidcPushedAuthorizationRequestValidator;
 import org.apereo.cas.oidc.token.OidcIdTokenExpirationPolicyBuilder;
 import org.apereo.cas.oidc.token.OidcIdTokenGeneratorService;
+import org.apereo.cas.oidc.token.ciba.AccessTokenCibaGrantRequestExtractor;
+import org.apereo.cas.oidc.token.ciba.CibaPingTokenDeliveryHandler;
+import org.apereo.cas.oidc.token.ciba.CibaPollTokenDeliveryHandler;
+import org.apereo.cas.oidc.token.ciba.CibaPushTokenDeliveryHandler;
+import org.apereo.cas.oidc.token.ciba.CibaTokenDeliveryHandler;
+import org.apereo.cas.oidc.token.ciba.OidcAccessTokenCibaGrantRequestValidator;
 import org.apereo.cas.oidc.web.OidcAccessTokenResponseGenerator;
 import org.apereo.cas.oidc.web.OidcImplicitIdTokenAndTokenAuthorizationResponseBuilder;
 import org.apereo.cas.oidc.web.OidcImplicitIdTokenAuthorizationResponseBuilder;
 import org.apereo.cas.oidc.web.OidcPushedAuthorizationModelAndViewBuilder;
 import org.apereo.cas.oidc.web.OidcPushedAuthorizationRequestUriResponseBuilder;
+import org.apereo.cas.oidc.web.response.OidcIntrospectionResponseGenerator;
 import org.apereo.cas.services.ServicesManager;
 import org.apereo.cas.support.oauth.validator.authorization.OAuth20AuthorizationRequestValidator;
+import org.apereo.cas.support.oauth.validator.token.OAuth20TokenRequestValidator;
 import org.apereo.cas.support.oauth.web.OAuth20RequestParameterResolver;
+import org.apereo.cas.support.oauth.web.response.accesstoken.ext.AccessTokenGrantRequestExtractor;
 import org.apereo.cas.support.oauth.web.response.accesstoken.response.OAuth20AccessTokenResponseGenerator;
 import org.apereo.cas.support.oauth.web.response.callback.OAuth20AuthorizationCodeAuthorizationResponseBuilder;
 import org.apereo.cas.support.oauth.web.response.callback.OAuth20AuthorizationModelAndViewBuilder;
@@ -26,16 +34,14 @@ import org.apereo.cas.support.oauth.web.response.callback.OAuth20AuthorizationRe
 import org.apereo.cas.support.oauth.web.response.callback.OAuth20ClientCredentialsResponseBuilder;
 import org.apereo.cas.support.oauth.web.response.callback.OAuth20ResourceOwnerCredentialsResponseBuilder;
 import org.apereo.cas.support.oauth.web.response.callback.OAuth20TokenAuthorizationResponseBuilder;
+import org.apereo.cas.support.oauth.web.response.introspection.OAuth20IntrospectionResponseGenerator;
 import org.apereo.cas.ticket.ExpirationPolicyBuilder;
-import org.apereo.cas.ticket.IdTokenGeneratorService;
 import org.apereo.cas.ticket.TicketFactory;
+import org.apereo.cas.ticket.idtoken.IdTokenGeneratorService;
 import org.apereo.cas.ticket.registry.TicketRegistry;
-import org.apereo.cas.token.JwtBuilder;
 import org.apereo.cas.util.spring.boot.ConditionalOnFeatureEnabled;
-
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.cloud.context.config.annotation.RefreshScope;
@@ -51,32 +57,26 @@ import org.springframework.context.annotation.ScopedProxyMode;
  */
 @EnableConfigurationProperties(CasConfigurationProperties.class)
 @ConditionalOnFeatureEnabled(feature = CasFeatureModule.FeatureCatalog.OpenIDConnect)
-@AutoConfiguration
-public class OidcResponseConfiguration {
+@Configuration(value = "OidcResponseConfiguration", proxyBeanMethods = false)
+class OidcResponseConfiguration {
 
     @Configuration(value = "OidcResponseAccessTokenConfiguration", proxyBeanMethods = false)
     @EnableConfigurationProperties(CasConfigurationProperties.class)
-    public static class OidcResponseAccessTokenConfiguration {
+    static class OidcResponseAccessTokenConfiguration {
 
         @ConditionalOnMissingBean(name = "oidcAccessTokenResponseGenerator")
         @Bean
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
         public OAuth20AccessTokenResponseGenerator oidcAccessTokenResponseGenerator(
-            @Qualifier("oidcIdTokenGenerator")
-            final IdTokenGeneratorService oidcIdTokenGenerator,
-            @Qualifier("accessTokenJwtBuilder")
-            final JwtBuilder accessTokenJwtBuilder,
-            final CasConfigurationProperties casProperties,
-            @Qualifier(OidcIssuerService.BEAN_NAME)
-            final OidcIssuerService oidcIssuerService) {
-            return new OidcAccessTokenResponseGenerator(oidcIdTokenGenerator, accessTokenJwtBuilder,
-                casProperties, oidcIssuerService);
+            @Qualifier(OidcConfigurationContext.BEAN_NAME)
+            final ObjectProvider<OidcConfigurationContext> oidcConfigurationContext) {
+            return new OidcAccessTokenResponseGenerator(oidcConfigurationContext);
         }
     }
 
     @Configuration(value = "OidcResponseClientCredentialConfiguration", proxyBeanMethods = false)
     @EnableConfigurationProperties(CasConfigurationProperties.class)
-    public static class OidcResponseClientCredentialConfiguration {
+    static class OidcResponseClientCredentialConfiguration {
         @Bean
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
         @ConditionalOnMissingBean(name = "oidcClientCredentialsResponseBuilder")
@@ -94,7 +94,7 @@ public class OidcResponseConfiguration {
 
     @Configuration(value = "OidcResponseTokenConfiguration", proxyBeanMethods = false)
     @EnableConfigurationProperties(CasConfigurationProperties.class)
-    public static class OidcResponseTokenConfiguration {
+    static class OidcResponseTokenConfiguration {
         @Bean
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
         @ConditionalOnMissingBean(name = "oidcTokenResponseBuilder")
@@ -111,7 +111,7 @@ public class OidcResponseConfiguration {
 
     @Configuration(value = "OidcResponseAuthorizationCodeConfiguration", proxyBeanMethods = false)
     @EnableConfigurationProperties(CasConfigurationProperties.class)
-    public static class OidcResponseAuthorizationCodeConfiguration {
+    static class OidcResponseAuthorizationCodeConfiguration {
         @Bean
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
         @ConditionalOnMissingBean(name = "oidcAuthorizationCodeResponseBuilder")
@@ -166,11 +166,20 @@ public class OidcResponseConfiguration {
                 webApplicationServiceFactory, registeredServiceAccessStrategyEnforcer,
                 ticketRegistry, ticketFactory, oauthRequestParameterResolver);
         }
+
+        @ConditionalOnMissingBean(name = "oidcAccessTokenCibaGrantRequestValidator")
+        @Bean
+        @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
+        public OAuth20TokenRequestValidator oidcAccessTokenCibaGrantRequestValidator(
+            @Qualifier(OidcConfigurationContext.BEAN_NAME)
+            final OidcConfigurationContext oidcConfigurationContext) {
+            return new OidcAccessTokenCibaGrantRequestValidator(oidcConfigurationContext);
+        }
     }
 
     @Configuration(value = "OidcResponseImplicitConfiguration", proxyBeanMethods = false)
     @EnableConfigurationProperties(CasConfigurationProperties.class)
-    public static class OidcResponseImplicitConfiguration {
+    static class OidcResponseImplicitConfiguration {
 
         @Bean
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
@@ -198,9 +207,10 @@ public class OidcResponseConfiguration {
                 oauthAuthorizationModelAndViewBuilder);
         }
     }
+
     @Configuration(value = "OidcResponseResourceOwnerConfiguration", proxyBeanMethods = false)
     @EnableConfigurationProperties(CasConfigurationProperties.class)
-    public static class OidcResponseResourceOwnerConfiguration {
+    static class OidcResponseResourceOwnerConfiguration {
         @Bean
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
         @ConditionalOnMissingBean(name = "oidcResourceOwnerCredentialsResponseBuilder")
@@ -214,9 +224,20 @@ public class OidcResponseConfiguration {
                 oauthAuthorizationModelAndViewBuilder);
         }
     }
+
     @Configuration(value = "OidcResponseTokenGenerationConfiguration", proxyBeanMethods = false)
     @EnableConfigurationProperties(CasConfigurationProperties.class)
-    public static class OidcResponseTokenGenerationConfiguration {
+    static class OidcResponseTokenGenerationConfiguration {
+
+        @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
+        @ConditionalOnMissingBean(name = "oidcIntrospectionResponseGenerator")
+        @Bean
+        public OAuth20IntrospectionResponseGenerator oidcIntrospectionResponseGenerator(
+            @Qualifier(OidcConfigurationContext.BEAN_NAME)
+            final ObjectProvider<OidcConfigurationContext> oidcConfigurationContext) {
+            return new OidcIntrospectionResponseGenerator(oidcConfigurationContext);
+        }
+
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
         @ConditionalOnMissingBean(name = "oidcIdTokenGenerator")
         @Bean
@@ -231,6 +252,41 @@ public class OidcResponseConfiguration {
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
         public ExpirationPolicyBuilder oidcIdTokenExpirationPolicy(final CasConfigurationProperties casProperties) {
             return new OidcIdTokenExpirationPolicyBuilder(casProperties);
+        }
+
+        @Bean
+        @ConditionalOnMissingBean(name = "oidcCibaPushTokenDeliveryHandler")
+        @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
+        public CibaTokenDeliveryHandler oidcCibaPushTokenDeliveryHandler(
+            @Qualifier(OidcConfigurationContext.BEAN_NAME)
+            final OidcConfigurationContext oidcConfigurationContext) {
+            return new CibaPushTokenDeliveryHandler(oidcConfigurationContext);
+        }
+
+        @Bean
+        @ConditionalOnMissingBean(name = "oidcCibaPingTokenDeliveryHandler")
+        @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
+        public CibaTokenDeliveryHandler oidcCibaPingTokenDeliveryHandler(
+            @Qualifier(OidcConfigurationContext.BEAN_NAME)
+            final OidcConfigurationContext oidcConfigurationContext) {
+            return new CibaPingTokenDeliveryHandler(oidcConfigurationContext);
+        }
+
+        @Bean
+        @ConditionalOnMissingBean(name = "oidcCibaPollTokenDeliveryHandler")
+        @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
+        public CibaTokenDeliveryHandler oidcCibaPollTokenDeliveryHandler(
+            @Qualifier(OidcConfigurationContext.BEAN_NAME)
+            final OidcConfigurationContext oidcConfigurationContext) {
+            return new CibaPollTokenDeliveryHandler(oidcConfigurationContext);
+        }
+
+        @Bean
+        @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
+        @ConditionalOnMissingBean(name = "oidcCibaAccessTokenGrantRequestExtractor")
+        public AccessTokenGrantRequestExtractor oidcCibaAccessTokenGrantRequestExtractor(
+            @Qualifier(OidcConfigurationContext.BEAN_NAME) final OidcConfigurationContext context) {
+            return new AccessTokenCibaGrantRequestExtractor(context);
         }
     }
 

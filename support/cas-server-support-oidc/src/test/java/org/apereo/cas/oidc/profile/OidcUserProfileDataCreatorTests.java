@@ -6,6 +6,7 @@ import org.apereo.cas.oidc.OidcConstants;
 import org.apereo.cas.services.RegisteredServiceTestUtils;
 import org.apereo.cas.support.oauth.OAuth20Constants;
 import org.apereo.cas.support.oauth.web.views.OAuth20UserProfileViewRenderer;
+import org.apereo.cas.ticket.AuthenticationAwareTicket;
 import org.apereo.cas.util.CollectionUtils;
 import lombok.val;
 import org.junit.jupiter.api.Nested;
@@ -17,6 +18,7 @@ import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.test.context.TestPropertySource;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
@@ -41,7 +43,12 @@ class OidcUserProfileDataCreatorTests {
             val principal = RegisteredServiceTestUtils.getPrincipal("casuser",
                 CollectionUtils.wrap("email", List.of("casuser@example.org"),
                     "email-address", List.of("casuser@apereo.org")));
-            val accessToken = getAccessToken(principal);
+            val accessToken = getAccessToken(principal, UUID.randomUUID().toString());
+            ticketRegistry.addTicket(accessToken);
+
+            val registeredService = getOidcRegisteredService(accessToken.getClientId(), "https://oauth.example.org");
+            servicesManager.save(registeredService);
+
             val data = oidcUserProfileDataCreator.createFrom(accessToken, context);
             val attrs = (Map) data.get(OAuth20UserProfileViewRenderer.MODEL_ATTRIBUTE_ATTRIBUTES);
             assertFalse(attrs.containsKey("email-address"));
@@ -60,11 +67,12 @@ class OidcUserProfileDataCreatorTests {
         void verifyOperation() throws Throwable {
             val context = new JEEContext(new MockHttpServletRequest(), new MockHttpServletResponse());
             val accessToken = getAccessToken();
+            ticketRegistry.addTicket(accessToken);
             val data = oidcUserProfileDataCreator.createFrom(accessToken, context);
             assertFalse(data.isEmpty());
-            assertEquals(accessToken.getTicketGrantingTicket().getAuthentication()
+            assertEquals(((AuthenticationAwareTicket) accessToken.getTicketGrantingTicket()).getAuthentication()
                 .getAuthenticationDate().toEpochSecond(), (long) data.get(OidcConstants.CLAIM_AUTH_TIME));
-            assertTrue(data.containsKey(OidcConstants.CLAIM_SUB));
+            assertTrue(data.containsKey(OAuth20Constants.CLAIM_SUB));
             assertTrue(data.containsKey(OAuth20UserProfileViewRenderer.MODEL_ATTRIBUTE_ID));
             assertTrue(data.containsKey(OAuth20UserProfileViewRenderer.MODEL_ATTRIBUTE_CLIENT_ID));
             assertTrue(data.containsKey(OAuth20UserProfileViewRenderer.MODEL_ATTRIBUTE_ATTRIBUTES));
@@ -85,9 +93,10 @@ class OidcUserProfileDataCreatorTests {
 
             val accessToken = getAccessToken();
             when(accessToken.getClaims()).thenReturn(result);
+            ticketRegistry.addTicket(accessToken);
             val data = oidcUserProfileDataCreator.createFrom(accessToken, context);
             assertFalse(data.isEmpty());
-            assertTrue(data.containsKey(OidcConstants.CLAIM_SUB));
+            assertTrue(data.containsKey(OAuth20Constants.CLAIM_SUB));
         }
     }
 }

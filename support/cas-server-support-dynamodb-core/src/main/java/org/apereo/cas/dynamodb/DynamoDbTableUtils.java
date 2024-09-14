@@ -169,15 +169,17 @@ public class DynamoDbTableUtils {
     public static void enableTimeToLiveOnTable(final DynamoDbClient dynamoDbClient,
                                                final String tableName,
                                                final String ttlAttributeName) {
-        val ttlSpec = TimeToLiveSpecification.builder()
-            .attributeName(ttlAttributeName)
-            .enabled(true)
-            .build();
-        val request = UpdateTimeToLiveRequest.builder()
-            .tableName(tableName)
-            .timeToLiveSpecification(ttlSpec)
-            .build();
-        dynamoDbClient.updateTimeToLive(request);
+        FunctionUtils.doAndHandle(__ -> {
+            val ttlSpec = TimeToLiveSpecification.builder()
+                .attributeName(ttlAttributeName)
+                .enabled(true)
+                .build();
+            val request = UpdateTimeToLiveRequest.builder()
+                .tableName(tableName)
+                .timeToLiveSpecification(ttlSpec)
+                .build();
+            dynamoDbClient.updateTimeToLive(request);
+        });
     }
 
     /**
@@ -218,12 +220,29 @@ public class DynamoDbTableUtils {
     public static ScanResponse scan(final DynamoDbClient dynamoDbClient,
                                     final String tableName,
                                     final List<? extends DynamoDbQueryBuilder> queries) {
+        return scan(dynamoDbClient, tableName, -1, queries);
+    }
+
+    /**
+     * Scan scan response.
+     *
+     * @param dynamoDbClient the dynamo db client
+     * @param tableName      the table name
+     * @param count          the count
+     * @param queries        the queries
+     * @return the scan response
+     */
+    public static ScanResponse scan(final DynamoDbClient dynamoDbClient,
+                                    final String tableName,
+                                    final long count,
+                                    final List<? extends DynamoDbQueryBuilder> queries) {
         try {
             val scanFilter = buildRequestQueryFilter(queries);
-            val scanRequest = ScanRequest.builder()
-                .tableName(tableName)
-                .scanFilter(scanFilter)
-                .build();
+            val scanRequestBuilder = ScanRequest.builder().tableName(tableName).scanFilter(scanFilter);
+            if (count > 0) {
+                scanRequestBuilder.limit((int) count);
+            }
+            val scanRequest = scanRequestBuilder.build();
             LOGGER.debug("Submitting request [{}] to get record with keys [{}]", scanRequest, queries);
             return dynamoDbClient.scan(scanRequest);
         } catch (final Exception e) {
@@ -265,7 +284,26 @@ public class DynamoDbTableUtils {
                                                  final String tableName,
                                                  final List<? extends DynamoDbQueryBuilder> queries,
                                                  final Function<Map<String, AttributeValue>, T> itemMapper) {
-        val scanResponse = scan(dynamoDbClient, tableName, queries);
+        return getRecordsByKeys(dynamoDbClient, tableName, -1, queries, itemMapper);
+    }
+
+    /**
+     * Gets records by keys.
+     *
+     * @param <T>            the type parameter
+     * @param dynamoDbClient the dynamo db client
+     * @param tableName      the table name
+     * @param count          the count
+     * @param queries        the queries
+     * @param itemMapper     the item mapper
+     * @return the records by keys
+     */
+    public static <T> Stream<T> getRecordsByKeys(final DynamoDbClient dynamoDbClient,
+                                                 final String tableName,
+                                                 final long count,
+                                                 final List<? extends DynamoDbQueryBuilder> queries,
+                                                 final Function<Map<String, AttributeValue>, T> itemMapper) {
+        val scanResponse = scan(dynamoDbClient, tableName, count, queries);
         val items = scanResponse.items();
         return items.stream().map(itemMapper);
     }
@@ -309,8 +347,28 @@ public class DynamoDbTableUtils {
                                               final String tableName,
                                               final List<DynamoDbQueryBuilder> keys,
                                               final Function<Map<String, AttributeValue>, T> itemMapper) {
+        return scanPaginator(amazonDynamoDBClient, tableName, 0L, keys, itemMapper);
+    }
+
+    /**
+     * Scan paginator and return stream.
+     *
+     * @param <T>                  the type parameter
+     * @param amazonDynamoDBClient the amazon dynamo db client
+     * @param tableName            the table name
+     * @param limit                the limit
+     * @param keys                 the keys
+     * @param itemMapper           the item mapper
+     * @return the stream
+     */
+    public static <T> Stream<T> scanPaginator(final DynamoDbClient amazonDynamoDBClient,
+                                              final String tableName,
+                                              final Long limit,
+                                              final List<DynamoDbQueryBuilder> keys,
+                                              final Function<Map<String, AttributeValue>, T> itemMapper) {
         val scanRequest = ScanRequest.builder()
             .tableName(tableName)
+            .limit(limit > 0 ? limit.intValue() : Integer.MAX_VALUE)
             .scanFilter(DynamoDbTableUtils.buildRequestQueryFilter(keys))
             .build();
         LOGGER.debug("Scanning table with scan request [{}]", scanRequest);

@@ -1,5 +1,6 @@
 package org.apereo.cas.configuration.model.support.account;
 
+import org.apereo.cas.configuration.features.CasFeatureModule;
 import org.apereo.cas.configuration.model.core.web.flow.WebflowAutoConfigurationProperties;
 import org.apereo.cas.configuration.model.support.account.provision.AccountManagementRegistrationProvisioningProperties;
 import org.apereo.cas.configuration.model.support.captcha.GoogleRecaptchaProperties;
@@ -7,7 +8,6 @@ import org.apereo.cas.configuration.model.support.email.EmailProperties;
 import org.apereo.cas.configuration.model.support.sms.SmsProperties;
 import org.apereo.cas.configuration.support.RequiresModule;
 
-import com.fasterxml.jackson.annotation.JsonFilter;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
@@ -26,8 +26,8 @@ import java.io.Serializable;
 @Getter
 @Setter
 @Accessors(chain = true)
-@JsonFilter("AccountManagementRegistrationProperties")
-public class AccountManagementRegistrationProperties implements Serializable {
+
+public class AccountManagementRegistrationProperties implements CasFeatureModule, Serializable {
     @Serial
     private static final long serialVersionUID = -4679683905941523034L;
 

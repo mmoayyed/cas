@@ -1,51 +1,31 @@
 package org.apereo.cas.web;
 
-import org.apereo.cas.config.CasCookieConfiguration;
-import org.apereo.cas.config.CasCoreAuditConfiguration;
-import org.apereo.cas.config.CasCoreAuthenticationConfiguration;
-import org.apereo.cas.config.CasCoreAuthenticationHandlersConfiguration;
-import org.apereo.cas.config.CasCoreAuthenticationMetadataConfiguration;
-import org.apereo.cas.config.CasCoreAuthenticationPolicyConfiguration;
-import org.apereo.cas.config.CasCoreAuthenticationPrincipalConfiguration;
-import org.apereo.cas.config.CasCoreAuthenticationServiceSelectionStrategyConfiguration;
-import org.apereo.cas.config.CasCoreAuthenticationSupportConfiguration;
-import org.apereo.cas.config.CasCoreConfiguration;
-import org.apereo.cas.config.CasCoreHttpConfiguration;
-import org.apereo.cas.config.CasCoreLogoutConfiguration;
-import org.apereo.cas.config.CasCoreMultifactorAuthenticationConfiguration;
-import org.apereo.cas.config.CasCoreNotificationsConfiguration;
-import org.apereo.cas.config.CasCoreServicesConfiguration;
-import org.apereo.cas.config.CasCoreTicketCatalogConfiguration;
-import org.apereo.cas.config.CasCoreTicketIdGeneratorsConfiguration;
-import org.apereo.cas.config.CasCoreTicketsConfiguration;
-import org.apereo.cas.config.CasCoreTicketsSerializationConfiguration;
-import org.apereo.cas.config.CasCoreUtilConfiguration;
-import org.apereo.cas.config.CasCoreWebConfiguration;
-import org.apereo.cas.config.CasCoreWebflowConfiguration;
-import org.apereo.cas.config.CasMultifactorAuthenticationWebflowConfiguration;
-import org.apereo.cas.config.CasPersonDirectoryTestConfiguration;
-import org.apereo.cas.config.CasThymeleafConfiguration;
-import org.apereo.cas.config.CasWebApplicationServiceFactoryConfiguration;
-import org.apereo.cas.config.CasWebflowContextConfiguration;
-import org.apereo.cas.config.CoreSamlConfiguration;
-import org.apereo.cas.config.DelegatedAuthenticationConfiguration;
-import org.apereo.cas.config.DelegatedAuthenticationDynamicDiscoverySelectionConfiguration;
-import org.apereo.cas.config.DelegatedAuthenticationEventExecutionPlanConfiguration;
-import org.apereo.cas.config.DelegatedAuthenticationSerializationConfiguration;
-import org.apereo.cas.config.DelegatedAuthenticationWebflowConfiguration;
+import org.apereo.cas.config.CasCoreAuditAutoConfiguration;
+import org.apereo.cas.config.CasCoreAuthenticationAutoConfiguration;
+import org.apereo.cas.config.CasCoreAutoConfiguration;
+import org.apereo.cas.config.CasCoreCookieAutoConfiguration;
+import org.apereo.cas.config.CasCoreLogoutAutoConfiguration;
+import org.apereo.cas.config.CasCoreMultifactorAuthenticationAutoConfiguration;
+import org.apereo.cas.config.CasCoreMultifactorAuthenticationWebflowAutoConfiguration;
+import org.apereo.cas.config.CasCoreNotificationsAutoConfiguration;
+import org.apereo.cas.config.CasCoreServicesAutoConfiguration;
+import org.apereo.cas.config.CasCoreTicketsAutoConfiguration;
+import org.apereo.cas.config.CasCoreUtilAutoConfiguration;
+import org.apereo.cas.config.CasCoreWebAutoConfiguration;
+import org.apereo.cas.config.CasCoreWebflowAutoConfiguration;
+import org.apereo.cas.config.CasDelegatedAuthenticationAutoConfiguration;
+import org.apereo.cas.config.CasDelegatedAuthenticationCasAutoConfiguration;
+import org.apereo.cas.config.CasDelegatedAuthenticationOidcAutoConfiguration;
+import org.apereo.cas.config.CasPersonDirectoryAutoConfiguration;
+import org.apereo.cas.config.CasThymeleafAutoConfiguration;
 import org.apereo.cas.pac4j.client.DelegatedClientAuthenticationRequestCustomizer;
 import org.apereo.cas.support.pac4j.authentication.clients.DelegatedAuthenticationClientsTestConfiguration;
 import org.apereo.cas.util.spring.beans.BeanSupplier;
+import org.apereo.cas.util.spring.boot.SpringBootTestAutoConfigurations;
 import org.apereo.cas.web.flow.DelegatedClientWebflowCustomizer;
 import org.springframework.boot.SpringBootConfiguration;
 import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
-import org.springframework.boot.autoconfigure.aop.AopAutoConfiguration;
-import org.springframework.boot.autoconfigure.thymeleaf.ThymeleafAutoConfiguration;
-import org.springframework.boot.autoconfigure.web.servlet.WebMvcAutoConfiguration;
-import org.springframework.boot.autoconfigure.web.servlet.error.ErrorMvcAutoConfiguration;
-import org.springframework.boot.test.autoconfigure.web.servlet.MockMvcAutoConfiguration;
 import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.cloud.autoconfigure.RefreshAutoConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
@@ -57,55 +37,30 @@ import org.springframework.web.servlet.config.annotation.EnableWebMvc;
  * @since 6.2.0
  */
 public abstract class BaseDelegatedAuthenticationTests {
-
     @ImportAutoConfiguration({
-        RefreshAutoConfiguration.class,
-        WebMvcAutoConfiguration.class,
-        ThymeleafAutoConfiguration.class,
-        MockMvcAutoConfiguration.class,
-        ErrorMvcAutoConfiguration.class,
-        AopAutoConfiguration.class
+        CasDelegatedAuthenticationOidcAutoConfiguration.class,
+        CasDelegatedAuthenticationCasAutoConfiguration.class,
+        CasDelegatedAuthenticationAutoConfiguration.class,
+        CasCoreTicketsAutoConfiguration.class,
+        CasCoreUtilAutoConfiguration.class,
+        CasCoreAuthenticationAutoConfiguration.class,
+        CasCoreNotificationsAutoConfiguration.class,
+        CasCoreServicesAutoConfiguration.class,
+        CasCoreWebAutoConfiguration.class,
+        CasCoreWebflowAutoConfiguration.class,
+        CasCoreMultifactorAuthenticationAutoConfiguration.class,
+        CasCoreMultifactorAuthenticationWebflowAutoConfiguration.class,
+        CasCoreLogoutAutoConfiguration.class,
+        CasPersonDirectoryAutoConfiguration.class,
+        CasCoreCookieAutoConfiguration.class,
+        CasThymeleafAutoConfiguration.class,
+        CasCoreAutoConfiguration.class,
+        CasCoreAuditAutoConfiguration.class
     })
-    @SpringBootConfiguration
+    @SpringBootTestAutoConfigurations
+    @SpringBootConfiguration(proxyBeanMethods = false)
     @EnableWebMvc
-    @Import({
-        DelegatedAuthenticationWebflowTestConfiguration.class,
-        DelegatedAuthenticationClientsTestConfiguration.class,
-        DelegatedAuthenticationConfiguration.class,
-        DelegatedAuthenticationEventExecutionPlanConfiguration.class,
-        DelegatedAuthenticationSerializationConfiguration.class,
-        DelegatedAuthenticationDynamicDiscoverySelectionConfiguration.class,
-        DelegatedAuthenticationWebflowConfiguration.class,
-
-        CasCoreTicketCatalogConfiguration.class,
-        CasCoreTicketsConfiguration.class,
-        CasCoreTicketIdGeneratorsConfiguration.class,
-        CasCoreTicketsSerializationConfiguration.class,
-        CasCoreUtilConfiguration.class,
-        CasCoreHttpConfiguration.class,
-        CoreSamlConfiguration.class,
-        CasCoreAuthenticationConfiguration.class,
-        CasCoreAuthenticationHandlersConfiguration.class,
-        CasCoreAuthenticationPrincipalConfiguration.class,
-        CasCoreAuthenticationPolicyConfiguration.class,
-        CasCoreAuthenticationMetadataConfiguration.class,
-        CasCoreAuthenticationSupportConfiguration.class,
-        CasCoreAuthenticationServiceSelectionStrategyConfiguration.class,
-        CasCoreNotificationsConfiguration.class,
-        CasCoreServicesConfiguration.class,
-        CasCoreWebConfiguration.class,
-        CasCoreWebflowConfiguration.class,
-        CasWebflowContextConfiguration.class,
-        CasCoreMultifactorAuthenticationConfiguration.class,
-        CasMultifactorAuthenticationWebflowConfiguration.class,
-        CasCoreLogoutConfiguration.class,
-        CasPersonDirectoryTestConfiguration.class,
-        CasCookieConfiguration.class,
-        CasThymeleafConfiguration.class,
-        CasCoreConfiguration.class,
-        CasCoreAuditConfiguration.class,
-        CasWebApplicationServiceFactoryConfiguration.class
-    })
+    @Import({DelegatedAuthenticationWebflowTestConfiguration.class, DelegatedAuthenticationClientsTestConfiguration.class})
     public static class SharedTestConfiguration {
     }
 
@@ -116,7 +71,7 @@ public abstract class BaseDelegatedAuthenticationTests {
             return BeanSupplier.of(DelegatedClientWebflowCustomizer.class)
                 .otherwiseProxy().get();
         }
-        
+
         @Bean
         public DelegatedClientAuthenticationRequestCustomizer testDelegatedClientAuthenticationRequestCustomizer() {
             return BeanSupplier.of(DelegatedClientAuthenticationRequestCustomizer.class)

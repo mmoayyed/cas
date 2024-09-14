@@ -6,7 +6,6 @@ import org.apereo.cas.configuration.CommaSeparatedStringToThrowablesConverter;
 import org.apereo.cas.configuration.StandaloneConfigurationFilePropertiesSourceLocator;
 import org.apereo.cas.configuration.api.CasConfigurationPropertiesSourceLocator;
 import org.apereo.cas.configuration.features.CasFeatureModule;
-import org.apereo.cas.configuration.loader.ConfigurationPropertiesLoaderFactory;
 import org.apereo.cas.configuration.support.CasConfigurationJasyptCipherExecutor;
 import org.apereo.cas.util.crypto.CipherExecutor;
 import org.apereo.cas.util.spring.boot.ConditionalOnFeatureEnabled;
@@ -28,14 +27,14 @@ import java.util.List;
  * @author Misagh Moayyed
  * @since 5.1.0
  */
-@Configuration(proxyBeanMethods = false)
+@Configuration(value = "CasCoreBaseEnvironmentConfiguration", proxyBeanMethods = false)
 @ConditionalOnFeatureEnabled(feature = CasFeatureModule.FeatureCatalog.CasConfiguration)
-public class CasCoreBaseEnvironmentConfiguration {
+class CasCoreBaseEnvironmentConfiguration {
 
     @Configuration(value = "CasCoreEnvironmentManagerConfiguration", proxyBeanMethods = false)
     @EnableConfigurationProperties(CasConfigurationProperties.class)
     @Lazy(false)
-    public static class CasCoreEnvironmentManagerConfiguration {
+    static class CasCoreEnvironmentManagerConfiguration {
         @ConditionalOnMissingBean(name = CasConfigurationPropertiesEnvironmentManager.BEAN_NAME)
         @Bean
         public static CasConfigurationPropertiesEnvironmentManager configurationPropertiesEnvironmentManager(
@@ -47,7 +46,7 @@ public class CasCoreBaseEnvironmentConfiguration {
     @Configuration(value = "CasCoreEnvironmentFactoryConfiguration", proxyBeanMethods = false)
     @EnableConfigurationProperties(CasConfigurationProperties.class)
     @Lazy(false)
-    public static class CasCoreEnvironmentFactoryConfiguration {
+    static class CasCoreEnvironmentFactoryConfiguration {
         @ConfigurationPropertiesBinding
         @Bean
         public Converter<String, List<Class<? extends Throwable>>> commaSeparatedStringToThrowablesCollection() {
@@ -60,27 +59,18 @@ public class CasCoreBaseEnvironmentConfiguration {
             final Environment environment) {
             return new CasConfigurationJasyptCipherExecutor(environment);
         }
-
-        @ConditionalOnMissingBean(name = ConfigurationPropertiesLoaderFactory.BEAN_NAME)
-        @Bean
-        public static ConfigurationPropertiesLoaderFactory configurationPropertiesLoaderFactory(
-            @Qualifier("casConfigurationCipherExecutor")
-            final CipherExecutor<String, String> casConfigurationCipherExecutor,
-            final Environment environment) {
-            return new ConfigurationPropertiesLoaderFactory(casConfigurationCipherExecutor, environment);
-        }
     }
 
     @Configuration(value = "CasCoreEnvironmentLocatorConfiguration", proxyBeanMethods = false)
     @EnableConfigurationProperties(CasConfigurationProperties.class)
     @Lazy(false)
-    public static class CasCoreEnvironmentLocatorConfiguration {
+    static class CasCoreEnvironmentLocatorConfiguration {
         @Bean
         @ConditionalOnMissingBean(name = "standaloneConfigurationFilePropertiesSourceLocator")
         public static CasConfigurationPropertiesSourceLocator standaloneConfigurationFilePropertiesSourceLocator(
-            @Qualifier(ConfigurationPropertiesLoaderFactory.BEAN_NAME)
-            final ConfigurationPropertiesLoaderFactory configurationPropertiesLoaderFactory) {
-            return new StandaloneConfigurationFilePropertiesSourceLocator(configurationPropertiesLoaderFactory);
+            @Qualifier("casConfigurationCipherExecutor")
+            final CipherExecutor<String, String> casConfigurationCipherExecutor) {
+            return new StandaloneConfigurationFilePropertiesSourceLocator(casConfigurationCipherExecutor);
         }
     }
 }

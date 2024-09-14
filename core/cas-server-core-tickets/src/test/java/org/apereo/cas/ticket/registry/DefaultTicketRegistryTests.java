@@ -5,7 +5,9 @@ import org.apereo.cas.mock.MockTicketGrantingTicket;
 import org.apereo.cas.services.RegisteredServiceTestUtils;
 import org.apereo.cas.ticket.DefaultTicketCatalog;
 import org.apereo.cas.ticket.Ticket;
+import org.apereo.cas.ticket.TicketGrantingTicket;
 import org.apereo.cas.ticket.serialization.TicketSerializationManager;
+import org.apereo.cas.ticket.tracking.TicketTrackingPolicy;
 import org.apereo.cas.util.cipher.DefaultTicketCipherExecutor;
 import lombok.val;
 import org.junit.jupiter.api.RepeatedTest;
@@ -40,7 +42,7 @@ class DefaultTicketRegistryTests extends BaseTicketRegistryTests {
     }
 
     @RepeatedTest(1)
-    void verifyCountForPrincipal() throws Throwable {
+    void verifyRegistryQuery() throws Throwable {
         val user = UUID.randomUUID().toString();
         val tgt = new MockTicketGrantingTicket(user);
         val st = new MockServiceTicket("ST-123456", RegisteredServiceTestUtils.getService(), tgt);
@@ -50,7 +52,24 @@ class DefaultTicketRegistryTests extends BaseTicketRegistryTests {
 
         val count = registry.countSessionsFor(user);
         assertEquals(1, count);
-        assertEquals(0, registry.query(TicketRegistryQueryCriteria.builder().build()).size());
+        assertNotEquals(0, registry.query(TicketRegistryQueryCriteria.builder()
+            .type(TicketGrantingTicket.PREFIX).build()).size());
+    }
+
+    @RepeatedTest(2)
+    void verifyCountForService() throws Throwable {
+        val service = RegisteredServiceTestUtils.getService(UUID.randomUUID().toString());
+        val registry = getNewTicketRegistry();
+        val user = UUID.randomUUID().toString();
+
+        for (int i = 0; i < 5; i++) {
+            val tgt = new MockTicketGrantingTicket(user);
+            val st = tgt.grantServiceTicket(service, TicketTrackingPolicy.noOp());
+            registry.addTicket(st);
+            registry.updateTicket(tgt);
+        }
+        val count = registry.countTicketsFor(service);
+        assertEquals(5, count);
     }
 
 

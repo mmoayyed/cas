@@ -1,10 +1,10 @@
 package org.apereo.cas.configuration.model.support.pm;
 
+import org.apereo.cas.configuration.features.CasFeatureModule;
 import org.apereo.cas.configuration.model.support.captcha.GoogleRecaptchaProperties;
 import org.apereo.cas.configuration.model.support.email.EmailProperties;
 import org.apereo.cas.configuration.support.RequiresModule;
 
-import com.fasterxml.jackson.annotation.JsonFilter;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
@@ -23,8 +23,8 @@ import java.io.Serializable;
 @Getter
 @Setter
 @Accessors(chain = true)
-@JsonFilter("ForgotUsernamePasswordManagementProperties")
-public class ForgotUsernamePasswordManagementProperties implements Serializable {
+
+public class ForgotUsernamePasswordManagementProperties implements CasFeatureModule, Serializable {
     @Serial
     private static final long serialVersionUID = 4850199066765183587L;
 

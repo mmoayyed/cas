@@ -1,12 +1,9 @@
 package org.apereo.cas.nativex;
 
 import org.apereo.cas.util.nativex.CasRuntimeHintsRegistrar;
-import org.springframework.aot.hint.MemberCategory;
+import lombok.val;
 import org.springframework.aot.hint.RuntimeHints;
-import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
-import org.springframework.security.web.csrf.DefaultCsrfToken;
-import java.util.Collection;
-import java.util.List;
+import org.springframework.security.web.csrf.CsrfToken;
 
 /**
  * This is {@link CasWebAppRuntimeHints}.
@@ -17,17 +14,8 @@ import java.util.List;
 public class CasWebAppRuntimeHints implements CasRuntimeHintsRegistrar {
     @Override
     public void registerHints(final RuntimeHints hints, final ClassLoader classLoader) {
-        hints.serialization().registerType(DefaultCsrfToken.class);
-        registerReflectionHints(hints, List.of(BasicAuthenticationFilter.class));
-    }
-
-    private static void registerReflectionHints(final RuntimeHints hints, final Collection entries) {
-        entries.forEach(el -> hints.reflection().registerType((Class) el,
-            MemberCategory.INVOKE_DECLARED_CONSTRUCTORS,
-            MemberCategory.INVOKE_PUBLIC_CONSTRUCTORS,
-            MemberCategory.INVOKE_DECLARED_METHODS,
-            MemberCategory.INVOKE_PUBLIC_METHODS,
-            MemberCategory.DECLARED_FIELDS,
-            MemberCategory.PUBLIC_FIELDS));
+        val csrfTokens = findSubclassesInPackage(CsrfToken.class, CsrfToken.class.getPackageName());
+        registerReflectionHints(hints, csrfTokens);
+        registerSerializationHints(hints, csrfTokens);
     }
 }

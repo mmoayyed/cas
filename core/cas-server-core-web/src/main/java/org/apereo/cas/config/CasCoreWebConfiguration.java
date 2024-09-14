@@ -7,6 +7,9 @@ import org.apereo.cas.configuration.features.CasFeatureModule;
 import org.apereo.cas.configuration.support.Beans;
 import org.apereo.cas.services.UnauthorizedServiceException;
 import org.apereo.cas.services.web.support.MappedExceptionErrorViewResolver;
+import org.apereo.cas.util.spring.RestActuatorControllerEndpoint;
+import org.apereo.cas.util.spring.RestActuatorEndpointDiscoverer;
+import org.apereo.cas.util.spring.RestActuatorEndpointHandlerMapping;
 import org.apereo.cas.util.spring.boot.ConditionalOnFeatureEnabled;
 import org.apereo.cas.web.CasWebSecurityConfigurer;
 import org.apereo.cas.web.CasYamlHttpMessageConverter;
@@ -21,20 +24,33 @@ import lombok.val;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.FactoryBean;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.config.PropertiesFactoryBean;
-import org.springframework.boot.autoconfigure.AutoConfiguration;
+import org.springframework.boot.actuate.autoconfigure.endpoint.web.CorsEndpointProperties;
+import org.springframework.boot.actuate.autoconfigure.endpoint.web.WebEndpointProperties;
+import org.springframework.boot.actuate.autoconfigure.web.server.ManagementPortType;
+import org.springframework.boot.actuate.endpoint.EndpointFilter;
+import org.springframework.boot.actuate.endpoint.EndpointsSupplier;
+import org.springframework.boot.actuate.endpoint.ExposableEndpoint;
+import org.springframework.boot.actuate.endpoint.web.EndpointLinksResolver;
+import org.springframework.boot.actuate.endpoint.web.EndpointMapping;
+import org.springframework.boot.actuate.endpoint.web.EndpointMediaTypes;
+import org.springframework.boot.actuate.endpoint.web.PathMapper;
+import org.springframework.boot.actuate.endpoint.web.WebEndpointsSupplier;
+import org.springframework.boot.actuate.endpoint.web.servlet.WebMvcEndpointHandlerMapping;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.web.WebProperties;
 import org.springframework.boot.autoconfigure.web.servlet.error.ErrorViewResolver;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.cloud.context.config.annotation.RefreshScope;
 import org.springframework.context.ConfigurableApplicationContext;
-import org.springframework.context.HierarchicalMessageSource;
+import org.springframework.context.MessageSource;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.ScopedProxyMode;
 import org.springframework.core.annotation.AnnotationAwareOrderComparator;
+import org.springframework.core.env.Environment;
 import org.springframework.core.io.DefaultResourceLoader;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpStatus;
@@ -42,7 +58,10 @@ import org.springframework.http.HttpStatusCode;
 import org.springframework.http.converter.HttpMessageConverter;
 import org.springframework.web.servlet.ModelAndView;
 import org.springframework.web.servlet.View;
+import org.springframework.webflow.conversation.NoSuchConversationException;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -51,19 +70,19 @@ import java.util.Properties;
 import java.util.stream.Collectors;
 
 /**
- * This is {@link CasCoreWebConfiguration}.
+ * This is {@link CasCoreWebAutoConfiguration}.
  *
  * @author Misagh Moayyed
  * @since 5.0.0
  */
 @EnableConfigurationProperties(CasConfigurationProperties.class)
 @ConditionalOnFeatureEnabled(feature = CasFeatureModule.FeatureCatalog.Core)
-@AutoConfiguration
-public class CasCoreWebConfiguration {
+@Configuration(value = "CasCoreWebConfiguration", proxyBeanMethods = false)
+class CasCoreWebConfiguration {
 
     @Configuration(value = "CasCoreWebMessageSourceConfiguration", proxyBeanMethods = false)
     @EnableConfigurationProperties(CasConfigurationProperties.class)
-    public static class CasCoreWebMessageSourceConfiguration {
+    static class CasCoreWebMessageSourceConfiguration {
         /**
          * Load property files containing non-i18n fallback values
          * that should be exposed to Thyme templates.
@@ -76,6 +95,7 @@ public class CasCoreWebConfiguration {
          */
         @Bean
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
+        @ConditionalOnMissingBean(name = "casCommonMessages")
         public PropertiesFactoryBean casCommonMessages(final CasConfigurationProperties casProperties) {
             val properties = new PropertiesFactoryBean();
             val resourceLoader = new DefaultResourceLoader();
@@ -94,7 +114,8 @@ public class CasCoreWebConfiguration {
 
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
         @Bean
-        public HierarchicalMessageSource messageSource(
+        @ConditionalOnMissingBean(name = "casMessageSource")
+        public MessageSource messageSource(
             final CasConfigurationProperties casProperties,
             @Qualifier("casCommonMessages") final Properties casCommonMessages) {
             val bean = new CasReloadableMessageBundle();
@@ -111,15 +132,15 @@ public class CasCoreWebConfiguration {
 
     @Configuration(value = "CasCoreWebRequestsConfiguration", proxyBeanMethods = false)
     @EnableConfigurationProperties(CasConfigurationProperties.class)
-    public static class CasCoreWebRequestsConfiguration {
+    static class CasCoreWebRequestsConfiguration {
         @Bean
         @ConditionalOnMissingBean(name = ArgumentExtractor.BEAN_NAME)
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
         public ArgumentExtractor argumentExtractor(final List<ServiceFactoryConfigurer> configurers) {
-            val serviceFactoryList = configurers.stream()
-                .flatMap(c -> c.buildServiceFactories().stream())
-                .collect(Collectors.toCollection(ArrayList::new));
             AnnotationAwareOrderComparator.sortIfNecessary(configurers);
+            val serviceFactoryList = configurers.stream()
+                .flatMap(configurer -> configurer.buildServiceFactories().stream())
+                .collect(Collectors.toCollection(ArrayList::new));
             return new DefaultArgumentExtractor(serviceFactoryList);
         }
 
@@ -148,18 +169,25 @@ public class CasCoreWebConfiguration {
         public ErrorViewResolver defaultMappedExceptionErrorViewResolver(
             final WebProperties webProperties,
             final ConfigurableApplicationContext applicationContext) {
-            val mv = new ModelAndView();
-            mv.setStatus(HttpStatusCode.valueOf(HttpStatus.FORBIDDEN.value()));
-            mv.setViewName(CasWebflowConstants.VIEW_ID_SERVICE_ERROR);
-            val mappings = Map.<Class<? extends Throwable>, ModelAndView>of(UnauthorizedServiceException.class, mv);
+            val mappings = Map.<Class<? extends Throwable>, ModelAndView>of(
+                UnauthorizedServiceException.class, getModelAndView(HttpStatus.FORBIDDEN, CasWebflowConstants.VIEW_ID_SERVICE_ERROR),
+                NoSuchConversationException.class, getModelAndView(HttpStatus.UNPROCESSABLE_ENTITY, "error/%s".formatted(HttpStatus.UNPROCESSABLE_ENTITY.value()))
+            );
             return new MappedExceptionErrorViewResolver(applicationContext,
                 webProperties.getResources(), mappings, errorContext -> Optional.empty());
+        }
+
+        private static ModelAndView getModelAndView(final HttpStatus status, final String viewName) {
+            val mv = new ModelAndView();
+            mv.setStatus(HttpStatusCode.valueOf(status.value()));
+            mv.setViewName(viewName);
+            return mv;
         }
     }
 
     @Configuration(value = "CasCoreWebViewsConfiguration", proxyBeanMethods = false)
     @EnableConfigurationProperties(CasConfigurationProperties.class)
-    public static class CasCoreWebViewsConfiguration {
+    static class CasCoreWebViewsConfiguration {
         @Bean
         @ConditionalOnMissingBean(name = CasWebflowConstants.VIEW_ID_DYNAMIC_HTML)
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
@@ -172,8 +200,8 @@ public class CasCoreWebConfiguration {
     }
 
     @Configuration(value = "CasCoreWebEndpointsConfiguration", proxyBeanMethods = false)
-    @EnableConfigurationProperties(CasConfigurationProperties.class)
-    public static class CasCoreWebEndpointsConfiguration {
+    @EnableConfigurationProperties({CasConfigurationProperties.class, CorsEndpointProperties.class, WebProperties.class})
+    static class CasCoreWebEndpointsConfiguration {
         @Bean
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
         @ConditionalOnMissingBean(name = "casProtocolEndpointConfigurer")
@@ -192,6 +220,68 @@ public class CasCoreWebConfiguration {
                         StringUtils.prependIfMissing(CasProtocolConstants.ENDPOINT_PROXY, "/"));
                 }
             };
+        }
+
+        @Bean
+        @ConditionalOnMissingBean(name = "restControllerEndpointDiscoverer")
+        public RestActuatorEndpointDiscoverer restControllerEndpointDiscoverer(
+            final ConfigurableApplicationContext applicationContext,
+            final ObjectProvider<PathMapper> endpointPathMappers,
+            final ObjectProvider<Collection<EndpointFilter<RestActuatorControllerEndpoint>>> filters) {
+            return new RestActuatorEndpointDiscoverer(applicationContext,
+                endpointPathMappers.orderedStream().toList(),
+                filters.getIfAvailable(Collections::emptyList));
+        }
+
+        @Bean
+        public WebMvcEndpointHandlerMapping webEndpointServletHandlerMapping(
+            final EndpointLinksResolver endpointLinksResolver,
+            final WebEndpointsSupplier webEndpointsSupplier,
+            final EndpointsSupplier<RestActuatorControllerEndpoint> restEndpointsSupplier,
+            final EndpointMediaTypes endpointMediaTypes,
+            final CorsEndpointProperties corsProperties,
+            final WebEndpointProperties webEndpointProperties,
+            final Environment environment) {
+            val webEndpoints = webEndpointsSupplier.getEndpoints();
+            val basePath = webEndpointProperties.getBasePath();
+            val endpointMapping = new EndpointMapping(basePath);
+            val shouldRegisterLinksMapping = shouldRegisterLinksMapping(webEndpointProperties, environment, basePath);
+            return new WebMvcEndpointHandlerMapping(endpointMapping, webEndpoints, endpointMediaTypes,
+                corsProperties.toCorsConfiguration(), endpointLinksResolver, shouldRegisterLinksMapping);
+        }
+
+        @Bean
+        public EndpointLinksResolver endpointLinksResolver(
+            final WebEndpointsSupplier webEndpointsSupplier,
+            final EndpointsSupplier<RestActuatorControllerEndpoint> restEndpointsSupplier,
+            final EndpointMediaTypes endpointMediaTypes,
+            final CorsEndpointProperties corsProperties,
+            final WebEndpointProperties webEndpointProperties) {
+            val basePath = webEndpointProperties.getBasePath();
+            val allEndpoints = new ArrayList<ExposableEndpoint<?>>();
+            val webEndpoints = webEndpointsSupplier.getEndpoints();
+            allEndpoints.addAll(webEndpoints);
+            allEndpoints.addAll(restEndpointsSupplier.getEndpoints());
+            return new EndpointLinksResolver(allEndpoints, basePath);
+        }
+
+        @Bean
+        @ConditionalOnMissingBean(name = "restControllerEndpointHandlerMapping")
+        public RestActuatorEndpointHandlerMapping restControllerEndpointHandlerMapping(
+            final EndpointsSupplier<RestActuatorControllerEndpoint> restEndpointsSupplier,
+            final CorsEndpointProperties corsProperties, final WebEndpointProperties webEndpointProperties) {
+            val endpointMapping = new EndpointMapping(webEndpointProperties.getBasePath());
+            return new RestActuatorEndpointHandlerMapping(endpointMapping, restEndpointsSupplier.getEndpoints(),
+                corsProperties.toCorsConfiguration());
+        }
+
+        private static boolean shouldRegisterLinksMapping(
+            final WebEndpointProperties webEndpointProperties,
+            final Environment environment,
+            final String basePath) {
+            return webEndpointProperties.getDiscovery().isEnabled()
+                && (org.springframework.util.StringUtils.hasText(basePath)
+                || ManagementPortType.get(environment) == ManagementPortType.DIFFERENT);
         }
     }
 }

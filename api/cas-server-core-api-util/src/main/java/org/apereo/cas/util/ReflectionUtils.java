@@ -34,6 +34,7 @@ public class ReflectionUtils {
             .enableClassInfo()
             .enableInterClassDependencies()
             .ignoreClassVisibility()
+            .enableSystemJarsAndModules()
             .removeTemporaryFilesAfterScan()
             .enableAnnotationInfo()
             .scan()) {
@@ -56,7 +57,8 @@ public class ReflectionUtils {
             .acceptPackages(packageName)
             .enableAnnotationInfo()
             .scan()) {
-            return annotations.stream()
+            return annotations
+                .stream()
                 .map(annotation -> scanResult.getClassesWithAnnotation(annotation).loadClasses())
                 .flatMap(List::stream)
                 .collect(Collectors.toList());

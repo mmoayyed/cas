@@ -4,9 +4,6 @@
 <head>
     <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"/>
-    <meta name="_csrf" th:content="${_csrf.token}"/>
-    <meta name="_csrf_header" th:content="${_csrf.headerName}"/>
-    
     <title>Web AuthN Registration View</title>
     <link href="../../static/css/cas.css" rel="stylesheet" th:remove="tag"/>
 
@@ -24,7 +21,7 @@
 </head>
 
 <body>
-<main role="main" class="container mt-3 mb-3">
+<main class="container mt-3 mb-3">
     <div layout:fragment="content" id="login">
 
         <div style="display: none" id="diagnostics">
@@ -63,7 +60,7 @@
             </div>
         </div>
 
-        <div class="d-flex justify-content-center flex-column align-items-center">
+        <div class="d-flex justify-content-center flex-column align-items-center mdc-card card p-4 m-auto">
             <h2 id="status" th:utext="#{cas.mfa.registerdevice.label.title}">Register Device</h2>
             <div id="messages">
                 <p th:utext="#{cas.mfa.webauthn.register.helptext}"></p>
@@ -141,7 +138,7 @@
             <input type="hidden" name="_eventId" value="submit"/>
             <input type="hidden" id="sessionToken" name="sessionToken" />
             <input type="hidden" name="geolocation"/>
-            <input type="hidden" name="execution" th:value="${flowExecutionKey}"/>
+            <input type="hidden" id="execution" name="execution" th:value="${flowExecutionKey}"/>
         </form>
 
         <script type="text/javascript">

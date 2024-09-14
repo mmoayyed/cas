@@ -1,24 +1,21 @@
 package org.apereo.cas.audit.spi;
 
-import org.apereo.cas.config.CasCookieConfiguration;
-import org.apereo.cas.config.CasCoreAuditConfiguration;
-import org.apereo.cas.config.CasCoreAuthenticationConfiguration;
-import org.apereo.cas.config.CasCoreAuthenticationPrincipalConfiguration;
-import org.apereo.cas.config.CasCoreAuthenticationServiceSelectionStrategyConfiguration;
-import org.apereo.cas.config.CasCoreAuthenticationSupportConfiguration;
-import org.apereo.cas.config.CasCoreConfiguration;
-import org.apereo.cas.config.CasCoreMultifactorAuthenticationConfiguration;
-import org.apereo.cas.config.CasCoreNotificationsConfiguration;
-import org.apereo.cas.config.CasCoreServicesConfiguration;
-import org.apereo.cas.config.CasCoreTicketsConfiguration;
-import org.apereo.cas.config.CasCoreTicketsSerializationConfiguration;
-import org.apereo.cas.config.CasCoreUtilConfiguration;
-import org.apereo.cas.config.CasCoreWebConfiguration;
-import org.apereo.cas.config.CasCoreWebflowConfiguration;
-import org.apereo.cas.config.CasMultifactorAuthenticationWebflowConfiguration;
-import org.apereo.cas.config.CasWebApplicationServiceFactoryConfiguration;
-import org.apereo.cas.config.CasWebflowContextConfiguration;
+import org.apereo.cas.config.CasCoreAuditAutoConfiguration;
+import org.apereo.cas.config.CasCoreAuthenticationAutoConfiguration;
+import org.apereo.cas.config.CasCoreAutoConfiguration;
+import org.apereo.cas.config.CasCoreCookieAutoConfiguration;
+import org.apereo.cas.config.CasCoreLogoutAutoConfiguration;
+import org.apereo.cas.config.CasCoreMultifactorAuthenticationAutoConfiguration;
+import org.apereo.cas.config.CasCoreMultifactorAuthenticationWebflowAutoConfiguration;
+import org.apereo.cas.config.CasCoreNotificationsAutoConfiguration;
+import org.apereo.cas.config.CasCoreScriptingAutoConfiguration;
+import org.apereo.cas.config.CasCoreServicesAutoConfiguration;
+import org.apereo.cas.config.CasCoreTicketsAutoConfiguration;
+import org.apereo.cas.config.CasCoreUtilAutoConfiguration;
+import org.apereo.cas.config.CasCoreWebAutoConfiguration;
+import org.apereo.cas.config.CasCoreWebflowAutoConfiguration;
 import org.apereo.cas.util.RandomUtils;
+import org.apereo.cas.util.spring.boot.SpringBootTestAutoConfigurations;
 import lombok.val;
 import org.apereo.inspektr.audit.AuditActionContext;
 import org.apereo.inspektr.audit.AuditTrailManager;
@@ -27,11 +24,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.SpringBootConfiguration;
 import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
-import org.springframework.boot.autoconfigure.web.servlet.WebMvcAutoConfiguration;
-import org.springframework.cloud.autoconfigure.RefreshAutoConfiguration;
-import org.springframework.context.annotation.Import;
 import java.time.Clock;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.Map;
@@ -44,37 +37,29 @@ import static org.junit.jupiter.api.Assertions.*;
  * @author Timur Duehr
  * @since 6.0.0
  */
-@SuppressWarnings("JavaUtilDate")
 public abstract class BaseAuditConfigurationTests {
     private static final String USER = RandomUtils.randomAlphanumeric(6);
 
     protected AuditActionContext auditActionContext;
 
+    @SpringBootTestAutoConfigurations
     @ImportAutoConfiguration({
-        RefreshAutoConfiguration.class,
-        WebMvcAutoConfiguration.class
+        CasCoreAutoConfiguration.class,
+        CasCoreTicketsAutoConfiguration.class,
+        CasCoreAuthenticationAutoConfiguration.class,
+        CasCoreServicesAutoConfiguration.class,
+        CasCoreWebAutoConfiguration.class,
+        CasCoreNotificationsAutoConfiguration.class,
+        CasCoreUtilAutoConfiguration.class,
+        CasCoreScriptingAutoConfiguration.class,
+        CasCoreAuditAutoConfiguration.class,
+        CasCoreWebflowAutoConfiguration.class,
+        CasCoreCookieAutoConfiguration.class,
+        CasCoreLogoutAutoConfiguration.class,
+        CasCoreMultifactorAuthenticationWebflowAutoConfiguration.class,
+        CasCoreMultifactorAuthenticationAutoConfiguration.class
     })
-    @SpringBootConfiguration
-    @Import({
-        CasCoreConfiguration.class,
-        CasCoreTicketsConfiguration.class,
-        CasCoreTicketsSerializationConfiguration.class,
-        CasCoreAuthenticationConfiguration.class,
-        CasCoreAuthenticationSupportConfiguration.class,
-        CasCoreAuthenticationPrincipalConfiguration.class,
-        CasCoreAuthenticationServiceSelectionStrategyConfiguration.class,
-        CasCoreServicesConfiguration.class,
-        CasWebApplicationServiceFactoryConfiguration.class,
-        CasCoreWebConfiguration.class,
-        CasCoreNotificationsConfiguration.class,
-        CasCoreUtilConfiguration.class,
-        CasCoreAuditConfiguration.class,
-        CasCoreWebflowConfiguration.class,
-        CasWebflowContextConfiguration.class,
-        CasCookieConfiguration.class,
-        CasMultifactorAuthenticationWebflowConfiguration.class,
-        CasCoreMultifactorAuthenticationConfiguration.class
-    })
+    @SpringBootConfiguration(proxyBeanMethods = false)
     public static class SharedTestConfiguration {
     }
 
@@ -84,14 +69,17 @@ public abstract class BaseAuditConfigurationTests {
     public void onSetUp() {
         val auditTrailManager = getAuditTrailManager();
         auditTrailManager.removeAll();
+        val clientInfo = new ClientInfo("1.2.3.4", "1.2.3.4", UUID.randomUUID().toString(), "London")
+            .setExtraInfo(Map.of("Hello", "World"))
+            .setHeaders(Map.of("H1", "V1"));
         this.auditActionContext = new AuditActionContext(USER, "TEST", "TEST",
-            "CAS", LocalDateTime.now(Clock.systemUTC()), new ClientInfo("1.2.3.4", "1.2.3.4", UUID.randomUUID().toString(), "London"));
+            "CAS", LocalDateTime.now(Clock.systemUTC()), clientInfo);
         auditTrailManager.record(auditActionContext);
     }
 
     @Test
     void verifyAuditByDate() throws Throwable {
-        val time = LocalDate.now(ZoneOffset.UTC).minusDays(2);
+        val time = LocalDateTime.now(ZoneOffset.UTC).minusDays(2);
         val criteria = Map.<AuditTrailManager.WhereClauseFields, Object>of(AuditTrailManager.WhereClauseFields.DATE, time);
         val results = getAuditTrailManager().getAuditRecords(criteria);
         assertFalse(results.isEmpty());
@@ -99,9 +87,10 @@ public abstract class BaseAuditConfigurationTests {
 
     @Test
     void verifyAuditByPrincipal() throws Throwable {
-        val time = LocalDate.now(ZoneOffset.UTC).minusDays(2);
+        val time = LocalDateTime.now(ZoneOffset.UTC).minusDays(2);
         val criteria = Map.<AuditTrailManager.WhereClauseFields, Object>of(
             AuditTrailManager.WhereClauseFields.DATE, time,
+            AuditTrailManager.WhereClauseFields.COUNT, 10L,
             AuditTrailManager.WhereClauseFields.PRINCIPAL, USER);
         val results = getAuditTrailManager().getAuditRecords(criteria);
         assertFalse(results.isEmpty());

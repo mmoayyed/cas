@@ -1,6 +1,7 @@
 package org.apereo.cas.ticket.accesstoken;
 
 
+import org.apereo.cas.ticket.IdleExpirationPolicy;
 import org.apereo.cas.ticket.Ticket;
 import org.apereo.cas.ticket.TicketGrantingTicketAwareTicket;
 import org.apereo.cas.ticket.expiration.AbstractCasExpirationPolicy;
@@ -31,7 +32,7 @@ import java.time.temporal.ChronoUnit;
 @NoArgsConstructor
 @EqualsAndHashCode(callSuper = true)
 @ToString(callSuper = true)
-public class OAuth20AccessTokenExpirationPolicy extends AbstractCasExpirationPolicy {
+public class OAuth20AccessTokenExpirationPolicy extends AbstractCasExpirationPolicy implements IdleExpirationPolicy {
 
     @Serial
     private static final long serialVersionUID = -8383186650682727360L;
@@ -74,7 +75,7 @@ public class OAuth20AccessTokenExpirationPolicy extends AbstractCasExpirationPol
 
     @JsonIgnore
     @Override
-    public ZonedDateTime getMaximumExpirationTime(final Ticket ticketState) {
+    public ZonedDateTime toMaximumExpirationTime(final Ticket ticketState) {
         val creationTime = ticketState.getCreationTime();
         return creationTime.plus(this.maxTimeToLiveInSeconds, ChronoUnit.SECONDS);
     }
@@ -89,7 +90,7 @@ public class OAuth20AccessTokenExpirationPolicy extends AbstractCasExpirationPol
     @JsonIgnore
     protected boolean isAccessTokenExpired(final Ticket ticketState) {
         val currentSystemTime = ZonedDateTime.now(ZoneOffset.UTC);
-        var expirationTime = getMaximumExpirationTime(ticketState);
+        var expirationTime = toMaximumExpirationTime(ticketState);
         if (currentSystemTime.isAfter(expirationTime)) {
             LOGGER.debug("Access token is expired because the current time [{}] is after [{}]", currentSystemTime, expirationTime);
             return true;

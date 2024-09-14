@@ -2,12 +2,12 @@ package org.apereo.cas.consent;
 
 import org.apereo.cas.authentication.CoreAuthenticationTestUtils;
 import org.apereo.cas.authentication.principal.Service;
-import org.apereo.cas.config.CasConsentLdapConfiguration;
+import org.apereo.cas.config.CasConsentLdapAutoConfiguration;
 import org.apereo.cas.configuration.CasConfigurationProperties;
 import org.apereo.cas.services.BaseRegisteredService;
 import org.apereo.cas.services.RegisteredServiceTestUtils;
+import org.apereo.cas.test.CasTestExtension;
 import org.apereo.cas.util.serialization.JacksonObjectMapperFactory;
-
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.unboundid.ldap.sdk.LDAPConnection;
 import com.unboundid.ldap.sdk.Modification;
@@ -19,14 +19,13 @@ import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.test.context.SpringBootTest;
-
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -36,12 +35,13 @@ import static org.junit.jupiter.api.Assertions.*;
  * @since 5.3.0
  */
 @SpringBootTest(classes = {
-    CasConsentLdapConfiguration.class,
+    CasConsentLdapAutoConfiguration.class,
     BaseConsentRepositoryTests.SharedTestConfiguration.class
 })
 @Getter
 @Slf4j
 @EnableConfigurationProperties(CasConfigurationProperties.class)
+@ExtendWith(CasTestExtension.class)
 public abstract class BaseLdapConsentRepositoryTests extends BaseConsentRepositoryTests {
 
     private static final ObjectMapper MAPPER = JacksonObjectMapperFactory.builder()

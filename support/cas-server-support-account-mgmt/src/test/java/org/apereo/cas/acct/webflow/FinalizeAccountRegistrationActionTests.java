@@ -4,25 +4,23 @@ import org.apereo.cas.acct.AccountRegistrationRequest;
 import org.apereo.cas.acct.AccountRegistrationResponse;
 import org.apereo.cas.acct.AccountRegistrationUtils;
 import org.apereo.cas.acct.provision.AccountRegistrationProvisioner;
-import org.apereo.cas.config.CasAccountManagementWebflowConfiguration;
+import org.apereo.cas.config.CasAccountManagementWebflowAutoConfiguration;
 import org.apereo.cas.util.MockRequestContext;
 import org.apereo.cas.web.flow.BaseWebflowConfigurerTests;
 import org.apereo.cas.web.flow.CasWebflowConstants;
-
 import lombok.val;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.webflow.execution.Action;
 import org.springframework.webflow.execution.RequestContext;
-
 import java.util.Map;
-
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
@@ -33,10 +31,8 @@ import static org.mockito.Mockito.*;
  * @since 6.5.0
  */
 @Tag("WebflowAccountActions")
-@Import({
-    CasAccountManagementWebflowConfiguration.class,
-    FinalizeAccountRegistrationActionTests.FinalizeAccountRegistrationActionTestConfiguration.class
-})
+@Import(FinalizeAccountRegistrationActionTests.FinalizeAccountRegistrationActionTestConfiguration.class)
+@ImportAutoConfiguration(CasAccountManagementWebflowAutoConfiguration.class)
 class FinalizeAccountRegistrationActionTests extends BaseWebflowConfigurerTests {
     @Autowired
     @Qualifier(CasWebflowConstants.ACTION_ID_FINALIZE_ACCOUNT_REGISTRATION_REQUEST)

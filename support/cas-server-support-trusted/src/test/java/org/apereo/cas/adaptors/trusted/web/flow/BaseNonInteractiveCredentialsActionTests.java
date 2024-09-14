@@ -1,11 +1,10 @@
 package org.apereo.cas.adaptors.trusted.web.flow;
 
 import org.apereo.cas.AbstractCentralAuthenticationServiceTests;
-import org.apereo.cas.config.CasCoreMultifactorAuthenticationConfiguration;
-import org.apereo.cas.config.CasMultifactorAuthenticationWebflowConfiguration;
-import org.apereo.cas.config.TrustedAuthenticationConfiguration;
-
-import org.springframework.context.annotation.Import;
+import org.apereo.cas.config.CasCoreMultifactorAuthenticationAutoConfiguration;
+import org.apereo.cas.config.CasCoreMultifactorAuthenticationWebflowAutoConfiguration;
+import org.apereo.cas.config.CasTrustedAuthenticationAutoConfiguration;
+import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 
 /**
  * This is {@link BaseNonInteractiveCredentialsActionTests}.
@@ -13,10 +12,10 @@ import org.springframework.context.annotation.Import;
  * @author Misagh Moayyed
  * @since 6.0.0
  */
-@Import({
-    CasMultifactorAuthenticationWebflowConfiguration.class,
-    CasCoreMultifactorAuthenticationConfiguration.class,
-    TrustedAuthenticationConfiguration.class
+@ImportAutoConfiguration({
+    CasCoreMultifactorAuthenticationWebflowAutoConfiguration.class,
+    CasCoreMultifactorAuthenticationAutoConfiguration.class,
+    CasTrustedAuthenticationAutoConfiguration.class
 })
 public abstract class BaseNonInteractiveCredentialsActionTests extends AbstractCentralAuthenticationServiceTests {
 }

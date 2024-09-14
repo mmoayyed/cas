@@ -1,11 +1,11 @@
 {
-  "dependencies": "saml-idp,pac4j-webflow",
+  "dependencies": "saml-idp,pac4j-webflow,pac4j-oidc,pac4j-cas",
   "conditions": {
     "docker": "true"
   },
 
   "properties": [
-    "--cas.audit.engine.enabled=true",
+
     "--cas.http-client.host-name-verifier=none",
 
     "--cas.authn.attribute-repository.stub.attributes.email=casuser@apereo.org",
@@ -15,8 +15,6 @@
 
     "--cas.service-registry.core.init-from-json=true",
     "--cas.service-registry.json.location=file:${PWD}/ci/tests/puppeteer/scenarios/${SCENARIO}/services",
-
-    "--logging.level.org.apereo.cas=info",
 
     "--cas.authn.saml-idp.core.entity-id=https://cas.apereo.org/saml/idp",
     "--cas.authn.saml-idp.metadata.file-system.location=file:${PWD}/ci/tests/puppeteer/scenarios/${SCENARIO}/saml-md",
@@ -37,6 +35,6 @@
     "--cas.authn.pac4j.cas[0].protocol=CAS30",
     "--cas.authn.pac4j.cas[0].client-name=CasClient"
   ],
-  "initScript": "${PWD}/ci/tests/cas/run-cas-server.sh",
+  "initScript": "${PWD}/ci/tests/cas/run-cas-server.sh,${PWD}/ci/tests/httpbin/run-httpbin-server.sh",
   "readyScript": "${PWD}/ci/tests/puppeteer/scenarios/${SCENARIO}/ready.sh"
 }

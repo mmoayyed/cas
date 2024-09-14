@@ -35,12 +35,13 @@ import org.apereo.cas.configuration.model.support.consent.ConsentProperties;
 import org.apereo.cas.configuration.model.support.cookie.TicketGrantingCookieProperties;
 import org.apereo.cas.configuration.model.support.cookie.WarningCookieProperties;
 import org.apereo.cas.configuration.model.support.custom.CasCustomProperties;
+import org.apereo.cas.configuration.model.support.email.EmailProvidersProperties;
 import org.apereo.cas.configuration.model.support.firebase.GoogleFirebaseCloudMessagingProperties;
 import org.apereo.cas.configuration.model.support.geo.GeoLocationProperties;
 import org.apereo.cas.configuration.model.support.interrupt.InterruptProperties;
+import org.apereo.cas.configuration.model.support.javers.JaversProperties;
 import org.apereo.cas.configuration.model.support.jpa.DatabaseProperties;
 import org.apereo.cas.configuration.model.support.saml.SamlCoreProperties;
-import org.apereo.cas.configuration.model.support.saml.googleapps.GoogleAppsProperties;
 import org.apereo.cas.configuration.model.support.saml.mdui.SamlMetadataUIProperties;
 import org.apereo.cas.configuration.model.support.saml.sps.SamlServiceProviderProperties;
 import org.apereo.cas.configuration.model.support.scim.ScimProperties;
@@ -49,13 +50,11 @@ import org.apereo.cas.configuration.model.support.sms.SmsProvidersProperties;
 import org.apereo.cas.configuration.model.support.themes.ThemeProperties;
 import org.apereo.cas.configuration.support.RequiresModule;
 
-import com.fasterxml.jackson.annotation.JsonFilter;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.NestedConfigurationProperty;
-import org.springframework.validation.annotation.Validated;
 
 import java.io.Serial;
 import java.io.Serializable;
@@ -68,13 +67,11 @@ import java.time.Instant;
  * @author Misagh Moayyed
  * @since 5.0.0
  */
-@ConfigurationProperties("cas")
+@ConfigurationProperties(prefix = "cas")
 @Getter
 @Setter
 @Accessors(chain = true)
-@JsonFilter("CasConfigurationProperties")
 @RequiresModule(name = "cas-server-core-api", automated = true)
-@Validated
 public class CasConfigurationProperties implements Serializable {
     /**
      * Prefix used for all CAS-specific settings.
@@ -258,6 +255,12 @@ public class CasConfigurationProperties implements Serializable {
     private SmsProvidersProperties smsProvider = new SmsProvidersProperties();
 
     /**
+     * Email settings.
+     */
+    @NestedConfigurationProperty
+    private EmailProvidersProperties emailProvider = new EmailProvidersProperties();
+
+    /**
      * AUP settings.
      */
     @NestedConfigurationProperty
@@ -298,13 +301,7 @@ public class CasConfigurationProperties implements Serializable {
      */
     @NestedConfigurationProperty
     private DatabaseProperties jdbc = new DatabaseProperties();
-
-    /**
-     * Google Apps integration settings.
-     */
-    @NestedConfigurationProperty
-    private GoogleAppsProperties googleApps = new GoogleAppsProperties();
-
+    
     /**
      * Integration settings for amazon sts.
      */
@@ -372,19 +369,8 @@ public class CasConfigurationProperties implements Serializable {
     private CasServerCoreProperties core = new CasServerCoreProperties();
 
     /**
-     * Hold configuration settings in a parent
-     * field mainly used for serialization.
-     *
-     * @return the serializable
+     * Javers settings.
      */
-    public Serializable withHolder() {
-        return new Holder(this);
-    }
-
-    @SuppressWarnings({"UnusedMethod", "UnusedVariable"})
-    private record Holder(CasConfigurationProperties cas) implements Serializable {
-        @Serial
-        private static final long serialVersionUID = -3129941286238115568L;
-
-    }
+    @NestedConfigurationProperty
+    private JaversProperties javers = new JaversProperties();
 }

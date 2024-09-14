@@ -4,6 +4,7 @@ import org.apereo.cas.audit.AuditableExecution;
 import org.apereo.cas.authentication.AuthenticationServiceSelectionPlan;
 import org.apereo.cas.authentication.AuthenticationSystemSupport;
 import org.apereo.cas.authentication.ProtocolAttributeEncoder;
+import org.apereo.cas.authentication.attribute.AttributeDefinitionStore;
 import org.apereo.cas.authentication.principal.PrincipalFactory;
 import org.apereo.cas.authentication.principal.PrincipalResolver;
 import org.apereo.cas.authentication.principal.ResponseBuilder;
@@ -38,12 +39,13 @@ import org.apereo.cas.web.view.attributes.NoOpProtocolAttributesRenderer;
 import lombok.val;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.actuate.autoconfigure.endpoint.condition.ConditionalOnAvailableEndpoint;
-import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.cloud.context.config.annotation.RefreshScope;
+import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.ScopedProxyMode;
@@ -59,12 +61,12 @@ import java.util.Set;
  */
 @EnableConfigurationProperties(CasConfigurationProperties.class)
 @ConditionalOnFeatureEnabled(feature = CasFeatureModule.FeatureCatalog.SAML)
-@AutoConfiguration
-public class SamlConfiguration {
+@Configuration(value = "SamlConfiguration", proxyBeanMethods = false)
+class SamlConfiguration {
 
     @Configuration(value = "SamlViewFactoryConfiguration", proxyBeanMethods = false)
     @EnableConfigurationProperties(CasConfigurationProperties.class)
-    public static class SamlViewFactoryConfiguration {
+    static class SamlViewFactoryConfiguration {
         @Bean
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
         @ConditionalOnMissingBean(name = "samlServiceValidationViewFactoryConfigurer")
@@ -79,7 +81,7 @@ public class SamlConfiguration {
 
     @Configuration(value = "SamlBuilderConfiguration", proxyBeanMethods = false)
     @EnableConfigurationProperties(CasConfigurationProperties.class)
-    public static class SamlBuilderConfiguration {
+    static class SamlBuilderConfiguration {
 
         @ConditionalOnMissingBean(name = "samlResponseBuilder")
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
@@ -122,7 +124,7 @@ public class SamlConfiguration {
 
     @Configuration(value = "SamlViewsConfiguration", proxyBeanMethods = false)
     @EnableConfigurationProperties(CasConfigurationProperties.class)
-    public static class SamlViewsConfiguration {
+    static class SamlViewsConfiguration {
 
         @ConditionalOnMissingBean(name = "casSamlServiceSuccessView")
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
@@ -139,10 +141,13 @@ public class SamlConfiguration {
             @Qualifier(ServicesManager.BEAN_NAME)
             final ServicesManager servicesManager,
             @Qualifier(AuthenticationAttributeReleasePolicy.BEAN_NAME)
-            final AuthenticationAttributeReleasePolicy authenticationAttributeReleasePolicy) {
+            final AuthenticationAttributeReleasePolicy authenticationAttributeReleasePolicy,
+            @Qualifier(AttributeDefinitionStore.BEAN_NAME)
+            final AttributeDefinitionStore attributeDefinitionStore) {
             return new Saml10SuccessResponseView(protocolAttributeEncoder, servicesManager,
                 argumentExtractor, authenticationAttributeReleasePolicy,
-                authenticationServiceSelectionPlan, NoOpProtocolAttributesRenderer.INSTANCE, samlResponseBuilder);
+                authenticationServiceSelectionPlan, NoOpProtocolAttributesRenderer.INSTANCE,
+                samlResponseBuilder, attributeDefinitionStore);
         }
 
         @ConditionalOnMissingBean(name = "casSamlServiceFailureView")
@@ -160,16 +165,19 @@ public class SamlConfiguration {
             @Qualifier(ServicesManager.BEAN_NAME)
             final ServicesManager servicesManager,
             @Qualifier(AuthenticationAttributeReleasePolicy.BEAN_NAME)
-            final AuthenticationAttributeReleasePolicy authenticationAttributeReleasePolicy) {
+            final AuthenticationAttributeReleasePolicy authenticationAttributeReleasePolicy,
+            @Qualifier(AttributeDefinitionStore.BEAN_NAME)
+            final AttributeDefinitionStore attributeDefinitionStore) {
             return new Saml10FailureResponseView(protocolAttributeEncoder, servicesManager,
                 argumentExtractor, authenticationAttributeReleasePolicy,
-                authenticationServiceSelectionPlan, NoOpProtocolAttributesRenderer.INSTANCE, samlResponseBuilder);
+                authenticationServiceSelectionPlan, NoOpProtocolAttributesRenderer.INSTANCE,
+                samlResponseBuilder, attributeDefinitionStore);
         }
     }
 
     @Configuration(value = "SamlWebSecurityConfiguration", proxyBeanMethods = false)
     @EnableConfigurationProperties(CasConfigurationProperties.class)
-    public static class SamlWebSecurityConfiguration {
+    static class SamlWebSecurityConfiguration {
         @Bean
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
         public CasWebSecurityConfigurer<Void> samlProtocolEndpointConfigurer() {
@@ -185,30 +193,33 @@ public class SamlConfiguration {
 
     @Configuration(value = "SamlWebConfiguration", proxyBeanMethods = false)
     @EnableConfigurationProperties(CasConfigurationProperties.class)
-    public static class SamlWebConfiguration {
+    static class SamlWebConfiguration {
         @Bean
         @ConditionalOnAvailableEndpoint
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
         public SamlValidateEndpoint samlValidateEndpoint(
+            final ConfigurableApplicationContext applicationContext,
             final CasConfigurationProperties casProperties,
             @Qualifier("samlResponseBuilder")
-            final SamlResponseBuilder samlResponseBuilder,
+            final ObjectProvider<SamlResponseBuilder> samlResponseBuilder,
             @Qualifier(WebApplicationService.BEAN_NAME_FACTORY)
-            final ServiceFactory<WebApplicationService> webApplicationServiceFactory,
+            final ObjectProvider<ServiceFactory<WebApplicationService>> webApplicationServiceFactory,
             @Qualifier(OpenSamlConfigBean.DEFAULT_BEAN_NAME)
-            final OpenSamlConfigBean openSamlConfigBean,
+            final ObjectProvider<OpenSamlConfigBean> openSamlConfigBean,
             @Qualifier(ServicesManager.BEAN_NAME)
-            final ServicesManager servicesManager,
+            final ObjectProvider<ServicesManager> servicesManager,
             @Qualifier(AuthenticationSystemSupport.BEAN_NAME)
-            final AuthenticationSystemSupport authenticationSystemSupport,
+            final ObjectProvider<AuthenticationSystemSupport> authenticationSystemSupport,
             @Qualifier(AuditableExecution.AUDITABLE_EXECUTION_REGISTERED_SERVICE_ACCESS)
-            final AuditableExecution registeredServiceAccessStrategyEnforcer,
+            final ObjectProvider<AuditableExecution> registeredServiceAccessStrategyEnforcer,
             @Qualifier(PrincipalResolver.BEAN_NAME_PRINCIPAL_RESOLVER)
-            final PrincipalResolver defaultPrincipalResolver,
-            @Qualifier(PrincipalFactory.BEAN_NAME) final PrincipalFactory principalFactory) {
-            return new SamlValidateEndpoint(casProperties, servicesManager,
+            final ObjectProvider<PrincipalResolver> defaultPrincipalResolver,
+            @Qualifier(PrincipalFactory.BEAN_NAME)
+            final ObjectProvider<PrincipalFactory> principalFactory) {
+            return new SamlValidateEndpoint(casProperties, applicationContext, servicesManager,
                 authenticationSystemSupport, webApplicationServiceFactory, principalFactory,
-                samlResponseBuilder, openSamlConfigBean, registeredServiceAccessStrategyEnforcer, defaultPrincipalResolver);
+                samlResponseBuilder, openSamlConfigBean, registeredServiceAccessStrategyEnforcer,
+                defaultPrincipalResolver);
         }
 
         @Bean

@@ -1,16 +1,14 @@
 package org.apereo.cas.configuration.model.support.wsfed;
 
+import org.apereo.cas.configuration.model.core.util.EncryptionJwtCryptoProperties;
 import org.apereo.cas.configuration.model.core.util.EncryptionJwtSigningJwtCryptographyProperties;
+import org.apereo.cas.configuration.model.core.util.SigningJwtCryptoProperties;
 import org.apereo.cas.configuration.model.support.cookie.PinnableCookieProperties;
 import org.apereo.cas.configuration.support.RequiresModule;
-import org.apereo.cas.util.crypto.CipherExecutor;
-
-import com.fasterxml.jackson.annotation.JsonFilter;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
 import org.springframework.boot.context.properties.NestedConfigurationProperty;
-
 import java.io.Serial;
 
 /**
@@ -23,7 +21,7 @@ import java.io.Serial;
 @Getter
 @Accessors(chain = true)
 @Setter
-@JsonFilter("WsFederationDelegatedCookieProperties")
+
 public class WsFederationDelegatedCookieProperties extends PinnableCookieProperties {
     @Serial
     private static final long serialVersionUID = 7392972818105536350L;
@@ -36,7 +34,7 @@ public class WsFederationDelegatedCookieProperties extends PinnableCookiePropert
 
     public WsFederationDelegatedCookieProperties() {
         setName("WSFEDDELSESSION");
-        crypto.getEncryption().setKeySize(CipherExecutor.DEFAULT_STRINGABLE_ENCRYPTION_KEY_SIZE);
-        crypto.getSigning().setKeySize(CipherExecutor.DEFAULT_STRINGABLE_SIGNING_KEY_SIZE);
+        crypto.getEncryption().setKeySize(EncryptionJwtCryptoProperties.DEFAULT_STRINGABLE_ENCRYPTION_KEY_SIZE);
+        crypto.getSigning().setKeySize(SigningJwtCryptoProperties.DEFAULT_STRINGABLE_SIGNING_KEY_SIZE);
     }
 }

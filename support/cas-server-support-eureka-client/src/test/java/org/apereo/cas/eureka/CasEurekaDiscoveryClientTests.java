@@ -1,17 +1,18 @@
 package org.apereo.cas.eureka;
 
-import org.apereo.cas.config.CasCoreHttpConfiguration;
-import org.apereo.cas.config.CasEurekaDiscoveryClientConfiguration;
+import org.apereo.cas.config.CasCoreWebAutoConfiguration;
+import org.apereo.cas.config.CasEurekaDiscoveryClientAutoConfiguration;
 import org.apereo.cas.configuration.CasConfigurationProperties;
+import org.apereo.cas.test.CasTestExtension;
+import org.apereo.cas.util.spring.boot.SpringBootTestAutoConfigurations;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.boot.autoconfigure.web.servlet.WebMvcAutoConfiguration;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.cloud.autoconfigure.RefreshAutoConfiguration;
 import org.springframework.cloud.commons.util.UtilAutoConfiguration;
 import org.springframework.cloud.netflix.eureka.EurekaClientAutoConfiguration;
 import org.springframework.cloud.netflix.eureka.EurekaClientConfigBean;
@@ -25,12 +26,12 @@ import static org.junit.jupiter.api.Assertions.*;
  * @since 7.0.0
  */
 @Tag("WebApp")
-public class CasEurekaDiscoveryClientTests {
+@ExtendWith(CasTestExtension.class)
+class CasEurekaDiscoveryClientTests {
+    @SpringBootTestAutoConfigurations
     @SpringBootTest(classes = {
-        CasEurekaDiscoveryClientConfiguration.class,
-        CasCoreHttpConfiguration.class,
-        RefreshAutoConfiguration.class,
-        WebMvcAutoConfiguration.class,
+        CasCoreWebAutoConfiguration.class,
+        CasEurekaDiscoveryClientAutoConfiguration.class,
         UtilAutoConfiguration.class,
         DiscoveryClientOptionalArgsConfiguration.class,
         EurekaClientAutoConfiguration.class
@@ -52,11 +53,10 @@ public class CasEurekaDiscoveryClientTests {
         }
     }
 
+    @SpringBootTestAutoConfigurations
     @SpringBootTest(classes = {
-        CasEurekaDiscoveryClientConfiguration.class,
-        CasCoreHttpConfiguration.class,
-        RefreshAutoConfiguration.class,
-        WebMvcAutoConfiguration.class,
+        CasEurekaDiscoveryClientAutoConfiguration.class,
+        CasCoreWebAutoConfiguration.class,
         UtilAutoConfiguration.class,
         DiscoveryClientOptionalArgsConfiguration.class,
         EurekaClientAutoConfiguration.class

@@ -4,6 +4,7 @@ import org.apereo.cas.authentication.Authentication;
 import org.apereo.cas.authentication.MultifactorAuthenticationProvider;
 import org.apereo.cas.authentication.principal.Service;
 import org.apereo.cas.services.RegisteredService;
+import org.apereo.cas.util.NamedObject;
 
 import org.springframework.core.Ordered;
 
@@ -18,7 +19,7 @@ import java.util.Optional;
  * @author Misagh Moayyed
  * @since 5.0.0
  */
-public interface MultifactorAuthenticationProviderBypassEvaluator extends Serializable, Ordered {
+public interface MultifactorAuthenticationProviderBypassEvaluator extends Serializable, Ordered, NamedObject {
 
     /**
      * bypass mfa authn attribute.
@@ -33,11 +34,11 @@ public interface MultifactorAuthenticationProviderBypassEvaluator extends Serial
     /**
      * Eval current bypass rules for the provider.
      *
-     * @param authentication    the authentication
-     * @param registeredService the registered service in question
-     * @param provider          the provider
-     * @param request           the request
-     * @param service           the service
+     * @param authentication     the authentication
+     * @param registeredService  the registered service in question
+     * @param provider           the provider
+     * @param request            the request
+     * @param service            the service
      * @return false is request isn't supported and can be bypassed. true otherwise.
      */
     boolean shouldMultifactorAuthenticationProviderExecute(Authentication authentication,
@@ -113,8 +114,7 @@ public interface MultifactorAuthenticationProviderBypassEvaluator extends Serial
     default boolean isEmpty() {
         return false;
     }
-
-
+    
     /**
      * Indicate whether this bypass belongs to given multifactor authentication provider.
      *

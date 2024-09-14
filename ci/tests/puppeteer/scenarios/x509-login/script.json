@@ -1,6 +1,5 @@
 {
   "dependencies": "x509-webflow",
-
   "properties": [
     "--cas.server.name=https://localhost:8443",
     "--cas.server.prefix=${cas.server.name}/cas",
@@ -9,8 +8,6 @@
     "--server.ssl.trust-store-password=changeit",
     "--server.ssl.key-store-type=PKCS12",
     "--server.ssl.client-auth=want",
-
-    "--logging.level.org.apereo.cas=info",
 
     "--cas.authn.attribute-repository.stub.attributes.uid=casuser",
     "--cas.authn.attribute-repository.stub.attributes.mail=casuser@example.org",

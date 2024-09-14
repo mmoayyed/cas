@@ -2,7 +2,7 @@ package org.apereo.cas.authentication.surrogate;
 
 import org.apereo.cas.authentication.principal.Principal;
 import org.apereo.cas.authentication.principal.Service;
-import org.apereo.cas.configuration.model.support.surrogate.SurrogateRestfulAuthenticationProperties;
+import org.apereo.cas.configuration.CasConfigurationProperties;
 import org.apereo.cas.services.ServicesManager;
 import org.apereo.cas.util.CollectionUtils;
 import org.apereo.cas.util.LoggingUtils;
@@ -36,16 +36,15 @@ public class SurrogateRestAuthenticationService extends BaseSurrogateAuthenticat
     private static final ObjectMapper MAPPER = JacksonObjectMapperFactory.builder()
         .defaultTypingEnabled(false).build().toObjectMapper();
 
-    private final SurrogateRestfulAuthenticationProperties properties;
-
-    public SurrogateRestAuthenticationService(final SurrogateRestfulAuthenticationProperties properties,
-                                              final ServicesManager servicesManager) {
-        super(servicesManager);
-        this.properties = properties;
+    public SurrogateRestAuthenticationService(final ServicesManager servicesManager,
+                                              final CasConfigurationProperties casProperties) {
+        super(servicesManager, casProperties);
     }
 
     @Override
-    public boolean canImpersonateInternal(final String surrogate, final Principal principal, final Optional<Service> service) {
+    public boolean canImpersonateInternal(final String surrogate, final Principal principal,
+                                          final Optional<? extends Service> service) {
+        val properties = casProperties.getAuthn().getSurrogate().getRest();
         HttpResponse response = null;
         try {
             val exec = HttpExecutionRequest.builder()
@@ -64,7 +63,8 @@ public class SurrogateRestAuthenticationService extends BaseSurrogateAuthenticat
     }
 
     @Override
-    public Collection<String> getImpersonationAccounts(final String username) {
+    public Collection<String> getImpersonationAccounts(final String username, final Optional<? extends Service> service) {
+        val properties = casProperties.getAuthn().getSurrogate().getRest();
         HttpResponse response = null;
         try {
             val exec = HttpExecutionRequest.builder()
@@ -75,9 +75,11 @@ public class SurrogateRestAuthenticationService extends BaseSurrogateAuthenticat
                 .parameters(CollectionUtils.wrap("principal", username))
                 .build();
             response = HttpUtils.execute(exec);
-            val result = IOUtils.toString(((HttpEntityContainer) response).getEntity().getContent(), StandardCharsets.UTF_8);
-            val expectedType = MAPPER.getTypeFactory().constructParametricType(List.class, String.class);
-            return MAPPER.readValue(JsonValue.readHjson(result).toString(), expectedType);
+            try (val content = ((HttpEntityContainer) response).getEntity().getContent()) {
+                val result = IOUtils.toString(content, StandardCharsets.UTF_8);
+                val expectedType = MAPPER.getTypeFactory().constructParametricType(List.class, String.class);
+                return MAPPER.readValue(JsonValue.readHjson(result).toString(), expectedType);
+            }
         } catch (final Exception e) {
             LoggingUtils.error(LOGGER, e);
         } finally {

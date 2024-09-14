@@ -1,8 +1,10 @@
 package org.apereo.cas.sba;
 
-import org.apereo.cas.config.CasCoreHttpConfiguration;
-import org.apereo.cas.config.CasSpringBootAdminConfiguration;
+import org.apereo.cas.config.CasCoreWebAutoConfiguration;
+import org.apereo.cas.config.CasSpringBootAdminAutoConfiguration;
 import org.apereo.cas.configuration.CasConfigurationProperties;
+import org.apereo.cas.test.CasTestExtension;
+import org.apereo.cas.util.spring.boot.SpringBootTestAutoConfigurations;
 import org.apereo.cas.web.CasWebSecurityConfigurer;
 import de.codecentric.boot.admin.client.config.SpringBootAdminClientAutoConfiguration;
 import de.codecentric.boot.admin.client.registration.RegistrationClient;
@@ -16,17 +18,11 @@ import de.codecentric.boot.admin.server.web.client.InstanceWebClientCustomizer;
 import lombok.val;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.boot.actuate.autoconfigure.endpoint.EndpointAutoConfiguration;
-import org.springframework.boot.actuate.autoconfigure.endpoint.web.WebEndpointAutoConfiguration;
-import org.springframework.boot.autoconfigure.jackson.JacksonAutoConfiguration;
-import org.springframework.boot.autoconfigure.web.reactive.function.client.WebClientAutoConfiguration;
-import org.springframework.boot.autoconfigure.web.servlet.DispatcherServletAutoConfiguration;
-import org.springframework.boot.autoconfigure.web.servlet.WebMvcAutoConfiguration;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.cloud.autoconfigure.RefreshAutoConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -38,32 +34,25 @@ import static org.mockito.Mockito.*;
  * @since 7.0.0
  */
 @Tag("WebApp")
+@SpringBootTestAutoConfigurations
 @SpringBootTest(classes = {
-    RefreshAutoConfiguration.class,
-    WebMvcAutoConfiguration.class,
-    JacksonAutoConfiguration.class,
-    WebEndpointAutoConfiguration.class,
-    EndpointAutoConfiguration.class,
-    WebClientAutoConfiguration.class,
-    DispatcherServletAutoConfiguration.class,
-
     AdminServerMarkerConfiguration.class,
     AdminServerAutoConfiguration.class,
     AdminServerWebConfiguration.class,
     AdminServerInstanceWebClientConfiguration.class,
 
     SpringBootAdminClientAutoConfiguration.class,
-    CasCoreHttpConfiguration.class,
-    CasSpringBootAdminConfiguration.class
+    CasCoreWebAutoConfiguration.class,
+    CasSpringBootAdminAutoConfiguration.class
 }, properties = {
     "cas.host.name=CASInstance",
-    "spring.main.allow-bean-definition-overriding=true",
     "spring.boot.admin.client.url=https://localhost:8443/cas",
     "spring.boot.admin.client.username=casuser",
     "spring.boot.admin.client.password=Mellon"
 })
 @EnableConfigurationProperties(CasConfigurationProperties.class)
-public class CasSpringBootAdminServerTests {
+@ExtendWith(CasTestExtension.class)
+class CasSpringBootAdminServerTests {
     @Autowired
     @Qualifier("springBootAdminEndpointConfigurer")
     private CasWebSecurityConfigurer<HttpSecurity> springBootAdminEndpointConfigurer;

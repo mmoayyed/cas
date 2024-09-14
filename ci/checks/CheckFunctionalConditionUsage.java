@@ -3,9 +3,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
@@ -21,6 +19,7 @@ public class CheckFunctionalConditionUsage {
 
     private static void print(final String message, final Object... args) {
         //CHECKSTYLE:OFF
+        System.out.print("\uD83C\uDFC1 ");
         System.out.printf(message, args);
         //CHECKSTYLE:ON
     }

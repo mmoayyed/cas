@@ -1,8 +1,10 @@
 package org.apereo.cas.config;
 
+import org.apereo.cas.authentication.principal.attribute.PersonAttributeDao;
 import org.apereo.cas.configuration.CasConfigurationProperties;
 import org.apereo.cas.configuration.features.CasFeatureModule;
 import org.apereo.cas.configuration.model.core.authentication.AttributeRepositoryStates;
+import org.apereo.cas.persondir.JsonPersonAttributeDao;
 import org.apereo.cas.persondir.PersonDirectoryAttributeRepositoryPlanConfigurer;
 import org.apereo.cas.util.ResourceUtils;
 import org.apereo.cas.util.function.FunctionUtils;
@@ -11,14 +13,10 @@ import org.apereo.cas.util.spring.beans.BeanCondition;
 import org.apereo.cas.util.spring.beans.BeanContainer;
 import org.apereo.cas.util.spring.beans.BeanSupplier;
 import org.apereo.cas.util.spring.boot.ConditionalOnFeatureEnabled;
-
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
-import org.apereo.services.persondir.IPersonAttributeDao;
-import org.apereo.services.persondir.support.JsonBackedComplexStubPersonAttributeDao;
 import org.jooq.lambda.Unchecked;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.cloud.context.config.annotation.RefreshScope;
@@ -26,7 +24,6 @@ import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.ScopedProxyMode;
-
 import java.util.ArrayList;
 import java.util.stream.Collectors;
 
@@ -38,29 +35,29 @@ import java.util.stream.Collectors;
  */
 @Slf4j
 @ConditionalOnFeatureEnabled(feature = CasFeatureModule.FeatureCatalog.PersonDirectory)
-@AutoConfiguration
-public class CasPersonDirectoryJsonConfiguration {
+@Configuration(value = "CasPersonDirectoryJsonConfiguration", proxyBeanMethods = false)
+class CasPersonDirectoryJsonConfiguration {
     private static final BeanCondition CONDITION = BeanCondition.on("cas.authn.attribute-repository.json[0].location").exists();
 
     @Configuration(value = "JsonAttributeRepositoryConfiguration", proxyBeanMethods = false)
     @EnableConfigurationProperties(CasConfigurationProperties.class)
-    public static class JsonAttributeRepositoryConfiguration {
+    static class JsonAttributeRepositoryConfiguration {
         @ConditionalOnMissingBean(name = "jsonAttributeRepositories")
         @Bean
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
-        public BeanContainer<IPersonAttributeDao> jsonAttributeRepositories(
+        public BeanContainer<PersonAttributeDao> jsonAttributeRepositories(
             final ConfigurableApplicationContext applicationContext,
             final CasConfigurationProperties casProperties) {
             return BeanSupplier.of(BeanContainer.class)
                 .when(CONDITION.given(applicationContext.getEnvironment()))
                 .supply(() -> {
-                    val list = new ArrayList<IPersonAttributeDao>();
+                    val list = new ArrayList<PersonAttributeDao>();
                     casProperties.getAuthn().getAttributeRepository().getJson()
                         .stream()
                         .filter(json -> ResourceUtils.doesResourceExist(json.getLocation()))
                         .forEach(Unchecked.consumer(json -> {
                             val r = json.getLocation();
-                            val dao = new JsonBackedComplexStubPersonAttributeDao(r);
+                            val dao = new JsonPersonAttributeDao(r);
                             if (ResourceUtils.isFile(r)) {
                                 val watcherService = new FileWatcherService(r.getFile(), Unchecked.consumer(file -> {
                                     Thread.sleep(100);
@@ -87,20 +84,20 @@ public class CasPersonDirectoryJsonConfiguration {
 
     @Configuration(value = "JsonAttributeRepositoryPlanConfiguration", proxyBeanMethods = false)
     @EnableConfigurationProperties(CasConfigurationProperties.class)
-    public static class JsonAttributeRepositoryPlanConfiguration {
+    static class JsonAttributeRepositoryPlanConfiguration {
         @Bean
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
         @ConditionalOnMissingBean(name = "jsonPersonDirectoryAttributeRepositoryPlanConfigurer")
         public PersonDirectoryAttributeRepositoryPlanConfigurer jsonPersonDirectoryAttributeRepositoryPlanConfigurer(
             final ConfigurableApplicationContext applicationContext,
             @Qualifier("jsonAttributeRepositories")
-            final BeanContainer<IPersonAttributeDao> jsonAttributeRepositories) {
+            final BeanContainer<PersonAttributeDao> jsonAttributeRepositories) {
             return BeanSupplier.of(PersonDirectoryAttributeRepositoryPlanConfigurer.class)
                 .when(CONDITION.given(applicationContext.getEnvironment()))
                 .supply(() -> plan -> {
                     val results = jsonAttributeRepositories.toList()
                         .stream()
-                        .filter(IPersonAttributeDao::isEnabled)
+                        .filter(PersonAttributeDao::isEnabled)
                         .collect(Collectors.toList());
                     plan.registerAttributeRepositories(results);
                 })

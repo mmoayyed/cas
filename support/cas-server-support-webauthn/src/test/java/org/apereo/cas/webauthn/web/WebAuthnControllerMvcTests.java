@@ -2,8 +2,8 @@ package org.apereo.cas.webauthn.web;
 
 import org.apereo.cas.configuration.CasConfigurationProperties;
 import org.apereo.cas.services.RegisteredServiceTestUtils;
+import org.apereo.cas.test.CasTestExtension;
 import org.apereo.cas.util.MockRequestContext;
-import org.apereo.cas.util.MockServletContext;
 import org.apereo.cas.web.flow.CasWebflowConstants;
 import org.apereo.cas.web.security.BaseWebSecurityTests;
 import org.apereo.cas.web.support.WebUtils;
@@ -14,6 +14,7 @@ import org.apache.hc.core5.http.HttpStatus;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.security.SecurityProperties;
@@ -21,7 +22,9 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.mock.web.MockHttpSession;
+import org.springframework.mock.web.MockServletContext;
 import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.security.web.csrf.CsrfTokenRepository;
 import org.springframework.security.web.csrf.DeferredCsrfToken;
@@ -60,6 +63,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
     }, webEnvironment = SpringBootTest.WebEnvironment.DEFINED_PORT)
 @EnableConfigurationProperties(CasConfigurationProperties.class)
 @Tag("MFAProvider")
+@ExtendWith(CasTestExtension.class)
 class WebAuthnControllerMvcTests {
     @Autowired
     private WebApplicationContext webApplicationContext;
@@ -94,19 +98,19 @@ class WebAuthnControllerMvcTests {
         val endpoint = WebAuthnController.WEBAUTHN_ENDPOINT_REGISTER;
 
         /* Without CSRF token, we must fail */
-        executeRequest(endpoint, new MockHttpServletRequest(), true, HttpStatus.SC_FORBIDDEN);
+        executeRequest(endpoint, new MockHttpServletRequest(), new MockHttpServletResponse(), true, HttpStatus.SC_FORBIDDEN);
 
         /* With CSRF token but without authentication context we continue to fail  */
         val csrfResult = fetchAndStoreCsrfToken();
-        executeRequest(endpoint, csrfResult.getRequest(), true, HttpStatus.SC_FORBIDDEN);
+        executeRequest(endpoint, csrfResult.getRequest(), csrfResult.getResponse(), true, HttpStatus.SC_FORBIDDEN);
 
         /* Authenticated requests must fail because they do not have the right role */
-        val result = executeRequest(endpoint, csrfResult.getRequest(), true, HttpStatus.SC_FORBIDDEN);
+        val result = executeRequest(endpoint, csrfResult.getRequest(), csrfResult.getResponse(), true, HttpStatus.SC_FORBIDDEN);
 
         /* Authorization should now pass and reach the endpoint */
         populateSecurityContext(result);
         /* Authenticated requests with the right role should pass */
-        executeRequest(endpoint, csrfResult.getRequest(), false, HttpStatus.SC_BAD_REQUEST);
+        executeRequest(endpoint, csrfResult.getRequest(), csrfResult.getResponse(), false, HttpStatus.SC_BAD_REQUEST);
 
         /* Ensure security context does not interfere with actuator endpoint security */
         mvc.perform(get("/cas/actuator/env"))
@@ -121,11 +125,11 @@ class WebAuthnControllerMvcTests {
 
     @Test
     void verifyAuthenticationEndpoint() throws Throwable {
-        executeRequest(WebAuthnController.WEBAUTHN_ENDPOINT_AUTHENTICATE, new MockHttpServletRequest(), false, HttpStatus.SC_FORBIDDEN);
-        executeRequest(WebAuthnController.WEBAUTHN_ENDPOINT_AUTHENTICATE, new MockHttpServletRequest(), true, HttpStatus.SC_FORBIDDEN);
+        executeRequest(WebAuthnController.WEBAUTHN_ENDPOINT_AUTHENTICATE, new MockHttpServletRequest(), new MockHttpServletResponse(), false, HttpStatus.SC_FORBIDDEN);
+        executeRequest(WebAuthnController.WEBAUTHN_ENDPOINT_AUTHENTICATE, new MockHttpServletRequest(), new MockHttpServletResponse(), true, HttpStatus.SC_FORBIDDEN);
 
         val csrfResult = fetchAndStoreCsrfToken();
-        executeRequest(WebAuthnController.WEBAUTHN_ENDPOINT_AUTHENTICATE, csrfResult.getRequest(), true, HttpStatus.SC_OK);
+        executeRequest(WebAuthnController.WEBAUTHN_ENDPOINT_AUTHENTICATE, csrfResult.getRequest(), csrfResult.getResponse(), true, HttpStatus.SC_OK);
     }
 
     private void populateSecurityContext(final MvcResult result) throws Exception {
@@ -137,18 +141,22 @@ class WebAuthnControllerMvcTests {
 
     private MvcResult executeRequest(final String endpoint,
                                      final HttpServletRequest request,
+                                     final MockHttpServletResponse response,
                                      final boolean withBasicAuth,
                                      final int expectedStatus) throws Exception {
         val csrfToken = getCsrfToken(request);
         var builder = post("/cas/" + WebAuthnController.BASE_ENDPOINT_WEBAUTHN + endpoint)
             .session((MockHttpSession) request.getSession());
+        val cookies = response.getCookies();
+        if (cookies != null && cookies.length > 0) {
+            builder = builder.cookie(cookies);
+        }
         if (withBasicAuth) {
             builder = builder.with(httpBasic(securityProperties.getUser().getName(),
                 securityProperties.getUser().getPassword()));
         }
 
-        return mvc.perform(builder
-                .header("X-CSRF-TOKEN", csrfToken != null ? csrfToken.getToken() : StringUtils.EMPTY))
+        return mvc.perform(builder.header("X-CSRF-TOKEN", csrfToken != null ? csrfToken.getToken() : StringUtils.EMPTY))
             .andExpect(status().is(expectedStatus))
             .andReturn();
     }

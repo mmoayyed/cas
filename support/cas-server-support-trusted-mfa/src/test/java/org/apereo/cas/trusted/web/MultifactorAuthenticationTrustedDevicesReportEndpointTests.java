@@ -1,9 +1,8 @@
 package org.apereo.cas.trusted.web;
 
-import org.apereo.cas.config.MultifactorAuthnTrustConfiguration;
+import org.apereo.cas.config.CasMultifactorAuthnTrustAutoConfiguration;
 import org.apereo.cas.trusted.authentication.api.MultifactorAuthenticationTrustRecord;
 import org.apereo.cas.trusted.authentication.api.MultifactorAuthenticationTrustStorage;
-import org.apereo.cas.util.DateTimeUtils;
 import org.apereo.cas.util.serialization.JacksonObjectMapperFactory;
 import org.apereo.cas.web.report.AbstractCasEndpointTests;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -14,6 +13,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.test.context.TestPropertySource;
 import java.nio.charset.StandardCharsets;
@@ -21,6 +21,8 @@ import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 /**
  * This is {@link MultifactorAuthenticationTrustedDevicesReportEndpointTests}.
@@ -30,7 +32,7 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 @TestPropertySource(properties = "management.endpoint.multifactorTrustedDevices.enabled=true")
 @Tag("MFATrustedDevices")
-@ImportAutoConfiguration(MultifactorAuthnTrustConfiguration.class)
+@ImportAutoConfiguration(CasMultifactorAuthnTrustAutoConfiguration.class)
 class MultifactorAuthenticationTrustedDevicesReportEndpointTests extends AbstractCasEndpointTests {
     private static final ObjectMapper MAPPER = JacksonObjectMapperFactory.builder()
         .defaultTypingEnabled(false).build().toObjectMapper();
@@ -45,11 +47,21 @@ class MultifactorAuthenticationTrustedDevicesReportEndpointTests extends Abstrac
 
     @Test
     void verifyRemovals() throws Throwable {
-        assertNotNull(endpoint);
         var record = MultifactorAuthenticationTrustRecord.newInstance(UUID.randomUUID().toString(), "geography", "fingerprint");
         mfaTrustEngine.save(record);
-        endpoint.clean();
-        endpoint.removeSince(DateTimeUtils.dateOf(LocalDateTime.now(Clock.systemUTC()).plusDays(1)));
+
+        mockMvc.perform(delete("/actuator/multifactorTrustedDevices/clean")
+            .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+            .accept(MediaType.APPLICATION_JSON)
+        ).andExpect(status().isOk());
+
+        val date = LocalDateTime.now(Clock.systemUTC()).plusDays(1);
+        mockMvc.perform(delete("/actuator/multifactorTrustedDevices/expire")
+                .queryParam("expiration", date.toString())
+            .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+            .accept(MediaType.APPLICATION_JSON)
+        ).andExpect(status().isOk());
+
         assertFalse(endpoint.devices().isEmpty());
     }
 

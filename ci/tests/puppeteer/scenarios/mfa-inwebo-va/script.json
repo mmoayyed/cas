@@ -2,12 +2,9 @@
   "dependencies": "inwebo-mfa",
 
   "properties": [
-    "--logging.level.org.apereo.cas=debug",
 
     "--cas.server.name=https://localhost:8443",
     "--cas.server.prefix=${cas.server.name}/cas",
-
-    "--cas.audit.engine.enabled=true",
 
     "--cas.authn.accept.users=testcasva::password",
 
