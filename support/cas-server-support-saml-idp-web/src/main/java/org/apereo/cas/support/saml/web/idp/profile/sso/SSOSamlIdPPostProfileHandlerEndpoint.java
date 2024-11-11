@@ -1,5 +1,6 @@
 package org.apereo.cas.support.saml.web.idp.profile.sso;
 
+import io.github.pixee.security.Newlines;
 import org.apereo.cas.authentication.Authentication;
 import org.apereo.cas.authentication.AuthenticationSystemSupport;
 import org.apereo.cas.authentication.DefaultAuthenticationBuilder;
@@ -218,7 +219,7 @@ public class SSOSamlIdPPostProfileHandlerEndpoint extends BaseCasRestActuatorEnd
 
         val encodedRequest = EncodingUtils.encodeBase64(SamlUtils.transformSamlObject(
             saml20ObjectBuilder.getOpenSamlConfigBean(), logoutRequest, true).toString());
-        response.setHeader("LogoutRequest", encodedRequest);
+        response.setHeader("LogoutRequest", Newlines.stripAll(encodedRequest));
         
         messageContext.setMessage(logoutRequest);
         encoder.setMessageContext(messageContext);

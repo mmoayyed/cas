@@ -1,5 +1,6 @@
 package org.apereo.cas.web.support.gen;
 
+import io.github.pixee.security.Newlines;
 import org.apereo.cas.authentication.CoreAuthenticationUtils;
 import org.apereo.cas.authentication.RememberMeCredential;
 import org.apereo.cas.util.LoggingUtils;
@@ -214,7 +215,7 @@ public class CookieRetrievingCookieGenerator extends CookieGenerator implements 
         val value = StringUtils.removeEndIgnoreCase(builder.toString(), ";");
         LOGGER.trace("Adding cookie header as [{}]", value);
         val setCookieHeaders = response.getHeaders("Set-Cookie");
-        response.setHeader("Set-Cookie", value);
+        response.setHeader("Set-Cookie", Newlines.stripAll(value));
         setCookieHeaders.stream()
             .filter(header -> !header.startsWith(cookie.getName() + '='))
             .forEach(header -> response.addHeader("Set-Cookie", header));
