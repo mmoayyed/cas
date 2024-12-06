@@ -1,5 +1,7 @@
 package org.apereo.cas.util;
 
+import io.github.pixee.security.HostValidator;
+import io.github.pixee.security.Urls;
 import org.apereo.cas.util.function.FunctionUtils;
 import org.apereo.cas.util.nativex.CasRuntimeHintsRegistrar;
 import lombok.experimental.UtilityClass;
@@ -61,7 +63,7 @@ public class CasVersion {
                 val className = CasVersion.class.getSimpleName() + ".class";
                 val classPath = CasVersion.class.getResource(className).toString();
                 val manifestPath = classPath.substring(0, classPath.lastIndexOf('!') + 1) + "/META-INF/MANIFEST.MF";
-                val manifest = new Manifest(new URL(manifestPath).openStream());
+                val manifest = new Manifest(Urls.create(manifestPath, Urls.HTTP_PROTOCOLS, HostValidator.DENY_COMMON_INFRASTRUCTURE_TARGETS).openStream());
                 val attributes = manifest.getMainAttributes();
                 return StringUtils.defaultIfBlank(attributes.getValue("Implementation-Date"), ZonedDateTime.now(Clock.systemUTC()).toString());
             });
