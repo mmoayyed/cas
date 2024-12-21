@@ -374,7 +374,7 @@ class DefaultAttributeDefinitionStoreTests {
             .build();
         val store = new DefaultAttributeDefinitionStore(defn);
         store.setScope("example.org");
-        val file = File.createTempFile("attr", "json");
+        val file = Files.createTempFile("attr", "json").toFile();
         store.store(new FileSystemResource(file));
         assertTrue(file.exists());
         val store2 = new DefaultAttributeDefinitionStore(new FileSystemResource(file));
@@ -438,7 +438,7 @@ class DefaultAttributeDefinitionStoreTests {
 
     @Test
     void verifyBadDefinitionsResource() throws Throwable {
-        val file = File.createTempFile("badfile", ".json");
+        val file = Files.createTempFile("badfile", ".json").toFile();
         FileUtils.write(file, "data", StandardCharsets.UTF_8);
         try (val store = new DefaultAttributeDefinitionStore(new FileSystemResource(file))) {
             store.setScope("example.org");
