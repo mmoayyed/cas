@@ -1,5 +1,6 @@
 package org.apereo.cas.support.sms;
 
+import static io.github.pixee.security.Newlines.stripAll;
 import org.apereo.cas.notifications.sms.SmsSender;
 import org.apereo.cas.util.CollectionUtils;
 import org.apereo.cas.util.LoggingUtils;
@@ -59,7 +60,7 @@ public class ClickatellSmsSender implements SmsSender {
             val response = restTemplate.postForEntity(new URI(this.serverUrl), request, Map.class);
             if (response.hasBody()) {
                 val body = response.getBody();
-                LOGGER.debug("Received response [{}]", body);
+                LOGGER.debug("Received response [{}]", stripAll(body));
 
                 if (body == null || !body.containsKey("messages")) {
                     LOGGER.error("Response body does not contain any messages");
@@ -68,7 +69,7 @@ public class ClickatellSmsSender implements SmsSender {
 
                 val error = (String) body.get("error");
                 if (StringUtils.isNotBlank(error)) {
-                    LOGGER.error(error);
+                    LOGGER.error(stripAll(error));
                     return false;
                 }
 
