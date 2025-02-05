@@ -254,7 +254,7 @@ gradleGit="2.4.2"
 gradleLombok="8.12.1"
 gradleDependencyVersions="0.52.0"
 gradleErrorProne="4.1.0"
-gradleGraalVmNative="0.10.4"
+gradleGraalVmNative="0.10.5"
 gradleSonarqube="6.0.1.5171"
 gradleNexusPublishing="2.0.0"
 
