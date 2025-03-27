@@ -81,7 +81,7 @@ class GroovyScriptAttributeReleasePolicyTests {
 
     @Test
     void verifySystemPropertyInRef() throws Throwable {
-        val file = File.createTempFile("GroovyAttributeRelease", ".groovy");
+        val file = Files.createTempFile("GroovyAttributeRelease", ".groovy").toFile();
         try (val is = new ClassPathResource("GroovyAttributeRelease.groovy").getInputStream()) {
             is.transferTo(new FileOutputStream(file));
         }

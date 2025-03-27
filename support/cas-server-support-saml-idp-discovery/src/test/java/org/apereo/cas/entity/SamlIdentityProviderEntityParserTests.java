@@ -33,7 +33,7 @@ class SamlIdentityProviderEntityParserTests {
 
     @Test
     void verifyFile() throws Throwable {
-        val file = File.createTempFile("feed", ".json");
+        val file = Files.createTempFile("feed", ".json").toFile();
         val content = IOUtils.toString(new ClassPathResource("disco-feed.json").getInputStream(), StandardCharsets.UTF_8);
         FileUtils.writeStringToFile(file, content, StandardCharsets.UTF_8);
         val parser = new SamlIdentityProviderEntityParser(new FileSystemResource(file));
