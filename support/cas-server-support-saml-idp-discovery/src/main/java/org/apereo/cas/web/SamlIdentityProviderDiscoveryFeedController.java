@@ -14,6 +14,8 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import org.springframework.web.servlet.ModelAndView;
 import org.springframework.web.servlet.View;
 import org.springframework.web.servlet.view.RedirectView;
@@ -52,6 +54,8 @@ public class SamlIdentityProviderDiscoveryFeedController {
      * @param entityID the entity id
      * @return the discovery feed
      */
+    @Operation(summary = "Get identity provider discovery feed",
+        parameters = @Parameter(name = "entityID", required = false, description = "Filter by entity id"))
     @GetMapping(path = "/feed", produces = MediaType.APPLICATION_JSON_VALUE)
     public Collection<SamlIdentityProviderEntity> getDiscoveryFeed(
         final HttpServletRequest request,
@@ -75,6 +79,7 @@ public class SamlIdentityProviderDiscoveryFeedController {
      * @param response the response
      * @return the model and view
      */
+    @Operation(summary = "View identity provider discovery home")
     @GetMapping
     public ModelAndView home(final HttpServletRequest request, final HttpServletResponse response) {
         val model = new HashMap<String, Object>();
@@ -101,6 +106,7 @@ public class SamlIdentityProviderDiscoveryFeedController {
      * @param httpServletResponse the http servlet response
      * @return the view
      */
+    @Operation(summary = "Redirect to identity provider", parameters = @Parameter(name = "entityID", required = true, description = "The entity id"))
     @GetMapping(path = "/redirect")
     public View redirect(
         @RequestParam("entityID")

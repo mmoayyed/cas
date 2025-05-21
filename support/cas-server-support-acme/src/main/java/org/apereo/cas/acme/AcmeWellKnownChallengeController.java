@@ -6,6 +6,8 @@ import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RestController;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -33,6 +35,7 @@ public class AcmeWellKnownChallengeController {
      * @param response the response
      * @return the string
      */
+    @Operation(summary = "Handle ACME well-known challenge", parameters = @Parameter(name = "token", required = true, description = "Challenge token"))
     @GetMapping(value = "/.well-known/acme-challenge/{token}", produces = MediaType.TEXT_PLAIN_VALUE)
     public String handleRequest(
         @PathVariable("token")

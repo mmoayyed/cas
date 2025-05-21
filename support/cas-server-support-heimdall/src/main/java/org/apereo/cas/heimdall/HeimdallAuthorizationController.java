@@ -10,6 +10,8 @@ import lombok.val;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import org.springframework.util.Assert;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -49,6 +51,8 @@ public class HeimdallAuthorizationController {
      * @param request              the request
      * @return the response entity
      */
+    @Operation(summary = "Authorize request via Heimdall",
+        parameters = @Parameter(name = "authorizationRequest", required = true, description = "Authorization request"))
     @PostMapping("/authorize")
     public ResponseEntity authorize(
         @RequestBody final @Valid AuthorizationRequest authorizationRequest,

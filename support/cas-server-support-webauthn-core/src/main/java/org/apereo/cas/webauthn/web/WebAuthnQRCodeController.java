@@ -25,6 +25,8 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import org.springframework.web.servlet.ModelAndView;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -61,6 +63,8 @@ public class WebAuthnQRCodeController extends BaseWebAuthnController {
      * @return the model and view
      * @throws Throwable the throwable
      */
+    @Operation(summary = "Start WebAuthn QR code authentication",
+        parameters = @Parameter(name = "ticketId", required = true, description = "Ticket id"))
     @GetMapping(ENDPOINT_QR_VERIFY + "/{ticketId}")
     public ModelAndView startAuthentication(
         final HttpServletRequest request,
@@ -90,6 +94,8 @@ public class WebAuthnQRCodeController extends BaseWebAuthnController {
      * @return the response entity
      * @throws Throwable the throwable
      */
+    @Operation(summary = "Check QR ticket status",
+        parameters = @Parameter(name = "ticketId", required = true, description = "Ticket id"))
     @GetMapping(ENDPOINT_QR_VERIFY + "/{ticketId}/status")
     @ResponseBody
     public ResponseEntity checkQRTicketStatus(
@@ -127,6 +133,12 @@ public class WebAuthnQRCodeController extends BaseWebAuthnController {
      * @return the model and view
      * @throws Throwable the throwable
      */
+    @Operation(summary = "Verify QR code token",
+        parameters = {
+            @Parameter(name = "token", required = true, description = "Session token"),
+            @Parameter(name = "ticket", required = true, description = "Ticket id"),
+            @Parameter(name = "principal", required = true, description = "Principal id")
+        })
     @PostMapping(ENDPOINT_QR_VERIFY)
     @ResponseBody
     public ModelAndView verifyCode(@RequestParam("token") final String sessionToken,

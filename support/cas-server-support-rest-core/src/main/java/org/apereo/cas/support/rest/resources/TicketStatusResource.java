@@ -14,6 +14,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RestController;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 
 /**
  * CAS RESTful resource validating TGTs.
@@ -36,6 +38,8 @@ public class TicketStatusResource {
      * @param id ticket id
      * @return {@link ResponseEntity} representing RESTful response
      */
+    @Operation(summary = "Get the status of a ticket",
+        parameters = @Parameter(name = "id", required = true, description = "Ticket id"))
     @GetMapping(RestProtocolConstants.ENDPOINT_TICKETS + "/{id:.+}")
     public ResponseEntity<String> getTicketStatus(@PathVariable("id") final String id) {
         try {

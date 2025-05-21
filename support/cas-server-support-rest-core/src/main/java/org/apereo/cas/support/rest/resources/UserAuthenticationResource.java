@@ -14,6 +14,8 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -50,6 +52,8 @@ public class UserAuthenticationResource {
      * @param response    the response
      * @return ResponseEntity representing RESTful response
      */
+    @Operation(summary = "Authenticate user credentials",
+        parameters = @Parameter(name = "requestBody", required = true, description = "Username and password values"))
     @PostMapping(value = RestProtocolConstants.ENDPOINT_USERS,
         consumes = {
             MediaType.APPLICATION_FORM_URLENCODED_VALUE,

@@ -20,6 +20,8 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -63,6 +65,11 @@ public class ServiceTicketResource {
      * @param tgtId              ticket granting ticket id URI path param
      * @return {@link ResponseEntity} representing RESTful response
      */
+    @Operation(summary = "Create service ticket",
+        parameters = {
+            @Parameter(name = "tgtId", required = true, description = "Ticket-granting ticket id"),
+            @Parameter(name = "requestBody", required = false, description = "Request body containing credentials")
+        })
     @PostMapping(value = RestProtocolConstants.ENDPOINT_TICKETS + "/{tgtId:.+}",
         consumes = {
             MediaType.APPLICATION_FORM_URLENCODED_VALUE,

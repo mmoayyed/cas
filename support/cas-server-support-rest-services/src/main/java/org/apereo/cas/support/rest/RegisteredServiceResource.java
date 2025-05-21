@@ -23,6 +23,8 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import org.springframework.security.web.authentication.www.BasicAuthenticationConverter;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -61,6 +63,8 @@ public class RegisteredServiceResource {
      * @return {@link ResponseEntity} representing RESTful response
      * @throws Throwable the throwable
      */
+    @Operation(summary = "Create registered service",
+        parameters = @Parameter(name = "service", required = true, description = "Registered service definition"))
     @PostMapping(value = "/v1/services", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<String> createService(@RequestBody final RegisteredService service,
                                                 final HttpServletRequest request, final HttpServletResponse response) throws Throwable {

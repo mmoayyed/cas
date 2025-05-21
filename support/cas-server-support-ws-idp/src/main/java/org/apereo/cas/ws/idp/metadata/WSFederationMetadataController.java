@@ -11,6 +11,7 @@ import org.apache.wss4j.common.util.DOM2Writer;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
+import io.swagger.v3.oas.annotations.Operation;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -34,6 +35,7 @@ public class WSFederationMetadataController {
      * @param response the response
      * @throws Exception the exception
      */
+    @Operation(summary = "Get WS-Federation metadata")
     @GetMapping(path = WSFederationConstants.ENDPOINT_FEDERATION_METADATA)
     public void doGet(final HttpServletRequest request, final HttpServletResponse response) throws Exception {
         try {

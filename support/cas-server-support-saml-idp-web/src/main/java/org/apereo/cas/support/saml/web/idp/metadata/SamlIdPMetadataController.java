@@ -17,6 +17,8 @@ import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import jakarta.servlet.http.HttpServletResponse;
 import java.nio.charset.StandardCharsets;
 import java.util.Optional;
@@ -50,6 +52,7 @@ public class SamlIdPMetadataController {
      * @param response servlet response
      * @throws Exception the exception
      */
+    @Operation(summary = "Generate IdP metadata", parameters = @Parameter(name = "service", required = false, description = "Service identifier"))
     @GetMapping(path = SamlIdPConstants.ENDPOINT_IDP_METADATA, produces = CONTENT_TYPE)
     public void generateMetadataForIdp(
         @RequestParam(value = "service", required = false) final String service,
@@ -74,6 +77,7 @@ public class SamlIdPMetadataController {
      * @param service  the service
      * @throws Throwable the throwable
      */
+    @Operation(summary = "Get IdP signing certificate", parameters = @Parameter(name = "service", required = false, description = "Service identifier"))
     @GetMapping(path = SamlIdPConstants.ENDPOINT_IDP_METADATA + "/signingCertificate", produces = MediaType.TEXT_PLAIN_VALUE)
     public String idpSigningCertificate(
         @RequestParam(value = "service", required = false) final String service) throws Throwable {
@@ -89,6 +93,7 @@ public class SamlIdPMetadataController {
      * @param service  the service
      * @throws Throwable the throwable
      */
+    @Operation(summary = "Get IdP encryption certificate", parameters = @Parameter(name = "service", required = false, description = "Service identifier"))
     @GetMapping(path = SamlIdPConstants.ENDPOINT_IDP_METADATA + "/encryptionCertificate", produces = MediaType.TEXT_PLAIN_VALUE)
     public String idpEncryptionCertificate(
         @RequestParam(value = "service", required = false) final String service) throws Throwable {

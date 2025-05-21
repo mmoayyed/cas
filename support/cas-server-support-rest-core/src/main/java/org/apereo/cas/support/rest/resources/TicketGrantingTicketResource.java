@@ -17,6 +17,8 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -58,6 +60,7 @@ public class TicketGrantingTicketResource {
      *
      * @return the response entity
      */
+    @Operation(summary = "Reject retrieval of ticket-granting tickets")
     @GetMapping(RestProtocolConstants.ENDPOINT_TICKETS)
     public ResponseEntity<String> rejectGetResponse() {
         return new ResponseEntity<>(HttpStatus.METHOD_NOT_ALLOWED);
@@ -71,6 +74,8 @@ public class TicketGrantingTicketResource {
      * @param response    the response
      * @return ResponseEntity representing RESTful response
      */
+    @Operation(summary = "Create ticket-granting ticket",
+        parameters = @Parameter(name = "requestBody", required = false, description = "Username and password data"))
     @PostMapping(value = RestProtocolConstants.ENDPOINT_TICKETS,
         consumes = {
             MediaType.APPLICATION_FORM_URLENCODED_VALUE,
@@ -109,6 +114,8 @@ public class TicketGrantingTicketResource {
      * @param response the response
      * @return {@link ResponseEntity} representing RESTful response. Signals {@link HttpStatus#OK} when successful.
      */
+    @Operation(summary = "Delete ticket-granting ticket",
+        parameters = @Parameter(name = "tgtId", required = true, description = "Ticket-granting ticket id"))
     @DeleteMapping(value = RestProtocolConstants.ENDPOINT_TICKETS + "/{tgtId:.+}",
         produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<List<SingleLogoutRequestContext>> deleteTicketGrantingTicket(@PathVariable("tgtId") final String tgtId,
