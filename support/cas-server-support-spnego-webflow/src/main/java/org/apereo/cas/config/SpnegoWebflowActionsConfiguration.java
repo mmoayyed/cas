@@ -73,7 +73,7 @@ class SpnegoWebflowActionsConfiguration {
     @Bean
     @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
     @ConditionalOnMissingBean(name = CasWebflowConstants.ACTION_ID_SPNEGO_NEGOTIATE)
-    public Action negociateSpnego(
+    public Action negotiateSpnego(
         final ConfigurableApplicationContext applicationContext,
         final CasConfigurationProperties casProperties) {
         return WebflowActionBeanSupplier.builder()

@@ -55,8 +55,8 @@ import org.springframework.webflow.execution.Action;
 public abstract class AbstractSpnegoTests {
 
     @Autowired
-    @Qualifier("negociateSpnego")
-    protected Action negociateSpnegoAction;
+    @Qualifier("negotiateSpnego")
+    protected Action negotiateSpnegoAction;
 
     @Autowired
     @Qualifier("spnego")

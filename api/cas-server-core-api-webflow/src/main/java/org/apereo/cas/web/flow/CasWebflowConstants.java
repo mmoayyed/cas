@@ -1751,9 +1751,9 @@ public interface CasWebflowConstants {
     String ACTION_ID_RENEW_AUTHN_REQUEST = "renewAuthenticationRequestCheckAction";
 
     /**
-     * Action id 'negociateSpnego'.
+     * Action id 'negotiateSpnego'.
      */
-    String ACTION_ID_SPNEGO_NEGOTIATE = "negociateSpnego";
+    String ACTION_ID_SPNEGO_NEGOTIATE = "negotiateSpnego";
 
     /**
      * Action id 'acceptableUsagePolicyVerifyAction.

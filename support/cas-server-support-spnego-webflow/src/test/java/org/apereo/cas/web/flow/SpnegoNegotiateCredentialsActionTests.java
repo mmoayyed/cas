@@ -20,7 +20,7 @@ class SpnegoNegotiateCredentialsActionTests extends AbstractSpnegoTests {
     @Test
     void verifyOperation() throws Throwable {
         val context = MockRequestContext.create(applicationContext).withUserAgent("MSIE");
-        negociateSpnegoAction.execute(context);
+        negotiateSpnegoAction.execute(context);
         assertNotNull(context.getHttpServletResponse().getHeader(SpnegoConstants.HEADER_AUTHENTICATE));
         assertEquals(HttpServletResponse.SC_UNAUTHORIZED, context.getHttpServletResponse().getStatus());
     }
@@ -28,15 +28,15 @@ class SpnegoNegotiateCredentialsActionTests extends AbstractSpnegoTests {
     @Test
     void verifyEmptyAgent() throws Throwable {
         val context = MockRequestContext.create(applicationContext);
-        assertEquals(CasWebflowConstants.TRANSITION_ID_ERROR, negociateSpnegoAction.execute(context).getId());
+        assertEquals(CasWebflowConstants.TRANSITION_ID_ERROR, negotiateSpnegoAction.execute(context).getId());
         context.withUserAgent();
-        assertEquals(CasWebflowConstants.TRANSITION_ID_ERROR, negociateSpnegoAction.execute(context).getId());
+        assertEquals(CasWebflowConstants.TRANSITION_ID_ERROR, negotiateSpnegoAction.execute(context).getId());
     }
 
     @Test
     void verifyBadAuthzHeader() throws Throwable {
         val context = MockRequestContext.create(applicationContext).withUserAgent("Firefox");
         context.addHeader(HttpHeaders.AUTHORIZATION, SpnegoConstants.NEGOTIATE + " XYZ");
-        assertEquals(CasWebflowConstants.TRANSITION_ID_SUCCESS, negociateSpnegoAction.execute(context).getId());
+        assertEquals(CasWebflowConstants.TRANSITION_ID_SUCCESS, negotiateSpnegoAction.execute(context).getId());
     }
 }
