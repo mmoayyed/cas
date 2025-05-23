@@ -190,7 +190,9 @@ public class InweboService {
             urlConnection.setSSLSocketFactory(this.context.getSocketFactory());
         }
         conn.setRequestMethod(HttpMethod.GET.name());
-        return MAPPER.readTree(conn.getInputStream());
+        try (var in = conn.getInputStream()) {
+            return MAPPER.readTree(in);
+        }
     }
 
     /**
