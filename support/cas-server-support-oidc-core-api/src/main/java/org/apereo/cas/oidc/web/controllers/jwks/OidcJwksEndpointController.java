@@ -9,6 +9,7 @@ import org.apereo.cas.oidc.web.controllers.BaseOidcController;
 import org.apereo.cas.services.OidcRegisteredService;
 import org.apereo.cas.support.oauth.OAuth20Constants;
 import org.apereo.cas.support.oauth.util.OAuth20Utils;
+import org.apereo.cas.util.function.FunctionUtils;
 import org.apereo.cas.util.LoggingUtils;
 import org.apereo.cas.util.spring.SpringExpressionLanguageValueResolver;
 import io.swagger.v3.oas.annotations.Operation;
@@ -73,8 +74,12 @@ public class OidcJwksEndpointController extends BaseOidcController {
         }
         try {
             val resource = oidcJsonWebKeystoreGeneratorService.generate();
-            val jsonJwks = IOUtils.toString(resource.getInputStream(), StandardCharsets.UTF_8);
-            val jsonWebKeySet = new JsonWebKeySet(jsonJwks);
+            val jsonWebKeySet = FunctionUtils.doUnchecked(() -> {
+                try (val is = resource.getInputStream()) {
+                    val jsonJwks = IOUtils.toString(is, StandardCharsets.UTF_8);
+                    return new JsonWebKeySet(jsonJwks);
+                }
+            });
 
             val servicesManager = getConfigurationContext().getServicesManager();
             servicesManager.getAllServicesOfType(OidcRegisteredService.class)
