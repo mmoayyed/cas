@@ -50,17 +50,19 @@ public class EncryptedTranscoder implements Transcoder {
         if (o == null) {
             return ArrayUtils.EMPTY_BYTE_ARRAY;
         }
-        val outBuffer = new ByteArrayOutputStream();
-        try (val out = this.compression
-            ? new ObjectOutputStream(new GZIPOutputStream(outBuffer))
-            : new ObjectOutputStream(outBuffer)) {
+        try (val outBuffer = new ByteArrayOutputStream()) {
+            try (val out = this.compression
+                ? new ObjectOutputStream(new GZIPOutputStream(outBuffer))
+                : new ObjectOutputStream(outBuffer)) {
 
-            writeObjectToOutputStream(o, out);
-        } catch (final NotSerializableException e) {
-            LoggingUtils.warn(LOGGER, e);
+                writeObjectToOutputStream(o, out);
+            } catch (final NotSerializableException e) {
+                LoggingUtils.warn(LOGGER, e);
+            }
+            return encrypt(outBuffer);
         }
-        return encrypt(outBuffer);
     }
+
 
     @Override
     @SuppressWarnings("BanSerializableRead")
