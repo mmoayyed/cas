@@ -131,7 +131,7 @@ is not correctly configured. Objects and tickets are cached inside the registry 
 they should or the eviction policy is not doing a good enough job to clean unused tickets that may be marked as expired by CAS. 
 
 To troubleshoot, you can configure the JVM to perform a heap dump prior to exiting, which you should set up immediately so you have 
-some additional information if/when it happens next time. The follow system properties should do the trick:
+some additional information if/when it happens next time. The following system properties should do the trick:
 
 ```bash
 -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath="/path/to/jvm-dump.hprof" 
