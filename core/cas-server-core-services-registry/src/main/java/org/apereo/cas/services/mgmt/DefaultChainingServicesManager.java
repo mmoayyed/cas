@@ -45,10 +45,12 @@ public class DefaultChainingServicesManager implements ChainingServicesManager {
 
     @Override
     public void save(final Stream<? extends RegisteredService> toSave) {
-        serviceManagers.forEach(mgr -> {
-            val filtered = toSave.filter(mgr::supports);
-            mgr.save(filtered);
-        });
+        serviceManagers
+            .parallelStream()
+            .forEach(mgr -> {
+                val filtered = toSave.filter(mgr::supports);
+                mgr.save(filtered);
+            });
     }
 
     @Audit(action = AuditableActions.SAVE_SERVICE,
@@ -73,7 +75,7 @@ public class DefaultChainingServicesManager implements ChainingServicesManager {
     public void save(final Supplier<RegisteredService> supplier,
                      final Consumer<RegisteredService> andThenConsume,
                      final long countExclusive) {
-        serviceManagers.forEach(servicesManager -> servicesManager.save(() -> {
+        serviceManagers.parallelStream().forEach(servicesManager -> servicesManager.save(() -> {
             val registeredService = supplier.get();
             return findServicesManager(registeredService).isPresent() ? registeredService : null;
         }, andThenConsume, countExclusive));
@@ -81,7 +83,7 @@ public class DefaultChainingServicesManager implements ChainingServicesManager {
 
     @Override
     public void deleteAll() {
-        serviceManagers.forEach(ServicesManager::deleteAll);
+        serviceManagers.parallelStream().forEach(ServicesManager::deleteAll);
     }
 
     @Audit(action = AuditableActions.DELETE_SERVICE,
@@ -156,14 +158,14 @@ public class DefaultChainingServicesManager implements ChainingServicesManager {
 
     @Override
     public Collection<RegisteredService> getAllServices() {
-        return serviceManagers.stream()
+        return serviceManagers.parallelStream()
             .flatMap(manager -> manager.getAllServices().stream())
             .collect(Collectors.toList());
     }
 
     @Override
     public <T extends RegisteredService> Collection<T> getAllServicesOfType(final Class<T> clazz) {
-        return serviceManagers.stream()
+        return serviceManagers.parallelStream()
             .filter(manager -> manager.supports(clazz))
             .flatMap(manager -> manager.getAllServicesOfType(clazz).stream())
             .collect(Collectors.toList());
@@ -171,14 +173,14 @@ public class DefaultChainingServicesManager implements ChainingServicesManager {
 
     @Override
     public Collection<RegisteredService> load() {
-        return serviceManagers.stream()
+        return serviceManagers.parallelStream()
             .flatMap(manager -> manager.load().stream())
             .collect(Collectors.toList());
     }
 
     @Override
     public long count() {
-        return serviceManagers.stream()
+        return serviceManagers.parallelStream()
             .mapToLong(ServicesManager::count)
             .sum();
     }
@@ -207,7 +209,7 @@ public class DefaultChainingServicesManager implements ChainingServicesManager {
     @Override
     public Collection<RegisteredService> getServicesForDomain(final String domain) {
         return serviceManagers
-            .stream()
+            .parallelStream()
             .flatMap(manager -> manager.getServicesForDomain(domain).stream())
             .collect(Collectors.toList());
     }

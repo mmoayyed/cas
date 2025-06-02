@@ -116,7 +116,10 @@ public class DefaultRegisteredServiceReplicationStrategy implements RegisteredSe
             .sorted(Comparator.<DistributedCacheObject>comparingLong(DistributedCacheObject::getTimestamp).reversed())
             .filter(CollectionUtils.distinctByKey(service -> service.getValue().getId()))
             .toList();
-        for (val entry : cachedServices) {
+
+        val serviceList = new java.util.concurrent.CopyOnWriteArrayList<>(services);
+
+        cachedServices.parallelStream().forEach(entry -> {
             val cachedService = entry.getValue();
             LOGGER.debug("Found cached service definition [{}] in the replication cache [{}]",
                 cachedService, distributedCacheManager.getName());
@@ -126,22 +129,22 @@ public class DefaultRegisteredServiceReplicationStrategy implements RegisteredSe
                              + "of this CAS node to remove the local service, if found.", cachedService);
                 serviceRegistry.delete(cachedService);
                 distributedCacheManager.remove(cachedService, entry, true);
-                continue;
+                return;
             }
 
-            val matchingService = services.stream()
+            val matchingService = serviceList.stream()
                 .filter(svc -> svc.getId() == cachedService.getId())
                 .findFirst()
                 .orElse(null);
 
             if (matchingService != null) {
-                updateServiceRegistryWithMatchingService(services, cachedService, matchingService, serviceRegistry);
+                updateServiceRegistryWithMatchingService(serviceList, cachedService, matchingService, serviceRegistry);
             } else {
-                updateServiceRegistryWithNoMatchingService(services, cachedService, serviceRegistry);
+                updateServiceRegistryWithNoMatchingService(serviceList, cachedService, serviceRegistry);
             }
-        }
+        });
         distributedCacheManager.clear();
-        return services;
+        return new java.util.ArrayList<>(serviceList);
     }
 
     private void saveRegisteredServiceIfNecessary(final ServiceRegistry serviceRegistry, final RegisteredService value) {

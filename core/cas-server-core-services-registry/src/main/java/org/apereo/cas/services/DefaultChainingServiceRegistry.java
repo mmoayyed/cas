@@ -52,12 +52,14 @@ public class DefaultChainingServiceRegistry extends AbstractServiceRegistry impl
 
     @Override
     public void deleteAll() {
-        this.serviceRegistries.forEach(ServiceRegistry::deleteAll);
+        this.serviceRegistries
+            .parallelStream()
+            .forEach(ServiceRegistry::deleteAll);
     }
 
     @Override
     public Collection<RegisteredService> load() {
-        return serviceRegistries.stream()
+        return serviceRegistries.parallelStream()
             .map(ServiceRegistry::load)
             .filter(Objects::nonNull)
             .flatMap(Collection::stream)

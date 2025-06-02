@@ -81,9 +81,7 @@ public class JsonAuthorizableResourceRepository implements AuthorizableResourceR
 
     private void loadJsonResources() {
         val jsonFiles = FileUtils.listFiles(directory, new String[]{"json"}, true);
-        for (val jsonFile : jsonFiles) {
-            loadJsonResourceFrom(jsonFile);
-        }
+        jsonFiles.parallelStream().forEach(this::loadJsonResourceFrom);
     }
 
     private void loadJsonResourceFrom(final File jsonFile) {

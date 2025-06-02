@@ -77,7 +77,7 @@ public class JsonMultifactorAuthenticationTrustStorage extends BaseMultifactorAu
     public void remove(final ZonedDateTime expirationDate) {
         val results = storage
             .values()
-            .stream()
+            .parallelStream()
             .filter(entry -> entry.getExpirationDate() != null)
             .filter(entry -> {
                 val expDate = DateTimeUtils.dateOf(expirationDate);
@@ -105,7 +105,7 @@ public class JsonMultifactorAuthenticationTrustStorage extends BaseMultifactorAu
         remove();
         return storage
             .values()
-            .stream()
+            .parallelStream()
             .filter(entry -> StringUtils.isNotBlank(entry.getRecordKey()))
             .filter(entry -> entry.getId() == id)
             .sorted()
@@ -118,7 +118,7 @@ public class JsonMultifactorAuthenticationTrustStorage extends BaseMultifactorAu
         remove();
         return storage
             .values()
-            .stream()
+            .parallelStream()
             .filter(entry -> StringUtils.isNotBlank(entry.getRecordKey()))
             .filter(entry -> entry.getRecordDate().isEqual(onOrAfterDate) || entry.getRecordDate().isAfter(onOrAfterDate))
             .sorted()
@@ -130,7 +130,7 @@ public class JsonMultifactorAuthenticationTrustStorage extends BaseMultifactorAu
         remove();
         return storage
             .values()
-            .stream()
+            .parallelStream()
             .filter(entry -> entry.getPrincipal().equalsIgnoreCase(principal))
             .filter(entry -> StringUtils.isNotBlank(entry.getRecordKey()))
             .sorted()
