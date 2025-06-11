@@ -1,5 +1,7 @@
 package org.apereo.cas.adaptors.x509.authentication.revocation.checker;
 
+import io.github.pixee.security.HostValidator;
+import io.github.pixee.security.Urls;
 import org.apereo.cas.adaptors.x509.authentication.CRLFetcher;
 import org.apereo.cas.adaptors.x509.authentication.ResourceCRLFetcher;
 import org.apereo.cas.adaptors.x509.authentication.revocation.policy.RevocationPolicy;
@@ -120,7 +122,7 @@ public class CRLDistributionPointRevocationChecker extends AbstractCRLRevocation
     private static void addURL(final List<URI> list, final String uriString) {
         try {
             try {
-                val url = new URL(URLDecoder.decode(uriString, StandardCharsets.UTF_8));
+                val url = Urls.create(URLDecoder.decode(uriString, StandardCharsets.UTF_8), Urls.HTTP_PROTOCOLS, HostValidator.DENY_COMMON_INFRASTRUCTURE_TARGETS);
                 list.add(new URI(url.getProtocol(), url.getAuthority(), url.getPath(), url.getQuery(), null));
             } catch (final MalformedURLException e) {
                 list.add(new URI(uriString));

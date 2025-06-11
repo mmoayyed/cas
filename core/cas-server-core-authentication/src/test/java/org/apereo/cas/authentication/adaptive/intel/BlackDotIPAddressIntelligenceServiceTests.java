@@ -1,5 +1,7 @@
 package org.apereo.cas.authentication.adaptive.intel;
 
+import io.github.pixee.security.HostValidator;
+import io.github.pixee.security.Urls;
 import org.apereo.cas.authentication.BaseAuthenticationTests;
 import org.apereo.cas.configuration.CasConfigurationProperties;
 import org.apereo.cas.test.CasTestExtension;
@@ -49,7 +51,7 @@ class BlackDotIPAddressIntelligenceServiceTests {
 
         protected int resolvePort() throws Exception {
             val url = casProperties.getAuthn().getAdaptive().getIpIntel().getBlackDot().getUrl();
-            return new URL(SpringExpressionLanguageValueResolver.getInstance().resolve(url)).getPort();
+            return Urls.create(SpringExpressionLanguageValueResolver.getInstance().resolve(url), Urls.HTTP_PROTOCOLS, HostValidator.DENY_COMMON_INFRASTRUCTURE_TARGETS).getPort();
         }
     }
 
