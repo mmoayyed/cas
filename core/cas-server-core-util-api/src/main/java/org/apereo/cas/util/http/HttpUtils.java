@@ -13,6 +13,7 @@ import lombok.val;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.hc.client5.http.classic.methods.HttpDelete;
 import org.apache.hc.client5.http.classic.methods.HttpGet;
+import org.apache.hc.client5.http.classic.methods.HttpPatch;
 import org.apache.hc.client5.http.classic.methods.HttpPost;
 import org.apache.hc.client5.http.classic.methods.HttpUriRequest;
 import org.apache.hc.client5.http.config.ConnectionConfig;
@@ -97,7 +98,7 @@ public class HttpUtils {
             }, execution.getMaximumRetryAttempts());
         } catch (final SSLHandshakeException e) {
             val sanitizedUrl = FunctionUtils.doUnchecked(
-                    () -> new URIBuilder(execution.getUrl()).removeQuery().clearParameters().build().toASCIIString());
+                () -> new URIBuilder(execution.getUrl()).removeQuery().clearParameters().build().toASCIIString());
             LoggingUtils.error(LOGGER, "SSL error accessing: [" + sanitizedUrl + ']', e);
             return new BasicHttpResponse(HttpStatus.SC_INTERNAL_SERVER_ERROR, sanitizedUrl);
         } catch (final Exception e) {
@@ -187,8 +188,14 @@ public class HttpUtils {
                 request.setEntity(stringEntity);
             }
             return request;
-        }
-        if ("delete".equalsIgnoreCase(method)) {
+        } else if ("patch".equalsIgnoreCase(method)) {
+            val request = new HttpPatch(uri);
+            if (StringUtils.isNotBlank(entity)) {
+                val stringEntity = new StringEntity(entity, StandardCharsets.UTF_8);
+                request.setEntity(stringEntity);
+            }
+            return request;
+        } else if ("delete".equalsIgnoreCase(method)) {
             return new HttpDelete(uri);
         }
 
@@ -204,7 +211,7 @@ public class HttpUtils {
      * @param execution the execution request
      */
     private void prepareHttpRequest(final HttpUriRequest request,
-                                          final HttpExecutionRequest execution) {
+                                    final HttpExecutionRequest execution) {
         if (execution.isBasicAuthentication()) {
             val auth = EncodingUtils.encodeBase64(execution.getBasicAuthUsername() + ':' + execution.getBasicAuthPassword());
             request.setHeader(HttpHeaders.AUTHORIZATION, "Basic " + auth);
@@ -235,31 +242,31 @@ public class HttpUtils {
         requestConfig.setConnectionRequestTimeout(CONNECTION_REQUEST_TIMEOUT_IN_MILLISECONDS);
 
         val builder = HttpClientBuilder
-                .create()
-                .useSystemProperties()
-                .setDefaultRequestConfig(requestConfig.build());
+            .create()
+            .useSystemProperties()
+            .setDefaultRequestConfig(requestConfig.build());
         if (execution.getMaximumRetryAttempts() <= 1) {
             builder.disableAutomaticRetries();
         }
         val socketFactory = Optional.ofNullable(execution.getHttpClient())
-                .map(HttpClient::httpClientFactory)
-                .filter(factory -> Objects.nonNull(factory.getSslSocketFactory()))
-                .map(HttpClientFactory::getSslSocketFactory)
-                .orElseGet(() -> getSslConnectionSocketFactory(execution));
+            .map(HttpClient::httpClientFactory)
+            .filter(factory -> Objects.nonNull(factory.getSslSocketFactory()))
+            .map(HttpClientFactory::getSslSocketFactory)
+            .orElseGet(() -> getSslConnectionSocketFactory(execution));
 
         val connectionManager = PoolingHttpClientConnectionManagerBuilder.create()
-                .setSSLSocketFactory(socketFactory)
-                .setDefaultSocketConfig(SocketConfig.custom()
-                                                .setSoTimeout(SOCKET_TIMEOUT_IN_MILLISECONDS)
-                                                .build())
-                .setPoolConcurrencyPolicy(PoolConcurrencyPolicy.STRICT)
-                .setConnPoolPolicy(PoolReusePolicy.LIFO)
-                .setDefaultConnectionConfig(ConnectionConfig.custom()
-                                                    .setTimeToLive(CONNECT_TTL_TIMEOUT_IN_MILLISECONDS)
-                                                    .setSocketTimeout(SOCKET_TIMEOUT_IN_MILLISECONDS)
-                                                    .setConnectTimeout(CONNECT_TIMEOUT_IN_MILLISECONDS)
-                                                    .build())
-                .build();
+            .setSSLSocketFactory(socketFactory)
+            .setDefaultSocketConfig(SocketConfig.custom()
+                .setSoTimeout(SOCKET_TIMEOUT_IN_MILLISECONDS)
+                .build())
+            .setPoolConcurrencyPolicy(PoolConcurrencyPolicy.STRICT)
+            .setConnPoolPolicy(PoolReusePolicy.LIFO)
+            .setDefaultConnectionConfig(ConnectionConfig.custom()
+                .setTimeToLive(CONNECT_TTL_TIMEOUT_IN_MILLISECONDS)
+                .setSocketTimeout(SOCKET_TIMEOUT_IN_MILLISECONDS)
+                .setConnectTimeout(CONNECT_TIMEOUT_IN_MILLISECONDS)
+                .build())
+            .build();
         builder.setConnectionManager(connectionManager);
         return builder;
     }
@@ -267,11 +274,11 @@ public class HttpUtils {
     private static SSLConnectionSocketFactory getSslConnectionSocketFactory(final HttpExecutionRequest execution) {
         val builder = SSLConnectionSocketFactoryBuilder.create().useSystemProperties();
         Optional.ofNullable(execution.getHttpClient())
-                .map(HttpClient::httpClientFactory)
-                .ifPresentOrElse(factory -> {
-                    builder.setHostnameVerifier(factory.getHostnameVerifier());
-                    builder.setSslContext(factory.getSslContext());
-                }, () -> builder.setSslContext(SSLContexts.createDefault()).setHostnameVerifier(new DefaultHostnameVerifier()));
+            .map(HttpClient::httpClientFactory)
+            .ifPresentOrElse(factory -> {
+                builder.setHostnameVerifier(factory.getHostnameVerifier());
+                builder.setSslContext(factory.getSslContext());
+            }, () -> builder.setSslContext(SSLContexts.createDefault()).setHostnameVerifier(new DefaultHostnameVerifier()));
         return builder.build();
     }
 

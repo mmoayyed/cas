@@ -163,11 +163,6 @@ public class SyncopePasswordManagementService extends BasePasswordManagementServ
     }
 
     @Override
-    public void updateSecurityQuestions(final PasswordManagementQuery query) {
-        throw new UnsupportedOperationException("Password Management Service does not support updating security questions");
-    }
-
-    @Override
     public boolean unlockAccount(final Credential credential) throws Throwable {
         val userKey = fetchSyncopeUserKey(credential.getId());
         val userStatusUrl = Strings.CI.appendIfMissing(
@@ -194,6 +189,29 @@ public class SyncopePasswordManagementService extends BasePasswordManagementServ
             return true;
         }
         return false;
+    }
+
+    @Override
+    public boolean isAnswerValidForSecurityQuestion(final PasswordManagementQuery query, final String question,
+                                                    final String knownAnswer, final String givenAnswer) {
+        val url = Strings.CI.appendIfMissing(
+            SpringExpressionLanguageValueResolver.getInstance().resolve(
+                casProperties.getAuthn().getPm().getSyncope().getUrl()),
+            "/rest/users/verifySecurityAnswer");
+        val exec = HttpExecutionRequest.builder()
+            .method(HttpMethod.POST)
+            .url(url)
+            .basicAuthUsername(casProperties.getAuthn().getPm().getSyncope().getBasicAuthUsername())
+            .basicAuthPassword(casProperties.getAuthn().getPm().getSyncope().getBasicAuthPassword())
+            .headers(Map.of(
+                SyncopeUtils.SYNCOPE_HEADER_DOMAIN, casProperties.getAuthn().getPm().getSyncope().getDomain(),
+                HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE,
+                HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE))
+            .parameters(Map.of("username", query.getUsername()))
+            .entity(givenAnswer)
+            .build();
+        val response = Objects.requireNonNull(HttpUtils.execute(exec));
+        return org.springframework.http.HttpStatus.resolve(response.getCode()).is2xxSuccessful();
     }
 
     protected String fetchSyncopeUserKey(final String username) {
@@ -239,12 +257,7 @@ public class SyncopePasswordManagementService extends BasePasswordManagementServ
         val userPatch = MAPPER.createObjectNode();
         userPatch.put("_class", "org.apache.syncope.common.lib.request.UserUR");
         userPatch.put("key", userKey);
-        val passwordPatch = MAPPER.createObjectNode();
-        passwordPatch.put("value", bean.toConfirmedPassword());
-        passwordPatch.put("onSyncope", true);
-        passwordPatch.put("operation", "ADD_REPLACE");
-        passwordPatch.set("resources", MAPPER.createArrayNode());
-        userPatch.set("password", passwordPatch);
+        userPatch.set("password", getPasswordPatch(bean));
         return userPatch;
     }
 
