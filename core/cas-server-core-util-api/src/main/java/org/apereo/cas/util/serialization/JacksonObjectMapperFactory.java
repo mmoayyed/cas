@@ -30,6 +30,7 @@ import tools.jackson.databind.JacksonModule;
 import tools.jackson.databind.MapperFeature;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.SerializationFeature;
+import tools.jackson.databind.annotation.JsonDeserialize;
 import tools.jackson.databind.cfg.DateTimeFeature;
 import tools.jackson.databind.cfg.EnumFeature;
 import tools.jackson.databind.cfg.MapperBuilder;
@@ -212,7 +213,8 @@ public class JacksonObjectMapperFactory {
                 .withIsGetterVisibility(JsonAutoDetect.Visibility.PROTECTED_AND_PUBLIC))
             .findAndAddModules()
             .addModules(this.modules)
-            .addModule(getCasJacksonModule());
+            .addModule(getCasJacksonModule())
+            .addMixIn(Map.class, PolymorphicMapMixIn.class);
 
         if (jsonFactory instanceof JsonFactory) {
             configuredBuilder = configuredBuilder.defaultPrettyPrinter(
@@ -283,6 +285,10 @@ public class JacksonObjectMapperFactory {
                 return StringUtils.isNotBlank(value) ? new URI(value) : null;
             });
         }
+    }
+
+    @JsonDeserialize(contentUsing = MapContentDeserializer.class)
+    private interface PolymorphicMapMixIn {
     }
 }
     

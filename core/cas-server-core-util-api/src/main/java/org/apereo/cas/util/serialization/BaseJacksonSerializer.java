@@ -172,7 +172,7 @@ public abstract class BaseJacksonSerializer<T> implements StringSerializer<T> {
                 .jsonFactory(getJsonFactory())
                 .applicationContext(applicationContext)
                 .build();
-            objectMapper = objectMapperFactory.toJsonMapper();
+            objectMapper = objectMapperFactory.toObjectMapper();
             configureObjectMapper(objectMapper);
         }
         return objectMapper;
