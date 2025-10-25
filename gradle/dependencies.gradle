@@ -2780,7 +2780,7 @@ ext.libraries = [
                     exclude(group: "org.springframework", module: "spring-beans")
                     exclude(group: "org.springframework", module: "spring-aop")
                 },
-                dependencies.create(libs.spring.boot.tx.get()) {
+                dependencies.create(libs.spring.boot.transaction.get()) {
                     exclude(group: "org.slf4j", module: "slf4j-api")
                     exclude(group: "org.springframework", module: "spring-web")
                     exclude(group: "org.springframework", module: "spring-core")
@@ -4096,8 +4096,7 @@ ext.libraries = [
                 dependencies.create(libs.base64.js.get()) {
                     exclude(group: "org.slf4j", module: "slf4j-api")
                 },
-                dependencies.create(libs.clientjs.get()) {
-                    exclude(group: "org.slf4j", module: "slf4j-api")
+                dependencies.create(libs.fingerprintjs.get()) {
                 }
         ]
 ]
