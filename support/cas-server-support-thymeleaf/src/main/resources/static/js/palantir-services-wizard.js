@@ -41,7 +41,10 @@ function createRegisteredServiceAttributeReleasePolicy() {
             },
             {
                 value: "org.apereo.cas.services.ReturnAllAttributeReleasePolicy",
-                text: "RETURN ALL"
+                text: "RETURN ALL",
+                data: {
+                    markerClass: true
+                }
             },
             {
                 value: "org.apereo.cas.services.ReturnStaticAttributeReleasePolicy",
@@ -294,7 +297,54 @@ function createRegisteredServiceAttributeReleasePolicy() {
         containerField: "attributeReleasePolicy.systemProperties",
         multipleValues: false
     });
+
+
+    createInputField({
+        cssClasses: "hide AuthnRequestRequestedAttributesAttributeReleasePolicy",
+        labelTitle: "Requester ID Pattern",
+        name: "registeredServiceAttrReleasePolicyRequesterIdPatternAuthnRequest",
+        paramName: "attributeReleasePolicy.requesterIdPattern",
+        required: false,
+        containerId: "editServiceWizardMenuItemAttributeReleasePolicy",
+        title: "Define the requester ID pattern to match for this policy."
+    });
     
+    createInputField({
+        cssClasses: "hide AuthnRequestRequestedAttributesAttributeReleasePolicy",
+        labelTitle: "Allowed Attributes (separated by comma)",
+        name: "registeredServiceAttrReleasePolicyAllowedAttributesAuthnRequest",
+        paramName: "attributeReleasePolicy.allowedAttributes",
+        required: false,
+        containerId: "editServiceWizardMenuItemAttributeReleasePolicy",
+        title: "Define the attributes allowed to be released by this policy as a comma-separated list."
+    })
+        .data("renderer", function (value) {
+            return ["java.util.ArrayList", value.split(",")];
+        });
+
+
+    createInputField({
+        cssClasses: "hide MetadataRegistrationAuthorityAttributeReleasePolicy",
+        labelTitle: "Registration Authority",
+        name: "registeredServiceAttrReleasePolicyMetadataRegistrationAuthority",
+        paramName: "attributeReleasePolicy.registrationAuthority",
+        required: false,
+        containerId: "editServiceWizardMenuItemAttributeReleasePolicy",
+        title: "Define the registration authority pattern for metadata-based attribute release."
+    });
+
+    createInputField({
+        cssClasses: "hide MetadataRegistrationAuthorityAttributeReleasePolicy",
+        labelTitle: "Allowed Attributes (separated by comma)",
+        name: "registeredServiceAttrReleasePolicyAllowedAttributesMetadataRegistrationAuthority",
+        paramName: "attributeReleasePolicy.allowedAttributes",
+        required: false,
+        containerId: "editServiceWizardMenuItemAttributeReleasePolicy",
+        title: "Define the attributes allowed to be released by this policy as a comma-separated list."
+    })
+        .data("renderer", function (value) {
+            return ["java.util.ArrayList", value.split(",")];
+        });
 }
 
 function createRegisteredServiceAttributeReleaseConsentPolicy() {
@@ -1252,39 +1302,35 @@ function createRegisteredServiceProperties() {
     });
 }
 
-function createRegisteredServiceContacts() {
-    for (let index = 0; index < 1; index++) {
-        const details = ["name", "email", "phone", "department", "type"];
-        details.forEach(detail => {
-            createInputField({
-                labelTitle: capitalize(detail),
-                name: `registeredServiceContact${capitalize(detail)}${index}`,
-                paramName: `contacts`,
-                required: false,
-                containerId: "editServiceWizardMenuItemContacts",
-                title: `Specify the contact's ${detail}`,
-                data: {
-                    "contact-field": detail,
-                    "contact-group": index
+function createRegisteredServiceContacts(index) {
+    const details = ["name", "email", "phone", "department", "type"];
+    details.forEach(detail => {
+        createInputField({
+            labelTitle: capitalize(detail),
+            name: `registeredServiceContact${capitalize(detail)}${index}`,
+            paramName: `contacts`,
+            required: false,
+            containerId: `registeredServiceContact${index}-tab`,
+            title: `Specify the contact's ${detail}`
+        })
+            .data("renderer", function (value, $input, serviceDefinition) {
+                return ["java.util.ArrayList", []];
+            })
+            .data("beforeGenerate", function ($input, serviceDefinition) {
+                if (serviceDefinition["contacts"] && $input.val().length > 0) {
+                    let currentContact = serviceDefinition["contacts"][1][index-1];
+                    if (!currentContact) {
+                        currentContact = {
+                            "@class": "org.apereo.cas.services.DefaultRegisteredServiceContact"
+                        };
+                        serviceDefinition["contacts"][1].push(currentContact);
+                    }
+                    currentContact[detail] = $input.val();
                 }
             })
-                .data("renderer", function (value, $input, serviceDefinition) {
-                    const contact = {
-                        "@class": "org.apereo.cas.services.DefaultRegisteredServiceContact"
-                    };
-                    return ["java.util.ArrayList", [contact]];
-                })
-                .data("beforeGenerate", function ($input, serviceDefinition) {
-                    if (serviceDefinition["contacts"] && $input.val().length > 0) {
-                        const contactField = $input.data("contact-field");
-                        const contactGroup = Number($input.data("contact-group"));
-                        const contacts = serviceDefinition["contacts"][1][contactGroup];
-                        contacts[contactField] = $input.val();
-                    }
-                })
-            ;
-        });
-    }
+        ;
+    });
+
 }
 
 function createRegisteredServicePublicKey() {
@@ -1644,6 +1690,23 @@ function createRegisteredServiceExpirationPolicy() {
         required: false,
         containerId: "editServiceWizardMenuItemExpirationPolicy",
         title: "Specifies the expiration date for the registered service in the format YYYY-MM-DD."
+    }).on("input", function() {
+        const value = $(this).val();
+        if (value.length === 0) {
+            $("#registeredServiceExpirationPolicyExpirationDateLabelText").text("Expiration Date");
+        } else {
+            $("#registeredServiceExpirationPolicyExpirationDateLabelText").text("");
+        }
+    });
+
+    $(document).ready(() => {
+        $("#registeredServiceExpirationPolicyExpirationDate").datepicker({
+            onSelect: function(date, ins) {
+                $("#registeredServiceExpirationPolicyExpirationDateLabelText").text("");
+                $(ins).val(date);
+                generateServiceDefinition();
+            }
+        })
     });
 }
 
@@ -1900,7 +1963,7 @@ function generateServiceDefinition() {
                     const classType = serviceDefinition[key]["@class"];
                     const markerClass = $(`option[value='${classType}']`).data("markerClass");
                     if (!markerClass) {
-                        console.log("Deleting", serviceDefinition[key]);
+                        // console.log("Deleting", serviceDefinition[key]);
                         delete serviceDefinition[key];
                     }
                 }
@@ -1973,6 +2036,7 @@ function createMappedInputField(config) {
 
     const sectionContainerId = `registeredService${capitalize(keyField)}MapContainer`;
     const addButtonId = `registeredService${capitalize(keyField)}AddButton`;
+    const deleteAllButtonId = `registeredService${capitalize(keyField)}DeleteAllButton`;
     const removeButtonId = `registeredService${capitalize(keyField)}RemoveButton`;
     const mapRowId = `registeredService${capitalize(keyField)}Row`;
 
@@ -2021,8 +2085,9 @@ function createMappedInputField(config) {
                 <button type="button"
                         id="${removeButtonId}"
                         name="${removeButtonId}"
+                        title="Remove Row"
                         class="mdc-button mdc-button--raised btn btn-link mdc-button--inline-row ${cssClasses}">
-                    <i class="mdi mdi-trash-can" aria-hidden="true"></i>
+                    <i class="mdi mdi-minus-thick" aria-hidden="true"></i>
                 </button>
             </div>
     `;
@@ -2036,9 +2101,19 @@ function createMappedInputField(config) {
                 <button type="button" 
                         name="${addButtonId}"
                         id="${addButtonId}"
+                        title="Add Row"
                         class="mdc-button mdc-button--raised mdc-button--round add-row ${cssClasses}">
                     <span class="mdc-button__label">
                         <i class="mdc-tab__icon mdi mdi-plus-thick" aria-hidden="true"></i>
+                    </span>
+                </button>
+                <button type="button" 
+                        name="${deleteAllButtonId}"
+                        id="${deleteAllButtonId}"
+                        title="Delete All Rows"
+                        class="mdc-button mdc-button--raised mdc-button--round add-row ${cssClasses}">
+                    <span class="mdc-button__label">
+                        <i class="mdc-tab__icon mdi mdi-trash-can" aria-hidden="true"></i>
                     </span>
                 </button>
             </div>
@@ -2046,7 +2121,6 @@ function createMappedInputField(config) {
         `;
 
     $(`#${containerId}`).append($(`${html}`));
-
 
     function configureRemoveMapRowEventHandler() {
         $(`button[name=${removeButtonId}]`).off().on("click", function () {
@@ -2077,7 +2151,16 @@ function createMappedInputField(config) {
         configureInputEventHandler();
         configureInputRenderer();
     });
-
+    $(`button[name=${deleteAllButtonId}]`).off().on("click", () => {
+        $(`#${sectionContainerId}ToAppend`).empty();
+        $(`#${sectionContainerId} input`).val("");
+        configureRemoveMapRowEventHandler();
+        cas.attachFields();
+        configureInputEventHandler();
+        configureInputRenderer();
+        generateServiceDefinition();
+    });
+    
     configureRemoveMapRowEventHandler();
     configureInputEventHandler();
     configureInputRenderer();
@@ -2178,7 +2261,7 @@ function createInputField(config) {
     outline.append($("<span>", {class: "mdc-notched-outline__leading"}));
 
     const notch = $("<span>", {class: "mdc-notched-outline__notch"});
-    notch.append($("<span>", {class: "mdc-floating-label", html: labelTitle}));
+    notch.append($("<span>", {id: `${name}LabelText`, class: "mdc-floating-label", html: labelTitle}));
 
     outline.append(notch);
     outline.append($("<span>", {class: "mdc-notched-outline__trailing"}));
@@ -2312,6 +2395,7 @@ function openRegisteredServiceWizardDialog() {
             break;
         case "SamlRegisteredService":
             $("#registeredServiceIdLabel span.mdc-floating-label").text("Entity ID");
+            createSamlRegisteredServiceAttributeReleasePolicy();
             break;
         case "OAuthRegisteredService":
             $("#registeredServiceIdLabel span.mdc-floating-label").text("Redirect URI");
