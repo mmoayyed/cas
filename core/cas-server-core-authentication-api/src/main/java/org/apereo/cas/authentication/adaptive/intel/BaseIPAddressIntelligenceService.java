@@ -49,9 +49,16 @@ public abstract class BaseIPAddressIntelligenceService implements IPAddressIntel
         if (StringUtils.isBlank(rejectIpAddresses)) {
             return false;
         }
-        if (rejectIpAddressesPattern == null) {
-            rejectIpAddressesPattern = Pattern.compile(rejectIpAddresses);
+        var pattern = rejectIpAddressesPattern;
+        if (pattern == null) {
+            synchronized (this) {
+                pattern = rejectIpAddressesPattern;
+                if (pattern == null) {
+                    pattern = Pattern.compile(rejectIpAddresses);
+                    rejectIpAddressesPattern = pattern;
+                }
+            }
         }
-        return rejectIpAddressesPattern.matcher(clientIp).find();
+        return pattern.matcher(clientIp).find();
     }
 }
