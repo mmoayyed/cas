@@ -57,6 +57,9 @@ public class CasSimpleMultifactorSendTokenAction extends AbstractMultifactorAuth
 
     private static final String MESSAGE_MFA_CONTACT_FAILED_SMS = "cas.mfa.simple.label.contactfailed.sms";
     private static final String MESSAGE_MFA_CONTACT_FAILED_EMAIL = "cas.mfa.simple.label.contactfailed.email";
+
+    private static final Pattern EMAIL_DOMAIN_PATTERN = Pattern.compile(".{2}@.{2}");
+    private static final Pattern PHONE_PATTERN = Pattern.compile("\\d{4}$");
     
     protected final CommunicationsManager communicationsManager;
 
@@ -261,12 +264,11 @@ public class CasSimpleMultifactorSendTokenAction extends AbstractMultifactorAuth
 
         val emailRecipients = recipients.get(TokenSharingStrategyOptions.EMAIL);
         if (emailRecipients != null) {
-            val emailDomainPattern = Pattern.compile(".{2}@.{2}");
             val validAddresses = emailRecipients
                 .stream()
                 .map(address -> {
                     val hash = DigestUtils.sha512(address);
-                    val obfuscated = emailDomainPattern.matcher(address).replaceAll("****@****");
+                    val obfuscated = EMAIL_DOMAIN_PATTERN.matcher(address).replaceAll("****@****");
                     return Pair.of(hash, new CandidateRecipientAddress(TokenSharingStrategyOptions.EMAIL, hash, address, obfuscated));
                 })
                 .collect(Collectors.toMap(Pair::getKey, Pair::getValue));
@@ -278,12 +280,11 @@ public class CasSimpleMultifactorSendTokenAction extends AbstractMultifactorAuth
 
         val smsRecipients = recipients.get(TokenSharingStrategyOptions.SMS);
         if (smsRecipients != null) {
-            val phonePattern = Pattern.compile("\\d{4}$");
             val validPhones = smsRecipients
                 .stream()
                 .map(address -> {
                     val hash = DigestUtils.sha512(address);
-                    val obfuscated = phonePattern.matcher(address).replaceAll("******");
+                    val obfuscated = PHONE_PATTERN.matcher(address).replaceAll("******");
                     return Pair.of(hash, new CandidateRecipientAddress(TokenSharingStrategyOptions.SMS, hash, address, obfuscated));
                 })
                 .collect(Collectors.toMap(Pair::getKey, Pair::getValue));

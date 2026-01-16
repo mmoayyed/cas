@@ -28,6 +28,8 @@ public class SimplePersonAttributes implements PersonAttributes {
     @Serial
     private static final long serialVersionUID = 2576711533477055700L;
 
+    private static final Pattern ARRAY_PATTERN = Pattern.compile("\\{(.*)\\}");
+
     private final Map<String, List<Object>> attributes;
 
     private final String name;
@@ -84,7 +86,6 @@ public class SimplePersonAttributes implements PersonAttributes {
 
     protected Map<String, List<Object>> buildImmutableAttributeMap(final Map<String, List<Object>> attributes) {
         val valueBuilder = new TreeMap<String, List<Object>>(String.CASE_INSENSITIVE_ORDER);
-        val arrayPattern = Pattern.compile("\\{(.*)\\}");
         for (val attrEntry : attributes.entrySet()) {
             val key = attrEntry.getKey();
             var value = attrEntry.getValue().stream().filter(Objects::nonNull).toList();
@@ -93,8 +94,8 @@ public class SimplePersonAttributes implements PersonAttributes {
                 if (result instanceof Array) {
                     LOGGER.trace("Column [{}] is classified as a SQL array", key);
                     val values = result.toString();
-                    LOGGER.trace("Converting SQL array values [{}] using pattern [{}]", values, arrayPattern.pattern());
-                    val matcher = arrayPattern.matcher(values);
+                    LOGGER.trace("Converting SQL array values [{}] using pattern [{}]", values, ARRAY_PATTERN.pattern());
+                    val matcher = ARRAY_PATTERN.matcher(values);
                     if (matcher.matches()) {
                         val groups = Arrays.stream(matcher.group(1).split(",")).toList();
                         value = List.copyOf(groups);

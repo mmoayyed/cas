@@ -34,6 +34,9 @@ import jakarta.servlet.http.HttpServletResponse;
  */
 @RequiredArgsConstructor
 public class OAuth20HandlerInterceptorAdapter implements AsyncHandlerInterceptor {
+
+    private static final Map<String, Pattern> PATTERN_CACHE = new ConcurrentHashMap<>();
+
     /**
      * Access token interceptor.
      */
@@ -161,7 +164,7 @@ public class OAuth20HandlerInterceptorAdapter implements AsyncHandlerInterceptor
      */
     protected boolean doesUriMatchPattern(final String requestPath, final List<String> patternUrls) {
         return patternUrls.stream().anyMatch(patternUrl -> {
-            val pattern = Pattern.compile('/' + patternUrl + "(/)*$");
+            val pattern = PATTERN_CACHE.computeIfAbsent(patternUrl, url -> Pattern.compile('/' + url + "(/)*$"));
             return pattern.matcher(requestPath).find();
         });
     }

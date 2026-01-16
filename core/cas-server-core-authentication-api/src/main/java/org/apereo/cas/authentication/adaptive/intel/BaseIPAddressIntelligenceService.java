@@ -17,9 +17,13 @@ import org.springframework.webflow.execution.RequestContext;
  * @since 6.0.0
  */
 @RequiredArgsConstructor(access = AccessLevel.PROTECTED)
+@SuppressWarnings("NullAway.Init")
 public abstract class BaseIPAddressIntelligenceService implements IPAddressIntelligenceService {
     protected final TenantExtractor tenantExtractor;
     protected final AdaptiveAuthenticationProperties adaptiveAuthenticationProperties;
+
+    @Nullable
+    private volatile Pattern rejectIpAddressesPattern;
 
     private static void trackResponseInRequestContext(final RequestContext context,
                                                       @Nullable final IPAddressIntelligenceResponse response) {
@@ -42,7 +46,12 @@ public abstract class BaseIPAddressIntelligenceService implements IPAddressIntel
 
     private boolean isClientIpAddressRejected(final String clientIp) {
         val rejectIpAddresses = adaptiveAuthenticationProperties.getPolicy().getRejectIpAddresses();
-        return StringUtils.isNotBlank(rejectIpAddresses)
-            && Pattern.compile(rejectIpAddresses).matcher(clientIp).find();
+        if (StringUtils.isBlank(rejectIpAddresses)) {
+            return false;
+        }
+        if (rejectIpAddressesPattern == null) {
+            rejectIpAddressesPattern = Pattern.compile(rejectIpAddresses);
+        }
+        return rejectIpAddressesPattern.matcher(clientIp).find();
     }
 }

@@ -20,6 +20,8 @@ import org.springframework.context.ApplicationEventPublisherAware;
 @SuppressWarnings("NullAway.Init")
 public class FilterAndDelegateAuditTrailManager implements AuditTrailManager, ApplicationEventPublisherAware {
 
+    private final Map<String, Pattern> patternCache = new ConcurrentHashMap<>();
+
     private final Collection<AuditTrailManager> auditTrailManagers;
 
     private final List<String> supportedActionsPerformed;
@@ -41,7 +43,7 @@ public class FilterAndDelegateAuditTrailManager implements AuditTrailManager, Ap
             .stream()
             .anyMatch(action -> {
                 var actionPerformed = ctx.getActionPerformed();
-                return "*".equals(action) || Pattern.compile(action).matcher(actionPerformed).find();
+                return "*".equals(action) || getPattern(action).matcher(actionPerformed).find();
             });
 
         if (matched) {
@@ -49,7 +51,7 @@ public class FilterAndDelegateAuditTrailManager implements AuditTrailManager, Ap
                 .stream()
                 .noneMatch(action -> {
                     var actionPerformed = ctx.getActionPerformed();
-                    return "*".equals(action) || Pattern.compile(action).matcher(actionPerformed).find();
+                    return "*".equals(action) || getPattern(action).matcher(actionPerformed).find();
                 });
         }
         if (matched) {
@@ -87,6 +89,10 @@ public class FilterAndDelegateAuditTrailManager implements AuditTrailManager, Ap
     @Override
     public void removeAll() {
         auditTrailManagers.forEach(AuditTrailManager::removeAll);
+    }
+
+    private Pattern getPattern(final String pattern) {
+        return patternCache.computeIfAbsent(pattern, Pattern::compile);
     }
 
 }
