@@ -13,66 +13,86 @@
 <body>
 
 <span th:fragment="navigation">
-    <nav class="sidebar-navigation" id="navigationMenu">
-            <ul>
-                <li class="active" onclick="showPanel('#divOverview');" id="linkOverview" href="#divOverview">
-                    <i class="mdi mdi-home" aria-hidden="true"></i>
-                    <span class="tooltip">Home</span>
+    <nav class="sidebar-navigation" id="navigationMenu" aria-label="Account navigation">
+            <ul role="list">
+                <li class="active" id="linkOverview">
+                    <button type="button" onclick="showPanel('#divOverview');" aria-current="page">
+                        <i class="mdi mdi-home" aria-hidden="true"></i>
+                        <span class="tooltip">Home</span>
+                    </button>
                 </li>
-                <li onclick="showPanel('#divAttributes');" id="linkAttributes" href="#divAttributes">
-                    <i class="mdi mdi-account-details" aria-hidden="true"></i>
-                    <span class="tooltip">Attributes</span>
+                <li id="linkAttributes">
+                    <button type="button" onclick="showPanel('#divAttributes');">
+                        <i class="mdi mdi-account-details" aria-hidden="true"></i>
+                        <span class="tooltip">Attributes</span>
+                    </button>
                 </li>
-                <li onclick="showPanel('#divSessions');" id="linkSessions" href="#divSessions">
-                    <i class="mdi mdi-account-clock" aria-hidden="true"></i>
-                    <span class="tooltip">SSO Sessions</span>
+                <li id="linkSessions">
+                    <button type="button" onclick="showPanel('#divSessions');">
+                        <i class="mdi mdi-account-clock" aria-hidden="true"></i>
+                        <span class="tooltip">SSO Sessions</span>
+                    </button>
                 </li>
-                <li th:if="${authorizedServices}" onclick="showPanel('#divApplications');" id="linkApplications" href="#divApplications">
-                    <i class="mdi mdi-apps" aria-hidden="true"></i>
-                    <span class="tooltip">Applications</span>
+                <li th:if="${authorizedServices}" id="linkApplications">
+                    <button type="button" onclick="showPanel('#divApplications');">
+                        <i class="mdi mdi-apps" aria-hidden="true"></i>
+                        <span class="tooltip">Applications</span>
+                    </button>
                 </li>
-                <li th:if="${auditLog}" onclick="showPanel('#divAuditLog');" id="linkAuditLog" href="#divAuditLog">
-                    <i class="mdi mdi-account-reactivate" aria-hidden="true"></i>
-                    <span class="tooltip">Audit Log & Activity</span>
+                <li th:if="${auditLog}" id="linkAuditLog">
+                    <button type="button" onclick="showPanel('#divAuditLog');">
+                        <i class="mdi mdi-account-reactivate" aria-hidden="true"></i>
+                        <span class="tooltip">Audit Log &amp; Activity</span>
+                    </button>
                 </li>
-                <li th:if="${multifactorRegisteredAccounts}" onclick="showPanel('#divMfaRegisteredAccounts');" id="linkMfaRegisteredAccounts" href="#divMfaRegisteredAccounts">
-                    <i class="mdi mdi-cellphone" aria-hidden="true"></i>
-                    <span class="tooltip">Registered Multifactor Authentication Devices</span>
+                <li th:if="${multifactorRegisteredAccounts}" id="linkMfaRegisteredAccounts">
+                    <button type="button" onclick="showPanel('#divMfaRegisteredAccounts');">
+                        <i class="mdi mdi-cellphone" aria-hidden="true"></i>
+                        <span class="tooltip">Registered Multifactor Authentication Devices</span>
+                    </button>
                 </li>
-                <li th:if="${multifactorTrustedDevices}" onclick="showPanel('#divMultifactorTrustedDevices');" id="linkMfaTrustedDevices" href="#divMultifactorTrustedDevices">
-                    <i class="mdi mdi-cellphone-check" aria-hidden="true"></i>
-                    <span class="tooltip">Registered Trusted Multifactor Authentication Devices</span>
+                <li th:if="${multifactorTrustedDevices}" id="linkMfaTrustedDevices">
+                    <button type="button" onclick="showPanel('#divMultifactorTrustedDevices');">
+                        <i class="mdi mdi-cellphone-check" aria-hidden="true"></i>
+                        <span class="tooltip">Registered Trusted Multifactor Authentication Devices</span>
+                    </button>
                 </li>
-                <li th:if="${consentDecisions}"
-                    onclick="showPanel('#divConsentDecisions');" id="linkConsentDecisions" href="#divConsentDecisions">
-                    <i class="mdi mdi-head-check-outline" aria-hidden="true"></i>
-                    <span class="tooltip">Attribute Consent</span>
+                <li th:if="${consentDecisions}" id="linkConsentDecisions">
+                    <button type="button" onclick="showPanel('#divConsentDecisions');">
+                        <i class="mdi mdi-head-check-outline" aria-hidden="true"></i>
+                        <span class="tooltip">Attribute Consent</span>
+                    </button>
                 </li>
-                <li th:if="${!#lists.isEmpty(oidcAccessTokens)}"
-                     onclick="showPanel('#divOidcAccessTokens');" id="linkOidcAccessTokens" href="#divOidcAccessTokens">
-                    <i class="mdi mdi-cloud-key-outline" aria-hidden="true"></i>
-                    <span class="tooltip">Access Tokens</span>
+                <li th:if="${!#lists.isEmpty(oidcAccessTokens)}" id="linkOidcAccessTokens">
+                    <button type="button" onclick="showPanel('#divOidcAccessTokens');">
+                        <i class="mdi mdi-cloud-key-outline" aria-hidden="true"></i>
+                        <span class="tooltip">Access Tokens</span>
+                    </button>
                 </li>
 
                 <li th:if="${passwordManagementEnabled != null && passwordManagementEnabled}"
-                    onclick="document.forms.fmChangePsw.submit()"
                     id="linkPasswordManagement">
-                    <i class="mdi mdi-form-textbox-password" aria-hidden="true"></i>
-                    <span class="tooltip">Change your password. <span th:text="#{screen.account.tooltip.logout}"></span></span>
+                    <button type="button" onclick="document.forms.fmChangePsw.submit()">
+                        <i class="mdi mdi-form-textbox-password" aria-hidden="true"></i>
+                        <span class="tooltip">Change your password. <span th:text="#{screen.account.tooltip.logout}"></span></span>
+                    </button>
 
                     <form method="post" id="fmChangePsw" name="fmChangePsw">
                         <input type="hidden" name="execution" th:value="${flowExecutionKey}"/>
                         <input type="hidden" name="_eventId" value="resetPassword"/>
                     </form>
                 </li>
-                <li th:if="${securityQuestionsEnabled}"
-                    onclick="showPanel('#divSecurityQuestions');" id="linkSecurityQuestions" href="#divSecurityQuestions">
-                    <i class="mdi mdi-security" aria-hidden="true"></i>
-                    <span class="tooltip">Security Questions</span>
+                <li th:if="${securityQuestionsEnabled}" id="linkSecurityQuestions">
+                    <button type="button" onclick="showPanel('#divSecurityQuestions');">
+                        <i class="mdi mdi-security" aria-hidden="true"></i>
+                        <span class="tooltip">Security Questions</span>
+                    </button>
                 </li>
-                <li onclick="logout()" id="linkLogout">
-                    <i class="mdi mdi-logout-variant" aria-hidden="true"></i>
-                    <span class="tooltip">Logout</span>
+                <li id="linkLogout">
+                    <button type="button" onclick="logout()">
+                        <i class="mdi mdi-logout-variant" aria-hidden="true"></i>
+                        <span class="tooltip">Logout</span>
+                    </button>
                 </li>
 
                 <script type="text/javascript" th:inline="javascript">

@@ -27,10 +27,10 @@
                     <button th:if="${#cas.isTrue(#cas.theme('cas.drawer-menu.enabled'))}"
                             class="mdc-icon-button mdc-top-app-bar__navigation-icon  btn btn-outline-light"
                             id="drawerButton"
+                            aria-label="Open navigation menu"
                             data-bs-toggle="offcanvas"
                             data-bs-target="#app-drawer">
                         <span class="mdi mdi-menu fa fa-bars" aria-hidden="true"></span>
-                        <span class="visually-hidden">menu</span>
                     </button>
                 </section>
                 <section class="mdc-top-app-bar__section">
@@ -49,11 +49,10 @@
                     <button id="cas-notifications-menu"
                             th:if="${#cas.isTrue(#cas.theme('cas.notifications-menu.enabled'))}"
                             class="mdc-icon-button mdc-top-app-bar__action-item cas-notification-toggle btn btn-outline-light"
-                            aria-label="Bookmark this page"
+                            aria-label="View notifications"
                             data-bs-toggle="modal"
                             data-bs-target="#cas-notification-dialog">
                         <span class="mdi mdi-bell-alert fa fa-bell" aria-hidden="true"></span>
-                        <span class="visually-hidden">notifications</span>
                         <i id="notifications-count" class="notifications-count count">2</i>
                     </button>
 
@@ -65,7 +64,6 @@
                        class="mdc-icon-button mdc-top-app-bar__action-item"
                        aria-label="User Account">
                         <span class="mdi mdi-account-group" aria-hidden="true"></span>
-                        <span class="visually-hidden">user account</span>
                     </a>
                 </section>
             </div>
@@ -83,6 +81,7 @@
             aria-describedby="notif-dialog-content">
         <div class="mdc-dialog__container modal-dialog">
             <div class="mdc-dialog__surface modal-content">
+                <h2 id="notif-dialog-title" class="sr-only">System Notifications</h2>
                 <div class="mdc-dialog__content modal-body" id="notif-dialog-content">
                     <div class="cas-notification-message mdc-typography--body1" th:if="${staticAuthentication}">
                         <script>countMessages++;</script>

@@ -75,6 +75,41 @@ aside, section, main {
     white-space: nowrap !important;
 }
 
+/** Skip link for keyboard navigation - becomes visible on focus **/
+.skip-link.sr-only-focusable:focus {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 9999;
+    padding: 1rem;
+    background: var(--cas-theme-button-bg, #26418f);
+    color: #fff;
+    text-decoration: none;
+    font-weight: bold;
+    clip: auto !important;
+    clip-path: none !important;
+    height: auto !important;
+    width: auto !important;
+    overflow: visible !important;
+    white-space: normal !important;
+}
+
+/** Enhanced focus styles for keyboard navigation **/
+:focus-visible {
+    outline: 3px solid var(--cas-theme-button-bg-lite, #1e78d0);
+    outline-offset: 2px;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[tabindex]:focus-visible {
+    outline: 3px solid var(--cas-theme-button-bg-lite, #1e78d0);
+    outline-offset: 2px;
+}
+
 /* Material */
 
 .mdc-drawer {

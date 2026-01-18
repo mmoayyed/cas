@@ -36,7 +36,7 @@
             <form method="post" id="fm1" th:object="${credential}" action="login" onsubmit="loginFormSubmission();">
                 <div id="login-form-controls" th:unless="${loginFormViewable or loginFormEnabled}">
                     <div id="loginErrorsPanel" class="alert alert-danger banner banner-danger banner-dismissible"
-                         th:if="${#fields.hasErrors('*')}">
+                         th:if="${#fields.hasErrors('*')}" role="alert">
                         <p th:each="err : ${#fields.errors('*')}" th:utext="${err + ' '}">Example error</p>
                     </div>
                 </div>
@@ -314,9 +314,9 @@
 
                         /*]]>*/
                     </script>
-                    <a id="x509LoginLink" class="mdc-button mdc-button--raised btn btn-primary"
-                       onclick="javascript:x509login();"
-                       th:text="#{screen.welcome.button.loginx509}">X509 Login</a>
+                    <button id="x509LoginLink" type="button" class="mdc-button mdc-button--raised btn btn-primary"
+                            onclick="x509login();"
+                            th:text="#{screen.welcome.button.loginx509}">X509 Login</button>
                 </span>
             </div>
 

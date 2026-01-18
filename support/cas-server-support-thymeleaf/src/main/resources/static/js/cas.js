@@ -391,15 +391,42 @@ function resourceLoadedSuccessfully() {
             const btn = $(this);
             const pwd = $(".pwd");
             const icon = $(".reveal-password-icon");
+            const srText = btn.find(".sr-only");
 
             if (pwd.attr("type") === "text") {
                 pwd.attr("type", "password");
-                icon.removeClass("mdi-eye-off").addClass("mdi-eye");
-                btn.attr("aria-pressed", false);
+                icon.removeClass("mdi-eye-off fa-eye-slash").addClass("mdi-eye fa-eye");
+                btn.attr("aria-pressed", "false");
+                if (srText.length) {
+                    srText.text("Show password");
+                }
             } else {
                 pwd.attr("type", "text");
-                icon.removeClass("mdi-eye").addClass("mdi-eye-off");
-                btn.attr("aria-pressed", true);
+                icon.removeClass("mdi-eye fa-eye").addClass("mdi-eye-off fa-eye-slash");
+                btn.attr("aria-pressed", "true");
+                if (srText.length) {
+                    srText.text("Hide password");
+                }
+            }
+        });
+
+        // Add keyboard support for elements with onclick handlers
+        $("[onclick]").each(function() {
+            const el = $(this);
+            // Only add keyboard support to non-interactive elements
+            if (!el.is("button, a, input, select, textarea")) {
+                if (!el.attr("tabindex")) {
+                    el.attr("tabindex", "0");
+                }
+                if (!el.attr("role")) {
+                    el.attr("role", "button");
+                }
+                el.on("keydown", function(e) {
+                    if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        $(this).click();
+                    }
+                });
             }
         });
 
