@@ -410,8 +410,10 @@ function resourceLoadedSuccessfully() {
             }
         });
 
-        // Add keyboard support for elements with onclick handlers
-        $("[onclick]").each(function() {
+        // Add keyboard support for non-interactive elements with onclick handlers
+        // Limit scope to main content area for performance
+        const mainContent = document.getElementById("main-content") || document.getElementById("content") || document.body;
+        $(mainContent).find("[onclick]").each(function() {
             const el = $(this);
             // Only add keyboard support to non-interactive elements
             if (!el.is("button, a, input, select, textarea")) {
