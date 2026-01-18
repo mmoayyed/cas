@@ -97,17 +97,19 @@ public class OpenFGAAuthorizationPolicy implements ResourceAuthorizationPolicy {
                 .build();
             LOGGER.debug("Submitting authorization request to [{}] for [{}]", fgaApiUrl, checkEntity);
             response = HttpUtils.execute(exec);
-            val httpStatus = HttpStatus.resolve(response.getCode());
-            LOGGER.debug("Received response status code [{}] from endpoint [{}]", httpStatus, url);
-            if (httpStatus.is2xxSuccessful()) {
-                try (val content = ((HttpEntityContainer) response).getEntity().getContent()) {
-                    val results = IOUtils.toString(content, StandardCharsets.UTF_8);
-                    LOGGER.trace("Received response from endpoint [{}] as [{}]", url, results);
-                    val payload = MAPPER.readValue(results, Map.class);
-                    return AuthorizationResult.from((Boolean) payload.getOrDefault("allowed", Boolean.FALSE));
+            if (response != null) {
+                val httpStatus = HttpStatus.resolve(response.getCode());
+                LOGGER.debug("Received response status code [{}] from endpoint [{}]", httpStatus, url);
+                if (httpStatus != null && httpStatus.is2xxSuccessful()) {
+                    try (val content = ((HttpEntityContainer) response).getEntity().getContent()) {
+                        val results = IOUtils.toString(content, StandardCharsets.UTF_8);
+                        LOGGER.trace("Received response from endpoint [{}] as [{}]", url, results);
+                        val payload = MAPPER.readValue(results, Map.class);
+                        return AuthorizationResult.from((Boolean) payload.getOrDefault("allowed", Boolean.FALSE));
+                    }
                 }
+                throw new HttpClientErrorException(httpStatus);
             }
-            throw new HttpClientErrorException(httpStatus);
         } catch (final Exception e) {
             LoggingUtils.error(LOGGER, e);
         } finally {

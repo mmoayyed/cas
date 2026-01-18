@@ -76,18 +76,21 @@ public class RestfulCasSimpleMultifactorAuthenticationService extends BaseCasSim
                 .parameters(parameters)
                 .build();
             response = HttpUtils.execute(exec);
-            val statusCode = response.getCode();
-            if (HttpStatus.valueOf(statusCode).is2xxSuccessful()) {
-                try (val content = ((HttpEntityContainer) response).getEntity().getContent()) {
-                    val result = IOUtils.toString(content, StandardCharsets.UTF_8);
-                    val mfaFactory = (CasSimpleMultifactorAuthenticationTicketFactory) ticketFactory.get(CasSimpleMultifactorAuthenticationTicket.class);
-                    LOGGER.debug("Multifactor authentication token received is [{}]", result);
-                    val token = mfaFactory.create(result, service, CollectionUtils.wrap(CasSimpleMultifactorAuthenticationConstants.PROPERTY_PRINCIPAL, principal));
-                    LOGGER.debug("Created multifactor authentication token [{}] for service [{}]", token.getId(), service);
-                    return token;
+            if (response != null) {
+                val statusCode = response.getCode();
+                if (HttpStatus.valueOf(statusCode).is2xxSuccessful()) {
+                    try (val content = ((HttpEntityContainer) response).getEntity().getContent()) {
+                        val result = IOUtils.toString(content, StandardCharsets.UTF_8);
+                        val mfaFactory = (CasSimpleMultifactorAuthenticationTicketFactory) ticketFactory.get(CasSimpleMultifactorAuthenticationTicket.class);
+                        LOGGER.debug("Multifactor authentication token received is [{}]", result);
+                        val token = mfaFactory.create(result, service, CollectionUtils.wrap(CasSimpleMultifactorAuthenticationConstants.PROPERTY_PRINCIPAL, principal));
+                        LOGGER.debug("Created multifactor authentication token [{}] for service [{}]", token.getId(), service);
+                        return token;
+                    }
                 }
+                throw new FailedLoginException("Unable to validate multifactor credential with status " + statusCode);
             }
-            throw new FailedLoginException("Unable to validate multifactor credential with status " + statusCode);
+            throw new FailedLoginException("Unable to validate multifactor credential; no response received");
         } finally {
             HttpUtils.close(response);
         }
@@ -111,9 +114,11 @@ public class RestfulCasSimpleMultifactorAuthenticationService extends BaseCasSim
                 .maximumRetryAttempts(properties.getMaximumRetryAttempts())
                 .build();
             response = HttpUtils.execute(exec);
-            val statusCode = response.getCode();
-            if (HttpStatus.valueOf(statusCode).isError()) {
-                throw new FailedLoginException("Unable to validate multifactor credential with status " + statusCode);
+            if (response != null) {
+                val statusCode = response.getCode();
+                if (HttpStatus.valueOf(statusCode).isError()) {
+                    throw new FailedLoginException("Unable to validate multifactor credential with status " + statusCode);
+                }
             }
         } finally {
             HttpUtils.close(response);
@@ -138,14 +143,17 @@ public class RestfulCasSimpleMultifactorAuthenticationService extends BaseCasSim
                 .maximumRetryAttempts(properties.getMaximumRetryAttempts())
                 .build();
             response = HttpUtils.execute(exec);
-            val statusCode = response.getCode();
-            if (HttpStatus.valueOf(statusCode).is2xxSuccessful()) {
-                try (val content = ((HttpEntityContainer) response).getEntity().getContent()) {
-                    val result = IOUtils.toString(content, StandardCharsets.UTF_8);
-                    return MAPPER.readValue(JsonValue.readHjson(result).toString(), Principal.class);
+            if (response != null) {
+                val statusCode = response.getCode();
+                if (HttpStatus.valueOf(statusCode).is2xxSuccessful()) {
+                    try (val content = ((HttpEntityContainer) response).getEntity().getContent()) {
+                        val result = IOUtils.toString(content, StandardCharsets.UTF_8);
+                        return MAPPER.readValue(JsonValue.readHjson(result).toString(), Principal.class);
+                    }
                 }
+                throw new FailedLoginException("Unable to validate multifactor credential with status " + statusCode);
             }
-            throw new FailedLoginException("Unable to validate multifactor credential with status " + statusCode);
+            throw new FailedLoginException("Unable to validate multifactor credential; no response received");
         } finally {
             HttpUtils.close(response);
         }
@@ -166,14 +174,17 @@ public class RestfulCasSimpleMultifactorAuthenticationService extends BaseCasSim
                 .maximumRetryAttempts(properties.getMaximumRetryAttempts())
                 .build();
             response = HttpUtils.execute(exec);
-            val statusCode = response.getCode();
-            if (HttpStatus.valueOf(statusCode).is2xxSuccessful()) {
-                try (val content = ((HttpEntityContainer) response).getEntity().getContent()) {
-                    val result = IOUtils.toString(content, StandardCharsets.UTF_8);
-                    return MAPPER.readValue(JsonValue.readHjson(result).toString(), Principal.class);
+            if (response != null) {
+                val statusCode = response.getCode();
+                if (HttpStatus.valueOf(statusCode).is2xxSuccessful()) {
+                    try (val content = ((HttpEntityContainer) response).getEntity().getContent()) {
+                        val result = IOUtils.toString(content, StandardCharsets.UTF_8);
+                        return MAPPER.readValue(JsonValue.readHjson(result).toString(), Principal.class);
+                    }
                 }
+                throw new FailedLoginException("Unable to validate multifactor credential with status " + statusCode);
             }
-            throw new FailedLoginException("Unable to validate multifactor credential with status " + statusCode);
+            throw new FailedLoginException("Unable to validate multifactor credential; no response received");
         } finally {
             HttpUtils.close(response);
         }
