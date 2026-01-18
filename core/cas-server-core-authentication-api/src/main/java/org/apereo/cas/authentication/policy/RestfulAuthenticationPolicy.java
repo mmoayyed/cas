@@ -90,12 +90,15 @@ public class RestfulAuthenticationPolicy extends BaseAuthenticationPolicy {
                 .maximumRetryAttempts(properties.getMaximumRetryAttempts())
                 .build();
             response = HttpUtils.execute(exec);
-            val statusCode = HttpStatus.valueOf(response.getCode());
-            if (statusCode != HttpStatus.OK) {
-                val ex = handleResponseStatusCode(statusCode, principal);
-                throw new GeneralSecurityException(ex);
+            if (response != null) {
+                val statusCode = HttpStatus.valueOf(response.getCode());
+                if (statusCode != HttpStatus.OK) {
+                    val ex = handleResponseStatusCode(statusCode, principal);
+                    throw new GeneralSecurityException(ex);
+                }
+                return AuthenticationPolicyExecutionResult.success();
             }
-            return AuthenticationPolicyExecutionResult.success();
+            throw new GeneralSecurityException("Unable to validate authentication policy; no response received");
         } finally {
             HttpUtils.close(response);
         }
