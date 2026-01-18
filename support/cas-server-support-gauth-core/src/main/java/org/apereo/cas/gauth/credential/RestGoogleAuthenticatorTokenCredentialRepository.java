@@ -68,8 +68,8 @@ public class RestGoogleAuthenticatorTokenCredentialRepository extends BaseGoogle
             if (response != null) {
                 val status = HttpStatus.valueOf(response.getCode());
                 if (status.is2xxSuccessful()) {
-                    try (val contis = ((HttpEntityContainer) response).getEntity().getContent()) {
-                        val content = IOUtils.toString(contis, StandardCharsets.UTF_8);
+                    try (val contents = ((HttpEntityContainer) response).getEntity().getContent()) {
+                        val content = IOUtils.toString(contents, StandardCharsets.UTF_8);
                         if (content != null) {
                             val values = new TypeReference<GoogleAuthenticatorAccount>() {
                             };
@@ -109,8 +109,8 @@ public class RestGoogleAuthenticatorTokenCredentialRepository extends BaseGoogle
             if (response != null) {
                 val status = HttpStatus.valueOf(response.getCode());
                 if (status.is2xxSuccessful()) {
-                    try (val contis = ((HttpEntityContainer) response).getEntity().getContent()) {
-                        val content = IOUtils.toString(contis, StandardCharsets.UTF_8);
+                    try (val contents = ((HttpEntityContainer) response).getEntity().getContent()) {
+                        val content = IOUtils.toString(contents, StandardCharsets.UTF_8);
                         if (content != null) {
                             val values = new TypeReference<GoogleAuthenticatorAccount>() {
                             };
@@ -148,8 +148,8 @@ public class RestGoogleAuthenticatorTokenCredentialRepository extends BaseGoogle
             if (response != null) {
                 val status = HttpStatus.valueOf(response.getCode());
                 if (status.is2xxSuccessful()) {
-                    try (val contis = ((HttpEntityContainer) response).getEntity().getContent()) {
-                        val content = IOUtils.toString(contis, StandardCharsets.UTF_8);
+                    try (val contents = ((HttpEntityContainer) response).getEntity().getContent()) {
+                        val content = IOUtils.toString(contents, StandardCharsets.UTF_8);
                         if (content != null) {
                             val values = new TypeReference<List<GoogleAuthenticatorAccount>>() {
                             };
@@ -334,8 +334,8 @@ public class RestGoogleAuthenticatorTokenCredentialRepository extends BaseGoogle
             if (response != null) {
                 val status = HttpStatus.valueOf(response.getCode());
                 if (status.is2xxSuccessful()) {
-                    try (val contis = ((HttpEntityContainer) response).getEntity().getContent()) {
-                        val content = IOUtils.toString(contis, StandardCharsets.UTF_8);
+                    try (val contents = ((HttpEntityContainer) response).getEntity().getContent()) {
+                        val content = IOUtils.toString(contents, StandardCharsets.UTF_8);
                         if (content != null) {
                             return MAPPER.readValue(JsonValue.readHjson(content).toString(), Long.class);
                         }
@@ -372,8 +372,8 @@ public class RestGoogleAuthenticatorTokenCredentialRepository extends BaseGoogle
             if (response != null) {
                 val status = HttpStatus.valueOf(response.getCode());
                 if (status.is2xxSuccessful()) {
-                    try (val contis = ((HttpEntityContainer) response).getEntity().getContent()) {
-                        val content = IOUtils.toString(contis, StandardCharsets.UTF_8);
+                    try (val contents = ((HttpEntityContainer) response).getEntity().getContent()) {
+                        val content = IOUtils.toString(contents, StandardCharsets.UTF_8);
                         if (content != null) {
                             return MAPPER.readValue(JsonValue.readHjson(content).toString(), Long.class);
                         }
