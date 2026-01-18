@@ -82,8 +82,8 @@ public class RestfulAuthenticationPolicy extends BaseAuthenticationPolicy {
             headers.putAll(Objects.requireNonNull(properties).getHeaders());
             val exec = HttpExecutionRequest.builder()
                 .url(properties.getUrl())
-                .basicAuthPassword(properties.getBasicAuthUsername())
-                .basicAuthUsername(properties.getBasicAuthPassword())
+                .basicAuthPassword(properties.getBasicAuthPassword())
+                .basicAuthUsername(properties.getBasicAuthUsername())
                 .method(HttpMethod.POST)
                 .entity(entity)
                 .headers(headers)
