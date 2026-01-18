@@ -33,8 +33,9 @@ public class DefaultChainingServicesManager implements ChainingServicesManager {
 
     @Override
     public void save(final Stream<? extends RegisteredService> toSave) {
+        val services = toSave.toList();
         serviceManagers.forEach(mgr -> {
-            val filtered = toSave.filter(mgr::supports);
+            val filtered = services.stream().filter(mgr::supports);
             mgr.save(filtered);
         });
     }
