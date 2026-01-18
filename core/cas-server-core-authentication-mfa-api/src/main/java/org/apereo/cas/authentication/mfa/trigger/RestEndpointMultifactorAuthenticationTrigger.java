@@ -116,10 +116,12 @@ public class RestEndpointMultifactorAuthenticationTrigger implements Multifactor
                 .maximumRetryAttempts(rest.getMaximumRetryAttempts())
                 .build();
             response = HttpUtils.execute(exec);
-            val status = HttpStatus.valueOf(response.getCode());
-            if (status.is2xxSuccessful()) {
-                try (val content = ((HttpEntityContainer) response).getEntity().getContent()) {
-                    return IOUtils.toString(content, StandardCharsets.UTF_8);
+            if (response != null) {
+                val status = HttpStatus.valueOf(response.getCode());
+                if (status.is2xxSuccessful()) {
+                    try (val content = ((HttpEntityContainer) response).getEntity().getContent()) {
+                        return IOUtils.toString(content, StandardCharsets.UTF_8);
+                    }
                 }
             }
         } finally {

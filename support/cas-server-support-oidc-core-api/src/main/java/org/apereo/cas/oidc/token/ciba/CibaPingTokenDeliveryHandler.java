@@ -56,7 +56,7 @@ public class CibaPingTokenDeliveryHandler implements CibaTokenDeliveryHandler {
                 .build();
             LOGGER.debug("Sending a POST request to [{}] with payload [{}]", exec.getUrl(), exec.getEntity());
             response = HttpUtils.execute(exec);
-            FunctionUtils.throwIf(!HttpStatus.valueOf(response.getCode()).is2xxSuccessful(),
+            FunctionUtils.throwIf(response == null || !HttpStatus.valueOf(response.getCode()).is2xxSuccessful(),
                 () -> new HttpException("Unable to deliver tokens to client application %s".formatted(registeredService.getName())));
             LOGGER.debug("Marking CIBA authentication request [{}] as ready", cibaRequest.getEncodedId());
             configurationContext.getTicketRegistry().updateTicket(cibaRequest.markTicketReady());

@@ -163,7 +163,7 @@ public class RestfulConsentRepository implements ConsentRepository {
                 .entity(MAPPER.writeValueAsString(decision))
                 .build();
             response = HttpUtils.execute(exec);
-            if (HttpStatus.valueOf(response.getCode()).is2xxSuccessful()) {
+            if (response != null && HttpStatus.valueOf(response.getCode()).is2xxSuccessful()) {
                 return decision;
             }
         } finally {

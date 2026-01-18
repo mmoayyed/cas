@@ -206,7 +206,7 @@ public class RestfulCasSimpleMultifactorAuthenticationService extends BaseCasSim
                 .maximumRetryAttempts(properties.getMaximumRetryAttempts())
                 .build();
             response = HttpUtils.execute(exec);
-            Assert.isTrue(HttpStatus.valueOf(response.getCode()).is2xxSuccessful(), "Unable to update principal");
+            Assert.isTrue(response != null && HttpStatus.valueOf(response.getCode()).is2xxSuccessful(), "Unable to update principal");
         } finally {
             HttpUtils.close(response);
         }

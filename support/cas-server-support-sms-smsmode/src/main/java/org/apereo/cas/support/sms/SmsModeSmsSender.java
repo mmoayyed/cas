@@ -56,12 +56,13 @@ public record SmsModeSmsSender(SmsModeProperties properties) implements SmsSende
                 .entity(MAPPER.writeValueAsString(data))
                 .build();
             response = HttpUtils.execute(exec);
-
-            val status = HttpStatus.valueOf(response.getCode());
-            try (val content = ((HttpEntityContainer) response).getEntity().getContent()) {
-                val entity = IOUtils.toString(content, StandardCharsets.UTF_8);
-                LOGGER.debug("Response from SmsMode: [{}]", entity);
-                return status.is2xxSuccessful();
+            if (response != null) {
+                val status = HttpStatus.valueOf(response.getCode());
+                try (val content = ((HttpEntityContainer) response).getEntity().getContent()) {
+                    val entity = IOUtils.toString(content, StandardCharsets.UTF_8);
+                    LOGGER.debug("Response from SmsMode: [{}]", entity);
+                    return status.is2xxSuccessful();
+                }
             }
         } catch (final Exception e) {
             LoggingUtils.error(LOGGER, e);
