@@ -130,16 +130,18 @@ public class CerbosRegisteredServiceAccessStrategy extends BaseRegisteredService
             LOGGER.debug("Submitting authorization request to [{}] for [{}]", url, cerbosRequest);
             response = HttpUtils.execute(exec);
 
-            try (val content = ((HttpEntityContainer) response).getEntity().getContent()) {
-                val results = IOUtils.toString(content, StandardCharsets.UTF_8);
-                LOGGER.trace("Received response from endpoint [{}] as [{}]", url, results);
-                val payload = MAPPER.readValue(results, CerboseResponse.class);
-                if (HttpStatus.resolve(response.getCode()).is2xxSuccessful()
-                    && Strings.CI.equals(cerbosRequest.getRequestId(), payload.getRequestId())) {
-                    return payload.getResults().isEmpty() || payload.getResults().stream().allMatch(result -> actions.stream().allMatch(action -> {
-                        val actionResult = result.getActions().get(action);
-                        return actionResult != Actions.EFFECT_DENY;
-                    }));
+            if (response != null) {
+                try (val content = ((HttpEntityContainer) response).getEntity().getContent()) {
+                    val results = IOUtils.toString(content, StandardCharsets.UTF_8);
+                    LOGGER.trace("Received response from endpoint [{}] as [{}]", url, results);
+                    val payload = MAPPER.readValue(results, CerboseResponse.class);
+                    if (HttpStatus.resolve(response.getCode()).is2xxSuccessful()
+                        && Strings.CI.equals(cerbosRequest.getRequestId(), payload.getRequestId())) {
+                        return payload.getResults().isEmpty() || payload.getResults().stream().allMatch(result -> actions.stream().allMatch(action -> {
+                            val actionResult = result.getActions().get(action);
+                            return actionResult != Actions.EFFECT_DENY;
+                        }));
+                    }
                 }
             }
         } catch (final Exception e) {

@@ -94,12 +94,14 @@ public class PermifyRegisteredServiceAccessStrategy extends BaseRegisteredServic
         try {
             LOGGER.debug("Submitting authorization request to [{}] for [{}]", permifyUrl, permifyRequest);
             response = HttpUtils.execute(exec);
-            try (val content = ((HttpEntityContainer) response).getEntity().getContent()) {
-                val results = IOUtils.toString(content, StandardCharsets.UTF_8);
-                LOGGER.debug("Received response from endpoint [{}] as [{}]", url, results);
-                val payload = MAPPER.readValue(results, Map.class);
-                val result = (String) payload.get("can");
-                return "CHECK_RESULT_ALLOWED".equalsIgnoreCase(result);
+            if (response != null) {
+                try (val content = ((HttpEntityContainer) response).getEntity().getContent()) {
+                    val results = IOUtils.toString(content, StandardCharsets.UTF_8);
+                    LOGGER.debug("Received response from endpoint [{}] as [{}]", url, results);
+                    val payload = MAPPER.readValue(results, Map.class);
+                    val result = (String) payload.get("can");
+                    return "CHECK_RESULT_ALLOWED".equalsIgnoreCase(result);
+                }
             }
         } catch (final Exception e) {
             LoggingUtils.error(LOGGER, e);
