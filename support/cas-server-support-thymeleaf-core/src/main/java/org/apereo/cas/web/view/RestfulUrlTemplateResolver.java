@@ -71,7 +71,6 @@ public class RestfulUrlTemplateResolver extends ThemeFileTemplateResolver {
                 .headers(headers)
                 .parameters(queryParams.toSingleValueMap())
                 .maximumRetryAttempts(rest.getMaximumRetryAttempts())
-                .maximumRetryAttempts(rest.getMaximumRetryAttempts())
                 .build();
             response = HttpUtils.execute(exec);
             if (response != null && HttpStatus.valueOf(response.getCode()).is2xxSuccessful()) {
