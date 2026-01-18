@@ -72,12 +72,16 @@ public class RestfulPersonAttributeDao extends BasePersonAttributeDao {
             this.headers.forEach(request::addHeader);
             
             try (val client = builder.build(); val response = client.execute(request, HttpRequestUtils.HTTP_CLIENT_RESPONSE_HANDLER)) {
-                val attributes = MAPPER.readValue(response.getEntity().getContent(), Map.class);
-                return new SimplePersonAttributes(uid, PersonAttributeDao.stuffAttributesIntoList(attributes));
+                val entity = response.getEntity();
+                if (entity != null) {
+                    val attributes = MAPPER.readValue(entity.getContent(), Map.class);
+                    return new SimplePersonAttributes(uid, PersonAttributeDao.stuffAttributesIntoList(attributes));
+                }
             }
         } catch (final Exception e) {
             throw new IllegalArgumentException(e.getMessage(), e);
         }
+        return null;
     }
 
     @Override

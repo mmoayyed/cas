@@ -73,15 +73,18 @@ public class ReturnRestfulAttributeReleasePolicy extends BaseMappedAttributeRele
                 .build();
             response = HttpUtils.execute(exec);
             if (response != null && HttpStatus.resolve(response.getCode()).is2xxSuccessful()) {
-                try (val content = ((HttpEntityContainer) response).getEntity().getContent()) {
-                    val result = IOUtils.toString(content, StandardCharsets.UTF_8);
-                    LOGGER.debug("Policy response received: [{}]", result);
-                    val returnedAttributes = MAPPER.readValue(result, new TypeReference<Map<String, List<Object>>>() {
-                    });
-                    return FunctionUtils.doIf(getAllowedAttributes().isEmpty(),
-                                    () -> returnedAttributes,
-                                    () -> authorizeMappedAttributes(context, returnedAttributes))
-                            .get();
+                val entity = ((HttpEntityContainer) response).getEntity();
+                if (entity != null) {
+                    try (val content = entity.getContent()) {
+                        val result = IOUtils.toString(content, StandardCharsets.UTF_8);
+                        LOGGER.debug("Policy response received: [{}]", result);
+                        val returnedAttributes = MAPPER.readValue(result, new TypeReference<Map<String, List<Object>>>() {
+                        });
+                        return FunctionUtils.doIf(getAllowedAttributes().isEmpty(),
+                                        () -> returnedAttributes,
+                                        () -> authorizeMappedAttributes(context, returnedAttributes))
+                                .get();
+                    }
                 }
             }
         } catch (final Exception e) {
