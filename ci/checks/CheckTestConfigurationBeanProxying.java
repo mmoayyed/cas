@@ -41,15 +41,23 @@ public class CheckTestConfigurationBeanProxying {
             .forEach(file -> {
                 var text = readFile(file);
                 if (text.contains("@TestConfiguration")) {
+                    // Check for @TestConfiguration("value") without proxyBeanMethods
                     var proxyPattern = Pattern.compile("@TestConfiguration\\(\"(\\w+)\"\\)").matcher(text);
                     if (proxyPattern.find()) {
                         print("TestConfiguration class %s should be marked with proxyBeanMethods = false. "
                             + "Use @TestConfiguration(value = \"%s\", proxyBeanMethods = false)%n", file, proxyPattern.group(1));
                         failBuild.set(true);
                     }
+                    // Check for @TestConfiguration(value = "...", proxyBeanMethods = true)
                     proxyPattern = Pattern.compile("@TestConfiguration\\(value\\s*=\\s*\"(\\w+)\",\\s*proxyBeanMethods\\s*=\\s*(true)\\)").matcher(text);
                     if (proxyPattern.find()) {
                         print("TestConfiguration class %s should be marked with proxyBeanMethods = false%n", file);
+                        failBuild.set(true);
+                    }
+                    // Check for @TestConfiguration(value = "...") without proxyBeanMethods
+                    proxyPattern = Pattern.compile("@TestConfiguration\\(value\\s*=\\s*\"(\\w+)\"\\)").matcher(text);
+                    if (proxyPattern.find()) {
+                        print("TestConfiguration class %s should be explicitly marked with proxyBeanMethods = false%n", file);
                         failBuild.set(true);
                     }
                 }
