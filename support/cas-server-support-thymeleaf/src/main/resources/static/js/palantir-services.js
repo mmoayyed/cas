@@ -190,16 +190,40 @@ async function initializeServiceButtons() {
     $("button[name=editService]").off().on("click", function () {
         let serviceId = $(this).parent().attr("serviceId");
         if (actuatorEndpoints.registeredservices) {
-            $.get(`${actuatorEndpoints.registeredservices}/${serviceId}`, response => {
-                const value = JSON.stringify(response, null, 4);
-                serviceEditor.setValue(value, -1);
-                serviceEditor.gotoLine(1);
-                const editServiceDialogElement = document.getElementById("editServiceDialog");
-                $(editServiceDialogElement).attr("newService", false);
-                editServiceDialog["open"]();
-            }).fail((xhr, status, error) => {
-                console.error("Error fetching data:", error);
-                displayBanner(xhr);
+            Swal.fire({
+                title: "How would you like to edit this application?",
+                icon: "question",
+                showCancelButton: true,
+                confirmButtonText: "<i class='mdi mdi-pencil'></i> Editor",
+                denyButtonText: "<i class='mdi mdi-wizard-hat'></i> Wizard",
+                showDenyButton: true,
+                html: `
+                    <p><strong>Editor:</strong> Edit the service definition using a plain-text JSON editor where you can directly modify the service definition.</p>
+                    <p><strong>Wizard:</strong> Edit the service definition using the step-by-step wizard with form fields for individual settings and policies.</p>
+                `
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    // User chose Editor
+                    $.get(`${actuatorEndpoints.registeredservices}/${serviceId}`, response => {
+                        const value = JSON.stringify(response, null, 4);
+                        serviceEditor.setValue(value, -1);
+                        serviceEditor.gotoLine(1);
+                        const editServiceDialogElement = document.getElementById("editServiceDialog");
+                        $(editServiceDialogElement).attr("newService", false);
+                        editServiceDialog["open"]();
+                    }).fail((xhr, status, error) => {
+                        console.error("Error fetching data:", error);
+                        displayBanner(xhr);
+                    });
+                } else if (result.isDenied) {
+                    // User chose Wizard
+                    $.get(`${actuatorEndpoints.registeredservices}/${serviceId}`, response => {
+                        openRegisteredServiceWizardDialogForEdit(response);
+                    }).fail((xhr, status, error) => {
+                        console.error("Error fetching data:", error);
+                        displayBanner(xhr);
+                    });
+                }
             });
         }
     });
@@ -212,7 +236,8 @@ async function initializeServiceButtons() {
             const saveButton = $(this);
             switch (saveButton.attr("name")) {
             case "saveServiceWizard":
-                isNewService = true;
+                const editServiceWizardDialogElement = document.getElementById("editServiceWizardDialog");
+                isNewService = $(editServiceWizardDialogElement).attr("newService") === "true" || $(editServiceWizardDialogElement).attr("newService") === true;
                 const wizardEditor = initializeAceEditor("wizardServiceEditor");
                 value = wizardEditor.getValue();
                 break;
@@ -239,6 +264,9 @@ async function initializeServiceButtons() {
                             data: value,
                             success: async response => {
                                 editServiceDialog["close"]();
+                                if (editServiceWizardDialog) {
+                                    editServiceWizardDialog["close"]();
+                                }
                                 await fetchServices(() => {
                                     let newServiceId = response.id;
                                     $("#applicationsTable tr").removeClass("selected");

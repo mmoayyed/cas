@@ -2986,3 +2986,466 @@ function openRegisteredServiceWizardDialog() {
     }
 }
 
+function openRegisteredServiceWizardDialogForEdit(serviceDefinition) {
+    const serviceClass = serviceDefinition["@class"];
+    if (!serviceClass) {
+        Swal.fire("Error", "Unable to determine the service type from the definition.", "error");
+        return;
+    }
+    
+    function openWizardDialogForEdit(serviceClass, serviceDefinition) {
+        $("#editServiceWizardGeneralContainer").find("input").val("");
+        $(".jqueryui-multiselectmenu").each(function () {
+            this.tomselect?.clear();
+        });
+        
+        const editor = initializeAceEditor("wizardServiceEditor");
+        editor.setReadOnly(true);
+        editor.setValue("");
+        editor.gotoLine(1);
+
+        const className = getLastWord(serviceClass);
+        $("#serviceClassType").text(serviceClass);
+        $("#editServiceWizardForm").data("service-class", serviceClass).data("service-class-name", className);
+
+        $("#editServiceWizardMenu")
+            .accordion({
+                collapsible: true,
+                heightStyle: "content",
+                activate: function (event, ui) {
+                    let idx = $("#editServiceWizardMenu").accordion("option", "active");
+                    if (isNumeric(idx)) {
+                        localStorage.setItem("registeredServiceWizardMenuOption", idx);
+                    }
+                }
+            });
+
+        $(`.class-${className}`).show();
+        $("[class*='class-']").not(`.class-${className}`).hide();
+
+        $("#editServiceWizardMenu").accordion("refresh");
+
+        const editServiceWizardDialogElement = document.getElementById("editServiceWizardDialog");
+        editServiceWizardDialog = window.mdc.dialog.MDCDialog.attachTo(editServiceWizardDialogElement);
+        $(editServiceWizardDialogElement).attr("newService", false);
+        $(editServiceWizardDialogElement).attr("serviceClass", serviceClass);
+
+        $("#editServiceWizardForm input[type=hidden]")
+            .each(function () {
+                const id = this.id;
+
+                const data = $(`input#${id}`).data("attrs");
+                if (data && data.length > 0) {
+                    const attributes = Object.fromEntries(
+                        data.split(",").map(pair => {
+                            const [key, val] = pair.split("=");
+                            return [key, val === "true" ? true : val === "false" ? false : val];
+                        })
+                    );
+
+                    Object.entries(attributes).forEach(([key, value]) => {
+                        $(`input#${id}`).data(key, value);
+                    });
+                }
+                $(`button#${id}Button`).on("click", function (e) {
+                    setTimeout(() => generateServiceDefinition(), 0);
+                });
+            });
+
+        $("#editServiceWizardForm input").val("");
+        $("#editServiceWizardForm option").filter(function () {
+            const clazz = $(this).data("serviceClass");
+            return clazz !== undefined && clazz !== null;
+        }).remove();
+
+        const dropdown = $("#editServiceWizardForm select.jqueryui-selectmenu");
+        try {
+            dropdown.selectmenu("refresh");
+        } catch (e) {
+            dropdown.selectmenu();
+        }
+
+        switch (className) {
+        case "CasRegisteredService":
+            $("#registeredServiceIdLabel span.mdc-floating-label").text("Service ID");
+            break;
+        case "SamlRegisteredService":
+            $("#registeredServiceIdLabel span.mdc-floating-label").text("Entity ID");
+            createSamlRegisteredServiceAttributeReleasePolicy();
+            break;
+        case "OAuthRegisteredService":
+            $("#registeredServiceIdLabel span.mdc-floating-label").text("Redirect URI");
+            $(`h3.class-${className}`).each(function () {
+                const original = $(this).text();
+                const updated = original.replace("/ OpenID Connect ", "");
+                $(this).text(updated);
+            });
+            $("#editServiceWizardMenu").accordion("refresh");
+            break;
+        case "OidcRegisteredService":
+            $("#registeredServiceIdLabel span.mdc-floating-label").text("Redirect URI");
+            $(`h3.class-${className}`).each(function () {
+                const original = $(this).text();
+                const updated = original.replace("OAuth / ", "");
+                $(this).text(updated);
+            });
+            $("#editServiceWizardMenu").accordion("refresh");
+            createOidcRegisteredServiceFields();
+            break;
+        }
+
+        // Populate wizard fields from service definition
+        populateWizardFromServiceDefinition(serviceDefinition);
+
+        generateServiceDefinition();
+        editServiceWizardDialog["open"]();
+
+        const value = $("#hideAdvancedOptions").val();
+        if (value === "false" || value === false) {
+            $("#hideAdvancedOptionsButton").click();
+        }
+        hideAdvancedRegisteredServiceOptions();
+
+        let savedIndex = localStorage.getItem("registeredServiceWizardMenuOption");
+        if (savedIndex !== null && isNumeric(savedIndex)) {
+            savedIndex = Number(savedIndex);
+        } else {
+            savedIndex = 0;
+        }
+
+        const visible = $("#editServiceWizardForm").find(`.ui-accordion-header:eq(${savedIndex})`).is(":visible");
+        if (!visible) {
+            savedIndex = 0;
+        }
+        $("#editServiceWizardMenu").accordion("option", "active", savedIndex);
+        setTimeout(function () {
+            $("#editServiceWizardForm input:visible:enabled").first().focus();
+        }, 200);
+    }
+
+    openWizardDialogForEdit(serviceClass, serviceDefinition);
+}
+
+function populateWizardFromServiceDefinition(serviceDefinition) {
+    // Populate basic text/number fields by matching param-name data attribute
+    $("form#editServiceWizardForm")
+        .find("input[data-param-name], select[data-param-name]")
+        .each(function () {
+            const $input = $(this);
+            const paramName = $input.data("param-name");
+            if (!paramName) return;
+
+            const value = getNestedValue(serviceDefinition, paramName);
+            if (value !== undefined && value !== null) {
+                setFieldValue($input, value, serviceDefinition);
+            }
+        });
+
+    // Handle switch buttons (boolean toggles)
+    $("form#editServiceWizardForm")
+        .find("input[type=hidden][data-param-name]")
+        .each(function () {
+            const $input = $(this);
+            const paramName = $input.data("param-name");
+            if (!paramName) return;
+
+            const value = getNestedValue(serviceDefinition, paramName);
+            if (value !== undefined && value !== null) {
+                const boolValue = value === true || value === "true";
+                $input.val(boolValue.toString());
+                
+                const buttonId = `${this.id}Button`;
+                const $button = $(`#${buttonId}`);
+                if ($button.length > 0) {
+                    if (boolValue) {
+                        $button.addClass("mdc-icon-button--on");
+                    } else {
+                        $button.removeClass("mdc-icon-button--on");
+                    }
+                }
+            }
+        });
+
+    // Handle select dropdowns for nested @class types
+    populateSelectFieldsFromDefinition(serviceDefinition);
+    
+    // Handle mapped fields (key-value pairs)
+    populateMappedFieldsFromDefinition(serviceDefinition);
+
+    // Handle multiselect fields
+    populateMultiselectFieldsFromDefinition(serviceDefinition);
+}
+
+function getNestedValue(obj, path) {
+    if (!path || !obj) return undefined;
+    
+    const parts = path.split(".");
+    let current = obj;
+    
+    for (const part of parts) {
+        if (current === undefined || current === null) return undefined;
+        current = current[part];
+    }
+    
+    return current;
+}
+
+function setFieldValue($input, value, serviceDefinition) {
+    const tagName = $input.prop("tagName").toLowerCase();
+    
+    if (tagName === "select") {
+        // Handle select elements
+        if ($input.hasClass("jqueryui-multiselectmenu")) {
+            // TomSelect multiselect
+            const tomselect = $input[0].tomselect;
+            if (tomselect) {
+                if (Array.isArray(value)) {
+                    // Handle [type, [values]] format
+                    const actualValue = value.length === 2 && typeof value[0] === "string" && Array.isArray(value[1]) 
+                        ? value[1] 
+                        : value;
+                    tomselect.setValue(actualValue);
+                } else if (typeof value === "string") {
+                    tomselect.setValue(value.split(","));
+                }
+            }
+        } else {
+            // Regular select - check if value is an object with @class
+            if (typeof value === "object" && value["@class"]) {
+                $input.val(value["@class"]);
+            } else {
+                $input.val(value);
+            }
+            try {
+                $input.selectmenu("refresh");
+            } catch (e) {
+                // selectmenu might not be initialized yet
+            }
+        }
+    } else if (tagName === "input") {
+        const inputType = $input.attr("type");
+        
+        if (inputType === "hidden") {
+            // Boolean toggle
+            const boolValue = value === true || value === "true";
+            $input.val(boolValue.toString());
+        } else if (inputType === "checkbox") {
+            $input.prop("checked", value === true || value === "true");
+        } else {
+            // Text, number, date inputs
+            if (typeof value === "object") {
+                // If it's an object, stringify it or get specific property
+                if (value["@class"]) {
+                    $input.val(JSON.stringify(value));
+                } else {
+                    $input.val(value.toString());
+                }
+            } else {
+                $input.val(value);
+            }
+        }
+    }
+    
+    // Trigger input event to update validation and generation
+    $input.trigger("input");
+}
+
+function populateSelectFieldsFromDefinition(serviceDefinition) {
+    // Map of property paths to their select field handlers
+    const selectMappings = [
+        { path: "attributeReleasePolicy", selectId: "attributeReleasePolicy" },
+        { path: "usernameAttributeProvider", selectId: "usernameAttributeProvider" },
+        { path: "accessStrategy", selectId: "accessStrategy" },
+        { path: "matchingStrategy", selectId: "matchingStrategy" },
+        { path: "proxyPolicy", selectId: "proxyPolicy" },
+        { path: "authenticationPolicy.criteria", selectId: "authenticationPolicyCriteria" },
+        { path: "attributeReleasePolicy.principalAttributesRepository", selectId: "principalAttributesRepository" },
+        { path: "attributeReleasePolicy.attributeFilter", selectId: "attributeReleaseValueFilter" },
+        { path: "attributeReleasePolicy.consentPolicy", selectId: "attributeReleaseConsentPolicy" },
+        { path: "attributeReleasePolicy.activationCriteria", selectId: "attributeReleasePolicyActivationCriteria" },
+        { path: "ticketGrantingTicketExpirationPolicy", selectId: "ticketGrantingTicketExpirationPolicy" },
+        { path: "serviceTicketExpirationPolicy", selectId: "serviceTicketExpirationPolicy" },
+        { path: "proxyGrantingTicketExpirationPolicy", selectId: "proxyGrantingTicketExpirationPolicy" },
+        { path: "proxyTicketExpirationPolicy", selectId: "proxyTicketExpirationPolicy" }
+    ];
+
+    selectMappings.forEach(mapping => {
+        const value = getNestedValue(serviceDefinition, mapping.path);
+        if (value && typeof value === "object" && value["@class"]) {
+            const $select = $(`select#${mapping.selectId}`);
+            if ($select.length > 0) {
+                $select.val(value["@class"]);
+                try {
+                    $select.selectmenu("refresh");
+                } catch (e) {
+                    // Trigger change to update dependent UI
+                }
+                $select.trigger("change");
+            }
+        }
+    });
+}
+
+function populateMappedFieldsFromDefinition(serviceDefinition) {
+    // Handle attribute release policy allowed/mapped attributes
+    if (serviceDefinition.attributeReleasePolicy) {
+        const policy = serviceDefinition.attributeReleasePolicy;
+        
+        // Handle ReturnAllowedAttributeReleasePolicy
+        if (policy.allowedAttributes && Array.isArray(policy.allowedAttributes)) {
+            const allowedAttrs = policy.allowedAttributes.length === 2 && 
+                typeof policy.allowedAttributes[0] === "string" && 
+                Array.isArray(policy.allowedAttributes[1])
+                ? policy.allowedAttributes[1]
+                : policy.allowedAttributes;
+            
+            const $select = $("select#allowedAttributes");
+            if ($select.length > 0 && $select[0].tomselect) {
+                $select[0].tomselect.setValue(allowedAttrs);
+            }
+        }
+        
+        // Handle ReturnMappedAttributeReleasePolicy
+        if (policy.allowedAttributes && typeof policy.allowedAttributes === "object" && !Array.isArray(policy.allowedAttributes)) {
+            populateMapContainer("allowedAttributesKeyValue", policy.allowedAttributes);
+        }
+
+        // Handle static attributes
+        if (policy.allowedStaticAttributes && typeof policy.allowedStaticAttributes === "object") {
+            populateMapContainer("allowedStaticAttributesKeyValue", policy.allowedStaticAttributes);
+        }
+    }
+    
+    // Handle access strategy required/rejected attributes
+    if (serviceDefinition.accessStrategy) {
+        const strategy = serviceDefinition.accessStrategy;
+        
+        if (strategy.requiredAttributes && typeof strategy.requiredAttributes === "object") {
+            populateMapContainer("accessStrategyRequiredAttributes", strategy.requiredAttributes);
+        }
+        
+        if (strategy.rejectedAttributes && typeof strategy.rejectedAttributes === "object") {
+            populateMapContainer("accessStrategyRejectedAttributes", strategy.rejectedAttributes);
+        }
+    }
+    
+    // Handle service properties
+    if (serviceDefinition.properties && typeof serviceDefinition.properties === "object") {
+        populateMapContainer("registeredServiceProperty", serviceDefinition.properties);
+    }
+}
+
+function populateMapContainer(containerBaseName, mapData) {
+    const $container = $(`#registeredService${capitalize(containerBaseName)}MapContainer, #${containerBaseName}MapContainer`).first();
+    if ($container.length === 0) return;
+    
+    // Clear existing rows except template
+    $container.find("[class*='-map-row']").not(":first").remove();
+    
+    Object.entries(mapData).forEach(([key, value], index) => {
+        // Skip @class entries
+        if (key === "@class") return;
+        
+        // For the first entry, use existing row
+        const $rows = $container.find("[class*='-map-row']");
+        let $row;
+        
+        if (index === 0 && $rows.length > 0) {
+            $row = $rows.first();
+        } else {
+            // Clone the first row for additional entries
+            const $addButton = $container.find("button[id*='AddButton']");
+            if ($addButton.length > 0) {
+                $addButton.click();
+            }
+            $row = $container.find("[class*='-map-row']").last();
+        }
+        
+        if ($row.length > 0) {
+            const $keyInput = $row.find("input").first();
+            const $valueInput = $row.find("input").last();
+            
+            if ($keyInput.length > 0) {
+                $keyInput.val(key);
+            }
+            
+            if ($valueInput.length > 0) {
+                // Handle array values
+                let displayValue = value;
+                if (Array.isArray(value)) {
+                    displayValue = value.length === 2 && typeof value[0] === "string" && Array.isArray(value[1])
+                        ? value[1].join(",")
+                        : value.join(",");
+                } else if (typeof value === "object" && value.values) {
+                    // Handle {values: [...]} format
+                    displayValue = Array.isArray(value.values) ? value.values.join(",") : value.values;
+                }
+                $valueInput.val(displayValue);
+            }
+        }
+    });
+}
+
+function populateMultiselectFieldsFromDefinition(serviceDefinition) {
+    // Handle OIDC scopes
+    if (serviceDefinition.scopes) {
+        const scopes = Array.isArray(serviceDefinition.scopes) && 
+            serviceDefinition.scopes.length === 2 && 
+            typeof serviceDefinition.scopes[0] === "string" && 
+            Array.isArray(serviceDefinition.scopes[1])
+            ? serviceDefinition.scopes[1]
+            : serviceDefinition.scopes;
+        
+        const $select = $("select#scopes");
+        if ($select.length > 0 && $select[0].tomselect) {
+            $select[0].tomselect.setValue(scopes);
+        }
+    }
+    
+    // Handle supported grant types
+    if (serviceDefinition.supportedGrantTypes) {
+        const grantTypes = Array.isArray(serviceDefinition.supportedGrantTypes) &&
+            serviceDefinition.supportedGrantTypes.length === 2 &&
+            typeof serviceDefinition.supportedGrantTypes[0] === "string" &&
+            Array.isArray(serviceDefinition.supportedGrantTypes[1])
+            ? serviceDefinition.supportedGrantTypes[1]
+            : serviceDefinition.supportedGrantTypes;
+        
+        const $select = $("select#supportedGrantTypes");
+        if ($select.length > 0 && $select[0].tomselect) {
+            $select[0].tomselect.setValue(grantTypes);
+        }
+    }
+    
+    // Handle supported response types
+    if (serviceDefinition.supportedResponseTypes) {
+        const responseTypes = Array.isArray(serviceDefinition.supportedResponseTypes) &&
+            serviceDefinition.supportedResponseTypes.length === 2 &&
+            typeof serviceDefinition.supportedResponseTypes[0] === "string" &&
+            Array.isArray(serviceDefinition.supportedResponseTypes[1])
+            ? serviceDefinition.supportedResponseTypes[1]
+            : serviceDefinition.supportedResponseTypes;
+        
+        const $select = $("select#supportedResponseTypes");
+        if ($select.length > 0 && $select[0].tomselect) {
+            $select[0].tomselect.setValue(responseTypes);
+        }
+    }
+    
+    // Handle MFA providers
+    if (serviceDefinition.multifactorPolicy && serviceDefinition.multifactorPolicy.multifactorAuthenticationProviders) {
+        const providers = serviceDefinition.multifactorPolicy.multifactorAuthenticationProviders;
+        const providerList = Array.isArray(providers) &&
+            providers.length === 2 &&
+            typeof providers[0] === "string" &&
+            Array.isArray(providers[1])
+            ? providers[1]
+            : providers;
+        
+        const $select = $("select#multifactorAuthenticationProviders");
+        if ($select.length > 0 && $select[0].tomselect) {
+            $select[0].tomselect.setValue(providerList);
+        }
+    }
+}
+
