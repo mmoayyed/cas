@@ -237,7 +237,8 @@ async function initializeServiceButtons() {
             switch (saveButton.attr("name")) {
             case "saveServiceWizard":
                 const editServiceWizardDialogElement = document.getElementById("editServiceWizardDialog");
-                isNewService = $(editServiceWizardDialogElement).attr("newService") === "true" || $(editServiceWizardDialogElement).attr("newService") === true;
+                const wizardNewServiceAttr = $(editServiceWizardDialogElement).attr("newService");
+                isNewService = wizardNewServiceAttr === "true" || wizardNewServiceAttr === true;
                 const wizardEditor = initializeAceEditor("wizardServiceEditor");
                 value = wizardEditor.getValue();
                 break;

@@ -3102,7 +3102,7 @@ function openRegisteredServiceWizardDialogForEdit(serviceDefinition) {
 
         const value = $("#hideAdvancedOptions").val();
         if (value === "false" || value === false) {
-            $("#hideAdvancedOptionsButton").click();
+            $("#hideAdvancedOptionsButton").trigger("click");
         }
         hideAdvancedRegisteredServiceOptions();
 
@@ -3190,6 +3190,22 @@ function getNestedValue(obj, path) {
     return current;
 }
 
+/**
+ * Unwraps a CAS collection value from [type, [values]] format to just [values].
+ * CAS JSON format often wraps arrays as ["java.util.ArrayList", [actual, values]].
+ * @param {*} value - The value to unwrap
+ * @returns {*} - The unwrapped array or the original value if not in CAS collection format
+ */
+function unwrapCasCollection(value) {
+    if (Array.isArray(value) && 
+        value.length === 2 && 
+        typeof value[0] === "string" && 
+        Array.isArray(value[1])) {
+        return value[1];
+    }
+    return value;
+}
+
 function setFieldValue($input, value, serviceDefinition) {
     const tagName = $input.prop("tagName").toLowerCase();
     
@@ -3200,10 +3216,7 @@ function setFieldValue($input, value, serviceDefinition) {
             const tomselect = $input[0].tomselect;
             if (tomselect) {
                 if (Array.isArray(value)) {
-                    // Handle [type, [values]] format
-                    const actualValue = value.length === 2 && typeof value[0] === "string" && Array.isArray(value[1]) 
-                        ? value[1] 
-                        : value;
+                    const actualValue = unwrapCasCollection(value);
                     tomselect.setValue(actualValue);
                 } else if (typeof value === "string") {
                     tomselect.setValue(value.split(","));
@@ -3293,11 +3306,7 @@ function populateMappedFieldsFromDefinition(serviceDefinition) {
         
         // Handle ReturnAllowedAttributeReleasePolicy
         if (policy.allowedAttributes && Array.isArray(policy.allowedAttributes)) {
-            const allowedAttrs = policy.allowedAttributes.length === 2 && 
-                typeof policy.allowedAttributes[0] === "string" && 
-                Array.isArray(policy.allowedAttributes[1])
-                ? policy.allowedAttributes[1]
-                : policy.allowedAttributes;
+            const allowedAttrs = unwrapCasCollection(policy.allowedAttributes);
             
             const $select = $("select#allowedAttributes");
             if ($select.length > 0 && $select[0].tomselect) {
@@ -3342,10 +3351,11 @@ function populateMapContainer(containerBaseName, mapData) {
     // Clear existing rows except template
     $container.find("[class*='-map-row']").not(":first").remove();
     
-    Object.entries(mapData).forEach(([key, value], index) => {
-        // Skip @class entries
-        if (key === "@class") return;
-        
+    // Get keys excluding @class for efficient iteration
+    const keys = Object.keys(mapData).filter(key => key !== "@class");
+    
+    keys.forEach((key, index) => {
+        const value = mapData[key];
         // For the first entry, use existing row
         const $rows = $container.find("[class*='-map-row']");
         let $row;
@@ -3353,10 +3363,10 @@ function populateMapContainer(containerBaseName, mapData) {
         if (index === 0 && $rows.length > 0) {
             $row = $rows.first();
         } else {
-            // Clone the first row for additional entries
+            // Add a new row for additional entries
             const $addButton = $container.find("button[id*='AddButton']");
             if ($addButton.length > 0) {
-                $addButton.click();
+                $addButton.trigger("click");
             }
             $row = $container.find("[class*='-map-row']").last();
         }
@@ -3373,9 +3383,8 @@ function populateMapContainer(containerBaseName, mapData) {
                 // Handle array values
                 let displayValue = value;
                 if (Array.isArray(value)) {
-                    displayValue = value.length === 2 && typeof value[0] === "string" && Array.isArray(value[1])
-                        ? value[1].join(",")
-                        : value.join(",");
+                    const unwrapped = unwrapCasCollection(value);
+                    displayValue = Array.isArray(unwrapped) ? unwrapped.join(",") : unwrapped;
                 } else if (typeof value === "object" && value.values) {
                     // Handle {values: [...]} format
                     displayValue = Array.isArray(value.values) ? value.values.join(",") : value.values;
@@ -3389,12 +3398,7 @@ function populateMapContainer(containerBaseName, mapData) {
 function populateMultiselectFieldsFromDefinition(serviceDefinition) {
     // Handle OIDC scopes
     if (serviceDefinition.scopes) {
-        const scopes = Array.isArray(serviceDefinition.scopes) && 
-            serviceDefinition.scopes.length === 2 && 
-            typeof serviceDefinition.scopes[0] === "string" && 
-            Array.isArray(serviceDefinition.scopes[1])
-            ? serviceDefinition.scopes[1]
-            : serviceDefinition.scopes;
+        const scopes = unwrapCasCollection(serviceDefinition.scopes);
         
         const $select = $("select#scopes");
         if ($select.length > 0 && $select[0].tomselect) {
@@ -3404,12 +3408,7 @@ function populateMultiselectFieldsFromDefinition(serviceDefinition) {
     
     // Handle supported grant types
     if (serviceDefinition.supportedGrantTypes) {
-        const grantTypes = Array.isArray(serviceDefinition.supportedGrantTypes) &&
-            serviceDefinition.supportedGrantTypes.length === 2 &&
-            typeof serviceDefinition.supportedGrantTypes[0] === "string" &&
-            Array.isArray(serviceDefinition.supportedGrantTypes[1])
-            ? serviceDefinition.supportedGrantTypes[1]
-            : serviceDefinition.supportedGrantTypes;
+        const grantTypes = unwrapCasCollection(serviceDefinition.supportedGrantTypes);
         
         const $select = $("select#supportedGrantTypes");
         if ($select.length > 0 && $select[0].tomselect) {
@@ -3419,12 +3418,7 @@ function populateMultiselectFieldsFromDefinition(serviceDefinition) {
     
     // Handle supported response types
     if (serviceDefinition.supportedResponseTypes) {
-        const responseTypes = Array.isArray(serviceDefinition.supportedResponseTypes) &&
-            serviceDefinition.supportedResponseTypes.length === 2 &&
-            typeof serviceDefinition.supportedResponseTypes[0] === "string" &&
-            Array.isArray(serviceDefinition.supportedResponseTypes[1])
-            ? serviceDefinition.supportedResponseTypes[1]
-            : serviceDefinition.supportedResponseTypes;
+        const responseTypes = unwrapCasCollection(serviceDefinition.supportedResponseTypes);
         
         const $select = $("select#supportedResponseTypes");
         if ($select.length > 0 && $select[0].tomselect) {
@@ -3435,12 +3429,7 @@ function populateMultiselectFieldsFromDefinition(serviceDefinition) {
     // Handle MFA providers
     if (serviceDefinition.multifactorPolicy && serviceDefinition.multifactorPolicy.multifactorAuthenticationProviders) {
         const providers = serviceDefinition.multifactorPolicy.multifactorAuthenticationProviders;
-        const providerList = Array.isArray(providers) &&
-            providers.length === 2 &&
-            typeof providers[0] === "string" &&
-            Array.isArray(providers[1])
-            ? providers[1]
-            : providers;
+        const providerList = unwrapCasCollection(providers);
         
         const $select = $("select#multifactorAuthenticationProviders");
         if ($select.length > 0 && $select[0].tomselect) {
