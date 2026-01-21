@@ -3348,8 +3348,11 @@ function populateMapContainer(containerBaseName, mapData) {
     const $container = $(`#registeredService${capitalize(containerBaseName)}MapContainer, #${containerBaseName}MapContainer`).first();
     if ($container.length === 0) return;
     
+    // Selector for map row elements
+    const mapRowSelector = "[class*='-map-row']";
+    
     // Clear existing rows except template
-    $container.find("[class*='-map-row']").not(":first").remove();
+    $container.find(mapRowSelector).not(":first").remove();
     
     // Get keys excluding @class for efficient iteration
     const keys = Object.keys(mapData).filter(key => key !== "@class");
@@ -3357,7 +3360,7 @@ function populateMapContainer(containerBaseName, mapData) {
     keys.forEach((key, index) => {
         const value = mapData[key];
         // For the first entry, use existing row
-        const $rows = $container.find("[class*='-map-row']");
+        const $rows = $container.find(mapRowSelector);
         let $row;
         
         if (index === 0 && $rows.length > 0) {
@@ -3368,7 +3371,7 @@ function populateMapContainer(containerBaseName, mapData) {
             if ($addButton.length > 0) {
                 $addButton.trigger("click");
             }
-            $row = $container.find("[class*='-map-row']").last();
+            $row = $container.find(mapRowSelector).last();
         }
         
         if ($row.length > 0) {
