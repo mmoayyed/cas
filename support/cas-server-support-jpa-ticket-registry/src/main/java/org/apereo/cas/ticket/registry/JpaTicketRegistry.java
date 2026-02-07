@@ -357,11 +357,10 @@ public class JpaTicketRegistry extends AbstractTicketRegistry {
     }
 
     protected LockModeType getConfiguredLockModeType() {
+        val lockTypeName = casProperties.getTicket().getRegistry().getJpa().getTicketLockType();
         try {
-            val lockTypeName = casProperties.getTicket().getRegistry().getJpa().getTicketLockType();
             return LockModeType.valueOf(lockTypeName);
         } catch (final IllegalArgumentException e) {
-            val lockTypeName = casProperties.getTicket().getRegistry().getJpa().getTicketLockType();
             LOGGER.warn("Invalid lock mode type [{}] configured, defaulting to NONE", lockTypeName, e);
             return LockModeType.NONE;
         }
