@@ -308,15 +308,17 @@ public class DynamoDbTicketRegistryFacilitator {
                 val response = amazonDynamoDBClient.batchWriteItem(batchRequest);
 
                 if (response.unprocessedItems() != null && !response.unprocessedItems().isEmpty()) {
-                    LOGGER.warn("Batch write returned [{}] unprocessed items, will retry",
-                        response.unprocessedItems().size());
+                    val totalUnprocessed = response.unprocessedItems().values().stream()
+                        .mapToInt(List::size)
+                        .sum();
+                    LOGGER.warn("Batch write returned [{}] unprocessed items, will retry", totalUnprocessed);
                     unprocessedItems.clear();
                     response.unprocessedItems().forEach((tableName, writeRequests) ->
                         unprocessedItems.put(tableName, new ArrayList<>(writeRequests)));
                     retryCount++;
 
                     if (retryCount < MAX_RETRY_ATTEMPTS) {
-                        val backoffMillis = (long) Math.pow(2, retryCount - 1) * BASE_BACKOFF_MILLIS;
+                        val backoffMillis = (long) Math.pow(2, retryCount) * BASE_BACKOFF_MILLIS;
                         try {
                             Thread.sleep(backoffMillis);
                         } catch (final InterruptedException e) {
