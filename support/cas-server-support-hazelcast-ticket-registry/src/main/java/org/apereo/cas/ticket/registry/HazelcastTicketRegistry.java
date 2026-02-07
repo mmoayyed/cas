@@ -275,10 +275,9 @@ public class HazelcastTicketRegistry extends AbstractTicketRegistry implements A
             .findAll()
             .stream()
             .map(metadata -> getTicketMapInstanceByMetadata(metadata).values())
-            .flatMap(Collection::stream)
+            .flatMap(tickets -> tickets.stream().map(HazelcastTicketDocument::getTicket))
             .skip(criteria.getFrom())
             .limit(criteria.getCount())
-            .map(HazelcastTicketDocument::getTicket)
             .map(this::decodeTicket);
     }
 
