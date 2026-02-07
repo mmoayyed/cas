@@ -72,9 +72,31 @@ public class DuoSecurityDetermineUserAccountAction extends AbstractMultifactorAu
         return success();
     }
 
+    /**
+     * Get Duo Security user account.
+     * @param principal the principal
+     * @return the duo security user account
+     * @deprecated Use {@link #getDuoSecurityUserAccount(Principal, RequestContext)} instead for thread safety
+     */
+    @SuppressWarnings("NullAway")
+    @Deprecated(since = "7.2.0", forRemoval = true)
+    protected DuoSecurityUserAccount getDuoSecurityUserAccount(final Principal principal) {
+        LOGGER.warn("Deprecated method getDuoSecurityUserAccount(Principal) called. Use getDuoSecurityUserAccount(Principal, RequestContext) instead.");
+        return getDuoSecurityUserAccount(principal, null);
+    }
+
     protected DuoSecurityUserAccount getDuoSecurityUserAccount(final Principal principal, 
-                                                                final RequestContext requestContext) {
-        val mfaProvider = getProvider(requestContext);
+                                                                @Nullable final RequestContext requestContext) {
+        DuoSecurityMultifactorAuthenticationProvider mfaProvider = null;
+        if (requestContext != null) {
+            mfaProvider = getProvider(requestContext);
+        } else {
+            // Fallback to deprecated provider field for backward compatibility
+            mfaProvider = this.provider;
+        }
+        if (mfaProvider == null) {
+            throw new IllegalStateException("Unable to determine MFA provider");
+        }
         val duoAuthenticationService = mfaProvider.getDuoAuthenticationService();
         if (!duoAuthenticationService.getProperties().isAccountStatusEnabled()) {
             LOGGER.debug("Checking Duo Security for user's [{}] account status is disabled", principal.getId());

@@ -79,8 +79,8 @@ public abstract class BaseCasWebflowAction extends AbstractAction {
             return result;
         } catch (final Throwable e) {
             transactionManager.ifPresent(mgr -> transactionStatus.ifPresent(mgr::rollback));
-            if (e instanceof Exception) {
-                throw (Exception) e;
+            if (e instanceof Exception exception) {
+                throw exception;
             }
             val currentState = Optional.ofNullable(requestContext.getCurrentState())
                 .map(StateDefinition::getId).orElse("unknown");

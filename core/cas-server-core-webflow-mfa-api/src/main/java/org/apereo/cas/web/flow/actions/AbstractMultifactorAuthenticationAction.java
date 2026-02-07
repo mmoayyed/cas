@@ -31,6 +31,7 @@ public abstract class AbstractMultifactorAuthenticationAction<T extends Multifac
      * The resolved provider for this flow.
      * @deprecated Use {@link #getProvider(RequestContext)} instead to avoid thread-safety issues.
      */
+    @SuppressWarnings("NullAway.Init")
     @Deprecated(since = "7.2.0", forRemoval = true)
     protected T provider;
 
