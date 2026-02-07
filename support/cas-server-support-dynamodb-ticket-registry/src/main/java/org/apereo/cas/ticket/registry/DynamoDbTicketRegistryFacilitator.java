@@ -50,6 +50,10 @@ import software.amazon.awssdk.services.dynamodb.model.WriteRequest;
 public class DynamoDbTicketRegistryFacilitator {
     private static final int BATCH_PUT_REQUEST_LIMIT = 25;
 
+    private static final int MAX_RETRY_ATTEMPTS = 3;
+
+    private static final long BASE_BACKOFF_MILLIS = 100;
+
     private final TicketCatalog ticketCatalog;
 
     private final DynamoDbTicketRegistryProperties dynamoDbProperties;
@@ -293,11 +297,10 @@ public class DynamoDbTicketRegistryFacilitator {
     }
 
     private void executeBatchWriteWithRetry(final Map<String, Collection<WriteRequest>> requestItems) {
-        Map<String, Collection<WriteRequest>> unprocessedItems = requestItems;
+        Map<String, Collection<WriteRequest>> unprocessedItems = new HashMap<>(requestItems);
         var retryCount = 0;
-        val maxRetries = 3;
         
-        while (!unprocessedItems.isEmpty() && retryCount < maxRetries) {
+        while (!unprocessedItems.isEmpty() && retryCount < MAX_RETRY_ATTEMPTS) {
             try {
                 val batchRequest = BatchWriteItemRequest.builder().requestItems(unprocessedItems).build();
                 LOGGER.debug("Submitting batch write request with [{}] items", unprocessedItems.size());
@@ -312,8 +315,8 @@ public class DynamoDbTicketRegistryFacilitator {
                     unprocessedItems = newUnprocessedItems;
                     retryCount++;
                     
-                    if (retryCount < maxRetries) {
-                        val backoffMillis = (long) Math.pow(2, retryCount) * 100;
+                    if (retryCount < MAX_RETRY_ATTEMPTS) {
+                        val backoffMillis = (long) Math.pow(2, retryCount) * BASE_BACKOFF_MILLIS;
                         FunctionUtils.doUnchecked(_ -> Thread.sleep(backoffMillis));
                     }
                 } else {
@@ -322,14 +325,19 @@ public class DynamoDbTicketRegistryFacilitator {
             } catch (final Exception e) {
                 LOGGER.error("Error executing batch write request", e);
                 retryCount++;
-                if (retryCount >= maxRetries) {
-                    throw new RuntimeException("Failed to complete batch write after " + maxRetries + " retries", e);
+                if (retryCount >= MAX_RETRY_ATTEMPTS) {
+                    throw new RuntimeException("Failed to complete batch write after " + MAX_RETRY_ATTEMPTS + " retries", e);
                 }
             }
         }
         
         if (!unprocessedItems.isEmpty()) {
-            LOGGER.error("Failed to process [{}] items after [{}] retries", unprocessedItems.size(), maxRetries);
+            val totalUnprocessed = unprocessedItems.values().stream()
+                .mapToInt(Collection::size)
+                .sum();
+            LOGGER.error("Failed to process [{}] items after [{}] retries", totalUnprocessed, MAX_RETRY_ATTEMPTS);
+            throw new RuntimeException("Failed to process " + totalUnprocessed
+                + " items after " + MAX_RETRY_ATTEMPTS + " retries");
         }
     }
 
