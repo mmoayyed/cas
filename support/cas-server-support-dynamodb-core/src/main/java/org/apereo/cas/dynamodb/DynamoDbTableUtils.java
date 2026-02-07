@@ -364,11 +364,13 @@ public class DynamoDbTableUtils {
                                               final Long limit,
                                               final List<DynamoDbQueryBuilder> keys,
                                               final Function<Map<String, AttributeValue>, T> itemMapper) {
-        val scanRequest = ScanRequest.builder()
+        val scanRequestBuilder = ScanRequest.builder()
             .tableName(tableName)
-            .limit(limit > 0 ? limit.intValue() : Integer.MAX_VALUE)
-            .scanFilter(DynamoDbTableUtils.buildRequestQueryFilter(keys))
-            .build();
+            .scanFilter(DynamoDbTableUtils.buildRequestQueryFilter(keys));
+        if (limit > 0) {
+            scanRequestBuilder.limit(limit.intValue());
+        }
+        val scanRequest = scanRequestBuilder.build();
         LOGGER.debug("Scanning table with scan request [{}]", scanRequest);
         return amazonDynamoDBClient.scanPaginator(scanRequest)
             .stream()

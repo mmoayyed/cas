@@ -11,6 +11,7 @@ import org.apereo.cas.ticket.TicketCatalog;
 import org.apereo.cas.ticket.expiration.NeverExpiresExpirationPolicy;
 import org.apereo.cas.util.CollectionUtils;
 import org.apereo.cas.util.LoggingUtils;
+import org.apereo.cas.util.function.FunctionUtils;
 import com.google.common.collect.Streams;
 import lombok.Builder;
 import lombok.Getter;
@@ -93,7 +94,12 @@ public class DynamoDbTicketRegistryFacilitator {
     }
 
     private static Ticket deserializeTicket(final Map<String, AttributeValue> returnItem) {
-        val encoded = returnItem.get(ColumnNames.ENCODED.getColumnName()).b();
+        val encodedValue = returnItem.get(ColumnNames.ENCODED.getColumnName());
+        if (encodedValue == null || encodedValue.b() == null) {
+            LOGGER.warn("Ticket item [{}] does not contain encoded data", returnItem);
+            return null;
+        }
+        val encoded = encodedValue.b();
         LOGGER.debug("Located binary encoding of ticket item [{}]. Transforming item into ticket object", returnItem);
         try (val is = encoded.asInputStream()) {
             return SerializationUtils.deserialize(is);
@@ -253,21 +259,62 @@ public class DynamoDbTicketRegistryFacilitator {
         val count = new AtomicLong(0);
         toSave.forEach(entry -> {
             val metadata = ticketCatalog.find(entry.getOriginalTicket());
+            if (metadata == null) {
+                LOGGER.warn("No ticket definition could be found in the catalog for ticket [{}]", 
+                    entry.getOriginalTicket().getId());
+                return;
+            }
             val entries = queue.getOrDefault(metadata.getProperties().getStorageName(), new ArrayList<>());
             entries.add(WriteRequest.builder().putRequest(buildPutRequest(entry)).build());
             count.getAndIncrement();
 
             queue.put(metadata.getProperties().getStorageName(), entries);
             if (count.get() >= BATCH_PUT_REQUEST_LIMIT) {
-                val batchRequest = BatchWriteItemRequest.builder().requestItems(queue).build();
-                amazonDynamoDBClient.batchWriteItem(batchRequest);
+                executeBatchWriteWithRetry(queue);
                 queue.clear();
                 count.set(0);
             }
         });
         if (!queue.isEmpty()) {
-            val batchRequest = BatchWriteItemRequest.builder().requestItems(queue).build();
-            amazonDynamoDBClient.batchWriteItem(batchRequest);
+            executeBatchWriteWithRetry(queue);
+        }
+    }
+
+    private void executeBatchWriteWithRetry(final Map<String, Collection<WriteRequest>> requestItems) {
+        var unprocessedItems = requestItems;
+        var retryCount = 0;
+        val maxRetries = 3;
+        
+        while (!unprocessedItems.isEmpty() && retryCount < maxRetries) {
+            try {
+                val batchRequest = BatchWriteItemRequest.builder().requestItems(unprocessedItems).build();
+                LOGGER.debug("Submitting batch write request with [{}] items", unprocessedItems.size());
+                val response = amazonDynamoDBClient.batchWriteItem(batchRequest);
+                
+                if (response.unprocessedItems() != null && !response.unprocessedItems().isEmpty()) {
+                    LOGGER.warn("Batch write returned [{}] unprocessed items, will retry", 
+                        response.unprocessedItems().size());
+                    unprocessedItems = response.unprocessedItems();
+                    retryCount++;
+                    
+                    if (retryCount < maxRetries) {
+                        val backoffMillis = (long) Math.pow(2, retryCount) * 100;
+                        FunctionUtils.doUnchecked(_ -> Thread.sleep(backoffMillis));
+                    }
+                } else {
+                    break;
+                }
+            } catch (final Exception e) {
+                LOGGER.error("Error executing batch write request", e);
+                retryCount++;
+                if (retryCount >= maxRetries) {
+                    throw new RuntimeException("Failed to complete batch write after " + maxRetries + " retries", e);
+                }
+            }
+        }
+        
+        if (!unprocessedItems.isEmpty()) {
+            LOGGER.error("Failed to process [{}] items after [{}] retries", unprocessedItems.size(), maxRetries);
         }
     }
 
