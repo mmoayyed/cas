@@ -246,8 +246,16 @@ tasks.named('test') {
 tasks.withType(Test).configureEach {
     scanForTestClasses = false
     ignoreFailures = providers.systemProperty("ignoreTestFailures").present
-    forkEvery = 2000
-    maxParallelForks = 8
+    
+    // Optimize test forking - fork less frequently to reduce overhead
+    // Can be overridden with -PtestForkEvery=<value>
+    forkEvery = providers.gradleProperty("testForkEvery").map { it.toLong() }.getOrElse(100L)
+    
+    // Dynamic parallel test execution based on available processors
+    // Use half of available processors to avoid resource contention
+    // Can be overridden with -PmaxTestForks=<value>
+    def defaultForks = Math.max(1, (Runtime.runtime.availableProcessors() / 2).intValue())
+    maxParallelForks = providers.gradleProperty("maxTestForks").map { it.toInteger() }.getOrElse(defaultForks)
     
     failFast = true
 
@@ -308,8 +316,13 @@ tasks.withType(Test).configureEach {
 
     list.add("-Dio.netty.tryReflectionSetAccessible=true")
     
-    list.add("-Xms512m")
-    list.add("-Xmx6g")
+    // Optimize test JVM memory settings
+    // Reduced from 6GB to 3GB max heap to allow more parallel test workers
+    // Can be overridden with -PtestMinHeap=<value> and -PtestMaxHeap=<value>
+    def testMinHeap = providers.gradleProperty("testMinHeap").getOrElse("512m")
+    def testMaxHeap = providers.gradleProperty("testMaxHeap").getOrElse("3g")
+    list.add("-Xms${testMinHeap}")
+    list.add("-Xmx${testMaxHeap}")
     
     list.add("-Dspring.jmx.enabled=false")
 
