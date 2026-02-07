@@ -109,7 +109,7 @@ public class HazelcastTicketRegistry extends AbstractTicketRegistry implements A
                 val document = map.get(encTicketId);
                 if (document != null && document.getTicket() != null) {
                     val result = decodeTicket(document.getTicket());
-                    if (predicate == null || predicate.test(result)) {
+                    if (predicate != null && predicate.test(result)) {
                         return result;
                     }
                 }
