@@ -280,8 +280,20 @@ public class DynamoDbTicketRegistryFacilitator {
         }
     }
 
+    /**
+     * Put ticket.
+     *
+     * @param payload the payload
+     */
+    public void put(final TicketPayload payload) {
+        val putItemRequest = buildPutItemRequest(payload);
+        LOGGER.debug("Submitting put request [{}] for ticket id [{}]", putItemRequest, payload.getEncodedTicket().getId());
+        val putItemResult = amazonDynamoDBClient.putItem(putItemRequest);
+        LOGGER.debug("Ticket added with result [{}]", putItemResult);
+    }
+
     private void executeBatchWriteWithRetry(final Map<String, Collection<WriteRequest>> requestItems) {
-        var unprocessedItems = requestItems;
+        Map<String, Collection<WriteRequest>> unprocessedItems = requestItems;
         var retryCount = 0;
         val maxRetries = 3;
         
@@ -294,7 +306,10 @@ public class DynamoDbTicketRegistryFacilitator {
                 if (response.unprocessedItems() != null && !response.unprocessedItems().isEmpty()) {
                     LOGGER.warn("Batch write returned [{}] unprocessed items, will retry", 
                         response.unprocessedItems().size());
-                    unprocessedItems = response.unprocessedItems();
+                    val newUnprocessedItems = new HashMap<String, Collection<WriteRequest>>();
+                    response.unprocessedItems().forEach((tableName, writeRequests) -> 
+                        newUnprocessedItems.put(tableName, new ArrayList<>(writeRequests)));
+                    unprocessedItems = newUnprocessedItems;
                     retryCount++;
                     
                     if (retryCount < maxRetries) {
@@ -316,18 +331,6 @@ public class DynamoDbTicketRegistryFacilitator {
         if (!unprocessedItems.isEmpty()) {
             LOGGER.error("Failed to process [{}] items after [{}] retries", unprocessedItems.size(), maxRetries);
         }
-    }
-
-    /**
-     * Put ticket.
-     *
-     * @param payload the payload
-     */
-    public void put(final TicketPayload payload) {
-        val putItemRequest = buildPutItemRequest(payload);
-        LOGGER.debug("Submitting put request [{}] for ticket id [{}]", putItemRequest, payload.getEncodedTicket().getId());
-        val putItemResult = amazonDynamoDBClient.putItem(putItemRequest);
-        LOGGER.debug("Ticket added with result [{}]", putItemResult);
     }
 
     /**
