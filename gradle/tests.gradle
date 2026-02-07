@@ -247,7 +247,7 @@ tasks.withType(Test).configureEach {
     scanForTestClasses = false
     ignoreFailures = providers.systemProperty("ignoreTestFailures").present
     
-    // Optimize test forking - fork less frequently to reduce overhead
+    // Optimize test forking - fork more frequently to prevent memory leaks
     // Can be overridden with -PtestForkEvery=<value>
     forkEvery = providers.gradleProperty("testForkEvery").map { it.toLong() }.getOrElse(100L)
     
