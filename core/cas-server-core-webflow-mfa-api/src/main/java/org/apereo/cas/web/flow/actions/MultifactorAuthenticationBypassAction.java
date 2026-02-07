@@ -32,31 +32,32 @@ public class MultifactorAuthenticationBypassAction extends AbstractMultifactorAu
         val service = WebUtils.getService(requestContext);
         val request = WebUtils.getHttpServletRequestFromExternalWebflowContext();
 
-        val bypass = provider.getBypassEvaluator();
+        val mfaProvider = getProvider(requestContext);
+        val bypass = mfaProvider.getBypassEvaluator();
         val principal = resolvePrincipal(authentication.getPrincipal(), requestContext);
-        val bypassAllowed = isMultifactorAuthenticationBypass(requestContext, registeredService, provider);
+        val bypassAllowed = isMultifactorAuthenticationBypass(requestContext, registeredService, mfaProvider);
         if (bypassAllowed) {
             LOGGER.debug("Bypass triggered by MFA webflow for MFA for user [{}] for provider [{}]",
-                principal.getId(), provider.getId());
-            bypass.rememberBypass(authentication, provider);
+                principal.getId(), mfaProvider.getId());
+            bypass.rememberBypass(authentication, mfaProvider);
             LOGGER.debug("Authentication updated to remember bypass for user [{}] for provider [{}]",
-                principal.getId(), provider.getId());
+                principal.getId(), mfaProvider.getId());
             return yes();
         }
 
-        if (bypass.shouldMultifactorAuthenticationProviderExecute(authentication, registeredService, provider, request, service)) {
+        if (bypass.shouldMultifactorAuthenticationProviderExecute(authentication, registeredService, mfaProvider, request, service)) {
             LOGGER.debug("Bypass rules determined MFA should execute for user [{}] and provider [{}]",
-                principal.getId(), provider.getId());
+                principal.getId(), mfaProvider.getId());
             bypass.forgetBypass(authentication);
             LOGGER.debug("Authentication updated to forget any existing bypass for user [{}] for provider [{}]",
-                principal.getId(), provider.getId());
+                principal.getId(), mfaProvider.getId());
             return no();
         }
         LOGGER.debug("Bypass rules determined MFA should NOT execute for user [{}] for provider [{}]",
-            principal.getId(), provider.getId());
-        bypass.rememberBypass(authentication, provider);
+            principal.getId(), mfaProvider.getId());
+        bypass.rememberBypass(authentication, mfaProvider);
         LOGGER.debug("Authentication updated to remember bypass for user [{}] for provider [{}]",
-            principal.getId(), provider.getId());
+            principal.getId(), mfaProvider.getId());
         return yes();
     }
 

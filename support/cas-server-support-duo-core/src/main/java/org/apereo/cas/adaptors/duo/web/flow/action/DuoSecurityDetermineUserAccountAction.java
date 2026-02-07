@@ -49,11 +49,12 @@ public class DuoSecurityDetermineUserAccountAction extends AbstractMultifactorAu
     protected @Nullable Event doExecuteInternal(final RequestContext requestContext) throws Throwable {
         val authentication = WebUtils.getAuthentication(requestContext);
         val principal = resolvePrincipal(authentication.getPrincipal(), requestContext);
-        val account = getDuoSecurityUserAccount(principal);
+        val account = getDuoSecurityUserAccount(principal, requestContext);
         val eventFactorySupport = eventFactory;
+        val mfaProvider = getProvider(requestContext);
         if (account.getStatus() == DuoSecurityUserAccountStatus.ENROLL
-            && StringUtils.isNotBlank(provider.getRegistration().getRegistrationUrl())) {
-            val url = buildDuoRegistrationUrlFor(requestContext, provider, principal);
+            && StringUtils.isNotBlank(mfaProvider.getRegistration().getRegistrationUrl())) {
+            val url = buildDuoRegistrationUrlFor(requestContext, mfaProvider, principal);
             LOGGER.info("Duo Security registration url for enrollment is [{}]", url);
             requestContext.getFlowScope().put("duoRegistrationUrl", url);
             return eventFactorySupport.event(this, CasWebflowConstants.TRANSITION_ID_ENROLL);
@@ -71,8 +72,10 @@ public class DuoSecurityDetermineUserAccountAction extends AbstractMultifactorAu
         return success();
     }
 
-    protected DuoSecurityUserAccount getDuoSecurityUserAccount(final Principal principal) {
-        val duoAuthenticationService = provider.getDuoAuthenticationService();
+    protected DuoSecurityUserAccount getDuoSecurityUserAccount(final Principal principal, 
+                                                                final RequestContext requestContext) {
+        val mfaProvider = getProvider(requestContext);
+        val duoAuthenticationService = mfaProvider.getDuoAuthenticationService();
         if (!duoAuthenticationService.getProperties().isAccountStatusEnabled()) {
             LOGGER.debug("Checking Duo Security for user's [{}] account status is disabled", principal.getId());
             val account = new DuoSecurityUserAccount(principal.getId());

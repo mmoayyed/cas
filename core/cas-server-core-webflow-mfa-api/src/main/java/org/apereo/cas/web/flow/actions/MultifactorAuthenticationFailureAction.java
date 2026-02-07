@@ -25,7 +25,8 @@ public class MultifactorAuthenticationFailureAction extends AbstractMultifactorA
     @Override
     protected @Nullable Event doExecuteInternal(final RequestContext requestContext) {
         val service = WebUtils.getRegisteredService(requestContext);
-        val failureMode = provider.getFailureModeEvaluator().evaluate(service, provider);
+        val mfaProvider = getProvider(requestContext);
+        val failureMode = mfaProvider.getFailureModeEvaluator().evaluate(service, mfaProvider);
         LOGGER.debug("Final failure mode has been determined to be [{}]", failureMode);
         if (failureMode.isAllowedToBypass()) {
             LOGGER.debug("Failure mode [{}] is allowed to bypass multifactor authentication", failureMode);
