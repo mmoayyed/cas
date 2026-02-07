@@ -282,10 +282,11 @@ public class JpaTicketRegistry extends AbstractTicketRegistry {
         }
 
         val now = ZonedDateTime.now(Clock.systemUTC());
-        val sql = String.format("%s WHERE t.type='%s' AND t.expirationTime > '%s' AND %s", selectClause,
-            getTicketTypeName(TicketGrantingTicket.class), now, criteria);
+        val sql = String.format("%s WHERE t.type='%s' AND t.expirationTime > ?1 AND %s", selectClause,
+            getTicketTypeName(TicketGrantingTicket.class), criteria);
         LOGGER.debug("Executing SQL query [{}]", sql);
         val query = entityManager.createNativeQuery(sql, factory.getType());
+        query.setParameter(1, now);
         return jpaBeanFactory.streamQuery(query)
             .map(BaseTicketEntity.class::cast)
             .map(factory::toTicket)
@@ -360,7 +361,8 @@ public class JpaTicketRegistry extends AbstractTicketRegistry {
             val lockTypeName = casProperties.getTicket().getRegistry().getJpa().getTicketLockType();
             return LockModeType.valueOf(lockTypeName);
         } catch (final IllegalArgumentException e) {
-            LOGGER.warn("Invalid lock mode type configured, defaulting to NONE", e);
+            val lockTypeName = casProperties.getTicket().getRegistry().getJpa().getTicketLockType();
+            LOGGER.warn("Invalid lock mode type [{}] configured, defaulting to NONE", lockTypeName, e);
             return LockModeType.NONE;
         }
     }
