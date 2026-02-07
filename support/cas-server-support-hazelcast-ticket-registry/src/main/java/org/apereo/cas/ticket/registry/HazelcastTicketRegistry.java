@@ -109,7 +109,7 @@ public class HazelcastTicketRegistry extends AbstractTicketRegistry implements A
                 val document = map.get(encTicketId);
                 if (document != null && document.getTicket() != null) {
                     val result = decodeTicket(document.getTicket());
-                    if (predicate != null && predicate.test(result)) {
+                    if (predicate == null || predicate.test(result)) {
                         return result;
                     }
                 }
@@ -138,7 +138,6 @@ public class HazelcastTicketRegistry extends AbstractTicketRegistry implements A
             .filter(Objects::nonNull)
             .mapToInt(instance -> {
                 val size = instance.size();
-                instance.evictAll();
                 instance.clear();
                 return size;
             })
@@ -276,9 +275,10 @@ public class HazelcastTicketRegistry extends AbstractTicketRegistry implements A
             .findAll()
             .stream()
             .map(metadata -> getTicketMapInstanceByMetadata(metadata).values())
-            .flatMap(tickets -> tickets.stream().map(HazelcastTicketDocument::getTicket))
+            .flatMap(Collection::stream)
             .skip(criteria.getFrom())
             .limit(criteria.getCount())
+            .map(HazelcastTicketDocument::getTicket)
             .map(this::decodeTicket);
     }
 
