@@ -11,7 +11,6 @@ import org.apereo.cas.ticket.TicketCatalog;
 import org.apereo.cas.ticket.expiration.NeverExpiresExpirationPolicy;
 import org.apereo.cas.util.CollectionUtils;
 import org.apereo.cas.util.LoggingUtils;
-import org.apereo.cas.util.function.FunctionUtils;
 import com.google.common.collect.Streams;
 import lombok.Builder;
 import lombok.Getter;
@@ -297,27 +296,34 @@ public class DynamoDbTicketRegistryFacilitator {
     }
 
     private void executeBatchWriteWithRetry(final Map<String, Collection<WriteRequest>> requestItems) {
-        Map<String, Collection<WriteRequest>> unprocessedItems = new HashMap<>(requestItems);
+        val unprocessedItems = new HashMap<String, Collection<WriteRequest>>();
+        requestItems.forEach((tableName, requests) ->
+            unprocessedItems.put(tableName, new ArrayList<>(requests)));
         var retryCount = 0;
-        
+
         while (!unprocessedItems.isEmpty() && retryCount < MAX_RETRY_ATTEMPTS) {
             try {
                 val batchRequest = BatchWriteItemRequest.builder().requestItems(unprocessedItems).build();
                 LOGGER.debug("Submitting batch write request with [{}] items", unprocessedItems.size());
                 val response = amazonDynamoDBClient.batchWriteItem(batchRequest);
-                
+
                 if (response.unprocessedItems() != null && !response.unprocessedItems().isEmpty()) {
-                    LOGGER.warn("Batch write returned [{}] unprocessed items, will retry", 
+                    LOGGER.warn("Batch write returned [{}] unprocessed items, will retry",
                         response.unprocessedItems().size());
-                    val newUnprocessedItems = new HashMap<String, Collection<WriteRequest>>();
-                    response.unprocessedItems().forEach((tableName, writeRequests) -> 
-                        newUnprocessedItems.put(tableName, new ArrayList<>(writeRequests)));
-                    unprocessedItems = newUnprocessedItems;
+                    unprocessedItems.clear();
+                    response.unprocessedItems().forEach((tableName, writeRequests) ->
+                        unprocessedItems.put(tableName, new ArrayList<>(writeRequests)));
                     retryCount++;
-                    
+
                     if (retryCount < MAX_RETRY_ATTEMPTS) {
-                        val backoffMillis = (long) Math.pow(2, retryCount) * BASE_BACKOFF_MILLIS;
-                        FunctionUtils.doUnchecked(_ -> Thread.sleep(backoffMillis));
+                        val backoffMillis = (long) Math.pow(2, retryCount - 1) * BASE_BACKOFF_MILLIS;
+                        try {
+                            Thread.sleep(backoffMillis);
+                        } catch (final InterruptedException e) {
+                            Thread.currentThread().interrupt();
+                            LOGGER.warn("Batch write retry interrupted during backoff", e);
+                            throw new RuntimeException("Batch write retry interrupted", e);
+                        }
                     }
                 } else {
                     break;
@@ -330,7 +336,7 @@ public class DynamoDbTicketRegistryFacilitator {
                 }
             }
         }
-        
+
         if (!unprocessedItems.isEmpty()) {
             val totalUnprocessed = unprocessedItems.values().stream()
                 .mapToInt(Collection::size)
