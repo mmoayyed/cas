@@ -65,7 +65,7 @@ public class JpaTicketRegistry extends AbstractTicketRegistry {
     }
 
     private static long countToLong(final Object result) {
-        return ((Number) result).longValue();
+        return result == null ? 0L : ((Number) result).longValue();
     }
 
     @Override
@@ -92,7 +92,7 @@ public class JpaTicketRegistry extends AbstractTicketRegistry {
                     val sql = String.format("SELECT t FROM %s t WHERE t.id = :id", factory.getEntityName());
                     val query = entityManager.createQuery(sql, factory.getType());
                     query.setParameter("id", encTicketId);
-                    query.setLockMode(LockModeType.valueOf(casProperties.getTicket().getRegistry().getJpa().getTicketLockType()));
+                    query.setLockMode(getConfiguredLockModeType());
                     val ticket = query.getSingleResult();
                     val entity = getJpaTicketEntityFactory().toTicket(ticket);
                     val result = decodeTicket(entity);
@@ -137,7 +137,7 @@ public class JpaTicketRegistry extends AbstractTicketRegistry {
             val factory = getJpaTicketEntityFactory();
             val sql = String.format("SELECT t FROM %s t", factory.getEntityName());
             val query = entityManager.createQuery(sql, factory.getType());
-            query.setLockMode(LockModeType.valueOf(casProperties.getTicket().getRegistry().getJpa().getTicketLockType()));
+            query.setLockMode(getConfiguredLockModeType());
 
             return query
                 .getResultStream()
@@ -192,17 +192,18 @@ public class JpaTicketRegistry extends AbstractTicketRegistry {
     @Override
     public Stream<? extends Ticket> getSessionsFor(final String principalId) {
         val factory = getJpaTicketEntityFactory();
-        val sql = String.format("SELECT t FROM %s t WHERE t.type=:type AND t.principalId=:principalId", factory.getEntityName());
+        val now = ZonedDateTime.now(Clock.systemUTC());
+        val sql = String.format("SELECT t FROM %s t WHERE t.type=:type AND t.principalId=:principalId AND t.expirationTime > :now", factory.getEntityName());
         val query = entityManager.createQuery(sql, factory.getType())
             .setParameter("principalId", digestIdentifier(principalId))
-            .setParameter("type", getTicketTypeName(TicketGrantingTicket.class));
+            .setParameter("type", getTicketTypeName(TicketGrantingTicket.class))
+            .setParameter("now", now);
         query.setLockMode(LockModeType.NONE);
         return jpaBeanFactory
             .streamQuery(query)
             .map(BaseTicketEntity.class::cast)
             .map(factory::toTicket)
-            .map(this::decodeTicket)
-            .filter(ticket -> !ticket.isExpired());
+            .map(this::decodeTicket);
     }
 
     @Override
@@ -280,16 +281,15 @@ public class JpaTicketRegistry extends AbstractTicketRegistry {
             }
         }
 
-        val sql = String.format("%s WHERE t.type='%s' AND %s", selectClause,
-            getTicketTypeName(TicketGrantingTicket.class), criteria);
+        val now = ZonedDateTime.now(Clock.systemUTC());
+        val sql = String.format("%s WHERE t.type='%s' AND t.expirationTime > '%s' AND %s", selectClause,
+            getTicketTypeName(TicketGrantingTicket.class), now, criteria);
         LOGGER.debug("Executing SQL query [{}]", sql);
-        entityManager.flush();
         val query = entityManager.createNativeQuery(sql, factory.getType());
         return jpaBeanFactory.streamQuery(query)
             .map(BaseTicketEntity.class::cast)
             .map(factory::toTicket)
-            .map(this::decodeTicket)
-            .filter(ticket -> !ticket.isExpired());
+            .map(this::decodeTicket);
     }
 
     @Override
@@ -337,7 +337,7 @@ public class JpaTicketRegistry extends AbstractTicketRegistry {
             }
             return totalCount;
         });
-        return Objects.requireNonNull(result);
+        return result != null ? result : 0L;
     }
 
     protected BaseTicketEntity getTicketEntityFrom(final Ticket ticket) {
@@ -353,6 +353,16 @@ public class JpaTicketRegistry extends AbstractTicketRegistry {
     protected JpaTicketEntityFactory getJpaTicketEntityFactory() {
         val jpa = casProperties.getTicket().getRegistry().getJpa();
         return new JpaTicketEntityFactory(jpa.getDialect());
+    }
+
+    protected LockModeType getConfiguredLockModeType() {
+        try {
+            val lockTypeName = casProperties.getTicket().getRegistry().getJpa().getTicketLockType();
+            return LockModeType.valueOf(lockTypeName);
+        } catch (final IllegalArgumentException e) {
+            LOGGER.warn("Invalid lock mode type configured, defaulting to NONE", e);
+            return LockModeType.NONE;
+        }
     }
 
     protected int deleteTicketGrantingTickets(final String ticketId) {
