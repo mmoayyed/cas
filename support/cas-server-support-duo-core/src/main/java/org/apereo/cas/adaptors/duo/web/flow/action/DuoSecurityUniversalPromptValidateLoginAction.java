@@ -69,7 +69,8 @@ public class DuoSecurityUniversalPromptValidateLoginAction extends DuoSecurityAu
     }
 
     protected @Nullable Event handleDuoSecurityUniversalPromptResponse(final RequestContext requestContext) throws Throwable {
-        val duoState = WebUtils.getRequestParameterOrAttribute(requestContext, REQUEST_PARAMETER_STATE).orElseThrow();
+        val duoState = WebUtils.getRequestParameterOrAttribute(requestContext, REQUEST_PARAMETER_STATE)
+            .orElseThrow(() -> new IllegalArgumentException("Missing required parameter: " + REQUEST_PARAMETER_STATE));
         LOGGER.trace("Received Duo Security state [{}]", duoState);
 
         val resultingEvent = processStateFromTicketRegistry(requestContext, duoState);
@@ -127,7 +128,9 @@ public class DuoSecurityUniversalPromptValidateLoginAction extends DuoSecurityAu
         } finally {
             if (browserSessionStore != null) {
                 val credential = (Credential) browserSessionStore.getSessionAttributes(webContext).get(Credential.class.getSimpleName());
-                WebUtils.putCredential(requestContext, credential);
+                if (credential != null) {
+                    WebUtils.putCredential(requestContext, credential);
+                }
             }
         }
         return eventFactory.event(this, CasWebflowConstants.TRANSITION_ID_ERROR);
@@ -172,9 +175,16 @@ public class DuoSecurityUniversalPromptValidateLoginAction extends DuoSecurityAu
                                                  final BrowserWebStorageSessionStore sessionStorage) {
         val webContext = toWebContext(requestContext);
         val authentication = (Authentication) sessionStorage.getSessionAttributes(webContext).get(Authentication.class.getSimpleName());
-        val duoCode = WebUtils.getRequestParameterOrAttribute(requestContext, REQUEST_PARAMETER_CODE).orElseThrow();
+        if (authentication == null) {
+            throw new IllegalStateException("Authentication not found in session storage");
+        }
+        val duoCode = WebUtils.getRequestParameterOrAttribute(requestContext, REQUEST_PARAMETER_CODE)
+            .orElseThrow(() -> new IllegalArgumentException("Missing required parameter: " + REQUEST_PARAMETER_CODE));
         val duoSecurityIdentifier = (String) sessionStorage.getSessionAttributes(webContext).get("duoProviderId");
-        populateContextWithCredential(requestContext, Objects.requireNonNull(authentication), duoCode, Objects.requireNonNull(duoSecurityIdentifier));
+        if (duoSecurityIdentifier == null) {
+            throw new IllegalStateException("Duo Security provider identifier not found in session storage");
+        }
+        populateContextWithCredential(requestContext, authentication, duoCode, duoSecurityIdentifier);
     }
 
     protected void populateContextWithCredential(final RequestContext requestContext, final TransientSessionTicket ticket,
@@ -183,20 +193,29 @@ public class DuoSecurityUniversalPromptValidateLoginAction extends DuoSecurityAu
         val duoCode = requestParameters.get(REQUEST_PARAMETER_CODE, String.class);
 
         val duoSecurityIdentifier = ticket.getProperty("duoProviderId", String.class);
-        populateContextWithCredential(requestContext, authentication, duoCode, Objects.requireNonNull(duoSecurityIdentifier));
+        if (duoSecurityIdentifier == null) {
+            throw new IllegalStateException("Duo Security provider identifier not found in ticket");
+        }
+        populateContextWithCredential(requestContext, authentication, duoCode, duoSecurityIdentifier);
     }
 
     protected void populateContextWithCredential(final RequestContext requestContext,
                                                  final Authentication authentication,
                                                  final String duoCode,
                                                  final String duoSecurityIdentifier) {
+        if (authentication == null) {
+            throw new IllegalArgumentException("Authentication cannot be null");
+        }
+        if (duoSecurityIdentifier == null) {
+            throw new IllegalArgumentException("Duo Security identifier cannot be null");
+        }
         LOGGER.trace("Received Duo Security code [{}] for Duo Security identifier [{}]", duoCode, duoSecurityIdentifier);
-        val credential = new DuoSecurityUniversalPromptCredential(duoCode, Objects.requireNonNull(authentication));
+        val credential = new DuoSecurityUniversalPromptCredential(duoCode, authentication);
         val credentialMetadata = new BasicCredentialMetadata(credential);
         credentialMetadata.setTenant(tenantExtractor.extract(requestContext).map(TenantDefinition::getId).orElse(null));
         
         val applicationContext = requestContext.getActiveFlow().getApplicationContext();
-        val provider = MultifactorAuthenticationUtils.getMultifactorAuthenticationProviderById(Objects.requireNonNull(duoSecurityIdentifier), applicationContext)
+        val provider = MultifactorAuthenticationUtils.getMultifactorAuthenticationProviderById(duoSecurityIdentifier, applicationContext)
             .orElseThrow(() -> new IllegalArgumentException("Unable to locate multifactor authentication provider by id " + duoSecurityIdentifier));
         credential.setProviderId(provider.getId());
         WebUtils.putCredential(requestContext, credential);
