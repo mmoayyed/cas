@@ -108,9 +108,10 @@ public abstract class BaseCasWebflowAction extends AbstractAction {
         val conversationScope = requestContext.getConversationScope().asMap();
         val flowScope = requestContext.getFlowScope().asMap();
         val flashScope = requestContext.getFlashScope().asMap();
-        // Pre-size the map to avoid resizing
+        // Pre-size the map to avoid resizing, accounting for default load factor of 0.75
         val totalSize = conversationScope.size() + flowScope.size() + flashScope.size();
-        val scope = new HashMap<String, Object>(totalSize);
+        val initialCapacity = (int) Math.ceil(totalSize / 0.75) + 1;
+        val scope = new HashMap<String, Object>(initialCapacity);
         scope.putAll(conversationScope);
         scope.putAll(flowScope);
         scope.putAll(flashScope);

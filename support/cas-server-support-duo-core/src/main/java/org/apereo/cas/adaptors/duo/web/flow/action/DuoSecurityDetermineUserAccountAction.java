@@ -81,7 +81,6 @@ public class DuoSecurityDetermineUserAccountAction extends AbstractMultifactorAu
     @SuppressWarnings("NullAway")
     @Deprecated(since = "7.2.0", forRemoval = true)
     protected DuoSecurityUserAccount getDuoSecurityUserAccount(final Principal principal) {
-        LOGGER.warn("Deprecated method getDuoSecurityUserAccount(Principal) called. Use getDuoSecurityUserAccount(Principal, RequestContext) instead.");
         return getDuoSecurityUserAccount(principal, null);
     }
 
