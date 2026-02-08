@@ -49,6 +49,10 @@ import software.amazon.awssdk.services.dynamodb.model.WriteRequest;
 public class DynamoDbTicketRegistryFacilitator {
     private static final int BATCH_PUT_REQUEST_LIMIT = 25;
 
+    private static final int MAX_RETRY_ATTEMPTS = 3;
+
+    private static final long BASE_BACKOFF_MILLIS = 100;
+
     private final TicketCatalog ticketCatalog;
 
     private final DynamoDbTicketRegistryProperties dynamoDbProperties;
@@ -93,7 +97,12 @@ public class DynamoDbTicketRegistryFacilitator {
     }
 
     private static Ticket deserializeTicket(final Map<String, AttributeValue> returnItem) {
-        val encoded = returnItem.get(ColumnNames.ENCODED.getColumnName()).b();
+        val encodedValue = returnItem.get(ColumnNames.ENCODED.getColumnName());
+        if (encodedValue == null || encodedValue.b() == null) {
+            LOGGER.warn("Ticket item [{}] does not contain encoded data", returnItem);
+            return null;
+        }
+        val encoded = encodedValue.b();
         LOGGER.debug("Located binary encoding of ticket item [{}]. Transforming item into ticket object", returnItem);
         try (val is = encoded.asInputStream()) {
             return SerializationUtils.deserialize(is);
@@ -253,21 +262,24 @@ public class DynamoDbTicketRegistryFacilitator {
         val count = new AtomicLong(0);
         toSave.forEach(entry -> {
             val metadata = ticketCatalog.find(entry.getOriginalTicket());
+            if (metadata == null) {
+                LOGGER.warn("No ticket definition could be found in the catalog for ticket [{}]", 
+                    entry.getOriginalTicket().getId());
+                return;
+            }
             val entries = queue.getOrDefault(metadata.getProperties().getStorageName(), new ArrayList<>());
             entries.add(WriteRequest.builder().putRequest(buildPutRequest(entry)).build());
             count.getAndIncrement();
 
             queue.put(metadata.getProperties().getStorageName(), entries);
             if (count.get() >= BATCH_PUT_REQUEST_LIMIT) {
-                val batchRequest = BatchWriteItemRequest.builder().requestItems(queue).build();
-                amazonDynamoDBClient.batchWriteItem(batchRequest);
+                executeBatchWriteWithRetry(queue);
                 queue.clear();
                 count.set(0);
             }
         });
         if (!queue.isEmpty()) {
-            val batchRequest = BatchWriteItemRequest.builder().requestItems(queue).build();
-            amazonDynamoDBClient.batchWriteItem(batchRequest);
+            executeBatchWriteWithRetry(queue);
         }
     }
 
@@ -281,6 +293,60 @@ public class DynamoDbTicketRegistryFacilitator {
         LOGGER.debug("Submitting put request [{}] for ticket id [{}]", putItemRequest, payload.getEncodedTicket().getId());
         val putItemResult = amazonDynamoDBClient.putItem(putItemRequest);
         LOGGER.debug("Ticket added with result [{}]", putItemResult);
+    }
+
+    private void executeBatchWriteWithRetry(final Map<String, Collection<WriteRequest>> requestItems) {
+        val unprocessedItems = new HashMap<String, Collection<WriteRequest>>();
+        requestItems.forEach((tableName, requests) ->
+            unprocessedItems.put(tableName, new ArrayList<>(requests)));
+        var retryCount = 0;
+
+        while (!unprocessedItems.isEmpty() && retryCount < MAX_RETRY_ATTEMPTS) {
+            try {
+                val batchRequest = BatchWriteItemRequest.builder().requestItems(unprocessedItems).build();
+                LOGGER.debug("Submitting batch write request with [{}] items", unprocessedItems.size());
+                val response = amazonDynamoDBClient.batchWriteItem(batchRequest);
+
+                if (response.unprocessedItems() != null && !response.unprocessedItems().isEmpty()) {
+                    val totalUnprocessed = response.unprocessedItems().values().stream()
+                        .mapToInt(List::size)
+                        .sum();
+                    LOGGER.warn("Batch write returned [{}] unprocessed items, will retry", totalUnprocessed);
+                    unprocessedItems.clear();
+                    response.unprocessedItems().forEach((tableName, writeRequests) ->
+                        unprocessedItems.put(tableName, new ArrayList<>(writeRequests)));
+                    retryCount++;
+
+                    if (retryCount < MAX_RETRY_ATTEMPTS) {
+                        val backoffMillis = (long) Math.pow(2, retryCount) * BASE_BACKOFF_MILLIS;
+                        try {
+                            Thread.sleep(backoffMillis);
+                        } catch (final InterruptedException e) {
+                            Thread.currentThread().interrupt();
+                            LOGGER.warn("Batch write retry interrupted during backoff", e);
+                            throw new RuntimeException("Batch write retry interrupted", e);
+                        }
+                    }
+                } else {
+                    break;
+                }
+            } catch (final Exception e) {
+                LOGGER.error("Error executing batch write request", e);
+                retryCount++;
+                if (retryCount >= MAX_RETRY_ATTEMPTS) {
+                    throw new RuntimeException("Failed to complete batch write after " + MAX_RETRY_ATTEMPTS + " retries", e);
+                }
+            }
+        }
+
+        if (!unprocessedItems.isEmpty()) {
+            val totalUnprocessed = unprocessedItems.values().stream()
+                .mapToInt(Collection::size)
+                .sum();
+            LOGGER.error("Failed to process [{}] items after [{}] retries", totalUnprocessed, MAX_RETRY_ATTEMPTS);
+            throw new RuntimeException("Failed to process " + totalUnprocessed
+                + " items after " + MAX_RETRY_ATTEMPTS + " retries");
+        }
     }
 
     /**

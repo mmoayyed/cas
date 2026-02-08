@@ -11,7 +11,6 @@ import org.apereo.cas.ticket.TicketCatalog;
 import org.apereo.cas.ticket.TicketGrantingTicket;
 import org.apereo.cas.ticket.serialization.TicketSerializationManager;
 import org.apereo.cas.util.crypto.CipherExecutor;
-import org.apereo.cas.util.function.FunctionUtils;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.apache.commons.lang3.StringUtils;
@@ -98,11 +97,14 @@ public class DynamoDbTicketRegistry extends AbstractTicketRegistry {
 
     @Override
     public Ticket addSingleTicket(final Ticket ticket) {
-        FunctionUtils.doAndHandle(_ -> {
+        try {
             LOGGER.debug("Adding ticket [{}] with ttl [{}s]", ticket.getId(),
                 ticket.getExpirationPolicy().getTimeToLive());
             dbTableService.put(toTicketPayload(ticket));
-        });
+        } catch (final Exception e) {
+            LOGGER.error("Failed to add ticket [{}]", ticket.getId(), e);
+            throw new RuntimeException("Failed to add ticket: " + ticket.getId(), e);
+        }
         return ticket;
     }
 
