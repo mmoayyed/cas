@@ -72,18 +72,16 @@ public abstract class BaseCasWebflowAction extends AbstractAction {
         try {
             WebUtils.putActiveFlow(requestContext);
             val clientInfo = ClientInfoHolder.getClientInfo();
-            val scope = new HashMap<>(requestContext.getConversationScope().asMap());
-            scope.putAll(requestContext.getFlowScope().asMap());
-            scope.putAll(requestContext.getFlashScope().asMap());
+            val scope = buildScopeMap(requestContext);
             applicationContext.publishEvent(new CasWebflowActionExecutingEvent(this, scope, clientInfo));
             val result = doExecuteInternal(requestContext);
             transactionManager.ifPresent(mgr -> transactionStatus.ifPresent(mgr::commit));
             return result;
-        } catch (final Exception e) {
-            transactionManager.ifPresent(mgr -> transactionStatus.ifPresent(mgr::rollback));
-            throw e;
         } catch (final Throwable e) {
             transactionManager.ifPresent(mgr -> transactionStatus.ifPresent(mgr::rollback));
+            if (e instanceof Exception exception) {
+                throw exception;
+            }
             val currentState = Optional.ofNullable(requestContext.getCurrentState())
                 .map(StateDefinition::getId).orElse("unknown");
             throw new ActionExecutionException(activeFlow.getId(),
@@ -96,10 +94,28 @@ public abstract class BaseCasWebflowAction extends AbstractAction {
     protected void doPostExecute(final RequestContext requestContext) {
         val applicationContext = requestContext.getActiveFlow().getApplicationContext();
         val clientInfo = ClientInfoHolder.getClientInfo();
-        val scope = new HashMap<>(requestContext.getConversationScope().asMap());
-        scope.putAll(requestContext.getFlowScope().asMap());
-        scope.putAll(requestContext.getFlashScope().asMap());
+        val scope = buildScopeMap(requestContext);
         applicationContext.publishEvent(new CasWebflowActionExecutedEvent(this, scope, clientInfo));
+    }
+
+    /**
+     * Build a combined scope map from conversation, flow, and flash scopes.
+     *
+     * @param requestContext the request context
+     * @return the combined scope map
+     */
+    protected Map<String, Object> buildScopeMap(final RequestContext requestContext) {
+        val conversationScope = requestContext.getConversationScope().asMap();
+        val flowScope = requestContext.getFlowScope().asMap();
+        val flashScope = requestContext.getFlashScope().asMap();
+        // Pre-size the map to avoid resizing, accounting for default load factor of 0.75
+        val totalSize = conversationScope.size() + flowScope.size() + flashScope.size();
+        val initialCapacity = (int) Math.ceil(totalSize / 0.75) + 1;
+        val scope = new HashMap<String, Object>(initialCapacity);
+        scope.putAll(conversationScope);
+        scope.putAll(flowScope);
+        scope.putAll(flashScope);
+        return scope;
     }
 
     protected abstract @Nullable Event doExecuteInternal(RequestContext requestContext) throws Throwable;

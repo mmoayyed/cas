@@ -49,11 +49,12 @@ public class DuoSecurityDetermineUserAccountAction extends AbstractMultifactorAu
     protected @Nullable Event doExecuteInternal(final RequestContext requestContext) throws Throwable {
         val authentication = WebUtils.getAuthentication(requestContext);
         val principal = resolvePrincipal(authentication.getPrincipal(), requestContext);
-        val account = getDuoSecurityUserAccount(principal);
+        val account = getDuoSecurityUserAccount(principal, requestContext);
         val eventFactorySupport = eventFactory;
+        val mfaProvider = getProvider(requestContext);
         if (account.getStatus() == DuoSecurityUserAccountStatus.ENROLL
-            && StringUtils.isNotBlank(provider.getRegistration().getRegistrationUrl())) {
-            val url = buildDuoRegistrationUrlFor(requestContext, provider, principal);
+            && StringUtils.isNotBlank(mfaProvider.getRegistration().getRegistrationUrl())) {
+            val url = buildDuoRegistrationUrlFor(requestContext, mfaProvider, principal);
             LOGGER.info("Duo Security registration url for enrollment is [{}]", url);
             requestContext.getFlowScope().put("duoRegistrationUrl", url);
             return eventFactorySupport.event(this, CasWebflowConstants.TRANSITION_ID_ENROLL);
@@ -71,8 +72,31 @@ public class DuoSecurityDetermineUserAccountAction extends AbstractMultifactorAu
         return success();
     }
 
+    /**
+     * Get Duo Security user account.
+     * @param principal the principal
+     * @return the duo security user account
+     * @deprecated Use {@link #getDuoSecurityUserAccount(Principal, RequestContext)} instead for thread safety
+     */
+    @SuppressWarnings("NullAway")
+    @Deprecated(since = "7.2.0", forRemoval = true)
     protected DuoSecurityUserAccount getDuoSecurityUserAccount(final Principal principal) {
-        val duoAuthenticationService = provider.getDuoAuthenticationService();
+        return getDuoSecurityUserAccount(principal, null);
+    }
+
+    protected DuoSecurityUserAccount getDuoSecurityUserAccount(final Principal principal, 
+                                                                @Nullable final RequestContext requestContext) {
+        DuoSecurityMultifactorAuthenticationProvider mfaProvider = null;
+        if (requestContext != null) {
+            mfaProvider = getProvider(requestContext);
+        } else {
+            // Fallback to deprecated provider field for backward compatibility
+            mfaProvider = this.provider;
+        }
+        if (mfaProvider == null) {
+            throw new IllegalStateException("Unable to determine MFA provider");
+        }
+        val duoAuthenticationService = mfaProvider.getDuoAuthenticationService();
         if (!duoAuthenticationService.getProperties().isAccountStatusEnabled()) {
             LOGGER.debug("Checking Duo Security for user's [{}] account status is disabled", principal.getId());
             val account = new DuoSecurityUserAccount(principal.getId());

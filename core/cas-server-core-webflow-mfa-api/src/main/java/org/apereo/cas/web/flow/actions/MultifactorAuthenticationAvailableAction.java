@@ -24,10 +24,11 @@ public class MultifactorAuthenticationAvailableAction extends AbstractMultifacto
     @Override
     protected @Nullable Event doExecuteInternal(final RequestContext requestContext) {
         val registeredService = WebUtils.getRegisteredService(requestContext);
-        val failureEval = provider.getFailureModeEvaluator();
+        val mfaProvider = getProvider(requestContext);
+        val failureEval = mfaProvider.getFailureModeEvaluator();
         val checkAvailability = Optional.ofNullable(failureEval)
-            .map(eval -> eval.evaluate(registeredService, provider) != MultifactorAuthenticationProviderFailureModes.NONE)
+            .map(eval -> eval.evaluate(registeredService, mfaProvider) != MultifactorAuthenticationProviderFailureModes.NONE)
             .orElse(true);
-        return !checkAvailability || provider.isAvailable(registeredService) ? yes() : no();
+        return !checkAvailability || mfaProvider.isAvailable(registeredService) ? yes() : no();
     }
 }

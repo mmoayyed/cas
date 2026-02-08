@@ -24,22 +24,44 @@ import org.springframework.webflow.execution.RequestContext;
  * @author Travis Schmidt
  * @since 5.3.4
  */
-@SuppressWarnings("NullAway.Init")
 public abstract class AbstractMultifactorAuthenticationAction<T extends MultifactorAuthenticationProvider> extends BaseCasWebflowAction {
+    private static final String FLOW_SCOPE_MFA_PROVIDER = "mfaProvider";
+
     /**
      * The resolved provider for this flow.
+     * @deprecated Use {@link #getProvider(RequestContext)} instead to avoid thread-safety issues.
      */
+    @SuppressWarnings("NullAway.Init")
+    @Deprecated(since = "7.2.0", forRemoval = true)
     protected T provider;
 
     @Override
     protected Event doPreExecute(final RequestContext requestContext) throws Exception {
         val providerId = MultifactorAuthenticationWebflowUtils.getMultifactorAuthenticationProvider(requestContext);
         val applicationContext = requestContext.getActiveFlow().getApplicationContext();
-        this.provider = (T) MultifactorAuthenticationUtils.getMultifactorAuthenticationProviderById(providerId, applicationContext)
+        val resolvedProvider = (T) MultifactorAuthenticationUtils.getMultifactorAuthenticationProviderById(providerId, applicationContext)
             .orElseThrow(() -> new AuthenticationException("Unable to determine multifactor authentication provider for " + providerId));
-        Assert.isTrue(providerId.equalsIgnoreCase(provider.getId()),
-            "Requested provider id %s does not match the available provider id %s".formatted(providerId, provider.getId()));
+        Assert.isTrue(providerId.equalsIgnoreCase(resolvedProvider.getId()),
+            "Requested provider id %s does not match the available provider id %s".formatted(providerId, resolvedProvider.getId()));
+        
+        // Store in flow scope for thread safety
+        requestContext.getFlowScope().put(FLOW_SCOPE_MFA_PROVIDER, resolvedProvider);
+        
+        // Also set instance field for backward compatibility
+        this.provider = resolvedProvider;
+        
         return super.doPreExecute(requestContext);
+    }
+
+    /**
+     * Get the multifactor authentication provider for this flow in a thread-safe manner.
+     *
+     * @param requestContext the request context
+     * @return the provider
+     */
+    @SuppressWarnings("unchecked")
+    protected T getProvider(final RequestContext requestContext) {
+        return (T) requestContext.getFlowScope().get(FLOW_SCOPE_MFA_PROVIDER);
     }
 
     protected Principal resolvePrincipal(final Principal principal, final RequestContext requestContext) {

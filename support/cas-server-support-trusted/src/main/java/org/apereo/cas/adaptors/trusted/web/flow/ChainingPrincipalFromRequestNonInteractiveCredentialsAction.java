@@ -16,7 +16,7 @@ import jakarta.servlet.http.HttpServletRequest;
  * @since 5.2.0
  */
 public class ChainingPrincipalFromRequestNonInteractiveCredentialsAction extends BasePrincipalFromNonInteractiveCredentialsAction {
-    private final List<PrincipalFromRequestExtractorAction> chain = new ArrayList<>();
+    private final List<PrincipalFromRequestExtractorAction> chain = new CopyOnWriteArrayList<>();
 
     public ChainingPrincipalFromRequestNonInteractiveCredentialsAction(final CasDelegatingWebflowEventResolver initialAuthenticationAttemptWebflowEventResolver,
                                                                        final CasWebflowEventResolver serviceTicketRequestWebflowEventResolver,
