@@ -215,8 +215,9 @@ public class CassandraTicketRegistry extends AbstractTicketRegistry implements D
         val queryList = new ArrayList<String>();
         queryAttributes.forEach((key, values) ->
             values.forEach(queryValue -> {
-                var cql = "SELECT * FROM %s.%s WHERE prefix='%s' AND ".formatted(properties.getKeyspace(), metadata.getProperties().getStorageName(), metadata.getPrefix());
-                cql += "attributes CONTAINS KEY '%s' AND attributes CONTAINS '%s' ALLOW FILTERING;".formatted(digestIdentifier(key), digestIdentifier(queryValue.toString()));
+                val cql = "SELECT * FROM %s.%s WHERE prefix='%s' AND attributes CONTAINS KEY '%s' AND attributes CONTAINS '%s' ALLOW FILTERING;"
+                    .formatted(properties.getKeyspace(), metadata.getProperties().getStorageName(), metadata.getPrefix(),
+                        digestIdentifier(key), digestIdentifier(queryValue.toString()));
                 queryList.add(cql);
             }));
         val rowMapper = new BeanPropertyRowMapper<>(CassandraTicketHolder.class, true);

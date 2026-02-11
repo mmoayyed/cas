@@ -97,10 +97,7 @@ public class InfluxDbCasEventRepository extends AbstractCasEventRepository imple
             .stripLeading()
             .stripTrailing();
 
-        var whereClause = "time >= NOW() - INTERVAL '%s hours'".formatted(start.toHours());
-        if (type != null) {
-            whereClause += " AND \"type\" = '%s'".formatted(type.getName());
-        }
+        val whereClause = buildWhereClause(type, start);
         val sub = new StringSubstitutor(Map.of(
             "measurement", MEASUREMENT,
             "where", whereClause
@@ -116,5 +113,13 @@ public class InfluxDbCasEventRepository extends AbstractCasEventRepository imple
                 row.getTag("tenant")
             ))
             .onClose(rows::close);
+    }
+
+    private String buildWhereClause(@Nullable final Class type, final Duration start) {
+        val clause = new StringBuilder("time >= NOW() - INTERVAL '%s hours'".formatted(start.toHours()));
+        if (type != null) {
+            clause.append(" AND \"type\" = '%s'".formatted(type.getName()));
+        }
+        return clause.toString();
     }
 }

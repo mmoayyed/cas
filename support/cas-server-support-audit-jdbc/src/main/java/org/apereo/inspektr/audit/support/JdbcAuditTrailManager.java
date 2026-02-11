@@ -249,16 +249,8 @@ public class JdbcAuditTrailManager extends AbstractAuditTrailManager {
     private List<? extends AuditActionContext> getAuditRecordsSince(final StringBuilder where, final Object[] args,
                                                                     final long count) {
         return transactionTemplate.execute((TransactionCallback<List>) transactionStatus -> {
-            var sql = String.format(selectByDateSqlTemplate, tableName, where);
-            if (count > 0) {
-                if (jpaAuditTrailEntityFactory.isOracle()) {
-                    sql += " FETCH FIRST %s ROWS ONLY".formatted(count);
-                } else if (jpaAuditTrailEntityFactory.isMsSqlServer()) {
-                    sql = Strings.CI.replace(sql, "SELECT ", "SELECT TOP %s ".formatted(count));
-                } else {
-                    sql += " LIMIT %s".formatted(count);
-                }
-            }
+            val baseSql = String.format(selectByDateSqlTemplate, tableName, where);
+            val sql = buildSqlWithLimit(baseSql, count);
             val results = new ArrayList<>();
             LOGGER.debug("Executing SQL query [{}]", sql);
             jdbcTemplate.query(sql, resultSet -> {
@@ -266,6 +258,19 @@ public class JdbcAuditTrailManager extends AbstractAuditTrailManager {
             }, args);
             return results;
         });
+    }
+
+    private String buildSqlWithLimit(final String baseSql, final long count) {
+        if (count <= 0) {
+            return baseSql;
+        }
+        if (jpaAuditTrailEntityFactory.isOracle()) {
+            return baseSql + " FETCH FIRST %s ROWS ONLY".formatted(count);
+        }
+        if (jpaAuditTrailEntityFactory.isMsSqlServer()) {
+            return Strings.CI.replace(baseSql, "SELECT ", "SELECT TOP %s ".formatted(count));
+        }
+        return baseSql + " LIMIT %s".formatted(count);
     }
 
     protected AuditActionContext getAuditActionContext(final ResultSet resultSet) throws SQLException {

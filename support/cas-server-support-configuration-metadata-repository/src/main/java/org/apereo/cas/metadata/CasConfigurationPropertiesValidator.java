@@ -148,20 +148,21 @@ public class CasConfigurationPropertiesValidator {
                     return container.properties()
                         .stream()
                         .map(property -> {
-                            var propertyLine = "\t- %s Property: %s = %s%n".formatted(status, property.getName(), entry.property().getValue());
+                            val propertyLine = new StringBuilder()
+                                .append("\t- %s Property: %s = %s%n".formatted(status, property.getName(), entry.property().getValue()));
                             if (StringUtils.isNotBlank(property.getOwner())) {
-                                propertyLine += "\t  Owner: %s%n".formatted(property.getOwner());
+                                propertyLine.append("\t  Owner: %s%n".formatted(property.getOwner()));
                             }
                             if (StringUtils.isNotBlank(property.getShortDescription())) {
-                                propertyLine += "\t  Description: %s%n".formatted(property.getShortDescription());
+                                propertyLine.append("\t  Description: %s%n".formatted(property.getShortDescription()));
                             }
                             if (StringUtils.isNotBlank(property.getDeprecationReplacement())) {
-                                propertyLine += "\t  Replacement: %s%n".formatted(property.getDeprecationReplacement());
+                                propertyLine.append("\t  Replacement: %s%n".formatted(property.getDeprecationReplacement()));
                             }
                             if (StringUtils.isNotBlank(property.getDeprecationReason())) {
-                                propertyLine += "\t  Reason: %s%n".formatted(property.getDeprecationReason());
+                                propertyLine.append("\t  Reason: %s%n".formatted(property.getDeprecationReason()));
                             }
-                            return propertyLine;
+                            return propertyLine.toString();
                         })
                         .toList();
                 }
