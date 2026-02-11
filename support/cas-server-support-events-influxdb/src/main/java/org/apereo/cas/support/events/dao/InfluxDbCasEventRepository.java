@@ -116,9 +116,8 @@ public class InfluxDbCasEventRepository extends AbstractCasEventRepository imple
     }
 
     private String buildWhereClause(@Nullable final Class type, final Duration start) {
-        val baseClause = "time >= NOW() - INTERVAL '%s hours'".formatted(start.toHours());
         return type != null
-            ? baseClause + " AND \"type\" = '%s'".formatted(type.getName())
-            : baseClause;
+            ? "time >= NOW() - INTERVAL '%s hours' AND \"type\" = '%s'".formatted(start.toHours(), type.getName())
+            : "time >= NOW() - INTERVAL '%s hours'".formatted(start.toHours());
     }
 }
