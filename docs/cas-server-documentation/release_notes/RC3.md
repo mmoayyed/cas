@@ -112,12 +112,12 @@ the SAML2 service provider metadata management API and perform CRUD operations o
 assuming the underlying storage is one that is noted above.
 
 The [Palantir Admin Console](../installation/Admin-Dashboard.html) is also updated to support interacting 
-with this actuator.
+with this actuator endpoint.
  
 ### Apache Tomcat Connectors
 
 When running CAS with an embedded Apache Tomcat, all connectors are now initially put into a *paused state* 
-until the CAS server is fully able and ready to accept requests at which point such collectors are instructed to resume operations. 
+until the CAS server is fully able and ready to accept requests at which point these connectors are instructed to resume operations. 
 This allows the server to perform all necessary startup and (lazy) initialization tasks before accepting any 
 incoming traffic and potentially running into a deadlocked state.
 
@@ -125,6 +125,11 @@ incoming traffic and potentially running into a deadlocked state.
 <p>Again, this capability only applies to deployments running with an embedded Apache Tomcat.
 It has no effect on other container types such as Jetty, or those deployments that run
 inside an external self-managed Apache Tomcat environment.</p></div>
+
+### Etcd Configuration Source
+
+CAS is now able to use [etcd](../configuration/Configuration-Server-Management-SpringCloud-Etcd.html) 
+as a configuration source to locate properties and settings.
 
 ## Other Stuff
 
