@@ -704,7 +704,7 @@ public abstract class AbstractCasWebflowConfigurer implements CasWebflowConfigur
             LOGGER.warn("Flow registry is not configured and/or initialized correctly.");
             return null;
         }
-        val found = List.of(registry.getFlowDefinitionIds()).contains(id);
+        val found = Arrays.stream(registry.getFlowDefinitionIds()).anyMatch(id::equals);
         if (found) {
             return (Flow) registry.getFlowDefinition(id);
         }
