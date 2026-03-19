@@ -699,7 +699,7 @@ public abstract class AbstractCasWebflowConfigurer implements CasWebflowConfigur
     }
 
     @Override
-    public Flow getFlow(final FlowDefinitionRegistry registry, final String id) {
+    public @Nullable Flow getFlow(final FlowDefinitionRegistry registry, final String id) {
         if (registry == null) {
             LOGGER.warn("Flow registry is not configured and/or initialized correctly.");
             return null;
@@ -832,7 +832,7 @@ public abstract class AbstractCasWebflowConfigurer implements CasWebflowConfigur
      * @param act the act
      * @return the expression string from action
      */
-    public Expression getExpressionStringFromAction(final EvaluateAction act) {
+    public @Nullable Expression getExpressionStringFromAction(final EvaluateAction act) {
         val field = ReflectionUtils.findField(act.getClass(), "expression");
         Assert.notNull(field, "expression cannot be null");
         ReflectionUtils.makeAccessible(field);
