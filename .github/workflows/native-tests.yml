@@ -29,7 +29,7 @@ env:
   TERM: xterm-256color
   JDK_CURRENT: 25
   JDK_DISTRIBUTION: "corretto"
-  NODE_CURRENT: '25.8.1'
+  NODE_CURRENT: '25.8.2'
   MAX_ATTEMPTS: 1
   RETRY_MINUTES: 20
   SCENARIO_REGEX: ".*"
@@ -59,7 +59,7 @@ jobs:
           java-version: ${{ env.JDK_CURRENT }}
           distribution: ${{ env.JDK_DISTRIBUTION }}
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v5
+        uses: gradle/actions/setup-gradle@v6
       - name: Initialize
         run: ls ./ci && find ./ci -type f -name "*.sh" -exec chmod +x "{}" \; && ./ci/init-build.sh
 
@@ -83,7 +83,7 @@ jobs:
           distribution: ${{ env.JDK_DISTRIBUTION }}
           cache: 'gradle'
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v5
+        uses: gradle/actions/setup-gradle@v6
       - id: print-scenarios
         run: ./gradlew --build-cache --configure-on-demand --no-daemon -q puppeteerScenarios | jq
       - id: get-scenarios255
@@ -112,7 +112,7 @@ jobs:
       - name: Configure CI
         run: source ./ci/tests/puppeteer/configure-ci.sh ${{matrix.scenario}}
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v5
+        uses: gradle/actions/setup-gradle@v6
       - name: "Setup Graal VM"
         uses: graalvm/setup-graalvm@v1
         if: ${{ env.NATIVE_BUILD_ENABLED == 'true' }}
@@ -131,7 +131,7 @@ jobs:
           cache-dependency-path: ./ci/tests/puppeteer/package.json
           check-latest: true
       - name: Build Native Tests
-        uses: nick-fields/retry@v3
+        uses: nick-fields/retry@v4
         if: ${{ env.NATIVE_BUILD_ENABLED == 'true' }}
         with:
           max_attempts: ${{ env.MAX_ATTEMPTS }}
@@ -141,7 +141,7 @@ jobs:
           command: |
             ./ci/tests/puppeteer/run.sh --nb --scenario $PWD/ci/tests/puppeteer/scenarios/${{matrix.scenario}}
       - name: Run Native Tests
-        uses: nick-fields/retry@v3
+        uses: nick-fields/retry@v4
         if: ${{ env.NATIVE_RUN_ENABLED == 'true' }}
         with:
           max_attempts: ${{ env.MAX_ATTEMPTS }}
@@ -168,7 +168,7 @@ jobs:
       - name: Configure CI
         run: ./ci/tests/puppeteer/configure-ci.sh ${{matrix.scenario}}
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v5
+        uses: gradle/actions/setup-gradle@v6
       - name: "Setup Graal VM"
         uses: graalvm/setup-graalvm@v1
         if: ${{ env.NATIVE_BUILD_ENABLED == 'true' }}
@@ -186,7 +186,7 @@ jobs:
           cache: 'npm'
           cache-dependency-path: ./ci/tests/puppeteer/package.json
       - name: Build Native Tests
-        uses: nick-fields/retry@v3
+        uses: nick-fields/retry@v4
         if: ${{ env.NATIVE_BUILD_ENABLED == 'true' }}
         with:
           max_attempts: ${{ env.MAX_ATTEMPTS }}
@@ -197,7 +197,7 @@ jobs:
             export RUNNER_OS=${{ runner.os }}
             ./ci/tests/puppeteer/run.sh --nb --scenario $PWD/ci/tests/puppeteer/scenarios/${{matrix.scenario}}
       - name: Run Native Tests
-        uses: nick-fields/retry@v3
+        uses: nick-fields/retry@v4
         if: ${{ env.NATIVE_RUN_ENABLED == 'true' }}
         with:
           max_attempts: ${{ env.MAX_ATTEMPTS }}
@@ -225,7 +225,7 @@ jobs:
       - name: Configure CI
         run: ./ci/tests/puppeteer/configure-ci.sh ${{matrix.scenario}}
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v5
+        uses: gradle/actions/setup-gradle@v6
       - name: "Setup Graal VM"
         uses: graalvm/setup-graalvm@v1
         if: ${{ env.NATIVE_BUILD_ENABLED == 'true' }}
@@ -243,7 +243,7 @@ jobs:
           cache: 'npm'
           cache-dependency-path: ./ci/tests/puppeteer/package.json
       - name: Build Native Tests
-        uses: nick-fields/retry@v3
+        uses: nick-fields/retry@v4
         if: ${{ env.NATIVE_BUILD_ENABLED == 'true' }}
         with:
           max_attempts: ${{ env.MAX_ATTEMPTS }}
@@ -254,7 +254,7 @@ jobs:
             export RUNNER_OS=${{ runner.os }}
             ./ci/tests/puppeteer/run.sh --nb --scenario $PWD/ci/tests/puppeteer/scenarios/${{matrix.scenario}}
       - name: Run Native Tests
-        uses: nick-fields/retry@v3
+        uses: nick-fields/retry@v4
         if: ${{ env.NATIVE_RUN_ENABLED == 'true' }}
         with:
           max_attempts: ${{ env.MAX_ATTEMPTS }}
