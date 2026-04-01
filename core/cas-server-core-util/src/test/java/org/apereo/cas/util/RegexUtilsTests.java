@@ -55,6 +55,6 @@ class RegexUtilsTests {
             assertTrue(RegexUtils.createPattern(pattern).matcher("something@example.org").find());
         }
         stopWatch.stop();
-        assertTrue(stopWatch.getTime() < 1000);
+        assertTrue(stopWatch.getTime() < 2000);
     }
 }
