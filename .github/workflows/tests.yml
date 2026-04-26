@@ -210,6 +210,14 @@ jobs:
           export files="${files%?}"
           echo $files
           echo "COVERAGE_REPORTS=${files}" >> $GITHUB_ENV
+          echo "COVERAGE_REPORTS_SPACE=${files//,/ }" >> "$GITHUB_ENV"
+      - name: Upload coverage to Coveralls
+        uses: coverallsapp/github-action@v2
+        continue-on-error: true
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          files: ${{ env.COVERAGE_REPORTS_SPACE }}
+          format: jacoco
       - name: Upload Coverage to Codacy
         continue-on-error: true
         env:
@@ -217,10 +225,8 @@ jobs:
           CODACY_REPORTER_OPTIONS: --http-timeout 60000 --num-retries 8 --sleep-time 15000
         run: |
           IFS=',' read -r -a reports <<< "${{ env.COVERAGE_REPORTS }}"
-          
           for report in "${reports[@]}"; do
             echo "Uploading coverage report: $report"
             bash <(curl -Ls https://coverage.codacy.com/get.sh) report -r "$report" --partial
           done
-          
           bash <(curl -Ls https://coverage.codacy.com/get.sh) final
