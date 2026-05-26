@@ -225,8 +225,9 @@ TestCategories.values().each({ testCategory ->
                 systemProperty("junit.platform.execution.memory.cleanup.enabled", true)
 
                 if (testCategory.parallelEnabled) {
-                    // Keep JUnit's in-JVM parallelism conservative to avoid oversubscribing CI workers
-                    // while still allowing local overrides via -Dcas.test.junitParallelFactor.
+                    // Keep JUnit's in-JVM parallelism conservative to avoid oversubscribing CI workers;
+                    // CI defaults to factor=1, local runs default to factor=2, and both are overrideable
+                    // via -Dcas.test.junitParallelFactor.
                     systemProperty("junit.jupiter.execution.parallel.enabled", true)
                     systemProperty("junit.jupiter.execution.parallel.mode.default", "concurrent")
                     systemProperty("junit.jupiter.execution.parallel.mode.classes.default", "concurrent")
@@ -259,15 +260,17 @@ tasks.named('test') {
 tasks.withType(Test).configureEach {
     scanForTestClasses = false
     ignoreFailures = providers.systemProperty("ignoreTestFailures").present
+    def ciMaxParallelForks = 2
     def defaultParallelForks = Math.max(1, (Runtime.runtime.availableProcessors() / 2).intValue())
-    // Reuse workers longer to amortize Spring/JVM startup cost while still allowing opt-in overrides.
+    // Reuse workers longer to amortize Spring/JVM startup cost; 500 keeps the previous isolation behavior
+    // while reducing the number of cold Spring/JVM restarts compared to the old 200-class threshold.
     forkEvery = providers.systemProperty("cas.test.forkEvery")
         .orElse("500")
         .get()
         .toLong()
     // CI defaults cap concurrent forks to reduce memory pressure on shared runners; larger runners can override this.
     maxParallelForks = providers.systemProperty("cas.test.maxParallelForks")
-        .orElse((rootProject.ci ? Math.min(2, defaultParallelForks) : defaultParallelForks).toString())
+        .orElse((rootProject.ci ? Math.min(ciMaxParallelForks, defaultParallelForks) : defaultParallelForks).toString())
         .get()
         .toInteger()
 
