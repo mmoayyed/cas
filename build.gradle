@@ -32,7 +32,7 @@ buildscript {
 ext {
     ci = System.getenv("CI") || providers.systemProperty("CI").present
     
-    srcTagMap = new ConcurrentHashMap<File, Set<String>>()
+    srcTagMap = new ConcurrentHashMap<String, Set<String>>()
 
     repositoryUsername = providers.systemProperty("repositoryUsername").getOrElse(System.getenv("REPOSITORY_USER"))
     repositoryPassword = providers.systemProperty("repositoryPassword").getOrElse(System.getenv("REPOSITORY_PWD"))

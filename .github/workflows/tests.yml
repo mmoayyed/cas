@@ -136,10 +136,13 @@ jobs:
           shell: bash
           command: |
             chmod +x ./testcas.sh
+            coverageFlag=""
+            if [[ "${{ github.event_name }}" == "push" ]] || [[ "${{ github.event_name }}" == "workflow_dispatch" ]] || [[ "${{ github.event_name }}" == "schedule" ]]; then
+              coverageFlag="--with-coverage"
+            fi
             if [[ "${{ github.event_name }}" == "schedule" ]] && [[ "${{ github.event.schedule == '0 10 * * *'}}" ]]; then
               echo "Running tests without PTS mode"
-              ./testcas.sh --no-watch --category ${{ matrix.category }} --events FAILED --no-pts
-              [[ $? -eq 0 ]] && ./testcas.sh --no-watch --with-coverage
+              ./testcas.sh --no-watch --category ${{ matrix.category }} --events FAILED --no-pts ${coverageFlag}
             else 
               if [[ "${{ github.event_name }}" == "push" ]] || [[ "${{ github.event_name }}" == "schedule" ]]; then
                 ptsMode="REMAINING_TESTS";
@@ -147,43 +150,12 @@ jobs:
                 ptsMode="RELEVANT_TESTS";
               fi
               echo "Running tests with PTS mode: $ptsMode"
-              ./testcas.sh --no-watch --category ${{ matrix.category }} --events FAILED --pts $ptsMode
-              [[ $? -eq 0 ]] && ./testcas.sh --no-watch --with-coverage
+              ./testcas.sh --no-watch --category ${{ matrix.category }} --events FAILED --pts $ptsMode ${coverageFlag}
             fi
-      - name: Check Coverage Report
-        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
-        run: |
-          xml_files=$(find build/reports -type f -name "*.xml")
-          if [ -z "$xml_files" ]; then
-            echo "No coverage XML files found"
-          else
-            echo ${xml_files}
-          fi
-      - name: Upload to SonarCloud
-        if: env.SONARCLOUD_TOKEN != null && (github.event_name == 'push' || github.event_name == 'workflow_dispatch' || github.event_name == 'schedule')
-        continue-on-error: true
-        run: |
-          coverageReport="$PWD/build/reports/jacoco/jacocoRootReport/jacocoRootReport.xml"
-          echo "Uploading coverage report to SonarCloud from $coverageReport"
-          ./gradlew sonar --build-cache --configure-on-demand \
-            --no-daemon -DskipAot=true -q --parallel \
-            -x javadoc -x test -DskipNestedConfigMetadataGen=true \
-            -PsonarOrganization="${{ github.repository_owner }}" \
-            -Dsonar.coverage.jacoco.xmlReportPaths="$coverageReport"
-      - name: "Upload to Codecov"
-        uses: "codecov/codecov-action@v6"
-        continue-on-error: true
-        if: env.CODECOV_TOKEN != null && (github.event_name == 'push' || github.event_name == 'workflow_dispatch' || github.event_name == 'schedule')
-        with:
-          token: ${{ env.CODECOV_TOKEN }}
-          files: ./build/reports/jacoco/jacocoRootReport/jacocoRootReport.xml
-          flags: ${{ matrix.category }}
-          name: ${{ matrix.category }}
-          verbose: true
-          fail_ci_if_error: false
       - name: Upload to Coveralls
         uses: coverallsapp/github-action@v2
         continue-on-error: true
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           file: ./build/reports/jacoco/jacocoRootReport/jacocoRootReport.xml
@@ -217,15 +189,50 @@ jobs:
           distribution: ${{ env.JDK_DISTRIBUTION }}
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v6
+      - name: Download Coverage Reports
+        uses: actions/download-artifact@v6
+        with:
+          pattern: cas-tests-*.coverage
+          path: coverage-reports
+          merge-multiple: true
       - name: Collect Coverage Files
         id: coverage-files
         run: |
-          find $PWD -type f -name 'jacocoRootReport.xml'
+          find "$PWD/coverage-reports" -type f -name 'jacocoRootReport.xml'
           export files=''
-          for file in $(find $PWD -type f -name 'jacocoRootReport.xml'); do export files="$file,${files}"; done
+          for file in $(find "$PWD/coverage-reports" -type f -name 'jacocoRootReport.xml'); do export files="$file,${files}"; done
           export files="${files%?}"
           echo $files
           echo "COVERAGE_REPORTS=${files}" >> $GITHUB_ENV
+          echo "coverage-files=${files}" >> $GITHUB_OUTPUT
+      - name: Check Coverage Report
+        run: |
+          if [ -z "${{ env.COVERAGE_REPORTS }}" ]; then
+            echo "No coverage XML files found"
+            exit 1
+          fi
+          echo "${{ env.COVERAGE_REPORTS }}"
+      - name: Upload to SonarCloud
+        if: env.SONARCLOUD_TOKEN != null
+        continue-on-error: true
+        run: |
+          echo "Uploading coverage reports to SonarCloud from ${{ env.COVERAGE_REPORTS }}"
+          ./gradlew sonar --build-cache --configure-on-demand \
+            -DskipAot=true -q --parallel \
+            -x javadoc -x test -DskipNestedConfigMetadataGen=true \
+            -PsonarOrganization="${{ github.repository_owner }}" \
+            -Dsonar.coverage.jacoco.xmlReportPaths="${{ env.COVERAGE_REPORTS }}"
+      - name: Upload to Codecov
+        uses: codecov/codecov-action@v6
+        continue-on-error: true
+        if: env.CODECOV_TOKEN != null
+        with:
+          token: ${{ env.CODECOV_TOKEN }}
+          files: ${{ env.COVERAGE_REPORTS }}
+          flags: unit-tests
+          name: aggregated-coverage
+          verbose: true
+          fail_ci_if_error: false
       - name: Upload Coverage to Codacy
         continue-on-error: true
         env:

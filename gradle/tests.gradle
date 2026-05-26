@@ -1,4 +1,9 @@
+import groovy.io.FileType
+import groovy.json.JsonOutput
+import groovy.json.JsonSlurper
 import java.util.regex.Pattern
+import java.nio.charset.StandardCharsets
+import java.security.MessageDigest
 import com.gradle.develocity.agent.gradle.test.*
 import com.gradle.develocity.agent.gradle.internal.test.*
 
@@ -190,6 +195,7 @@ TestCategories.values().each({ testCategory ->
         if (!tasks.getNames().contains(taskName)) {
             def jacocoTestExecutionResultsFile = project.layout.buildDirectory.file("jacoco/jacoco-${taskName}.exec").get().asFile
             def shouldWeTest = shouldTest(sourceTestDirs, testCategory.name())
+            def coverageEnabled = isCoverageEnabled()
 
             tasks.register(taskName, Test) {
                 description = "Run unit/integration tests to verify the test category: ${testCategory.name()}"
@@ -197,7 +203,9 @@ TestCategories.values().each({ testCategory ->
                 testClassesDirs = sourceSets.test.output.classesDirs
                 classpath = sourceSets.test.runtimeClasspath
                 enabled = shouldWeTest
-                outputs.file(jacocoTestExecutionResultsFile)
+                if (coverageEnabled) {
+                    outputs.file(jacocoTestExecutionResultsFile)
+                }
 
                 useJUnitPlatform {
                     includeTags testCategory.name()
@@ -220,19 +228,19 @@ TestCategories.values().each({ testCategory ->
                     systemProperty("junit.jupiter.execution.parallel.mode.default", "concurrent")
                     systemProperty("junit.jupiter.execution.parallel.mode.classes.default", "concurrent")
                     systemProperty("junit.jupiter.execution.parallel.config.strategy", "dynamic")
-                    systemProperty("junit.jupiter.execution.parallel.config.dynamic.factor", "8")
+                    systemProperty("junit.jupiter.execution.parallel.config.dynamic.factor", resolveJunitParallelFactor())
                     systemProperty("junit.jupiter.execution.parallel.config.executor-service", "WORKER_THREAD_POOL")
                 }
 
-                if (!project.path.contains(":docs")) {
+                if (coverageEnabled && !project.path.contains(":docs")) {
                     jacoco {
                         dumpOnExit = true
                         excludes = rootProject.excludedFilesFromTestCoverage
                         destinationFile = jacocoTestExecutionResultsFile
                         classDumpDir = layout.buildDirectory.dir('jacoco/classpathdumps').get().asFile
                     }
+                    jvmArgs += "-javaagent:${configurations.jvmAgents.asPath}"
                 }
-                jvmArgs += "-javaagent:${configurations.jvmAgents.asPath}"
             }
         }
     }
@@ -248,10 +256,18 @@ tasks.named('test') {
 tasks.withType(Test).configureEach {
     scanForTestClasses = false
     ignoreFailures = providers.systemProperty("ignoreTestFailures").present
-    forkEvery = 200
-    maxParallelForks = Math.max(1, (Runtime.runtime.availableProcessors() / 2).intValue())
-    
-    failFast = true
+    forkEvery = providers.systemProperty("cas.test.forkEvery")
+        .orElse(rootProject.ci ? "500" : "0")
+        .get()
+        .toLong()
+    maxParallelForks = rootProject.ci
+        ? Math.min(2, Math.max(1, (Runtime.runtime.availableProcessors() / 2).intValue()))
+        : Math.max(1, (Runtime.runtime.availableProcessors() / 2).intValue())
+
+    failFast = providers.systemProperty("cas.test.failFast")
+        .orElse("false")
+        .get()
+        .toBoolean()
 
     def list = []
     list.add("--enable-native-access=ALL-UNNAMED")
@@ -315,7 +331,6 @@ tasks.withType(Test).configureEach {
     
     list.add("-Dspring.jmx.enabled=false")
 
-    list.add("-XX:TieredStopAtLevel=1")
     list.add("-XX:+EnableDynamicAgentLoading")
     jvmArgs = list
 
@@ -335,8 +350,8 @@ tasks.withType(Test).configureEach {
     def skipRetry = providers.systemProperty('skipTestRetry').present
     if (!skipRetry) {
         develocity.testRetry {
-            maxRetries = 3
-            maxFailures = 5
+            maxRetries = 1
+            maxFailures = 3
             failOnPassedAfterRetry = false
         }
     }
@@ -356,25 +371,84 @@ def shouldTest(Set sourceTestDirectories, String category) {
 }
 
 def hasTestsOfCategory(Set sourceTestDirectories, String category) {
-    def res = srcTagMap.computeIfAbsent(sourceTestDirectories) {
-        def tags = new HashSet()
-        sourceTestDirectories.each { src ->
-            try {
-                src.eachFileRecurse { file ->
-                    if (file ==~ /.*Tests\.\w+/) {
-                        file.readLines().parallelStream().forEach() { line ->
-                            def match = line =~ /^\s*@Tag\("(\w+)"\)\s*$/
-                            if (match) {
-                                tags.addAll(match.collect { it[1] })
-                            }
-                        }
-                    }
-                }
-            } catch (ignored) {
-            }
-        }
-        tags
+    def res = srcTagMap.computeIfAbsent(testTagCacheKey(sourceTestDirectories)) {
+        loadTagsFromCache(sourceTestDirectories)
     }
     res.contains(category)
 }
 
+def isCoverageEnabled() {
+    providers.systemProperty("enableJacocoAgent").orElse("false").get().toBoolean() ||
+        gradle.startParameter.taskNames.any { it.toLowerCase(Locale.ENGLISH).contains("jacoco") }
+}
+
+def resolveJunitParallelFactor() {
+    providers.systemProperty("cas.test.junitParallelFactor")
+        .orElse(rootProject.ci ? "1" : "2")
+        .get()
+}
+
+def testTagCacheKey(Set sourceTestDirectories) {
+    def digest = MessageDigest.getInstance("SHA-256")
+    def keyMaterial = sourceTestDirectories
+        .findAll { it.exists() }
+        .collect { it.canonicalPath }
+        .sort()
+        .join("|")
+    digest.update(keyMaterial.getBytes(StandardCharsets.UTF_8))
+    digest.digest().encodeHex().toString()
+}
+
+def testTagCacheFile(Set sourceTestDirectories) {
+    rootProject.file(".gradle/cas-test-tags/${testTagCacheKey(sourceTestDirectories)}.json")
+}
+
+def collectTestFiles(Set sourceTestDirectories) {
+    def files = []
+    sourceTestDirectories.each { src ->
+        if (src.exists()) {
+            src.traverse(type: FileType.FILES, nameFilter: ~/.*Tests\.\w+/) { file ->
+                files << file
+            }
+        }
+    }
+    files
+}
+
+def loadTagsFromCache(Set sourceTestDirectories) {
+    def cacheFile = testTagCacheFile(sourceTestDirectories)
+    cacheFile.parentFile.mkdirs()
+
+    def testFiles = collectTestFiles(sourceTestDirectories)
+    def latestModified = testFiles ? testFiles.collect { it.lastModified() }.max() : 0L
+    def fileCount = testFiles.size()
+
+    if (cacheFile.exists()) {
+        try {
+            def cache = new JsonSlurper().parse(cacheFile)
+            if (cache.latestModified == latestModified && cache.fileCount == fileCount) {
+                return new HashSet<String>(cache.tags ?: [])
+            }
+        } catch (ignored) {
+            cacheFile.delete()
+        }
+    }
+
+    def tagPattern = ~/^\s*@Tag\("(\w+)"\)\s*$/
+    def tags = new HashSet<String>()
+    testFiles.each { file ->
+        file.eachLine { line ->
+            def match = line =~ tagPattern
+            if (match.matches()) {
+                tags.add(match.group(1))
+            }
+        }
+    }
+
+    cacheFile.text = JsonOutput.toJson([
+        fileCount      : fileCount,
+        latestModified : latestModified,
+        tags           : tags.toSorted()
+    ])
+    tags
+}
