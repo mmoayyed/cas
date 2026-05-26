@@ -256,13 +256,14 @@ tasks.named('test') {
 tasks.withType(Test).configureEach {
     scanForTestClasses = false
     ignoreFailures = providers.systemProperty("ignoreTestFailures").present
+    def defaultParallelForks = Math.max(1, (Runtime.runtime.availableProcessors() / 2).intValue())
     forkEvery = providers.systemProperty("cas.test.forkEvery")
-        .orElse(rootProject.ci ? "500" : "0")
+        .orElse("500")
         .get()
         .toLong()
     maxParallelForks = rootProject.ci
-        ? Math.min(2, Math.max(1, (Runtime.runtime.availableProcessors() / 2).intValue()))
-        : Math.max(1, (Runtime.runtime.availableProcessors() / 2).intValue())
+        ? Math.min(2, defaultParallelForks)
+        : defaultParallelForks
 
     failFast = providers.systemProperty("cas.test.failFast")
         .orElse("false")
