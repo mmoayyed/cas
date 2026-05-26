@@ -260,6 +260,8 @@ tasks.named('test') {
 tasks.withType(Test).configureEach {
     scanForTestClasses = false
     ignoreFailures = providers.systemProperty("ignoreTestFailures").present
+    // Shared CI runners tend to become memory-bound above two concurrent forks because each test JVM can
+    // consume up to 4G; larger runners can raise this with -Dcas.test.maxParallelForks.
     def ciMaxParallelForks = 2
     def defaultParallelForks = Math.max(1, (Runtime.runtime.availableProcessors() / 2).intValue())
     // Reuse workers longer to amortize Spring/JVM startup cost; 500 keeps the previous isolation behavior
@@ -430,13 +432,15 @@ def loadTagsFromCache(Set sourceTestDirectories) {
     cacheFile.parentFile.mkdirs()
 
     def testFiles = collectTestFiles(sourceTestDirectories)
-    def latestModified = testFiles ? testFiles.collect { it.lastModified() }.max() : 0L
-    def fileCount = testFiles.size()
+    def cacheFingerprint = testFiles
+        .collect { "${it.canonicalPath}:${it.length()}:${it.lastModified()}" }
+        .sort()
+        .join("|")
 
     if (cacheFile.exists()) {
         try {
             def cache = new JsonSlurper().parse(cacheFile)
-            if (cache.latestModified == latestModified && cache.fileCount == fileCount) {
+            if (cache.fingerprint == cacheFingerprint) {
                 return new HashSet<String>(cache.tags ?: [])
             }
         } catch (ignored) {
@@ -454,11 +458,9 @@ def loadTagsFromCache(Set sourceTestDirectories) {
             }
         }
     }
-
     cacheFile.text = JsonOutput.toJson([
-        fileCount      : fileCount,
-        latestModified : latestModified,
-        tags           : tags.toSorted()
+        fingerprint : cacheFingerprint,
+        tags        : tags.toSorted()
     ])
     tags
 }
