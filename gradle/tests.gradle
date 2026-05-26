@@ -1,6 +1,7 @@
 import groovy.io.FileType
 import groovy.json.JsonOutput
 import groovy.json.JsonSlurper
+import java.util.Collections
 import java.util.regex.Pattern
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
@@ -224,11 +225,13 @@ TestCategories.values().each({ testCategory ->
                 systemProperty("junit.platform.execution.memory.cleanup.enabled", true)
 
                 if (testCategory.parallelEnabled) {
+                    // Keep JUnit's in-JVM parallelism conservative to avoid oversubscribing CI workers
+                    // while still allowing local overrides via -Dcas.test.junitParallelFactor.
                     systemProperty("junit.jupiter.execution.parallel.enabled", true)
                     systemProperty("junit.jupiter.execution.parallel.mode.default", "concurrent")
                     systemProperty("junit.jupiter.execution.parallel.mode.classes.default", "concurrent")
                     systemProperty("junit.jupiter.execution.parallel.config.strategy", "dynamic")
-                    systemProperty("junit.jupiter.execution.parallel.config.dynamic.factor", resolveJunitParallelFactor())
+                    systemProperty("junit.jupiter.execution.parallel.config.dynamic.factor", resolveJUnitParallelFactor())
                     systemProperty("junit.jupiter.execution.parallel.config.executor-service", "WORKER_THREAD_POOL")
                 }
 
@@ -257,13 +260,16 @@ tasks.withType(Test).configureEach {
     scanForTestClasses = false
     ignoreFailures = providers.systemProperty("ignoreTestFailures").present
     def defaultParallelForks = Math.max(1, (Runtime.runtime.availableProcessors() / 2).intValue())
+    // Reuse workers longer to amortize Spring/JVM startup cost while still allowing opt-in overrides.
     forkEvery = providers.systemProperty("cas.test.forkEvery")
         .orElse("500")
         .get()
         .toLong()
-    maxParallelForks = rootProject.ci
-        ? Math.min(2, defaultParallelForks)
-        : defaultParallelForks
+    // CI defaults cap concurrent forks to reduce memory pressure on shared runners; larger runners can override this.
+    maxParallelForks = providers.systemProperty("cas.test.maxParallelForks")
+        .orElse((rootProject.ci ? Math.min(2, defaultParallelForks) : defaultParallelForks).toString())
+        .get()
+        .toInteger()
 
     failFast = providers.systemProperty("cas.test.failFast")
         .orElse("false")
@@ -383,7 +389,7 @@ def isCoverageEnabled() {
         gradle.startParameter.taskNames.any { it.toLowerCase(Locale.ENGLISH).contains("jacoco") }
 }
 
-def resolveJunitParallelFactor() {
+def resolveJUnitParallelFactor() {
     providers.systemProperty("cas.test.junitParallelFactor")
         .orElse(rootProject.ci ? "1" : "2")
         .get()
@@ -436,9 +442,9 @@ def loadTagsFromCache(Set sourceTestDirectories) {
     }
 
     def tagPattern = ~/^\s*@Tag\("(\w+)"\)\s*$/
-    def tags = new HashSet<String>()
-    testFiles.each { file ->
-        file.eachLine { line ->
+    def tags = Collections.synchronizedSet(new HashSet<String>())
+    testFiles.parallelStream().forEach { file ->
+        file.readLines().each { line ->
             def match = line =~ tagPattern
             if (match.matches()) {
                 tags.add(match.group(1))

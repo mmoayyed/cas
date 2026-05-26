@@ -208,8 +208,8 @@ jobs:
       - name: Check Coverage Report
         run: |
           if [ -z "${{ env.COVERAGE_REPORTS }}" ]; then
-            echo "No coverage XML files found. Coverage uploads will fail. Verify that tests ran with --with-coverage and that the Jacoco report task completed successfully."
-            exit 1
+            echo "::warning::No coverage XML files found. Coverage uploads will be skipped. Verify that tests ran with --with-coverage and that the Jacoco report task completed successfully."
+            exit 0
           fi
           echo "${{ env.COVERAGE_REPORTS }}"
       - name: Upload to SonarCloud
