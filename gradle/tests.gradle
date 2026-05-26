@@ -446,7 +446,7 @@ def loadTagsFromCache(Set sourceTestDirectories) {
     testFiles.parallelStream().forEach { file ->
         file.readLines().each { line ->
             def match = line =~ tagPattern
-            if (match.matches()) {
+            if (match.find()) {
                 tags.add(match.group(1))
             }
         }
