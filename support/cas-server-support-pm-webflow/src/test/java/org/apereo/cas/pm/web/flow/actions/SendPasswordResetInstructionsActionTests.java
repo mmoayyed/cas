@@ -52,7 +52,7 @@ class SendPasswordResetInstructionsActionTests {
             val service = mock(PasswordManagementService.class);
             when(service.createToken(any())).thenReturn(null);
             when(service.findUsername(any())).thenReturn("casuser");
-            when(service.findEmail(any())).thenReturn("casuser@example.org");
+            when(service.findEmails(any())).thenReturn(Set.of("casuser@example.org"));
             return service;
         }
     }
