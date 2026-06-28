@@ -8,6 +8,7 @@ ENDCOLOR="\e[0m"
 casVersion=(`cat ./gradle.properties | grep "version" | cut -d= -f2`)
 nextVersion="${casVersion}"
 privateRelease="false"
+publishingType="AUTOMATIC"
 
 while (("$#")); do
   case "$1" in
@@ -17,6 +18,10 @@ while (("$#")); do
     ;;
   --next-version)
     nextVersion=$2
+    shift 2
+    ;;
+  --publishing-type)
+    publishingType=$2
     shift 2
     ;;
   --private)
@@ -61,7 +66,7 @@ function snapshot() {
   ./gradlew assemble publishAggregationToCentralSnapshots \
     -x test -x javadoc -x check --no-daemon --parallel --quiet \
     -DskipAot=true -DpublishSnapshots=true --stacktrace \
-     --configure-on-demand \
+     --configure-on-demand -DpublishingType="${publishingType}" \
     -DrepositoryUsername="$REPOSITORY_USER" \
     -DrepositoryPassword="$REPOSITORY_PWD"
   if [ $? -ne 0 ]; then
@@ -84,10 +89,11 @@ function publish {
     fi
         
     printgreen "Assembling and publishing CAS release ${casVersion}. This might take a while..."
+    printgreen "Publishing type is ${publishingType}"
     ./gradlew assemble publishAggregationToCentralPortal \
       -Pversion="${casVersion}" -PnextVersion="${nextVersion}" \
       --parallel --no-daemon  -x test -x check -DprivateRelease=${privateRelease} \
-      -DskipAot=true -DpublishReleases=true --stacktrace --quiet \
+      -DpublishingType="${publishingType}" -DskipAot=true -DpublishReleases=true --stacktrace --quiet \
       -DrepositoryUsername="$REPOSITORY_USER" -DrepositoryPassword="$REPOSITORY_PWD"
     if [ $? -ne 0 ]; then
         printred "Publishing Apereo CAS failed."

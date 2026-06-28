@@ -55,6 +55,7 @@ ext {
     skipBootifulArtifact = providers.systemProperty("skipBootifulArtifact").present
     skipErrorProneCompiler = providers.systemProperty("skipErrorProneCompiler").present
     skipSpringBootDevTools = providers.systemProperty("skipSpringBootDevTools").present
+    publishingType = providers.systemProperty("publishingType").getOrElse("AUTOMATIC")
 
     skipArtifactSigning = providers.systemProperty("skipArtifactSigning").present
     terminateCompilerOnWarning = providers.systemProperty("terminateCompilerOnWarning").getOrElse("true") == "true"
@@ -83,7 +84,7 @@ if (publishReleases || publishSnapshots) {
             username = "${repositoryUsername}"
             password = "${repositoryPassword}"
             publicationName = "Apereo CAS Release ${project.version}"
-            publishingType = "AUTOMATIC"
+            publishingType = "${publishingType}"
             validationTimeout.set(Duration.ZERO)
             publishingTimeout.set(Duration.ZERO)
             uploadSnapshotsParallelism.set(4)
@@ -230,6 +231,7 @@ if (CasBuildSettings.isTaskRequested(project, 'jacocoRootReport')
     || gradle.startParameter.taskNames.any { task -> task.startsWith("jacoco") }) {
     def coveredProjectPaths = CasBuildSettings.includedProjectPaths(project)
         .findAll { projectPath -> projectPath != project.path && !projectPath.startsWith(':docs') }
+        .findAll { projectPath -> projectPath != ':support:cas-server-support-bom' }
 
     def aggregateCoverageData = configurations.create('aggregateCoverageData') {
         canBeConsumed = false
