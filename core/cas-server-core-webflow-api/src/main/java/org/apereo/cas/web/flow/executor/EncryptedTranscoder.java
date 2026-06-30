@@ -23,6 +23,52 @@ import org.springframework.aop.support.AopUtils;
 @Slf4j
 @RequiredArgsConstructor
 public class EncryptedTranscoder implements Transcoder {
+    private static final long MAXIMUM_DESERIALIZATION_DEPTH = 64;
+
+    private static final long MAXIMUM_DESERIALIZATION_REFERENCES = 100_000;
+
+    private static final long MAXIMUM_DESERIALIZATION_ARRAY_LENGTH = 100_000;
+
+    private static final long MAXIMUM_DESERIALIZATION_BYTES = 10_000_000;
+
+    private static final Set<String> ALLOWED_DESERIALIZATION_ROOT_CLASS_NAMES = Set.of(
+        Boolean.class.getName(),
+        Byte.class.getName(),
+        Character.class.getName(),
+        Double.class.getName(),
+        Float.class.getName(),
+        Integer.class.getName(),
+        Long.class.getName(),
+        Number.class.getName(),
+        Short.class.getName(),
+        String.class.getName(),
+        BigDecimal.class.getName(),
+        BigInteger.class.getName(),
+        URI.class.getName(),
+        ClientFlowExecutionRepository.SerializedFlowExecutionState.class.getName());
+
+    private static final Set<String> ALLOWED_DESERIALIZATION_CLASS_NAMES = Set.of(
+        Boolean.class.getName(),
+        Byte.class.getName(),
+        Character.class.getName(),
+        Double.class.getName(),
+        Float.class.getName(),
+        Integer.class.getName(),
+        Long.class.getName(),
+        Number.class.getName(),
+        Short.class.getName(),
+        String.class.getName(),
+        BigDecimal.class.getName(),
+        BigInteger.class.getName(),
+        URI.class.getName(),
+        ClientFlowExecutionRepository.SerializedFlowExecutionState.class.getName());
+
+    private static final Set<String> ALLOWED_DESERIALIZATION_PACKAGE_NAMES = Set.of(
+        "java.time.",
+        "java.util.",
+        "org.apereo.",
+        "org.springframework.");
+
     /**
      * Handles encryption/decryption details.
      */
@@ -64,11 +110,64 @@ public class EncryptedTranscoder implements Transcoder {
              val in = this.compression
                  ? new ObjectInputStream(new GZIPInputStream(inBuffer))
                  : new ObjectInputStream(inBuffer)) {
+            in.setObjectInputFilter(EncryptedTranscoder::validateDeserializedClass);
             return in.readObject();
         } catch (final Exception e) {
             LoggingUtils.error(LOGGER, e);
             throw new IOException("Deserialization error", e);
         }
+    }
+
+    protected static ObjectInputFilter.Status validateDeserializedClass(final ObjectInputFilter.FilterInfo info) {
+        if (isDeserializationLimitExceeded(info)) {
+            return ObjectInputFilter.Status.REJECTED;
+        }
+        val serialClass = info.serialClass();
+        if (serialClass == null) {
+            return ObjectInputFilter.Status.UNDECIDED;
+        }
+        if (info.depth() == 1 && !isDeserializationRootClassAllowed(serialClass)) {
+            return ObjectInputFilter.Status.REJECTED;
+        }
+        if (serialClass.isArray()) {
+            return validateDeserializedArrayClass(serialClass);
+        }
+        return isDeserializationClassAllowed(serialClass)
+            ? ObjectInputFilter.Status.ALLOWED
+            : ObjectInputFilter.Status.REJECTED;
+    }
+
+    private static ObjectInputFilter.Status validateDeserializedArrayClass(final Class<?> serialClass) {
+        var componentType = serialClass.getComponentType();
+        while (componentType.isArray()) {
+            componentType = componentType.getComponentType();
+        }
+        return componentType.isPrimitive() || isDeserializationClassAllowed(componentType)
+            ? ObjectInputFilter.Status.ALLOWED
+            : ObjectInputFilter.Status.REJECTED;
+    }
+
+    private static boolean isDeserializationLimitExceeded(final ObjectInputFilter.FilterInfo info) {
+        return info.depth() > MAXIMUM_DESERIALIZATION_DEPTH
+            || info.references() > MAXIMUM_DESERIALIZATION_REFERENCES
+            || info.arrayLength() > MAXIMUM_DESERIALIZATION_ARRAY_LENGTH
+            || info.streamBytes() > MAXIMUM_DESERIALIZATION_BYTES;
+    }
+
+    private static boolean isDeserializationClassAllowed(final Class<?> serialClass) {
+        if (serialClass.isPrimitive() || Enum.class.isAssignableFrom(serialClass)) {
+            return true;
+        }
+        val className = serialClass.getName();
+        return ALLOWED_DESERIALIZATION_CLASS_NAMES.contains(className)
+            || ALLOWED_DESERIALIZATION_PACKAGE_NAMES.stream().anyMatch(className::startsWith);
+    }
+
+    private static boolean isDeserializationRootClassAllowed(final Class<?> serialClass) {
+        return !serialClass.isArray()
+            && (serialClass.isPrimitive()
+                || Enum.class.isAssignableFrom(serialClass)
+                || ALLOWED_DESERIALIZATION_ROOT_CLASS_NAMES.contains(serialClass.getName()));
     }
 
     @SuppressWarnings("BanSerializableRead")
