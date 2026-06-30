@@ -169,7 +169,7 @@ while (( "$#" )); do
           done
         fi
         formatted=$(printf '%s\n' "$category" | awk '{ for (i = 1; i <= NF; i++) print "  - " $i }')
-        printf "👷 ${GREEN}Test categories for current changeset are:\n${formatted} ${ENDCOLOR}\n"
+        printf "👷 ${GREEN}Test categories for current changeset are:\n${formatted} ${ENDCOLOR}\n\n"
         
         for item in $(echo "$category" | sed "s/,/ /g")
         do
