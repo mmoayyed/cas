@@ -173,13 +173,14 @@ class OidcClientConfigurationEndpointControllerTests {
     })
     class ClientSecretExpirationTests extends AbstractOidcTests {
         @Test
-        void verifyOperation() throws Throwable  {
+        void verifyOperation() throws Throwable {
             val clientId = UUID.randomUUID().toString();
             val service = getOidcRegisteredService(clientId);
             service.setClientSecretExpiration(ZonedDateTime.now(Clock.systemUTC()).minusSeconds(3).toEpochSecond());
             servicesManager.save(service.markAsDynamicallyRegistered());
             val accessToken = getAccessToken(clientId, Set.of(OidcConstants.CLIENT_CONFIGURATION_SCOPE));
             ticketRegistry.addTicket(accessToken);
+            val originalSecret = oauthRegisteredServiceCipherExecutor.decode(service.getClientSecret());
             mockMvc
                 .perform(get("/cas/oidc/" + OidcConstants.CLIENT_CONFIGURATION_URL)
                     .param(OAuth20Constants.CLIENT_ID, clientId)
@@ -190,7 +191,8 @@ class OidcClientConfigurationEndpointControllerTests {
                 .andExpect(status().isOk());
 
             val updatedService = servicesManager.findServiceBy(service.getId(), OidcRegisteredService.class);
-            assertNotEquals(updatedService.getClientSecret(), service.getClientSecret());
+            val decodedSecret = oauthRegisteredServiceCipherExecutor.decode(updatedService.getClientSecret());
+            assertNotEquals(decodedSecret, originalSecret);
         }
     }
 }
