@@ -43,7 +43,7 @@ const assert = require("assert");
         assert(entity.contacts.length === 2);
 
         await cas.log("Fetching client configuration...");
-        await cas.log("==================================");
+        await cas.separator();
 
         await cas.doGet(entity.registration_client_uri,
             (res) => {

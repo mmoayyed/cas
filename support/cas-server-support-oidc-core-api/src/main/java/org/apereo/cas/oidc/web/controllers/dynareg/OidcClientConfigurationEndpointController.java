@@ -124,7 +124,8 @@ public class OidcClientConfigurationEndpointController extends BaseOidcControlle
                 service = getConfigurationContext().getClientRegistrationRequestTranslator()
                     .translate(registrationRequest, Optional.of(service));
             }
-            if (StringUtils.isNotBlank(jsonInput) || processClientSecretExpirationIfAny(service)) {
+            val secretUpdated = processClientSecretExpirationIfAny(service);
+            if (StringUtils.isNotBlank(jsonInput) || secretUpdated) {
                 getConfigurationContext().getServicesManager().save(service);
             }
             val clientResponse = OidcClientRegistrationUtils.getClientRegistrationResponse(service, getConfigurationContext());

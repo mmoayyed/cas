@@ -16,7 +16,6 @@ import org.apereo.cas.util.DateTimeUtils;
 import org.apereo.cas.util.ResourceUtils;
 import org.apereo.cas.util.function.FunctionUtils;
 import org.apereo.cas.util.spring.SpringExpressionLanguageValueResolver;
-import org.apereo.cas.web.SimpleUrlValidatorFactoryBean;
 import lombok.experimental.UtilityClass;
 import lombok.val;
 import org.apache.commons.lang3.StringUtils;
