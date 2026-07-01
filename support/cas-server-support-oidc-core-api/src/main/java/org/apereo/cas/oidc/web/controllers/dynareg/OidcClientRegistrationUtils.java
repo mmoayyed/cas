@@ -75,7 +75,7 @@ public class OidcClientRegistrationUtils {
                 .map(type -> type.getType().toLowerCase(Locale.ENGLISH))
                 .collect(Collectors.toList()));
 
-        val validator = new SimpleUrlValidatorFactoryBean(false).getObject();
+        val validator = configurationContext.getUrlValidator();
         val keystore = SpringExpressionLanguageValueResolver.getInstance().resolve(registeredService.getJwks());
         FunctionUtils.doUnchecked(param -> {
             if (Objects.requireNonNull(validator).isValid(keystore)) {
