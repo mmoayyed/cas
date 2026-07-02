@@ -3,6 +3,7 @@ package org.apereo.cas.support.oauth.validator;
 import module java.base;
 import org.apereo.cas.AbstractOAuth20Tests;
 import org.apereo.cas.support.oauth.services.OAuthRegisteredService;
+import org.apereo.cas.support.oauth.services.OAuthRegisteredServiceClientSecret;
 import org.apereo.cas.util.RandomUtils;
 import org.apereo.cas.util.spring.SpringExpressionLanguageValueResolver;
 import lombok.val;
@@ -33,10 +34,11 @@ class DefaultOAuth20ClientSecretValidatorTests extends AbstractOAuth20Tests {
         val encodedSecret = oauth20ClientSecretValidator.getCipherExecutor().encode(secret);
         val registeredService = new OAuthRegisteredService();
         registeredService.setClientId("clientid");
-        registeredService.setClientSecret(encodedSecret);
+        val clientSecret = OAuthRegisteredServiceClientSecret.withoutExpiration(encodedSecret);
+        registeredService.setClientSecrets(List.of(clientSecret));
         val result = oauth20ClientSecretValidator.validate(registeredService, secret);
         assertTrue(result);
-        assertFalse(oauth20ClientSecretValidator.isClientSecretExpired(registeredService));
+        assertFalse(oauth20ClientSecretValidator.isClientSecretExpired(clientSecret, registeredService));
     }
 
     @Test
@@ -45,7 +47,8 @@ class DefaultOAuth20ClientSecretValidatorTests extends AbstractOAuth20Tests {
         val encodedSecret = oauth20ClientSecretValidator.getCipherExecutor().encode(secret);
         val registeredService = new OAuthRegisteredService();
         registeredService.setClientId("clientid");
-        registeredService.setClientSecret(encodedSecret);
+        val clientSecret = OAuthRegisteredServiceClientSecret.withoutExpiration(encodedSecret);
+        registeredService.setClientSecrets(List.of(clientSecret));
         val result = oauth20ClientSecretValidator.validate(registeredService, "badSecret");
         assertFalse(result);
     }
@@ -53,9 +56,10 @@ class DefaultOAuth20ClientSecretValidatorTests extends AbstractOAuth20Tests {
     @Test
     void verifyClientSecretCheckWithoutCipher() {
         val secret = RandomUtils.randomAlphanumeric(12);
+        val clientSecret = OAuthRegisteredServiceClientSecret.withoutExpiration(secret);
         val registeredService = new OAuthRegisteredService();
         registeredService.setClientId("clientid");
-        registeredService.setClientSecret(secret);
+        registeredService.setClientSecrets(List.of(clientSecret));
         val result = oauth20ClientSecretValidator.validate(registeredService, secret);
         assertTrue(result);
     }
@@ -72,9 +76,10 @@ class DefaultOAuth20ClientSecretValidatorTests extends AbstractOAuth20Tests {
     @Test
     void verifyClientSecretUrlEncoded() {
         val secret = "!@#$%^&^&*()";
+        val clientSecret = OAuthRegisteredServiceClientSecret.withoutExpiration(secret);
         val registeredService = new OAuthRegisteredService();
         registeredService.setClientId("clientid");
-        registeredService.setClientSecret(secret);
+        registeredService.setClientSecrets(List.of(clientSecret));
         val result = oauth20ClientSecretValidator.validate(registeredService, secret);
         assertTrue(result);
     }

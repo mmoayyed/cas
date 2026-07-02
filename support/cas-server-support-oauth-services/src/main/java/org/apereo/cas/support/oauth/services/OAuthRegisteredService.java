@@ -4,12 +4,15 @@ import module java.base;
 import org.apereo.cas.configuration.model.support.oauth.OAuthCoreProperties;
 import org.apereo.cas.services.BaseRegisteredService;
 import org.apereo.cas.services.BaseWebBasedRegisteredService;
+import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonSetter;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
 import org.apache.commons.lang3.ObjectUtils;
+import tools.jackson.databind.annotation.JsonDeserialize;
 
 /**
  * An extension of the {@link BaseRegisteredService} that defines the
@@ -31,7 +34,7 @@ public class OAuthRegisteredService extends BaseWebBasedRegisteredService {
     @Serial
     private static final long serialVersionUID = 5318897374067731021L;
 
-    private String clientSecret;
+    private List<OAuthRegisteredServiceClientSecret> clientSecrets;
 
     private String clientId;
 
@@ -86,8 +89,6 @@ public class OAuthRegisteredService extends BaseWebBasedRegisteredService {
     private String tlsClientAuthSanIp;
 
     private String tlsClientAuthSanEmail;
-
-    private long clientSecretExpiration;
     
     @JsonIgnore
     @Override
@@ -107,8 +108,8 @@ public class OAuthRegisteredService extends BaseWebBasedRegisteredService {
      * @return the scopes
      */
     public Set<String> getScopes() {
-        if (this.scopes == null) {
-            this.scopes = new HashSet<>();
+        if (scopes == null) {
+            scopes = new HashSet<>();
         }
         return scopes;
     }
@@ -126,7 +127,16 @@ public class OAuthRegisteredService extends BaseWebBasedRegisteredService {
     @Override
     public void initialize() {
         super.initialize();
-        this.scopes = ObjectUtils.getIfNull(this.scopes, new HashSet<>());
-        this.audience = ObjectUtils.getIfNull(this.audience, new HashSet<>());
+        scopes = ObjectUtils.getIfNull(scopes, new HashSet<>());
+        audience = ObjectUtils.getIfNull(audience, new HashSet<>());
+        clientSecrets = ObjectUtils.getIfNull(clientSecrets, new ArrayList<>());
+    }
+
+    @JsonSetter("clientSecret")
+    public void setClientSecret(final String clientSecret) {
+        if (clientSecrets == null) {
+            clientSecrets = new ArrayList<>();
+        }
+        clientSecrets.add(OAuthRegisteredServiceClientSecret.withoutExpiration(clientSecret));
     }
 }

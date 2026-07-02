@@ -5,6 +5,7 @@ import org.apereo.cas.services.RegisteredServiceTestUtils;
 import org.apereo.cas.services.ServicesManager;
 import org.apereo.cas.support.oauth.OAuth20Constants;
 import org.apereo.cas.support.oauth.services.OAuthRegisteredService;
+import org.apereo.cas.support.oauth.services.OAuthRegisteredServiceClientSecret;
 import org.apereo.cas.test.CasTestExtension;
 import org.apereo.cas.util.MockRequestContext;
 import org.apereo.cas.web.flow.CasWebflowConstants;
@@ -61,7 +62,7 @@ class OAuth20RegisteredServiceUIActionTests {
         svc.setClientId("id");
         svc.setName("oauth");
         svc.setDescription("description");
-        svc.setClientSecret("secret");
+        svc.setClientSecrets(List.of(OAuthRegisteredServiceClientSecret.withoutExpiration("secret")));
         svc.setInformationUrl("info");
         svc.setPrivacyUrl("privacy");
         svc.setServiceId("https://oauth\\.example\\.org.*");

@@ -135,7 +135,7 @@ class OidcClientConfigurationEndpointControllerTests {
             val clientId = UUID.randomUUID().toString();
             var service = getOidcRegisteredService(clientId);
             val clientSecretExpiration = ZonedDateTime.now(ZoneOffset.UTC).minusDays(1).toEpochSecond();
-            service.setClientSecretExpiration(clientSecretExpiration);
+            service.getClientSecrets().forEach(secret -> secret.setExpiration(clientSecretExpiration));
             servicesManager.save(service);
 
             val jsonBody = """
@@ -161,7 +161,7 @@ class OidcClientConfigurationEndpointControllerTests {
                 .andExpect(status().isOk());
 
             service = servicesManager.findServiceBy(service.getId(), OidcRegisteredService.class);
-            assertNotEquals(service.getClientSecretExpiration(), clientSecretExpiration);
+            service.getClientSecrets().forEach(secret -> assertNotEquals(secret.getExpiration(), clientSecretExpiration));
         }
 
     }
@@ -176,11 +176,12 @@ class OidcClientConfigurationEndpointControllerTests {
         void verifyOperation() throws Throwable {
             val clientId = UUID.randomUUID().toString();
             val service = getOidcRegisteredService(clientId);
-            service.setClientSecretExpiration(ZonedDateTime.now(Clock.systemUTC()).minusSeconds(3).toEpochSecond());
+            val clientSecretExpiration = ZonedDateTime.now(Clock.systemUTC()).minusSeconds(3).toEpochSecond();
+            service.getClientSecrets().forEach(secret -> secret.setExpiration(clientSecretExpiration));
             servicesManager.save(service.markAsDynamicallyRegistered());
             val accessToken = getAccessToken(clientId, Set.of(OidcConstants.CLIENT_CONFIGURATION_SCOPE));
             ticketRegistry.addTicket(accessToken);
-            val originalSecret = oauthRegisteredServiceCipherExecutor.decode(service.getClientSecret());
+            val originalSecret = oauthRegisteredServiceCipherExecutor.decode(service.getClientSecrets().getFirst().getValue());
             mockMvc
                 .perform(get("/cas/oidc/" + OidcConstants.CLIENT_CONFIGURATION_URL)
                     .param(OAuth20Constants.CLIENT_ID, clientId)
@@ -191,7 +192,7 @@ class OidcClientConfigurationEndpointControllerTests {
                 .andExpect(status().isOk());
 
             val updatedService = servicesManager.findServiceBy(service.getId(), OidcRegisteredService.class);
-            val decodedSecret = oauthRegisteredServiceCipherExecutor.decode(updatedService.getClientSecret());
+            val decodedSecret = oauthRegisteredServiceCipherExecutor.decode(updatedService.getClientSecrets().getFirst().getValue());
             assertNotEquals(decodedSecret, originalSecret);
         }
     }
