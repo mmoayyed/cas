@@ -157,7 +157,6 @@ class OAuth20ClientIdClientSecretAuthenticatorTests {
             request.removeAllParameters();
             request.addParameter(OAuth20Constants.GRANT_TYPE, OAuth20GrantTypes.REFRESH_TOKEN.name());
             request.addParameter(OAuth20Constants.CLIENT_ID, registeredService.getClientId());
-            request.addParameter(OAuth20Constants.CLIENT_SECRET, serviceWithoutSecret.getClientSecrets().getFirst().getValue());
             request.addParameter(OAuth20Constants.REFRESH_TOKEN, refreshToken.getId());
             oauthClientAuthenticator.validate(new CallContext(ctx, new JEESessionStore()), credentials);
             assertNotNull(credentials.getUserProfile());

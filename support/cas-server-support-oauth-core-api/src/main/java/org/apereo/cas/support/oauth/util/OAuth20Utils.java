@@ -347,7 +347,8 @@ public class OAuth20Utils {
      */
     public boolean doesServiceNeedAuthentication(final OAuthRegisteredService registeredService) {
         return registeredService.getClientSecrets() != null
-            && !registeredService.getClientSecrets().isEmpty();
+            && !registeredService.getClientSecrets().isEmpty()
+            && registeredService.getClientSecrets().stream().anyMatch(secret -> StringUtils.isNotBlank(secret.getValue()));
     }
 
     /**
