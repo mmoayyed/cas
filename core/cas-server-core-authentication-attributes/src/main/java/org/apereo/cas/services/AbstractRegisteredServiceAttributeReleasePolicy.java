@@ -1,6 +1,7 @@
 package org.apereo.cas.services;
 
 import module java.base;
+import org.apereo.cas.authentication.attribute.AttributeDefinition;
 import org.apereo.cas.authentication.attribute.AttributeDefinitionStore;
 import org.apereo.cas.authentication.attribute.CaseCanonicalizationMode;
 import org.apereo.cas.authentication.principal.DefaultPrincipalAttributesRepository;
@@ -198,15 +199,28 @@ public abstract class AbstractRegisteredServiceAttributeReleasePolicy implements
                 return availableAttributes;
             }
             val requestedDefinitions = new LinkedHashSet<>(determineRequestedAttributeDefinitions(context));
+            if (requestedDefinitions.size() == 1 && "*".equals(requestedDefinitions.getFirst())) {
+                requestedDefinitions.clear();
+                requestedDefinitions.addAll(
+                    definitionStore.getAttributeDefinitions()
+                        .stream()
+                        .map(AttributeDefinition::getKey)
+                        .toList());
+            }
             requestedDefinitions.addAll(principalAttributes.keySet());
-
+            val finalRequestedDefinitions = finalizedRequestedAttributeDefinitions(requestedDefinitions, context);
             LOGGER.debug("Finding requested attribute definitions [{}] based on available attributes [{}]",
                 requestedDefinitions, availableAttributes);
-            return definitionStore.resolveAttributeValues(requestedDefinitions, availableAttributes,
+            return definitionStore.resolveAttributeValues(finalRequestedDefinitions, availableAttributes,
                 context.getPrincipal(), context.getRegisteredService(), context.getService());
         }
         LOGGER.trace("No attribute definition store is available in application context");
         return principalAttributes;
+    }
+
+    protected Set<String> finalizedRequestedAttributeDefinitions(final Set<String> requestedDefinitions,
+                                                                 final RegisteredServiceAttributeReleasePolicyContext context) {
+        return requestedDefinitions;
     }
 
     protected Map<String, List<Object>> resolveAttributesFromPrincipalAttributeRepository(final RegisteredServiceAttributeReleasePolicyContext context) {

@@ -14,6 +14,7 @@ import org.apereo.cas.configuration.CasConfigurationProperties;
 import org.apereo.cas.services.RegisteredServiceAttributeReleasePolicyContext;
 import org.apereo.cas.services.RegisteredServicePublicKey;
 import org.apereo.cas.services.RegisteredServicePublicKeyImpl;
+import org.apereo.cas.services.RegisteredServiceTestUtils;
 import org.apereo.cas.services.ReturnAllAttributeReleasePolicy;
 import org.apereo.cas.test.CasTestExtension;
 import org.apereo.cas.util.CollectionUtils;
@@ -91,6 +92,14 @@ class JsonAttributeDefinitionStoreTests {
         assertFalse(attributes.isEmpty());
         assertTrue(attributes.containsKey("allgroups"));
         assertEquals(List.of("m1/m2/m3/m4"), attributes.get("allgroups"));
+
+        assertTrue(attributes.containsKey("parentAttribute"));
+        val values = attributes.get("parentAttribute");
+        assertTrue(values.contains("m1"));
+        assertTrue(values.contains("m2"));
+        assertTrue(values.contains("m3"));
+        assertTrue(values.contains("m4"));
+        assertTrue(values.contains("someValue"));
     }
 
     @Test
@@ -110,7 +119,7 @@ class JsonAttributeDefinitionStoreTests {
         assertTrue(attributes.containsKey("urn:oid:1.3.6.1.4.1.5923.1.1.1.6"));
         assertTrue(attributes.get("urn:oid:1.3.6.1.4.1.5923.1.1.1.6").contains("cas-user-id@cas.org"));
     }
-    
+
 
     @Test
     void verifyMappedToMultipleNames() {
@@ -515,7 +524,7 @@ class JsonAttributeDefinitionStoreTests {
     private Map<String, List<Object>> getAllReleasedAttributesForCasUser() throws Throwable {
         val person = attributeRepository.getPerson("casuser");
         assertNotNull(person);
-        val policy = new ReturnAllAttributeReleasePolicy();
+        val policy = new ReturnAllAttributeReleasePolicy().setExcludedAttributes(Set.of("badAttribute"));
         val releasePolicyContext = RegisteredServiceAttributeReleasePolicyContext.builder()
             .registeredService(CoreAuthenticationTestUtils.getRegisteredService())
             .service(CoreAuthenticationTestUtils.getService())
@@ -524,7 +533,7 @@ class JsonAttributeDefinitionStoreTests {
             .build();
         return policy.getAttributes(releasePolicyContext);
     }
-    
+
     @TestConfiguration(proxyBeanMethods = false)
     static class JsonAttributeDefinitionStoreTestConfiguration {
         @Bean
