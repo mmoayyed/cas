@@ -6,15 +6,18 @@ import org.apereo.cas.config.CasAmazonCoreAutoConfiguration;
 import org.apereo.cas.test.CasTestExtension;
 import org.apereo.cas.util.junit.EnabledIfListeningOnPort;
 import org.apereo.cas.util.spring.boot.SpringBootTestAutoConfigurations;
-import lombok.val;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
 import software.amazon.awssdk.core.SdkSystemSetting;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 /**
  * This is {@link CloudWatchLogsEndpointTests}.
@@ -40,7 +43,9 @@ import static org.junit.jupiter.api.Assertions.*;
 
         "management.endpoint.cloudWatchLogs.access=UNRESTRICTED",
         "management.endpoints.web.exposure.include=*"
-    })
+    },
+    webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@AutoConfigureMockMvc
 @ExtendWith(CasTestExtension.class)
 class CloudWatchLogsEndpointTests {
     static {
@@ -50,12 +55,16 @@ class CloudWatchLogsEndpointTests {
     }
 
     @Autowired
-    @Qualifier("cloudWatchLogsEndpoint")
-    private CloudWatchLogsEndpoint cloudWatchLogsEndpoint;
+    @Qualifier("mockMvc")
+    private MockMvc mockMvc;
 
     @Test
-    void verifyOperation() {
-        val events = cloudWatchLogsEndpoint.fetchLogEntries(20, "info");
-        assertFalse(events.isEmpty());
+    void verifyOperation() throws Throwable {
+        mockMvc.perform(get("/actuator/cloudWatchLogs/stream")
+                .param("count", "20")
+                .param("level", "info")
+                .accept(MediaType.APPLICATION_JSON))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$").isNotEmpty());
     }
 }

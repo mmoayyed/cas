@@ -21,9 +21,13 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Bean;
-import static org.junit.jupiter.api.Assertions.*;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
 import static org.mockito.Mockito.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 /**
  * This is {@link GoogleCloudLogsEndpointTests}.
@@ -46,18 +50,22 @@ import static org.mockito.Mockito.*;
     "cas.logging.gcp.labels.namespace_name=cas-idp-0-develop",
     "management.endpoint.gcpLogs.access=UNRESTRICTED",
     "management.endpoints.web.exposure.include=*"
-})
+}, webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@AutoConfigureMockMvc
 @EnableConfigurationProperties(CasConfigurationProperties.class)
 class GoogleCloudLogsEndpointTests {
-
     @Autowired
-    @Qualifier("googleCloudLogsEndpoint")
-    private GoogleCloudLogsEndpoint googleCloudLogsEndpoint;
+    @Qualifier("mockMvc")
+    private MockMvc mockMvc;
 
     @Test
-    void verifyOperation() {
-        val events = googleCloudLogsEndpoint.fetchLogEntries(20, "info");
-        assertFalse(events.isEmpty());
+    void verifyOperation() throws Throwable {
+        mockMvc.perform(get("/actuator/gcpLogs/stream")
+                .param("count", "20")
+                .param("level", "info")
+                .accept(MediaType.APPLICATION_JSON))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$").isNotEmpty());
     }
 
     @TestConfiguration(value = "GoogleCloudTestConfiguration", proxyBeanMethods = false)

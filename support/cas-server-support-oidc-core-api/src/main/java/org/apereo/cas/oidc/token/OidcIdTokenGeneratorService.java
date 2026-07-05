@@ -73,8 +73,7 @@ public class OidcIdTokenGeneratorService extends BaseIdTokenGeneratorService<Oid
         Assert.isAssignable(OidcRegisteredService.class, context.getRegisteredService().getClass(),
             "Registered service instance is not registered as an OpenID Connect application");
         if (!context.getAccessToken().getScopes().contains(OidcConstants.StandardScopes.OPENID.getScope())) {
-            LOGGER.warn("Authentication request does not include the [{}] scope. "
-                    + "Including this scope is a MUST for OpenID Connect and CAS will not produce an ID token without this scope.",
+            LOGGER.warn("Authentication request does not include the [{}] scope. CAS will not produce an ID token without this scope.",
                 OidcConstants.StandardScopes.OPENID.getScope());
             return null;
         }

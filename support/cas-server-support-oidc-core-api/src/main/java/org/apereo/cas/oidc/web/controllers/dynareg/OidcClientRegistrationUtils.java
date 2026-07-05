@@ -104,7 +104,7 @@ public class OidcClientRegistrationUtils {
             val clientConfigUri = getClientConfigurationUri(registeredService, serverPrefix);
             clientResponse.setRegistrationClientUri(clientConfigUri);
         });
-        clientResponse.setClientSecretExpiresAt(decodedSecret.getExpiration());
+        clientResponse.setClientSecretExpiresAt(decodedSecret.toEffectiveExpiration().toEpochSecond());
         val dynamicRegistrationPropName = RegisteredServiceProperty.RegisteredServiceProperties.OIDC_DYNAMIC_CLIENT_REGISTRATION.getPropertyName();
         if (registeredService.getProperties().containsKey(dynamicRegistrationPropName)) {
             val dt = registeredService.getProperties()

@@ -20,6 +20,7 @@ import org.apereo.cas.ticket.expiration.TicketGrantingTicketExpirationPolicy;
 import org.apereo.cas.ticket.tracking.TicketTrackingPolicy;
 import org.apereo.cas.util.DefaultUniqueTicketIdGenerator;
 import org.apereo.cas.util.function.FunctionUtils;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
@@ -141,12 +142,14 @@ public class MockTicketGrantingTicket implements TicketGrantingTicket {
         return true;
     }
 
+    @JsonIgnore
     @Override
     @CanIgnoreReturnValue
     public TicketGrantingTicket getRoot() {
         return this;
     }
 
+    @JsonIgnore
     @Override
     public List<Authentication> getChainedAuthentications() {
         return new ArrayList<>();
@@ -157,6 +160,7 @@ public class MockTicketGrantingTicket implements TicketGrantingTicket {
         return this.descendantTickets;
     }
 
+    @JsonIgnore
     @Override
     public TicketGrantingTicket getTicketGrantingTicket() {
         return this;

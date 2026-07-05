@@ -66,10 +66,36 @@ test coverage of the CAS codebase is approximately `94%`.
 CAS is now built with Gradle 9.7 and the build process has been updated to use the 
 latest Gradle features and capabilities.
  
-### OpenID Connect Client Secrets
+### Spring Boot 4.2
+
+CAS is now built with Spring Boot `4.2.x`. This is a minor platform upgrade that 
+affects almost all aspects of the codebase including many of the third-party 
+core libraries used by CAS as well as some CAS functionality.
+
+### JSpecify & NullAway
+
+CAS codebase is now annotated with [JSpecify](https://jspecify.dev/) annotations to indicate nullness contracts on method parameters,
+return types and fields. We will gradually extend the coverage of such annotations across the entire codebase in future releases
+and will integrate the Gradle build tool with tools such as [NullAway](https://github.com/uber/NullAway) to prevent nullness contract violations
+during compile time.
+
+### OAuth & OpenID Connect Client Secrets
+
+OAuth and OIDC client applications may now define [multiple client secrets](../authentication/OAuth-ClientSecret-Management.html), 
+allowing deployments to support secret expiration and smoother secret rotation. Existing 
+single-secret configurations remain compatible, while new configurations can 
+include additional secrets with expiration metadata so clients can transition 
+to new secrets without immediate disruption. Client secret rotation may be carried out using
+a dedicated `oauthClientSecrets` actuator endpoint.
 
 ### Attribute Definition Dependencies
 
+Attribute definitions may now [declare dependencies](../integration/Attribute-Definitions.html) on other attribute definitions. 
+When an attribute is resolved, its declared 
+dependencies are resolved first and their results are made available 
+during resolution, allowing definitions to build on values produced by 
+other definitions in a predictable, reusable way.
+
 ## Other Stuff
-              
- 
+
+- A large number of dependencies and libraries have been updated to their latest versions.

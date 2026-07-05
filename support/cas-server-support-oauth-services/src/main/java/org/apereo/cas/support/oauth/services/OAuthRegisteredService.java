@@ -4,7 +4,6 @@ import module java.base;
 import org.apereo.cas.configuration.model.support.oauth.OAuthCoreProperties;
 import org.apereo.cas.services.BaseRegisteredService;
 import org.apereo.cas.services.BaseWebBasedRegisteredService;
-import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonSetter;
 import lombok.EqualsAndHashCode;
@@ -12,7 +11,7 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
 import org.apache.commons.lang3.ObjectUtils;
-import tools.jackson.databind.annotation.JsonDeserialize;
+import org.apache.commons.lang3.StringUtils;
 
 /**
  * An extension of the {@link BaseRegisteredService} that defines the
@@ -132,11 +131,33 @@ public class OAuthRegisteredService extends BaseWebBasedRegisteredService {
         clientSecrets = ObjectUtils.getIfNull(clientSecrets, new ArrayList<>());
     }
 
+    /**
+     * Sets client secret and translates to {@link #clientSecrets}.
+     * Mainly kept for backward compatibility.
+     * @param clientSecret the client secret
+     */
     @JsonSetter("clientSecret")
     public void setClientSecret(final String clientSecret) {
-        if (clientSecrets == null) {
-            clientSecrets = new ArrayList<>();
-        }
+        clientSecrets = ObjectUtils.getIfNull(clientSecrets, new ArrayList<>());
         clientSecrets.add(OAuthRegisteredServiceClientSecret.withoutExpiration(clientSecret));
+    }
+
+    /**
+     * Gets the first non-expiring client secret.
+     *
+     * @return the client secret
+     */
+    @JsonIgnore
+    public String getClientSecret() {
+        clientSecrets = ObjectUtils.getIfNull(clientSecrets, new ArrayList<>());
+        if (clientSecrets.isEmpty()) {
+            return StringUtils.EMPTY;
+        }
+        return clientSecrets
+            .stream()
+            .filter(secret -> !secret.hasClientSecretExpired(this))
+            .findFirst()
+            .map(OAuthRegisteredServiceClientSecret::getValue)
+            .orElse(StringUtils.EMPTY);
     }
 }

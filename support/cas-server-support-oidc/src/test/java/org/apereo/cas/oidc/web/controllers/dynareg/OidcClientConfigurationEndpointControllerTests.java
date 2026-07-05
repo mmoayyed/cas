@@ -134,8 +134,8 @@ class OidcClientConfigurationEndpointControllerTests {
         void verifyUpdateOperation() throws Throwable {
             val clientId = UUID.randomUUID().toString();
             var service = getOidcRegisteredService(clientId);
-            val clientSecretExpiration = ZonedDateTime.now(ZoneOffset.UTC).minusDays(1).toEpochSecond();
-            service.getClientSecrets().forEach(secret -> secret.setExpiration(clientSecretExpiration));
+            val clientSecretExpiration = ZonedDateTime.now(ZoneOffset.UTC).minusDays(1);
+            service.getClientSecrets().forEach(secret -> secret.expireAt(clientSecretExpiration));
             servicesManager.save(service);
 
             val jsonBody = """
@@ -176,8 +176,8 @@ class OidcClientConfigurationEndpointControllerTests {
         void verifyOperation() throws Throwable {
             val clientId = UUID.randomUUID().toString();
             val service = getOidcRegisteredService(clientId);
-            val clientSecretExpiration = ZonedDateTime.now(Clock.systemUTC()).minusSeconds(3).toEpochSecond();
-            service.getClientSecrets().forEach(secret -> secret.setExpiration(clientSecretExpiration));
+            val clientSecretExpiration = ZonedDateTime.now(Clock.systemUTC()).minusSeconds(3);
+            service.getClientSecrets().forEach(secret -> secret.expireAt(clientSecretExpiration));
             servicesManager.save(service.markAsDynamicallyRegistered());
             val accessToken = getAccessToken(clientId, Set.of(OidcConstants.CLIENT_CONFIGURATION_SCOPE));
             ticketRegistry.addTicket(accessToken);
