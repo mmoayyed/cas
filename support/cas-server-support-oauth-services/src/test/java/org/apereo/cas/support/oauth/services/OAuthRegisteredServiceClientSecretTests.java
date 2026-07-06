@@ -128,7 +128,8 @@ class OAuthRegisteredServiceClientSecretTests {
             Arguments.of("2035-01-02T03:04:05Z", expected),
             Arguments.of("01/02/2035 03:04 AM", expected.truncatedTo(ChronoUnit.MINUTES)),
             Arguments.of("01/02/2035 3:04 AM", expected.truncatedTo(ChronoUnit.MINUTES)),
-            Arguments.of("01/02/2035 03:04", expected.truncatedTo(ChronoUnit.MINUTES))
+            Arguments.of("01/02/2035 03:04", expected.truncatedTo(ChronoUnit.MINUTES)),
+            Arguments.of("01/02/2035", expected.toLocalDate().atStartOfDay(ZoneOffset.UTC))
         );
     }
 

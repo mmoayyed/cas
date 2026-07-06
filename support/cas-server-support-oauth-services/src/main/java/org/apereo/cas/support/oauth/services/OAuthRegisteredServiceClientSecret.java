@@ -95,9 +95,16 @@ public class OAuthRegisteredServiceClientSecret implements Serializable {
      */
     @JsonIgnore
     public ZonedDateTime toEffectiveExpiration() {
-        return NumberUtils.isParsable(expiration)
-            ? DateTimeUtils.zonedDateTimeOf(Instant.ofEpochSecond(Long.parseLong(expiration))).truncatedTo(ChronoUnit.SECONDS)
-            : DateTimeUtils.localDateTimeOf(expiration).atZone(ZoneOffset.UTC).truncatedTo(ChronoUnit.SECONDS);
+        if (NumberUtils.isParsable(expiration)) {
+            return DateTimeUtils.zonedDateTimeOf(Instant.ofEpochSecond(Long.parseLong(expiration))).truncatedTo(ChronoUnit.SECONDS);
+        }
+        if (!expiration.contains(":") && !expiration.contains("T")) {
+            val localDate = expiration.contains("/")
+                ? DateTimeUtils.localDateOf(expiration)
+                : LocalDate.parse(expiration);
+            return localDate.atStartOfDay(ZoneOffset.UTC).truncatedTo(ChronoUnit.SECONDS);
+        }
+        return DateTimeUtils.localDateTimeOf(expiration).atZone(ZoneOffset.UTC).truncatedTo(ChronoUnit.SECONDS);
     }
 
     /**

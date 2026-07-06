@@ -228,12 +228,14 @@ function processNavigationTabs() {
     if (!CasActuatorEndpoints.conditions()) {
         hideElements($("#springConditionsTabItem"));
     }
-    if (!CasActuatorEndpoints.oidcJwks() || !CAS_FEATURES.includes("OpenIDConnect")) {
+    const oidcProtocolAvailable = CasActuatorEndpoints.oidcJwks() && CAS_FEATURES.includes("OpenIDConnect");
+    if (!oidcProtocolAvailable && !CasActuatorEndpoints.oauthClientSecrets()) {
         $("#oidcprotocol").parent().remove();
         hideElements($("#oidcProtocolContainer"));
     }
     if (!CasActuatorEndpoints.samlValidate() && !CasActuatorEndpoints.casValidate()
-        && !CasActuatorEndpoints.samlPostProfileResponse() && !CasActuatorEndpoints.oidcJwks()) {
+        && !CasActuatorEndpoints.samlPostProfileResponse() && !CasActuatorEndpoints.oidcJwks()
+        && !CasActuatorEndpoints.oauthClientSecrets()) {
         hideElements($("#protocolsTabButton"));
         hideElements($(`#attribute-tab-${Tabs.PROTOCOLS.index}`));
     }

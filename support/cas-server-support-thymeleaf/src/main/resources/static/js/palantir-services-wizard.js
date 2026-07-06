@@ -2362,6 +2362,9 @@ function generateServiceDefinition() {
     }
 
     setTimeout(function () {
+        if (!document.getElementById("wizardServiceEditor")) {
+            return;
+        }
         const editor = initializeAceEditor("wizardServiceEditor");
         let serviceDefinition = {
             "@class": $("#serviceClassType").text().trim()
@@ -2439,7 +2442,10 @@ function generateServiceDefinition() {
                 if (value && Array.isArray(value)) {
                     value = value.filter(v => v != null && v !== "").join(",");
                 }
-                if (paramName && paramName.trim().length > 0 && value && value.trim().length > 0) {
+                if (paramName === "clientSecrets" && $input.attr("id") === "registeredServiceClientSecrets") {
+                    value = "clientSecrets";
+                }
+                if (paramName && paramName.trim().length > 0 && value && String(value).trim().length > 0) {
                     if (skipWhenFalse && (value === "false" || value === false)) {
                         console.debug(`Skipping parameter ${paramName} because its value is false`);
                     } else if (skipWhenTrue && (value === "true" || value === true)) {
@@ -3354,6 +3360,9 @@ function populateWizardFromServiceDefinition(serviceDefinition) {
         if (!paramName) {
             return;
         }
+        if (paramName === "clientSecrets" && $input.attr("id") === "registeredServiceClientSecrets") {
+            return;
+        }
 
         // Skip if this is part of a mapped field (handled separately)
         if ($input.closest("[id$='MapContainer']").length > 0) {
@@ -3497,6 +3506,9 @@ function populateWizardFromServiceDefinition(serviceDefinition) {
     if (serviceClass) {
         // OAuth/OIDC specific fields
         if (serviceClass.includes("OAuthRegisteredService") || serviceClass.includes("OidcRegisteredService")) {
+            if (typeof populateRegisteredServiceClientSecrets === "function") {
+                populateRegisteredServiceClientSecrets(serviceDefinition);
+            }
             if (serviceDefinition.supportedGrantTypes) {
                 const $grantTypes = $("select#registeredServiceSupportedGrantTypes");
                 setMultiSelectValue($grantTypes, arrayToString(serviceDefinition.supportedGrantTypes));
@@ -3626,6 +3638,9 @@ function openRegisteredServiceWizardDialog(existingService = null) {
             });
 
         $("#editServiceWizardForm input").val("");
+        if (typeof resetRegisteredServiceClientSecrets === "function") {
+            resetRegisteredServiceClientSecrets();
+        }
         $("#editServiceWizardForm option").filter(function () {
             const clazz = $(this).data("serviceClass");
             return clazz !== undefined && clazz !== null;

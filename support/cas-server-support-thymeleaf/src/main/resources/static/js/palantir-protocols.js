@@ -101,7 +101,113 @@ function showOidcJwks() {
     });
 }
 
+function buildOidcClientSecretRotationEndpoint() {
+    const clientId = $("#oidcClientSecretRotationClientId").val()?.trim();
+    const expireIn = $("#oidcClientSecretRotationExpireIn").val()?.trim();
+    const expiredOnly = $("#oidcClientSecretRotationExpiredOnly").val() === "true";
+    const encodedClientId = encodeURIComponent(clientId);
+    let endpoint = CasActuatorEndpoints.oauthClientSecrets();
+    if (/\{clientId\}|%7BclientId%7D/i.test(endpoint)) {
+        endpoint = endpoint.replace(/\{clientId\}|%7BclientId%7D/ig, encodedClientId);
+    } else {
+        endpoint = `${endpoint}/${encodedClientId}`;
+    }
+    const query = new URLSearchParams();
+    query.append("expiredOnly", expiredOnly);
+    if (expireIn) {
+        query.append("expireIn", expireIn);
+    }
+    const queryString = query.toString();
+    return `${endpoint}${queryString ? `?${queryString}` : ""}`;
+}
+
+function renderOidcClientSecretRotationResult(response) {
+    const editor = initializeAceEditor("oidcClientSecretRotationEditor", "json");
+    editor.setReadOnly(true);
+    editor.setValue(JSON.stringify(response, null, 2));
+    editor.gotoLine(1);
+    showElements("#oidcClientSecretRotationEditorContainer");
+}
+
+function refreshOidcInnerTabs() {
+    const $tabs = $("#oidc-inner-tabs");
+    if ($tabs.hasClass("ui-tabs")) {
+        $tabs.tabs("refresh");
+    }
+}
+
+function hideOidcProtocolOnlyTabs() {
+    [
+        "oidctokenexchange",
+        "oidckeyrotation",
+        "oidcclientjwks",
+        "oidcdiscovery",
+        "oidcconfigprops"
+    ].forEach(tabId => {
+        hideElements($(`#${tabId}`).parent());
+        hideElements($(`#${tabId}-tab`));
+    });
+    refreshOidcInnerTabs();
+}
+
+function initializeOidcClientSecretRotationOperations() {
+    if (CasActuatorEndpoints.oauthClientSecrets()) {
+        showElements($("#oidcclientsecretrotation-li"));
+        showElements($("#oidcclientsecretrotation-tab"));
+        refreshOidcInnerTabs();
+
+        $("button[name=oidcClientSecretRotationButton]").off().on("click", () => {
+            hideBanner();
+            const form = document.getElementById("fmOidcClientSecretRotation");
+            if (!form.reportValidity()) {
+                return false;
+            }
+
+            Swal.fire({
+                title: "Are you sure you want to rotate client secrets?",
+                text: "Once rotated, the change will take effect immediately.",
+                icon: "question",
+                showConfirmButton: true,
+                showDenyButton: true
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    $("#oidcClientSecretRotationButton").prop("disabled", true);
+                    $.ajax({
+                        url: buildOidcClientSecretRotationEndpoint(),
+                        type: "POST",
+                        headers: {
+                            "Content-Type": "application/json"
+                        },
+                        success: (response) => {
+                            renderOidcClientSecretRotationResult(response);
+                            Swal.fire({
+                                title: "Done!",
+                                text: "Client secrets have been rotated successfully.",
+                                icon: "success",
+                                showConfirmButton: false,
+                                timer: 1500
+                            });
+                            $("#oidcClientSecretRotationButton").prop("disabled", false);
+                        },
+                        error: (xhr, textStatus, errorThrown) => {
+                            console.error("Error rotating client secrets:", errorThrown);
+                            displayBanner(xhr);
+                            hideElements("#oidcClientSecretRotationEditorContainer");
+                            $("#oidcClientSecretRotationButton").prop("disabled", false);
+                        }
+                    });
+                }
+            });
+        });
+    } else {
+        hideElements($("#oidcclientsecretrotation-li"));
+        hideElements($("#oidcclientsecretrotation-tab"));
+        refreshOidcInnerTabs();
+    }
+}
+
 async function initializeOidcProtocolOperations() {
+    initializeOidcClientSecretRotationOperations();
     if (CAS_FEATURES.includes("OpenIDConnect")) {
         $.get(`${PalantirDashboardConfiguration.casServerPrefix()}/oidc/.well-known/openid-configuration`, response => {
             highlightElements();
@@ -359,6 +465,8 @@ async function initializeOidcProtocolOperations() {
         } else {
             hideElements($("#oidcclientjwks-li"));
         }
+    } else {
+        hideOidcProtocolOnlyTabs();
     }
 }
 

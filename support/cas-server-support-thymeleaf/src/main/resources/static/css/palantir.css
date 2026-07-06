@@ -480,6 +480,27 @@ select + span[role="combobox"] {
     padding: .35rem .6rem;
 }
 
+.registered-service-client-secrets {
+    width: 100%;
+}
+
+.registered-service-client-secret-row {
+    gap: .5rem;
+    flex-wrap: wrap;
+}
+
+.registered-service-client-secret-row .mdc-text-field {
+    min-width: 12rem;
+    flex: 1 1 12rem;
+}
+
+.registered-service-client-secret-row .registered-service-client-secret-action {
+    flex: 0 0 auto;
+    height: 3.5rem;
+    min-height: 3.5rem;
+    min-width: 4.25rem;
+}
+
 .thread-dump-stack-summary {
     display: flex;
     flex-wrap: wrap;

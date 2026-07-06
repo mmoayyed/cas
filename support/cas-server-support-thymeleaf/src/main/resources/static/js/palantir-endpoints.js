@@ -151,6 +151,18 @@ class CasActuatorEndpoints {
         return this.endpoints().oidcjwks || this.endpoints().oidcJwks;
     }
 
+    static oauthClientSecrets() {
+        const endpoints = this.endpoints();
+        return endpoints.oauthClientSecrets
+            || endpoints.oauthclientSecrets
+            || endpoints.oauthclientsecrets
+            || endpoints["oauthClientSecrets-clientId"]
+            || endpoints["oauthclientSecrets-clientId"]
+            || endpoints["oauthclientsecrets-clientid"]
+            || Object.entries(endpoints)
+                .find(entry => entry[0].includes("oauthClientSecrets") || `${entry[1]}`.includes("/oauthClientSecrets/"))?.[1];
+    }
+
     static heimdall() {
         return this.endpoints().heimdall;
     }
