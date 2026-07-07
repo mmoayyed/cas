@@ -97,5 +97,6 @@ during resolution, allowing definitions to build on values produced by
 other definitions in a predictable, reusable way.
 
 ## Other Stuff
-
+  
+- Multifactor authentication may also be activated using [SAML2 metadata entity attributes](../mfa/Configuring-Multifactor-Authentication-Triggers-EntityId.html).
 - A large number of dependencies and libraries have been updated to their latest versions.

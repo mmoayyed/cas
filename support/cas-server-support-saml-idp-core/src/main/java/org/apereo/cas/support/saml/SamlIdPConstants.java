@@ -153,7 +153,11 @@ public interface SamlIdPConstants {
         /**
          * If present, will enable encryption operations for SAML2 assertions.
          */
-        SHIBBOLETH_ENCRYPT_ASSERTIONS("http://shibboleth.net/ns/profiles/encryptAssertions");
+        SHIBBOLETH_ENCRYPT_ASSERTIONS("http://shibboleth.net/ns/profiles/encryptAssertions"),
+        /**
+         * Handling SPs that require MFA.
+         */
+        SHIBBOLETH_DEFAULT_AUTHENTICATION_METHODS("http://shibboleth.net/ns/profiles/defaultAuthenticationMethods");
 
         private final String name;
     }

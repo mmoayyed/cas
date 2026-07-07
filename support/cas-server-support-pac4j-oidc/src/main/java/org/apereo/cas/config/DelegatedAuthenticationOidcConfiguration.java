@@ -31,7 +31,6 @@ import org.apereo.cas.web.flow.actions.WebflowActionBeanSupplier;
 import org.apereo.cas.web.support.ArgumentExtractor;
 import lombok.val;
 import org.apache.commons.lang3.Strings;
-import org.jspecify.annotations.NonNull;
 import org.pac4j.oidc.client.OidcClient;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -77,7 +76,7 @@ class DelegatedAuthenticationOidcConfiguration {
     @ConditionalOnMissingBean(name = "delegatedClientOidcSessionManager")
     public DelegatedClientSessionManager delegatedClientOidcSessionManager(
         @Qualifier(DelegatedClientAuthenticationConfigurationContext.BEAN_NAME)
-        final ObjectProvider<@NonNull DelegatedClientAuthenticationConfigurationContext> contextProvider) {
+        final ObjectProvider<DelegatedClientAuthenticationConfigurationContext> contextProvider) {
         return new DelegatedClientOidcSessionManager(contextProvider);
     }
 

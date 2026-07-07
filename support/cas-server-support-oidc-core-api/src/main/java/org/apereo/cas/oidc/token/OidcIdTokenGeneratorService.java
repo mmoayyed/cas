@@ -41,7 +41,6 @@ import org.apache.commons.lang3.StringUtils;
 import org.apereo.inspektr.audit.annotation.Audit;
 import org.jose4j.jwt.JwtClaims;
 import org.jose4j.jwt.NumericDate;
-import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.util.Assert;
@@ -55,7 +54,7 @@ import org.springframework.util.Assert;
 @Slf4j
 public class OidcIdTokenGeneratorService extends BaseIdTokenGeneratorService<OidcConfigurationContext> {
 
-    public OidcIdTokenGeneratorService(final ObjectProvider<@NonNull OidcConfigurationContext> configurationContext) {
+    public OidcIdTokenGeneratorService(final ObjectProvider<OidcConfigurationContext> configurationContext) {
         super(configurationContext);
     }
 

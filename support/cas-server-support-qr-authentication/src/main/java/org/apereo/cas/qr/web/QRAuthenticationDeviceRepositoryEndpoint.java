@@ -6,7 +6,6 @@ import org.apereo.cas.qr.authentication.QRAuthenticationDeviceRepository;
 import org.apereo.cas.web.BaseCasActuatorEndpoint;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
-import org.jspecify.annotations.NonNull;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.actuate.endpoint.Access;
 import org.springframework.boot.actuate.endpoint.annotation.DeleteOperation;
@@ -23,10 +22,10 @@ import org.springframework.boot.actuate.endpoint.annotation.WriteOperation;
  */
 @Endpoint(id = "qrDevices", defaultAccess = Access.NONE)
 public class QRAuthenticationDeviceRepositoryEndpoint extends BaseCasActuatorEndpoint {
-    private final ObjectProvider<@NonNull QRAuthenticationDeviceRepository> repository;
+    private final ObjectProvider<QRAuthenticationDeviceRepository> repository;
 
     public QRAuthenticationDeviceRepositoryEndpoint(final CasConfigurationProperties casProperties,
-                                                    final ObjectProvider<@NonNull QRAuthenticationDeviceRepository> repository) {
+                                                    final ObjectProvider<QRAuthenticationDeviceRepository> repository) {
         super(casProperties);
         this.repository = repository;
     }
