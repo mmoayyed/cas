@@ -660,7 +660,7 @@ layout: null
                     *   [Google Cloud Storage](/cas/{{ version }}/installation/Configuring-SAML2-DynamicMetadata-GCP-Storage.html)
                 *   [Metadata Filtering](/cas/{{ version }}/installation/SAML2-ServiceProvider-Metadata-Filtering.html)  
             *   [Attribute Release](#saml2attrrelease)
-                *   [Attribute Policies](/cas/{{ version }}/installation/Configuring-SAML2-Attribute-Release.html)
+                *   [Attribute Release Policies](/cas/{{ version }}/installation/Configuring-SAML2-Attribute-Release.html)
                 *   [Attribute Definitions](/cas/{{ version }}/installation/Configuring-SAML2-Attribute-Definitions.html)
                 *   [Attribute Value Types](/cas/{{ version }}/installation/Configuring-SAML2-Attribute-ValueTypes.html)
                 *   [Attribute Friendly Name](/cas/{{ version }}/installation/Configuring-SAML2-Attribute-FriendlyName.html)

@@ -38,7 +38,7 @@ public class SamlIdPConsentableAttributeBuilder implements ConsentableAttributeB
             attribute.setFriendlyName(samlAttr.getFriendlyName());
         }
         val attributeValues = ObjectUtils.getIfNull(attribute.getValues(), new ArrayList<>());
-        attributeValues.replaceAll(o -> {
+        attributeValues.replaceAll(_ -> {
             if (o instanceof final XSString value) {
                 return value.getValue();
             }

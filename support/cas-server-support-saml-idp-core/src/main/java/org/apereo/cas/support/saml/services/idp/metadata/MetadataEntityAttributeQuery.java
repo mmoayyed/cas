@@ -32,4 +32,16 @@ public final class MetadataEntityAttributeQuery {
                                                   final String format, final Collection<String> values) {
         return of(name.getName(), format, values);
     }
+
+    /**
+     * Of metadata entity attribute query.
+     *
+     * @param name   the name
+     * @param format the format
+     * @return the metadata entity attribute query
+     */
+    public static MetadataEntityAttributeQuery of(final SamlIdPConstants.KnownEntityAttributes name,
+                                                  final String format) {
+        return of(name.getName(), format, List.of());
+    }
 }

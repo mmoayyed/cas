@@ -222,6 +222,15 @@
                                 NameFormat="urn:oasis:names:tc:SAML:2.0:attrname-format:uri">
                     <saml:AttributeValue>https://refeds.org/profile/mfa</saml:AttributeValue>
                 </saml:Attribute>
+
+                <saml:Attribute xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion"
+                                Name="http://shibboleth.net/ns/attributes/naming/saml2"
+                                NameFormat="urn:oasis:names:tc:SAML:2.0:attrname-format:uri">
+                    <saml:AttributeValue>mail email</saml:AttributeValue>
+                    <saml:AttributeValue>givenName first_name</saml:AttributeValue>
+                    <saml:AttributeValue>sn last_name</saml:AttributeValue>
+                </saml:Attribute>
+
             </mdattr:EntityAttributes>
 
             <mdalg:DigestMethod Algorithm="http://www.w3.org/2001/04/xmlenc#sha512"/>
