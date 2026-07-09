@@ -43,13 +43,15 @@ function effectiveConfigPropertyValue(name) {
         });
 }
 
-function deleteConfigPropertyValue(button, name) {
+function configPropertySourceName(propertySource) {
+    return propertySource.replace("bootstrapProperties-", "");
+}
+
+function deleteConfigPropertyValueFromRow(currentRow, propertySource, name) {
     if (PalantirDashboardConfiguration.mutablePropertySourcesAvailable() && CasActuatorEndpoints.casConfig()) {
-        const mutableConfigurationTable = $("#mutableConfigurationTable").DataTable();
-        const currentRow = mutableConfigurationTable.row($(button).closest("tr"));
-        const propertySource = $(button).data("source").replace("bootstrapProperties-", "");
+        const source = configPropertySourceName(propertySource);
         Swal.fire({
-            title: `Are you sure you want to delete this entry from ${propertySource}?`,
+            title: `Are you sure you want to delete this entry from ${source}?`,
             text: "Once removed, you may not be able to revert this.",
             icon: "question",
             showConfirmButton: true,
@@ -64,7 +66,7 @@ function deleteConfigPropertyValue(button, name) {
                         data: JSON.stringify(
                             {
                                 name: name,
-                                propertySource: propertySource
+                                propertySource: source
                             }
                         )
                     })
@@ -83,19 +85,31 @@ function deleteConfigPropertyValue(button, name) {
     }
 }
 
+function deleteConfigPropertyValue(button, name) {
+    if (PalantirDashboardConfiguration.mutablePropertySourcesAvailable() && CasActuatorEndpoints.casConfig()) {
+        const mutableConfigurationTable = $("#mutableConfigurationTable").DataTable();
+        const currentRow = mutableConfigurationTable.row($(button).closest("tr"));
+        deleteConfigPropertyValueFromRow(currentRow, $(button).data("source"), name);
+    }
+}
+
+function updateConfigPropertyValueFromRow(currentRow, propertySource, name, value) {
+    if (PalantirDashboardConfiguration.mutablePropertySourcesAvailable() && CasActuatorEndpoints.casConfig()) {
+        openNewConfigurationPropertyDialog({
+            name: name,
+            value: value,
+            propertySource: configPropertySourceName(propertySource),
+            updateEntry: true
+        });
+    }
+}
+
 function updateConfigPropertyValue(button, name) {
     if (PalantirDashboardConfiguration.mutablePropertySourcesAvailable() && CasActuatorEndpoints.casConfig()) {
         const mutableConfigurationTable = $("#mutableConfigurationTable").DataTable();
         const currentRow = mutableConfigurationTable.row($(button).closest("tr"));
-        const propertySource = $(button).data("source").replace("bootstrapProperties-", "");
         const rowData = currentRow.data();
-
-        openNewConfigurationPropertyDialog({
-            name: name,
-            value: $(rowData[2]).text(),
-            propertySource: propertySource,
-            updateEntry: true
-        });
+        updateConfigPropertyValueFromRow(currentRow, $(button).data("source"), name, $(rowData[2]).text());
     }
 }
 
@@ -105,7 +119,7 @@ function deleteAllConfigurationProperties(button) {
 
         Swal.fire({
             title: `Delete Configuration Properties`,
-            text: `Are you sure you want to delete all configuration properties from ${propertySource}? 
+            text: `Are you sure you want to delete all configuration properties from ${propertySource}?
                 Once deleted, you may not be able to recover the configuration properties.`,
             icon: "question",
             showConfirmButton: true,
@@ -368,7 +382,7 @@ function openNewConfigurationPropertyDialog(config) {
                 } else {
                     tomselect.setValue("", true);
                 }
-                
+
                 $("#newConfigPropertyValue").val(config.value ?? "");
 
                 if (config.propertySource) {
@@ -405,12 +419,12 @@ function refreshCasServerConfiguration(title) {
             width: "35%",
             confirmButtonText: "Refresh",
             html: `Do you want to refresh the CAS runtime context to apply the changes?
-            <p class="text-justify"/>CAS will rebind components to external configuration properties <strong>internally without a restart</strong>, 
+            <p class="text-justify"/>CAS will rebind components to external configuration properties <strong>internally without a restart</strong>,
             allowing components to be refreshed to reflect the changes. In-flight requests and operations keep running normally
             using the existing/old CAS components until they are fully refreshed in the runtime application context.
             <p class="text-justify"/>
             <strong>Note: Not every component is refreshable.</strong> Configuration properties that control
-            fundamental aspects of CAS operation <strong>(specially those that are not owned or controlled by CAS)</strong> 
+            fundamental aspects of CAS operation <strong>(specially those that are not owned or controlled by CAS)</strong>
             may not be dynamically reloaded. In such cases, a full restart of the CAS server
             may be required for the changes to take effect.
             `
@@ -478,97 +492,23 @@ function reloadConfigurationTable(response) {
         for (const [key, value] of Object.entries(properties)) {
             if (!key.endsWith(".origin")) {
                 const propertyName = key.replace(".value", "");
-                let buttons = `
-                    <button type="button" name="effectiveConfigPropertyValueButton" href="#"
-                            title="View Effective Value" 
-                            data-key='${propertyName}'
-                            onclick="effectiveConfigPropertyValue('${propertyName}')"
-                            class="mdc-button mdc-button--raised min-width-32x">
-                        <i class="mdi mdi-eye min-width-32x" aria-hidden="true"></i>
-                    </button>
-                `;
-
-                if (CasActuatorEndpoints.configurationMetadata()) {
-                    buttons += `
-                            <button type="button" 
-                                    name="searchForConfigPropertyButton" href="#" 
-                                    title="Configuration Property Help"
-                                    data-key='${propertyName}'
-                                    data-value="'${value}'"
-                                    onclick="searchForConfigPropertyButton('${propertyName}')"
-                                    class="mdc-button mdc-button--raised min-width-32x">
-                                <i class="mdi mdi-help min-width-32x" aria-hidden="true"></i>
-                            </button>
-                    `;
-                }
-
-                if (PalantirDashboardConfiguration.mutablePropertySourcesAvailable() && CasActuatorEndpoints.casConfig()) {
-                    buttons += `
-                            <button type="button" 
-                            name="overrideConfigPropertyValueButton" href="#" 
-                                    title="Override Configuration Property Value"
-                                    data-key='${propertyName}'
-                                    data-value="'${value}'"
-                                    onclick="overrideConfigPropertyValue('${propertyName}', '${value}')"
-                                    class="mdc-button mdc-button--raised min-width-32x">
-                                <i class="mdi mdi-arrow-left-circle min-width-32x" aria-hidden="true"></i>
-                            </button>
-                    `;
-                }
                 configurationTable.row.add({
                     0: `${camelcaseToTitleCase(source.name)}`,
                     1: `<code>${propertyName}</code>`,
                     2: `<code>${value}</code>`,
-                    3: buttons
+                    propertyName: propertyName,
+                    propertyValue: value,
+                    propertySource: source.name
                 });
 
-
                 if (PalantirDashboardConfiguration.mutablePropertySources().some(entry => source.name.endsWith(entry))) {
-                    const propertyName = key.replace(".value", "");
-                    let buttons = `
-                            <button type="button" name="effectiveConfigPropertyValueButton" href="#" 
-                                    data-key='${propertyName}'
-                                    title="View Effective Value"
-                                    onclick="effectiveConfigPropertyValue('${propertyName}')"
-                                    class="mdc-button mdc-button--raised min-width-32x">
-                                <i class="mdi mdi-eye min-width-32x" aria-hidden="true"></i>
-                            </button>
-                            <button type="button" name="updateConfigPropertyValueButton" href="#" 
-                                    data-key='${propertyName}'
-                                    title="Update Configuration Property Value"
-                                    data-source='${source.name}'
-                                    onclick="updateConfigPropertyValue(this, '${propertyName}')"
-                                    class="mdc-button mdc-button--raised min-width-32x">
-                                <i class="mdi mdi-content-save-edit min-width-32x" aria-hidden="true"></i>
-                            </button>
-                            <button type="button" name="deleteConfigPropertyValueButton" href="#" 
-                                    data-key='${propertyName}'
-                                    title="Delete Configuration Property Value"
-                                    data-source='${source.name}'
-                                    onclick="deleteConfigPropertyValue(this, '${propertyName}')"
-                                    class="mdc-button mdc-button--raised min-width-32x">
-                                <i class="mdi mdi-delete min-width-32x" aria-hidden="true"></i>
-                            </button>
-                        `;
-
-                    if (CasActuatorEndpoints.configurationMetadata()) {
-                        buttons += `
-                            <button type="button" 
-                                    name="searchForConfigPropertyButton" href="#" 
-                                    data-key='${propertyName}'
-                                    title="Configuration Property Help"
-                                    data-value="'${value}'"
-                                    onclick="searchForConfigPropertyButton('${propertyName}')"
-                                    class="mdc-button mdc-button--raised min-width-32x">
-                                <i class="mdi mdi-help min-width-32x" aria-hidden="true"></i>
-                            </button>
-                        `;
-                    }
                     mutableConfigurationTable.row.add({
                         0: `${camelcaseToTitleCase(source.name)}`,
                         1: `<code>${propertyName}</code>`,
                         2: `<code>${value}</code>`,
-                        3: buttons
+                        propertyName: propertyName,
+                        propertyValue: value,
+                        propertySource: source.name
                     });
                 }
             }
@@ -586,7 +526,7 @@ async function loadConfigurationMetadata() {
     if (!response.ok) {
         throw new Error(`Failed to load configuration metadata: ${response.status}`);
     }
-    
+
     CAS_CONFIG_METADATA = Object.values(await response.json());
 }
 
@@ -750,7 +690,7 @@ async function initializeConfigurationOperations() {
                     if (last !== group) {
                         $(rows).eq(i).before(
                             `<tr style='font-weight: bold; background-color:var(--cas-theme-primary); color:var(--mdc-text-button-label-text-color);'>
-                                <td colspan="3">${group}</td>
+                                <td colspan="2">${group}</td>
                             </tr>`.trim());
                         last = group;
                     }
@@ -758,9 +698,38 @@ async function initializeConfigurationOperations() {
         }
     });
 
+    const configurationTableMenuItems = {
+        effective: {name: "View Effective Value", icon: contextMenuIcon("mdi-eye")},
+        help: {
+            name: "Configuration Property Help",
+            icon: contextMenuIcon("mdi-help"),
+            visible: () => CasActuatorEndpoints.configurationMetadata()
+        },
+        override: {
+            name: "Override Configuration Property Value",
+            icon: contextMenuIcon("mdi-arrow-left-circle"),
+            visible: () => PalantirDashboardConfiguration.mutablePropertySourcesAvailable() && CasActuatorEndpoints.casConfig()
+        }
+    };
+    initializeDataTableContextMenu({
+        table: configurationTable,
+        selector: "#configurationTable tbody tr",
+        items: configurationTableMenuItems,
+        callback: (key, context) => {
+            const {propertyName, propertyValue} = context.rowData;
+            if (key === "effective") {
+                effectiveConfigPropertyValue(propertyName);
+            } else if (key === "help") {
+                searchForConfigPropertyButton(propertyName);
+            } else if (key === "override") {
+                overrideConfigPropertyValue(propertyName, propertyValue);
+            }
+        }
+    });
+
     const toolbar = document.createElement("div");
     let toolbarEntries = `
-            <button type="button" id="reloadConfigurationTableButton" 
+            <button type="button" id="reloadConfigurationTableButton"
                     title="Reload Configuration Table"
                     onclick="$.get(CasActuatorEndpoints.env(), res => { reloadConfigurationTable(res); }).fail((xhr) => { displayBanner(xhr); });"
                     class="mdc-button mdc-button--raised">
@@ -780,7 +749,7 @@ async function initializeConfigurationOperations() {
             </button>
             <button type="button" id="refreshConfigurationButton"
                     title="Refresh CAS Server Configuration"
-                    onclick="refreshCasServerConfiguration('Context Refresh');" 
+                    onclick="refreshCasServerConfiguration('Context Refresh');"
                     class="mdc-button mdc-button--raised">
                 <span class="mdc-button__label"><i class="mdc-tab__icon mdi mdi-refresh" aria-hidden="true"></i>Refresh CAS</span>
             </button>
@@ -811,11 +780,38 @@ async function initializeConfigurationOperations() {
                     if (last !== group) {
                         $(rows).eq(i).before(
                             `<tr style='font-weight: bold; background-color:var(--cas-theme-primary); color:var(--mdc-text-button-label-text-color);'>
-                                <td colspan="3">${group}</td>
+                                <td colspan="2">${group}</td>
                             </tr>`.trim());
                         last = group;
                     }
                 });
+        }
+    });
+
+    initializeDataTableContextMenu({
+        table: mutableConfigurationTable,
+        selector: "#mutableConfigurationTable tbody tr",
+        items: {
+            effective: {name: "View Effective Value", icon: contextMenuIcon("mdi-eye")},
+            update: {name: "Update Configuration Property Value", icon: contextMenuIcon("mdi-content-save-edit")},
+            delete: {name: "Delete Configuration Property Value", icon: contextMenuIcon("mdi-delete")},
+            help: {
+                name: "Configuration Property Help",
+                icon: contextMenuIcon("mdi-help"),
+                visible: () => CasActuatorEndpoints.configurationMetadata()
+            }
+        },
+        callback: (key, context) => {
+            const {propertyName, propertyValue, propertySource} = context.rowData;
+            if (key === "effective") {
+                effectiveConfigPropertyValue(propertyName);
+            } else if (key === "update") {
+                updateConfigPropertyValueFromRow(context.row, propertySource, propertyName, propertyValue);
+            } else if (key === "delete") {
+                deleteConfigPropertyValueFromRow(context.row, propertySource, propertyName);
+            } else if (key === "help") {
+                searchForConfigPropertyButton(propertyName);
+            }
         }
     });
 
@@ -869,7 +865,7 @@ async function initializeConfigurationOperations() {
             displayBanner(xhr);
         });
     }
-    
+
     const configPropsTable = $("#configPropsTable").DataTable({
         pageLength: 10,
         autoWidth: false,

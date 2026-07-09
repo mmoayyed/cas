@@ -163,7 +163,43 @@ function initializeTooltips() {
     });
 }
 
-function initializeContextMenu({selector, callback, items}) {
+function contextMenuIcon(icon) {
+    return () => `context-menu-icon mdi ${icon}`;
+}
+
+function prepareContextMenuItems(items, context) {
+    const sourceItems = typeof items === "function" ? items(context) : items;
+    const menuItems = {};
+    let separator = null;
+
+    for (const [key, item] of Object.entries(sourceItems || {})) {
+        if (typeof item === "string") {
+            if (Object.keys(menuItems).length > 0) {
+                separator = [key, item];
+            }
+            continue;
+        }
+
+        const visible = typeof item.visible === "function"
+            ? item.visible(context)
+            : item.visible !== false;
+        if (!visible) {
+            continue;
+        }
+
+        if (separator) {
+            menuItems[separator[0]] = separator[1];
+            separator = null;
+        }
+
+        const menuItem = {...item};
+        delete menuItem.visible;
+        menuItems[key] = menuItem;
+    }
+    return menuItems;
+}
+
+function initializeContextMenu({selector, callback, items, build, trigger = "right"}) {
     if (!jQuery.isFunction) {
         jQuery.isFunction = function (obj) {
             return typeof obj === "function";
@@ -174,11 +210,68 @@ function initializeContextMenu({selector, callback, items}) {
             return obj != null && obj === obj.window;
         };
     }
-    $.contextMenu({
+
+    $.contextMenu("destroy", selector);
+
+    const contextMenuOptions = {
         selector: selector,
+        trigger: trigger,
         callback: function (key, options) {
             callback(key, options);
         },
         items: items
+    };
+
+    if (build) {
+        delete contextMenuOptions.callback;
+        delete contextMenuOptions.items;
+        contextMenuOptions.build = function ($trigger, event) {
+            const context = build($trigger, event);
+            if (!context) {
+                return false;
+            }
+
+            const menuItems = prepareContextMenuItems(items, context);
+            if (Object.keys(menuItems).length === 0) {
+                return false;
+            }
+
+            return {
+                callback: function (key, options) {
+                    options.context = context;
+                    callback(key, options);
+                },
+                items: menuItems
+            };
+        };
+    }
+
+    $.contextMenu(contextMenuOptions);
+}
+
+function initializeDataTableContextMenu({table, selector, callback, items, trigger = "right"}) {
+    initializeContextMenu({
+        selector: selector,
+        trigger: trigger,
+        build: ($trigger, event) => {
+            const $row = $trigger.closest("tr");
+            if ($row.hasClass("dataTables_empty") || $row.hasClass("child") || $row.parent("thead").length > 0) {
+                return false;
+            }
+            const row = table.row($row);
+            const rowData = row.data();
+            if (!rowData) {
+                return false;
+            }
+            return {
+                row: row,
+                rowData: rowData,
+                $row: $row,
+                $trigger: $trigger,
+                event: event
+            };
+        },
+        items: items,
+        callback: (key, options) => callback(key, options.context)
     });
 }

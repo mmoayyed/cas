@@ -240,7 +240,7 @@ function openNewAuthenticationHandlerDialog() {
     }).val(randomWord().replace(/_/g, "-"));
 
     createInputField({
-        labelTitle: "LDAP URL",                                        
+        labelTitle: "LDAP URL",
         name: "authnHandlerLdapUrl",
         required: true,
         containerId: controlsPanel,
@@ -1100,59 +1100,22 @@ async function initializeAuthenticationOperations() {
                 .data()
                 .each((group, i) => {
                     if (last !== group) {
-                        let samlButtons = "";
-                        let toolbarButtons = "";
+                        let providerType = "";
 
                         rows.data().each(entry => {
                             if (entry[0] === group) {
-                                if (PalantirDashboardConfiguration.mutablePropertySourcesAvailable() && CasActuatorEndpoints.casConfig()) {
-                                    toolbarButtons = `
-                                        <span class="px-2" style="float: right;">
-                                            <button type="button" 
-                                                    name="removeIdentityProvider" 
-                                                    href="#"
-                                                    title="Remove Identity Provider"
-                                                    onclick="removeIdentityProvider('${group}', '${entry[3]}')" 
-                                                    data-client-name='${group}'
-                                                    data-type='${entry[3]}'
-                                                    class="mdc-button mdc-button--raised toolbar">
-                                                <i class="mdi mdi-delete min-width-32x" aria-hidden="true"></i>
-                                            </button>
-                                        </span>
-                                    `.trim();
-                                }
-
-                                if (entry[3] === "saml2") {
-                                    samlButtons = `
-                                    <span class="px-2"  style="float: right;">
-                                            <button type="button" title="Service Provider Metadata" 
-                                                    title="View Service Provider Metadata"
-                                                    name="saml2ClientSpMetadata" href="#" clientName='${group}'
-                                                    class="mdc-button mdc-button--raised toolbar pr-2">
-                                                <i class="mdi mdi-text-box min-width-32x" aria-hidden="true"></i>
-                                                Service Provider Metadata
-                                            </button>
-                                            <button type="button" title="Identity Provider Metadata" 
-                                                    title="View Identity Provider Metadata"
-                                                    name="saml2ClientIdpMetadata" href="#" clientName='${group}'
-                                                    class="mdc-button mdc-button--raised toolbar pr-2">
-                                                <i class="mdi mdi-file-xml-box min-width-32x" aria-hidden="true"></i>
-                                                Identity Provider Metadata
-                                            </button>
-                                    </span>
-                                    `.trim();
-                                }
+                                providerType = entry[3];
                             }
                         });
                         $(rows).eq(i).before(
-                            `<tr style='font-weight: bold; background-color:var(--cas-theme-primary); color:var(--mdc-text-button-label-text-color);'>
-                                <td colspan="2"><span class="idp-group">${group}</span>${toolbarButtons.trim()} ${samlButtons.trim()}</td>
+                            `<tr class="delegated-client-group-row" data-client-name="${group}" data-type="${providerType}" style='font-weight: bold; background-color:var(--cas-theme-primary); color:var(--mdc-text-button-label-text-color);'>
+                                <td colspan="2"><span class="idp-group">${group}</span></td>
                             </tr>`.trim()
                         );
-                        configureSaml2ClientMetadataButtons();
                         last = group;
                     }
                 });
+            configureSaml2ClientMetadataButtons();
         }
     });
 

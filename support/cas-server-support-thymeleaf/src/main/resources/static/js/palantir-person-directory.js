@@ -143,26 +143,12 @@ async function initializePersonDirectoryOperations() {
                     5: `<code>${definition.singleValue ? checked : unchecked}</code>`,
                     6: `<code>${definition.attribute ?? "N/A"}</code>`,
                     7: `<code>${definition.patternFormat ?? "N/A"}</code>`,
-                    8: `<code>${definition.canonicalizationMode ?? "N/A"}</code>`,
-                    9: `<code>${definition.flattened ? checked : unchecked}</code>`,
-                    10: `<code>${definition?.friendlyName ?? "N/A"}</code>`,
-                    11: `<code>${definition?.urn ?? "N/A"}</code>`,
-                    12: `<button type="button" name="viewAttrDefn" href="#" data-key="${definition.key}"
-                                title="View Attribute Definition"
-                                class="mdc-button mdc-button--raised btn btn-link min-width-32x">
-                            <i class="mdi mdi-eye min-width-32x" aria-hidden="true"></i>
-                         </button>
-                         <button type="button" name="editAttrDefn" href="#" data-key="${definition.key}"
-                                title="Edit Attribute Definition"
-                                class="mdc-button mdc-button--raised btn btn-link min-width-32x">
-                            <i class="mdi mdi-pencil min-width-32x" aria-hidden="true"></i>
-                         </button>
-                         <button type="button" name="deleteAttrDefn" href="#" data-key="${definition.key}"
-                                title="Delete Attribute Definition"
-                                class="mdc-button mdc-button--raised btn btn-link min-width-32x">
-                            <i class="mdi mdi-delete min-width-32x" aria-hidden="true"></i>
-                         </button>`
-                });
+                        8: `<code>${definition.canonicalizationMode ?? "N/A"}</code>`,
+                        9: `<code>${definition.flattened ? checked : unchecked}</code>`,
+                        10: `<code>${definition?.friendlyName ?? "N/A"}</code>`,
+                        11: `<code>${definition?.urn ?? "N/A"}</code>`,
+                        key: definition.key
+                    });
                 attributeDefinitions++;
             }
             if (attributeDefinitions > 0) {
@@ -234,26 +220,12 @@ function reloadAttributeDefinitionsTable() {
                 5: `<code>${definition.singleValue ? checked : unchecked}</code>`,
                 6: `<code>${definition.attribute ?? "N/A"}</code>`,
                 7: `<code>${definition.patternFormat ?? "N/A"}</code>`,
-                8: `<code>${definition.canonicalizationMode ?? "N/A"}</code>`,
-                9: `<code>${definition.flattened ? checked : unchecked}</code>`,
-                10: `<code>${definition?.friendlyName ?? "N/A"}</code>`,
-                11: `<code>${definition?.urn ?? "N/A"}</code>`,
-                12: `<button type="button" name="viewAttrDefn" href="#" data-key="${definition.key}"
-                            title="View Attribute Definition"
-                            class="mdc-button mdc-button--raised btn btn-link min-width-32x">
-                        <i class="mdi mdi-eye min-width-32x" aria-hidden="true"></i>
-                     </button>
-                     <button type="button" name="editAttrDefn" href="#" data-key="${definition.key}"
-                            title="Edit Attribute Definition"
-                            class="mdc-button mdc-button--raised btn btn-link min-width-32x">
-                        <i class="mdi mdi-pencil min-width-32x" aria-hidden="true"></i>
-                     </button>
-                     <button type="button" name="deleteAttrDefn" href="#" data-key="${definition.key}"
-                            title="Delete Attribute Definition"
-                            class="mdc-button mdc-button--raised btn btn-link min-width-32x">
-                        <i class="mdi mdi-delete min-width-32x" aria-hidden="true"></i>
-                     </button>`
-            });
+                    8: `<code>${definition.canonicalizationMode ?? "N/A"}</code>`,
+                    9: `<code>${definition.flattened ? checked : unchecked}</code>`,
+                    10: `<code>${definition?.friendlyName ?? "N/A"}</code>`,
+                    11: `<code>${definition?.urn ?? "N/A"}</code>`,
+                    key: definition.key
+                });
         }
         table.draw();
         if (response.length > 0) {
@@ -365,58 +337,60 @@ function importAttributeDefinitions(fileInput) {
 }
 
 function bindAttrDefDeleteButtons() {
-    $("button[name=deleteAttrDefn]").off().on("click", function () {
-        const key = $(this).attr("data-key");
-        if (CasActuatorEndpoints.attributeDefinitions()) {
-            Swal.fire({
-                title: "Are you sure you want to delete this entry?",
-                text: "Once deleted, you may not be able to recover this entry.",
-                icon: "question",
-                showConfirmButton: true,
-                showDenyButton: true
-            })
-                .then((result) => {
-                    if (result.isConfirmed) {
-                        $.ajax({
-                            url: CasActuatorEndpoints.attributeDefinitions(),
-                            type: "DELETE",
-                            contentType: "application/json",
-                            data: JSON.stringify([key]),
-                            success: () => {
-                                reloadAttributeDefinitionsTable();
-                            },
-                            error: (xhr, status, error) => {
-                                console.error("Error deleting resource:", error);
-                                displayBanner(xhr);
-                            }
-                        });
-                    }
+    const table = $("#attributeDefinitionsTable").DataTable();
+    initializeDataTableContextMenu({
+        table: table,
+        selector: "#attributeDefinitionsTable tbody tr",
+        items: {
+            view: {name: "View Attribute Definition", icon: contextMenuIcon("mdi-eye")},
+            edit: {name: "Edit Attribute Definition", icon: contextMenuIcon("mdi-pencil")},
+            delete: {name: "Delete Attribute Definition", icon: contextMenuIcon("mdi-delete")}
+        },
+        callback: (key, context) => {
+            const definitionKey = context.rowData.key;
+            if (key === "delete" && CasActuatorEndpoints.attributeDefinitions()) {
+                Swal.fire({
+                    title: "Are you sure you want to delete this entry?",
+                    text: "Once deleted, you may not be able to recover this entry.",
+                    icon: "question",
+                    showConfirmButton: true,
+                    showDenyButton: true
+                })
+                    .then((result) => {
+                        if (result.isConfirmed) {
+                            $.ajax({
+                                url: CasActuatorEndpoints.attributeDefinitions(),
+                                type: "DELETE",
+                                contentType: "application/json",
+                                data: JSON.stringify([definitionKey]),
+                                success: () => {
+                                    reloadAttributeDefinitionsTable();
+                                },
+                                error: (xhr, status, error) => {
+                                    console.error("Error deleting resource:", error);
+                                    displayBanner(xhr);
+                                }
+                            });
+                        }
+                    });
+            } else if (key === "view" && CasActuatorEndpoints.attributeDefinitions()) {
+                $.get(`${CasActuatorEndpoints.attributeDefinitions()}/${definitionKey}`, response => {
+                    const editor = initializeAceEditor("viewAttrDefEditor", "json");
+                    editor.setReadOnly(true);
+                    editor.setValue(JSON.stringify(response, null, 2), -1);
+                    editor.gotoLine(1);
+                    const beautify = ace.require("ace/ext/beautify");
+                    beautify.beautify(editor.session);
+                    const dialog = window.mdc.dialog.MDCDialog.attachTo(document.getElementById("viewAttrDefDialog"));
+                    dialog["open"]();
+                }).fail((xhr, status, error) => {
+                    console.error("Error fetching data:", error);
+                    displayBanner(xhr);
                 });
+            } else if (key === "edit") {
+                editAttributeDefinition(definitionKey);
+            }
         }
-    });
-
-    $("button[name=viewAttrDefn]").off().on("click", function () {
-        const key = $(this).attr("data-key");
-        if (CasActuatorEndpoints.attributeDefinitions()) {
-            $.get(`${CasActuatorEndpoints.attributeDefinitions()}/${key}`, response => {
-                const editor = initializeAceEditor("viewAttrDefEditor", "json");
-                editor.setReadOnly(true);
-                editor.setValue(JSON.stringify(response, null, 2), -1);
-                editor.gotoLine(1);
-                const beautify = ace.require("ace/ext/beautify");
-                beautify.beautify(editor.session);
-                const dialog = window.mdc.dialog.MDCDialog.attachTo(document.getElementById("viewAttrDefDialog"));
-                dialog["open"]();
-            }).fail((xhr, status, error) => {
-                console.error("Error fetching data:", error);
-                displayBanner(xhr);
-            });
-        }
-    });
-
-    $("button[name=editAttrDefn]").off().on("click", function () {
-        const key = $(this).attr("data-key");
-        editAttributeDefinition(key);
     });
 }
 

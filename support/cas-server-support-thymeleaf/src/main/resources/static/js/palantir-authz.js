@@ -9,8 +9,7 @@ async function initializeHeimdallOperations() {
         pageLength: 10,
         columnDefs: [
             {visible: false, targets: 0},
-            {visible: false, targets: 1},
-            {visible: true, targets: 5}
+            {visible: false, targets: 1}
         ],
         autoWidth: false,
         drawCallback: settings => {
@@ -26,7 +25,7 @@ async function initializeHeimdallOperations() {
                     if (last !== group) {
                         $(rows).eq(i).before(
                             `<tr style='font-weight: bold; background-color:var(--cas-theme-primary); color:var(--mdc-text-button-label-text-color);'>
-                                            <td colspan="4">Namespace: ${group}</td>
+                                            <td colspan="3">Namespace: ${group}</td>
                                         </tr>`.trim());
                         last = group;
                     }
@@ -38,49 +37,53 @@ async function initializeHeimdallOperations() {
         const heimdallViewResourceEditor = initializeAceEditor("heimdallViewResourceEditor", "json");
         heimdallViewResourceEditor.setReadOnly(true);
 
+        function viewHeimdallResource(namespace, resourceId) {
+            $.get(`${CasActuatorEndpoints.heimdall()}/resources/${namespace}/${resourceId}`, response => {
+                heimdallViewResourceEditor.setValue(JSON.stringify(response, null, 2));
+                heimdallViewResourceEditor.gotoLine(1);
+
+                const beautify = ace.require("ace/ext/beautify");
+                beautify.beautify(heimdallViewResourceEditor.session);
+
+                const dialog = window.mdc.dialog.MDCDialog.attachTo(document.getElementById("heimdallViewResourceDialog"));
+                dialog["open"]();
+            })
+                .fail((xhr, status, error) => {
+                    console.error("Error fetching data:", error);
+                    displayBanner(xhr);
+                });
+        }
+
+        initializeDataTableContextMenu({
+            table: heimdallResourcesTable,
+            selector: "#heimdallResourcesTable tbody tr",
+            items: {
+                view: {name: "View Resource", icon: contextMenuIcon("mdi-eye")}
+            },
+            callback: (key, context) => {
+                if (key === "view") {
+                    viewHeimdallResource(context.rowData.namespace, context.rowData.resourceId);
+                }
+            }
+        });
+
         function fetchHeimdallResources() {
             $.get(`${CasActuatorEndpoints.heimdall()}/resources`, response => {
                 heimdallResourcesTable.clear();
                 for (const [key, value] of Object.entries(response)) {
                     for (const resource of Object.values(value)) {
-                        let buttons = `
-                        <button type="button" name="viewHeimdallResource" href="#" 
-                            data-id="${resource.id}" data-namespace="${key}"
-                            title="View Resource"
-                            class="mdc-button mdc-button--raised btn btn-link min-width-32x">
-                            <i class="mdi mdi-eye min-width-32x" aria-hidden="true"></i>
-                        </button>
-                    `;
                         heimdallResourcesTable.row.add({
                             0: `<code>${key}</code>`,
                             1: `${resource.id ?? "N/A"}`,
                             2: `<code>${resource.pattern ?? "N/A"}</code>`,
                             3: `<code>${resource.method ?? "N/A"}</code>`,
                             4: `<code>${resource.enforceAllPolicies ?? "false"}</code>`,
-                            5: buttons
+                            namespace: key,
+                            resourceId: resource.id
                         });
                     }
                 }
                 heimdallResourcesTable.draw();
-
-                $("button[name=viewHeimdallResource]").off().on("click", function () {
-                    const namespace = $(this).data("namespace");
-                    const resourceId = $(this).data("id");
-                    $.get(`${CasActuatorEndpoints.heimdall()}/resources/${namespace}/${resourceId}`, response => {
-                        heimdallViewResourceEditor.setValue(JSON.stringify(response, null, 2));
-                        heimdallViewResourceEditor.gotoLine(1);
-
-                        const beautify = ace.require("ace/ext/beautify");
-                        beautify.beautify(heimdallViewResourceEditor.session);
-
-                        const dialog = window.mdc.dialog.MDCDialog.attachTo(document.getElementById("heimdallViewResourceDialog"));
-                        dialog["open"]();
-                    })
-                        .fail((xhr, status, error) => {
-                            console.error("Error fetching data:", error);
-                            displayBanner(xhr);
-                        });
-                });
             }).fail((xhr, status, error) => {
                 console.error("Error fetching data:", error);
                 displayBanner(xhr);

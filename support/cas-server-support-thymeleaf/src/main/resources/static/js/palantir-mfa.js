@@ -39,20 +39,19 @@ async function populateMultifactorProviderTables() {
 
                     $("#mfaProvidersGridPanel").append(`
                         <div class="min-height-90 mb-4">
-                            <div class="mdc-card p-4 m-auto mmw-65 gradient-card">
+                            <div class="mdc-card p-4 m-auto gradient-card">
                                 <h3>
                                     <i class="p-1 mdc-tab__icon mdi ${icon}" style="vertical-align:baseline;" aria-hidden="true"></i>
                                     ${value}
                                     <sup class="mr-2">${key}</sup>
                                 </h3>
                             </div>
-                            <div class="p-2 m-auto mmw-65 min-height-90" style="background: white;">
+                            <div class="p-2 m-auto min-height-90" style="background: white;">
                                 <table id="mfaTable-${key}" class="mdc-data-table__table table table-striped noborder mfa-provider-table">
                                     <thead>
                                     <tr class="mdc-data-table__header-row">
                                         <th class="mdc-data-table__header-cell" role="columnheader" scope="col">Property</th>
                                         <th class="mdc-data-table__header-cell" role="columnheader" scope="col">Description</th>
-                                        ${mutableProperties ? '<th class="mdc-data-table__header-cell" role="columnheader" scope="col"></th>' : ""}
                                     </tr>
                                     </thead>
                                     <tbody class="mdc-data-table__content">
@@ -70,10 +69,32 @@ async function populateMultifactorProviderTables() {
                     columnDefs: [
                         {
                             targets: 1,
-                            className: "dt-left"
+                            className: "dt-left wrap"
                         }
-                    ]
+                    ],
+                    drawCallback(settings) {
+                        const node = new $.fn.dataTable.Api(settings).table().node();
+                        $(node).find("tr").addClass("mdc-data-table__row");
+                        $(node).find("td").addClass("mdc-data-table__cell");
+                    }
                 }).clear();
+                if (mutableProperties) {
+                    $(".mfa-provider-table").each(function () {
+                        const table = $(this).DataTable();
+                        initializeDataTableContextMenu({
+                            table: table,
+                            selector: `#${$.escapeSelector(this.id)} tbody tr`,
+                            items: {
+                                override: {name: "Override Configuration Property Value", icon: contextMenuIcon("mdi-arrow-left-circle")}
+                            },
+                            callback: (key, context) => {
+                                if (key === "override") {
+                                    overrideConfigPropertyValue(context.rowData.propertyName, context.rowData.propertyValue);
+                                }
+                            }
+                        });
+                    });
+                }
 
                 for (const key of Object.keys(CasDiscoveryProfile.multifactorAuthenticationProviders())) {
                     const namespace = key.includes("duo") ? "duo" : key.replace("mfa-", "")
@@ -98,32 +119,13 @@ async function populateMultifactorProviderTables() {
                             properties.forEach(([propKey, propValue]) => {
                                 if (propKey.startsWith(configPrefix)) {
                                     const table = $(`#mfaTable-${key}`).DataTable();
-                                    const row = $("<tr class=\"mdc-data-table__row\">")
-                                        .append(`<td class="mdc-data-table__cell"><code>${escapeMfaHtml(propKey)}</code></td>`)
-                                        .append(`<td class="mdc-data-table__cell"><code>${escapeMfaHtml(propValue.value)}</code></td>`);
-
-                                    if (mutableProperties) {
-                                        row.append(`
-                                            <td class="mdc-data-table__cell">
-                                                <button type="button"
-                                                        name="overrideMfaProviderPropertyValueButton"
-                                                        data-key="${escapeMfaHtml(propKey)}"
-                                                        data-value="${escapeMfaHtml(propValue.value)}"
-                                                        title="Override Configuration Property Value"
-                                                        class="mdc-button mdc-button--raised min-width-32x">
-                                                    <span class="mdc-button__label">
-                                                        <i class="mdi mdi-arrow-left-circle min-width-32x" aria-hidden="true"></i>
-                                                    </span>
-                                                </button>
-                                            </td>
-                                        `);
-                                    }
-
-                                    table.row.add(row).draw(false);
+                                    table.row.add({
+                                        0: `<code>${escapeMfaHtml(propKey)}</code>`,
+                                        1: `<code>${escapeMfaHtml(propValue.value)}</code>`,
+                                        propertyName: propKey,
+                                        propertyValue: propValue.value
+                                    }).draw(false);
                                 }
-                            });
-                            $("button[name=overrideMfaProviderPropertyValueButton]").off().on("click", function () {
-                                overrideMfaProviderPropertyValue(this);
                             });
                         });
 
@@ -154,6 +156,44 @@ async function initializeMultifactorOperations() {
         }
     });
 
+    function removeMfaDevice(context) {
+        const {key, providerId, username} = context.rowData;
+        Swal.fire({
+            title: "Are you sure you want to delete this entry?",
+            text: "Once deleted, you may not be able to recover this entry.",
+            icon: "question",
+            showConfirmButton: true,
+            showDenyButton: true
+        })
+            .then((result) => {
+                if (result.isConfirmed) {
+                    $.ajax({
+                        url: `${CasActuatorEndpoints.mfaDevices()}/${username}/${providerId}/${key}`,
+                        type: "DELETE",
+                        contentType: "application/x-www-form-urlencoded",
+                        success: (response, status, xhr) => context.row.remove().draw(),
+                        error: (xhr, status, error) => {
+                            console.error("Error fetching data:", error);
+                            displayBanner(xhr);
+                        }
+                    });
+                }
+            });
+    }
+
+    initializeDataTableContextMenu({
+        table: mfaDevicesTable,
+        selector: "#mfaDevicesTable tbody tr",
+        items: {
+            remove: {name: "Remove MFA Device", icon: contextMenuIcon("mdi-delete")}
+        },
+        callback: (key, context) => {
+            if (key === "remove") {
+                removeMfaDevice(context);
+            }
+        }
+    });
+
     $("#mfaDevicesButton").off().on("click", () => {
         function fetchMfaDevices() {
             const username = $("#mfaUsername").val();
@@ -170,17 +210,6 @@ async function initializeMultifactorOperations() {
             mfaDevicesTable.clear();
             $.get(`${CasActuatorEndpoints.mfaDevices()}/${username}`, response => {
                 for (const device of Object.values(response)) {
-                    let buttons = `
-                     <button type="button" name="removeMfaDevice" href="#" 
-                            data-provider='${device?.details?.providerId ?? "Unknown"}'
-                            data-key='${device.id}'
-                            data-username='${username}'
-                            title="Remove MFA Device"
-                            class="mdc-button mdc-button--raised min-width-32x">
-                        <i class="mdi mdi-delete min-width-32x" aria-hidden="true"></i>
-                    </button>
-                `;
-
                     mfaDevicesTable.row.add({
                         0: `<code>${device.name ?? "N/A"}</code>`,
                         1: `<code>${device.type ?? "N/A"}</code>`,
@@ -191,42 +220,14 @@ async function initializeMultifactorOperations() {
                         6: `<code>${device.expirationDateTime ?? "N/A"}</code>`,
                         7: `<code>${device.source ?? "N/A"}</code>`,
                         8: `<span>${device.payload}</span>`,
-                        9: `${buttons}`
+                        providerId: device?.details?.providerId ?? "Unknown",
+                        key: device.id,
+                        username: username
                     });
                 }
                 mfaDevicesTable.draw();
                 $("#mfaDevicesButton").prop("disabled", false);
                 Swal.close();
-
-                $("button[name=removeMfaDevice]").off().on("click", function () {
-                    const key = $(this).data("key");
-                    const providerId = $(this).data("provider");
-                    Swal.fire({
-                        title: "Are you sure you want to delete this entry?",
-                        text: "Once deleted, you may not be able to recover this entry.",
-                        icon: "question",
-                        showConfirmButton: true,
-                        showDenyButton: true
-                    })
-                        .then((result) => {
-                            if (result.isConfirmed) {
-                                $.ajax({
-                                    url: `${CasActuatorEndpoints.mfaDevices()}/${username}/${providerId}/${key}`,
-                                    type: "DELETE",
-                                    contentType: "application/x-www-form-urlencoded",
-                                    success: (response, status, xhr) => {
-                                        let nearestTr = $(this).closest("tr");
-                                        mfaDevicesTable.row(nearestTr).remove().draw();
-                                    },
-                                    error: (xhr, status, error) => {
-                                        console.error("Error fetching data:", error);
-                                        displayBanner(xhr);
-                                    }
-                                });
-                            }
-                        });
-                });
-
             }).fail((xhr, status, error) => {
                 console.error("Error fetching data:", error);
                 displayBanner(xhr);
@@ -259,6 +260,44 @@ async function initializeTrustedMultifactorOperations() {
         }
     });
 
+    function removeMfaTrustedDevice(context) {
+        const key = context.rowData.key;
+        Swal.fire({
+            title: "Are you sure you want to delete this entry?",
+            text: "Once deleted, you may not be able to recover this entry.",
+            icon: "question",
+            showConfirmButton: true,
+            showDenyButton: true
+        })
+            .then((result) => {
+                if (result.isConfirmed) {
+                    $.ajax({
+                        url: `${CasActuatorEndpoints.multifactorTrustedDevices()}/${key}`,
+                        type: "DELETE",
+                        contentType: "application/x-www-form-urlencoded",
+                        success: (response, status, xhr) => context.row.remove().draw(),
+                        error: (xhr, status, error) => {
+                            console.error("Error fetching data:", error);
+                            displayBanner(xhr);
+                        }
+                    });
+                }
+            });
+    }
+
+    initializeDataTableContextMenu({
+        table: mfaTrustedDevicesTable,
+        selector: "#mfaTrustedDevicesTable tbody tr",
+        items: {
+            remove: {name: "Remove Trusted MFA Device", icon: contextMenuIcon("mdi-delete")}
+        },
+        callback: (key, context) => {
+            if (key === "remove") {
+                removeMfaTrustedDevice(context);
+            }
+        }
+    });
+
     $("#mfaTrustedDevicesButton").off().on("click", () => {
         if (CasActuatorEndpoints.multifactorTrustedDevices()) {
             mfaTrustedDevicesTable.clear();
@@ -275,14 +314,6 @@ async function initializeTrustedMultifactorOperations() {
 
             $.get(`${CasActuatorEndpoints.multifactorTrustedDevices()}/${username}`, response => {
                 for (const device of Object.values(response)) {
-                    let buttons = `
-                     <button type="button" name="removeMfaTrustedDevice" href="#" 
-                            data-key='${device.recordKey}'
-                            title="Remove Trusted MFA Device"
-                            class="mdc-button mdc-button--raised min-width-32x">
-                        <i class="mdi mdi-delete min-width-32x" aria-hidden="true"></i>
-                    </button>
-                `;
                     mfaTrustedDevicesTable.row.add({
                         0: `<code>${device.id ?? "N/A"}</code>`,
                         1: `<code>${device.principal ?? "N/A"}</code>`,
@@ -292,41 +323,12 @@ async function initializeTrustedMultifactorOperations() {
                         5: `<code>${device.expirationDate ?? "N/A"}</code>`,
                         6: `<code>${device.multifactorAuthenticationProvider ?? "N/A"}</code>`,
                         7: `<code>${device.recordKey ?? "N/A"}</code>`,
-                        8: `${buttons}`
+                        key: device.recordKey
                     });
                 }
                 mfaTrustedDevicesTable.draw();
                 $("#mfaTrustedDevicesButton").prop("disabled", false);
                 Swal.close();
-
-                $("button[name=removeMfaTrustedDevice]").off().on("click", function () {
-                    const key = $(this).data("key");
-                    Swal.fire({
-                        title: "Are you sure you want to delete this entry?",
-                        text: "Once deleted, you may not be able to recover this entry.",
-                        icon: "question",
-                        showConfirmButton: true,
-                        showDenyButton: true
-                    })
-                        .then((result) => {
-                            if (result.isConfirmed) {
-                                $.ajax({
-                                    url: `${CasActuatorEndpoints.multifactorTrustedDevices()}/${key}`,
-                                    type: "DELETE",
-                                    contentType: "application/x-www-form-urlencoded",
-                                    success: (response, status, xhr) => {
-                                        let nearestTr = $(this).closest("tr");
-                                        mfaTrustedDevicesTable.row(nearestTr).remove().draw();
-                                    },
-                                    error: (xhr, status, error) => {
-                                        console.error("Error fetching data:", error);
-                                        displayBanner(xhr);
-                                    }
-                                });
-                            }
-                        });
-                });
-
             }).fail((xhr, status, error) => {
                 console.error("Error fetching data:", error);
                 displayBanner(xhr);
