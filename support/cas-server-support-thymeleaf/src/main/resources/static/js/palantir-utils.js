@@ -135,8 +135,8 @@ function initializeDatePickers() {
 }
 
 function initializeTooltips() {
-    $( function() {
-        $( document ).tooltip({
+    $(function () {
+        $(document).tooltip({
             items: "[title]:not(a)",
             show: {
                 effect: "fade",
@@ -150,15 +150,35 @@ function initializeTooltips() {
             position: {
                 my: "center bottom-20",
                 at: "center top",
-                using: function( position, feedback ) {
-                    $( this ).css( position );
-                    $( "<div>" )
-                        .addClass( "arrow" )
-                        .addClass( feedback.vertical )
-                        .addClass( feedback.horizontal )
-                        .appendTo( this );
+                using: function (position, feedback) {
+                    $(this).css(position);
+                    $("<div>")
+                        .addClass("arrow")
+                        .addClass(feedback.vertical)
+                        .addClass(feedback.horizontal)
+                        .appendTo(this);
                 }
             }
         });
+    });
+}
+
+function initializeContextMenu({selector, callback, items}) {
+    if (!jQuery.isFunction) {
+        jQuery.isFunction = function (obj) {
+            return typeof obj === "function";
+        };
+    }
+    if (!jQuery.isWindow) {
+        jQuery.isWindow = function (obj) {
+            return obj != null && obj === obj.window;
+        };
+    }
+    $.contextMenu({
+        selector: selector,
+        callback: function (key, options) {
+            callback(key, options);
+        },
+        items: items
     });
 }

@@ -28,6 +28,7 @@
     <link rel="stylesheet" type="text/css" th:href="@{#{webjars.notyf.css}}" />
     <link rel="stylesheet" type="text/css" th:href="@{#{webjars.dataTables.jqueryui.css}}" />
     <link rel="stylesheet" type="text/css" th:href="@{#{webjars.tomselect.css}}" />
+    <link rel="stylesheet" type="text/css" th:href="@{#{webjars.contextmenu.css}}" />
 
     <link rel="stylesheet" type="text/css" th:href="@{/css/palantir.css}" />
 
@@ -92,6 +93,8 @@
     <div layout:fragment="content" id="dashboard" class="d-none">
         <script type="text/javascript" th:src="@{#{webjars.jqueryui.js}}"></script>
         <script type="text/javascript" th:src="@{#{webjars.trumbowyg.js}}"></script>
+        <script type="text/javascript" th:src="@{#{webjars.contextmenu.js}}"></script>
+        <script type="text/javascript" th:src="@{#{webjars.contextmenu.position.js}}"></script>
         
         <div th:replace="~{fragments/palantir/navigationsidebar :: main}"/>
         <div class="mdc-card p-2 m-1" style="min-height: 100vh;">

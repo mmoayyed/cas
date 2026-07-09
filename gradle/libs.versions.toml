@@ -137,6 +137,7 @@ jool = "0.9.15"
 jose4j = "0.9.6"
 jpaPersistenceApi = "3.2.0"
 jquery = "4.0.0"
+jqueryContextMenu = "2.9.2"
 jqueryUi = "1.14.2"
 jradius = "1.1.5"
 json = "20260522"
@@ -483,6 +484,7 @@ jool = { module = "org.jooq:jool", version.ref = "jool" }
 jose4j = { module = "org.bitbucket.b_c:jose4j", version.ref = "jose4j" }
 jquery-core = { module = "org.webjars.npm:jquery", version.ref = "jquery" }
 jquery-ui = { module = "org.webjars.npm:jquery-ui", version.ref = "jqueryUi" }
+jquery-contextmenu = { module = "org.webjars.npm:jquery-contextmenu", version.ref = "jqueryContextMenu" }
 jradius-apps = { module = "net.jradius:jradius-apps", version.ref = "jradius" }
 jradius-client = { module = "net.jradius:jradius-client", version.ref = "jradius" }
 jradius-core = { module = "net.jradius:jradius-core", version.ref = "jradius" }
