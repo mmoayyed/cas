@@ -99,4 +99,5 @@ other definitions in a predictable, reusable way.
 ## Other Stuff
   
 - Multifactor authentication may also be activated using [SAML2 metadata entity attributes](../mfa/Configuring-Multifactor-Authentication-Triggers-EntityId.html).
+- Releasing attributes via [pattern matching](../integration/Attribute-Release-Policy-PatternMatching.html) accepts Groovy transformation rules.
 - A large number of dependencies and libraries have been updated to their latest versions.
