@@ -28,9 +28,11 @@ import org.apereo.cas.util.cipher.CipherExecutorUtils;
 import org.apereo.cas.util.crypto.CipherExecutor;
 import org.apereo.cas.util.nativex.CasRuntimeHintsRegistrar;
 import org.apereo.cas.util.scripting.ExecutableCompiledScriptFactory;
+import org.apereo.cas.util.scripting.ScriptResourceCacheManager;
 import org.apereo.cas.util.spring.beans.BeanCondition;
 import org.apereo.cas.util.spring.beans.BeanSupplier;
 import org.apereo.cas.util.spring.boot.ConditionalOnFeatureEnabled;
+import org.apereo.cas.util.spring.boot.ConditionalOnMissingGraalVMNativeImage;
 import lombok.val;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.validator.routines.EmailValidator;
@@ -109,15 +111,17 @@ public class CasPasswordlessAuthenticationAutoConfiguration {
         @Bean
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
         @ConditionalOnMissingBean(name = "groovyPasswordlessUserAccountCustomizer")
+        @ConditionalOnMissingGraalVMNativeImage
         public PasswordlessUserAccountCustomizer groovyPasswordlessUserAccountCustomizer(
             final ConfigurableApplicationContext applicationContext,
-            final CasConfigurationProperties casProperties) {
+            final CasConfigurationProperties casProperties,
+            @Qualifier(ScriptResourceCacheManager.BEAN_NAME)
+            final ScriptResourceCacheManager scriptResourceCacheManager) throws Exception {
             val resource = casProperties.getAuthn().getPasswordless().getCore()
                 .getPasswordlessAccountCustomizerScript().getLocation();
             val scriptFactory = ExecutableCompiledScriptFactory.findExecutableCompiledScriptFactory();
             if (resource != null && CasRuntimeHintsRegistrar.notInNativeImage() && scriptFactory.isPresent()) {
-                return new GroovyPasswordlessUserAccountCustomizer(casProperties, applicationContext,
-                    scriptFactory.get().fromResource(resource));
+                return new GroovyPasswordlessUserAccountCustomizer(casProperties, applicationContext, scriptResourceCacheManager);
             }
             return PasswordlessUserAccountCustomizer.noOp();
         }

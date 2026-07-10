@@ -125,6 +125,22 @@
     box-shadow: 0 2px 0 #b0b0b0, 0 3px 6px rgba(0,0,0,.12);
 }
 
+.context-menu-item:not(.context-menu-separator) {
+    padding: .5em 2em;
+}
+
+.context-menu-item .context-menu-separator {
+    padding: .1em 2em;
+}
+
+table.dataTable tbody tr.context-menu-active > * {
+    background-color: var(--cas-theme-primary-bg, rgba(21, 62, 80, 0.2)) !important;
+}
+
+table.dataTable tbody tr.context-menu-active > *:first-child {
+    box-shadow: inset 4px 0 0 var(--cas-theme-primary, #153e50);
+}
+
 .ui-tooltip, .arrow:after {
     background: black;
     border: 2px solid white;
@@ -2169,24 +2185,6 @@ select + span[role="combobox"] {
     text-align: right;
 }
 
-.cas-vulnerabilities-summary {
-    display: flex;
-    flex-wrap: wrap;
-    gap: .5rem;
-    margin-bottom: .75rem;
-}
-
-.cas-vulnerability-summary-item {
-    display: inline-flex;
-    align-items: center;
-    gap: .35rem;
-    min-height: 1.75rem;
-    padding: .25rem .75rem;
-    border-radius: 6px;
-    background: #eef2f5;
-    color: #26323d;
-    font-size: .86rem;
-}
 
 .audit-action-tag {
     display: inline-flex;

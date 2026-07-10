@@ -669,6 +669,240 @@ function setSpringConditionsAvailable() {
     showElements($("#springConditionsTabItem"));
 }
 
+function initializeGroovyScriptCacheManagerOperations() {
+    if (!PalantirDashboardConfiguration.scriptFactoryAvailable() || !CasActuatorEndpoints.groovyCache()) {
+        hideElements($("#groovyScriptingTabItem"));
+        hideElements($("#groovy-scripting-tab"));
+        return;
+    }
+
+    const endpoint = CasActuatorEndpoints.groovyCache();
+    const groovyScriptCacheResourceEditor = initializeAceEditor("groovyScriptCacheResourceEditor", "groovy");
+    groovyScriptCacheResourceEditor.setReadOnly(true);
+
+    function keyUrl(key) {
+        return `${endpoint}/keys/${encodeURIComponent(key)}`;
+    }
+
+    function resourceUrl(key) {
+        return `${endpoint}/resources/${encodeURIComponent(key)}`;
+    }
+
+    function normalizeGroovyScriptCacheEntry(entry) {
+        if (typeof entry === "string") {
+            return {
+                key: entry,
+                resourceName: ""
+            };
+        }
+        if (Array.isArray(entry)) {
+            return {
+                key: entry[0] ?? "",
+                resourceName: entry[1] ?? ""
+            };
+        }
+        return {
+            key: entry?.left ?? entry?.key ?? "",
+            resourceName: entry?.right ?? entry?.value ?? entry?.resourceName ?? ""
+        };
+    }
+
+    function groovyScriptCacheEntryKey(entry) {
+        return typeof entry === "object" ? entry.key : entry;
+    }
+
+    function groovyScriptCacheEntryResourceName(entry) {
+        return typeof entry === "object" ? entry.resourceName : "";
+    }
+
+    function findGroovyScriptCacheEntry(key, resourceName) {
+        const rows = groovyScriptCacheTable.rows().data().toArray();
+        return rows.find(row => row.key === key)
+            ?? (resourceName ? rows.find(row => row.resourceName === resourceName) : undefined)
+            ?? {
+                key: key,
+                resourceName: resourceName
+            };
+    }
+
+    $("#groovyScriptCacheResourceDialog").dialog({
+        autoOpen: false,
+        modal: true,
+        width: Math.min($(window).width() * 0.85, 1400),
+        height: Math.min($(window).height() * 0.8, 850),
+        position: {
+            my: "center top",
+            at: "center top+100",
+            of: window
+        },
+        open: () => {
+            groovyScriptCacheResourceEditor.resize();
+            groovyScriptCacheResourceEditor.gotoLine(1);
+        },
+        buttons: {
+            Close: function () {
+                $(this).dialog("close");
+            }
+        }
+    });
+
+    const groovyScriptCacheTable = $("#groovyScriptCacheTable").DataTable({
+        pageLength: 10,
+        autoWidth: false,
+        order: [[0, "asc"]],
+        columns: [
+            {
+                data: "key",
+                render: (data, type) => type === "display"
+                    ? `<code>${escapeConfigHtml(data)}</code>`
+                    : data
+            },
+            {
+                data: "resourceName",
+                render: (data, type) => type === "display"
+                    ? `<code>${escapeConfigHtml(data || "N/A")}</code>`
+                    : data
+            }
+        ],
+        drawCallback: () => {
+            $("#groovyScriptCacheTable tr").addClass("mdc-data-table__row");
+            $("#groovyScriptCacheTable td").addClass("mdc-data-table__cell");
+        }
+    });
+
+    function fetchGroovyScriptResource(entry) {
+        const key = groovyScriptCacheEntryKey(entry);
+        const resourceName = groovyScriptCacheEntryResourceName(entry);
+        const title = resourceName
+            ? `${escapeConfigHtml(resourceName)} (${escapeConfigHtml(key)})`
+            : escapeConfigHtml(key);
+        $("#groovyScriptCacheResourceDialog").dialog("option", "title", `Groovy Script Resource: ${title}`);
+        $.ajax({
+            url: resourceUrl(key),
+            method: "GET",
+            dataType: "text"
+        })
+            .done(response => {
+                groovyScriptCacheResourceEditor.setValue(response ?? "", -1);
+                groovyScriptCacheResourceEditor.gotoLine(1);
+                $("#groovyScriptCacheResourceDialog").dialog("open");
+            })
+            .fail((xhr, status, error) => {
+                console.error("Error fetching groovy script resource:", error);
+                displayBanner(xhr);
+            });
+    }
+
+    function deleteGroovyScriptCacheKey(row, key) {
+        Swal.fire({
+            title: "Are you sure you want to delete this cache entry?",
+            text: "Once removed, the script resource will need to be resolved again before it is cached.",
+            icon: "question",
+            showConfirmButton: true,
+            showDenyButton: true
+        })
+            .then((result) => {
+                if (result.isConfirmed) {
+                    $.ajax({
+                        url: keyUrl(key),
+                        method: "DELETE"
+                    })
+                        .done(() => {
+                            row.remove().draw(false);
+                            notyf.success(`Groovy script cache key ${key} was removed.`);
+                        })
+                        .fail((xhr, status, error) => {
+                            console.error("Error deleting groovy script cache key:", error);
+                            displayBanner(xhr);
+                        });
+                }
+            });
+    }
+
+    function recomputeGroovyScriptCacheKey(entry, showResource) {
+        const key = groovyScriptCacheEntryKey(entry);
+        const resourceName = groovyScriptCacheEntryResourceName(entry);
+        return $.ajax({
+            url: keyUrl(key),
+            method: "POST"
+        })
+            .done(() => {
+                if (showResource) {
+                    fetchGroovyScriptCacheKeys()
+                        .done(() => fetchGroovyScriptResource(findGroovyScriptCacheEntry(key, resourceName)));
+                }
+            })
+            .fail((xhr, status, error) => {
+                console.error("Error recomputing groovy script cache key:", error);
+                displayBanner(xhr);
+            });
+    }
+
+    function fetchGroovyScriptCacheKeys() {
+        return $.get(`${endpoint}/keys`, response => {
+            groovyScriptCacheTable.clear();
+            for (const entry of response ?? []) {
+                const row = normalizeGroovyScriptCacheEntry(entry);
+                if (row.key) {
+                    groovyScriptCacheTable.row.add(row);
+                }
+            }
+            groovyScriptCacheTable.draw();
+        }).fail((xhr, status, error) => {
+            console.error("Error fetching groovy script cache keys:", error);
+            displayBanner(xhr);
+        });
+    }
+
+    initializeDataTableContextMenu({
+        table: groovyScriptCacheTable,
+        selector: "#groovyScriptCacheTable tbody tr",
+        items: {
+            view: {name: "View Resource", icon: contextMenuIcon("mdi-eye")},
+            recompute: {name: "Recompute Resource", icon: contextMenuIcon("mdi-refresh")},
+            delete: {name: "Delete Key", icon: contextMenuIcon("mdi-delete")}
+        },
+        callback: (key, context) => {
+            if (key === "view") {
+                fetchGroovyScriptResource(context.rowData);
+            } else if (key === "recompute") {
+                recomputeGroovyScriptCacheKey(context.rowData, true);
+            } else if (key === "delete") {
+                deleteGroovyScriptCacheKey(context.row, context.rowData.key);
+            }
+        }
+    });
+
+    $("#recomputeGroovyScriptCacheButton").off().on("click", () => {
+        const keys = groovyScriptCacheTable.rows().data().toArray().map(row => row.key);
+        if (keys.length === 0) {
+            Swal.fire("No Cache Entries", "There are no Groovy script cache keys to recompute.", "info");
+            return;
+        }
+        Swal.fire({
+            icon: "info",
+            title: "Recomputing Groovy Script Cache",
+            text: "Please wait while all Groovy script cache entries are recomputed.",
+            allowOutsideClick: false,
+            showConfirmButton: false,
+            didOpen: () => Swal.showLoading()
+        });
+        Promise.all(keys.map(cacheKey => recomputeGroovyScriptCacheKey(cacheKey, false)))
+            .then(() => {
+                Swal.fire("Success", `Recomputed ${keys.length} Groovy script cache entr${keys.length === 1 ? "y" : "ies"}.`, "success");
+                fetchGroovyScriptCacheKeys();
+            })
+            .catch(xhr => {
+                Swal.close();
+                displayBanner(xhr);
+            });
+    });
+
+    $("#refreshGroovyScriptCacheButton").off().on("click", () => fetchGroovyScriptCacheKeys());
+
+    fetchGroovyScriptCacheKeys();
+}
+
 async function initializeConfigurationOperations() {
     const configurationTable = $("#configurationTable").DataTable({
         pageLength: 10,
@@ -1077,6 +1311,8 @@ async function initializeConfigurationOperations() {
     } else {
         hideSpringConditionsTab();
     }
+
+    initializeGroovyScriptCacheManagerOperations();
 
     $("#encryptConfigButton").off().on("click", () => encryptOrDecryptConfig("encrypt"));
     $("#decryptConfigButton").off().on("click", () => encryptOrDecryptConfig("decrypt"));

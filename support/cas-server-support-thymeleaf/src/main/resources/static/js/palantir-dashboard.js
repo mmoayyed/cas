@@ -263,6 +263,9 @@ function processNavigationTabs() {
     if (!PalantirDashboardConfiguration.mutablePropertySourcesAvailable()) {
         hideElements($("#mutableConfigSources"));
     }
+    if (!PalantirDashboardConfiguration.scriptFactoryAvailable() || !CasActuatorEndpoints.groovyCache()) {
+        hideElements($("#groovyScriptingTabItem"));
+    }
     return $("nav.sidebar-navigation ul li:visible").length;
 }
 

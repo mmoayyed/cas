@@ -273,12 +273,25 @@ function createRegisteredServiceAttributeReleasePolicy() {
         keyLabel: "Attribute",
         valueField: "registeredServiceAttrReleasePolicyPatternMatchingAttrValue",
         valueLabel: "Value Pattern",
+        additionalFields: [
+            {
+                name: "transform",
+                field: "registeredServiceAttrReleasePolicyPatternMatchingAttrTransform",
+                label: "Transform",
+                cssClasses: "ml-2"
+            }
+        ],
         containerField: "attributeReleasePolicy.allowedAttributes",
-        valueFieldRenderer: function ($inputKey, $inputValue) {
-            return {
+        valueFieldRenderer: function ($inputKey, $inputValue, additionalInputs) {
+            const rule = {
                 "@class": "org.apereo.cas.services.PatternMatchingAttributeReleasePolicy$Rule",
                 "pattern": $inputValue.val().trim()
             };
+            const transform = additionalInputs.transform?.val()?.trim();
+            if (transform && transform.length > 0) {
+                rule.transform = transform;
+            }
+            return rule;
         }
     });
 
@@ -2406,13 +2419,24 @@ function generateServiceDefinition() {
                     }
 
                     // Check if this container has any non-empty values before processing
+                    const $keyInputs = $mapContainer.find("input[data-mapped-field-role='key']");
                     const $allInputs = $mapContainer.find("input");
                     let hasNonEmptyValue = false;
-                    for (let i = 0; i < $allInputs.length; i += 2) {
-                        const key = $($allInputs[i]).val();
-                        if (key && key.trim().length > 0) {
-                            hasNonEmptyValue = true;
-                            break;
+                    if ($keyInputs.length > 0) {
+                        for (let i = 0; i < $keyInputs.length; i++) {
+                            const key = $($keyInputs[i]).val();
+                            if (key && key.trim().length > 0) {
+                                hasNonEmptyValue = true;
+                                break;
+                            }
+                        }
+                    } else {
+                        for (let i = 0; i < $allInputs.length; i += 2) {
+                            const key = $($allInputs[i]).val();
+                            if (key && key.trim().length > 0) {
+                                hasNonEmptyValue = true;
+                                break;
+                            }
                         }
                     }
                     if (!hasNonEmptyValue) {
@@ -2552,18 +2576,29 @@ function generateMappedFieldValue(sectionId, config) {
 
     const definition = {};
 
-    const inputs = $(`#${sectionId}`).find("input");
-    for (let i = 0; i < inputs.length; i += 2) {
-        const key = $(inputs[i]).val();
-        const value = $(inputs[i + 1]).val();
+    const rows = $(`#${sectionId}`).find("[data-mapped-input-row='true']");
+    rows.each(function () {
+        const $row = $(this);
+        const $keyInput = $row.find("input[data-mapped-field-role='key']").first();
+        const $valueInput = $row.find("input[data-mapped-field-role='value']").first();
+        const key = $keyInput.val();
+        const value = $valueInput.val();
 
         // Skip empty keys
         if (!key || key.trim().length === 0) {
-            continue;
+            return;
         }
 
         if (valueFieldRenderer !== undefined && typeof valueFieldRenderer === "function") {
-            definition[key] = valueFieldRenderer($(inputs[i]), $(inputs[i + 1]));
+            const additionalInputs = {};
+            $row.find("input[data-mapped-field-role]")
+                .not("[data-mapped-field-role='key']")
+                .not("[data-mapped-field-role='value']")
+                .each(function () {
+                    const fieldName = $(this).data("mapped-field-role");
+                    additionalInputs[fieldName] = $(this);
+                });
+            definition[key] = valueFieldRenderer($keyInput, $valueInput, additionalInputs, $row);
         } else if (value && value.trim().length > 0) {
             if (multipleValues) {
                 const valueArray = value.split(",").filter(s => s.trim().length > 0);
@@ -2576,7 +2611,7 @@ function generateMappedFieldValue(sectionId, config) {
                 definition[key] = value;
             }
         }
-    }
+    });
     return {"@class": "java.util.TreeMap", ...definition};
 }
 
@@ -2598,7 +2633,8 @@ function createMappedInputField(config) {
         valueFieldRenderer,
         unwrapSingleElement = false,
         onChangeCallback,
-        autoComplete = []
+        autoComplete = [],
+        additionalFields = []
     } = config;
 
     const changeCallback = onChangeCallback || generateServiceDefinition;
@@ -2611,8 +2647,32 @@ function createMappedInputField(config) {
 
     const inputFieldKeyId = `registeredService${capitalize(keyField)}`;
     const inputFieldValueId = `registeredService${capitalize(valueField)}`;
+    const additionalFieldElements = additionalFields.map(field => {
+        const inputFieldId = `registeredService${capitalize(field.field)}`;
+        return `
+                <label for="${inputFieldId}"
+                       class="mdc-text-field mdc-text-field--outlined mdc-text-field--with-trailing-icon control-label ${cssClasses} ${field.cssClasses ?? ""}">
+                    <span class="mdc-notched-outline">
+                        <span class="mdc-notched-outline__leading"></span>
+                        <span class="mdc-notched-outline__notch">
+                            <span class="mdc-floating-label">${field.label ?? ""}</span>
+                        </span>
+                        <span class="mdc-notched-outline__trailing"></span>
+                    </span>
+                    <input class="mdc-text-field__input form-control"
+                           id="${inputFieldId}"
+                           name="${inputFieldId}"
+                           size="25"
+                           type="${field.type ?? "text"}"
+                           data-param-name="${containerField}"
+                           data-param-type="${containerType}"
+                           data-mapped-field-role="${field.name}"
+                           ${required ? "required" : ""}/>
+                </label>
+        `;
+    }).join("");
     const rowElements = `
-            <div class="d-flex justify-content-between pt-2 ${keyField}-map-row ${cssClasses}" id="${mapRowId}">
+            <div class="d-flex justify-content-between pt-2 ${keyField}-map-row ${cssClasses}" id="${mapRowId}" data-mapped-input-row="true">
                 <label for="${inputFieldKeyId}"
                        class="mdc-text-field mdc-text-field--outlined mdc-text-field--with-trailing-icon control-label ${cssClasses}">
                     <span class="mdc-notched-outline pr-2">
@@ -2628,6 +2688,7 @@ function createMappedInputField(config) {
                            type="text"
                            data-param-name="${containerField}"
                            data-param-type="${containerType}"
+                           data-mapped-field-role="key"
                            ${required ? "required" : ""}/>
                 </label>
 
@@ -2647,8 +2708,11 @@ function createMappedInputField(config) {
                            type="${valueFieldType}"
                            data-param-name="${containerField}"
                            data-param-type="${containerType}"
+                           data-mapped-field-role="value"
                            ${required ? "required" : ""}/>
                 </label>
+
+                ${additionalFieldElements}
 
                 <button type="button"
                         id="${removeButtonId}"
@@ -3309,45 +3373,51 @@ function populateWizardFromServiceDefinition(serviceDefinition) {
 
         const $addButton = $container.find("button[name$='AddButton']");
 
+        function mapFieldValueToString(value, role) {
+            if (typeof value === "object" && value !== null && !Array.isArray(value)) {
+                if (role && role !== "value") {
+                    return value[role] !== undefined ? arrayToString(value[role]) : "";
+                }
+                if (value["@class"]) {
+                    if (value.pattern) {
+                        return value.pattern;
+                    }
+                    if (value.values) {
+                        return arrayToString(value.values);
+                    }
+                    return JSON.stringify(value);
+                }
+                return arrayToString(value);
+            }
+            return arrayToString(value);
+        }
+
         entries.forEach(([key, value], index) => {
             if (index > 0 && $addButton.length) {
                 $addButton.click();
             }
 
             setTimeout(() => {
-                const $allInputs = $container.find(`input[data-param-name="${containerFieldName}"]`);
-                const keyIndex = index * 2;
-                const valueIndex = keyIndex + 1;
+                const $row = $container.find("[data-mapped-input-row='true']").eq(index);
+                if ($row.length === 0) {
+                    return;
+                }
 
-                if ($allInputs.length > keyIndex) {
-                    const $keyInput = $($allInputs[keyIndex]);
+                const $keyInput = $row.find(`input[data-param-name="${containerFieldName}"][data-mapped-field-role='key']`).first();
+                if ($keyInput.length > 0) {
                     $keyInput.val(key).trigger("input");
                     floatMdcTextFieldLabel($keyInput);
                 }
-                if ($allInputs.length > valueIndex) {
-                    let valueStr = value;
-                    if (typeof value === "object" && value !== null) {
-                        if (value["@class"]) {
-                            if (value.pattern) {
-                                valueStr = value.pattern;
-                            } else if (value.values) {
-                                valueStr = arrayToString(value.values);
-                            } else {
-                                valueStr = JSON.stringify(value);
-                            }
-                        } else if (Array.isArray(value)) {
-                            // Handle Java collection wrapper like ["java.util.ArrayList", [...]]
-                            valueStr = arrayToString(value);
-                        } else {
-                            valueStr = arrayToString(value);
-                        }
-                    } else {
-                        valueStr = arrayToString(value);
-                    }
-                    const $valueInput = $($allInputs[valueIndex]);
-                    $valueInput.val(valueStr).trigger("input");
-                    floatMdcTextFieldLabel($valueInput);
-                }
+
+                $row.find(`input[data-param-name="${containerFieldName}"][data-mapped-field-role]`)
+                    .not("[data-mapped-field-role='key']")
+                    .each(function () {
+                        const $input = $(this);
+                        const role = $input.data("mapped-field-role");
+                        const valueStr = mapFieldValueToString(value, role);
+                        $input.val(valueStr).trigger("input");
+                        floatMdcTextFieldLabel($input);
+                    });
             }, index * 20);
         });
     }

@@ -2,6 +2,13 @@
 layout: default
 title: CAS - Release Notes
 category: Planning
+palantir_images:
+  - src: img_1.png
+    alt: Palantir scripting view
+    title: Palantir scripting view
+  - src: img_2.png
+    alt: Palantir applications view
+    title: Palantir applications view
 ---
 
 {% include variables.html %}
@@ -91,13 +98,20 @@ a dedicated `oauthClientSecrets` actuator endpoint.
 ### Attribute Definition Dependencies
 
 Attribute definitions may now [declare dependencies](../integration/Attribute-Definitions.html) on other attribute definitions. 
-When an attribute is resolved, its declared 
-dependencies are resolved first and their results are made available 
-during resolution, allowing definitions to build on values produced by 
-other definitions in a predictable, reusable way.
+When an attribute is resolved, its declared dependencies are resolved first and their results are made available 
+during resolution, allowing definitions to build on values produced by other definitions in a predictable, reusable way.
+  
+### Palantir Admin Dashboard
+
+Inlined table buttons in [Palantir Admin Dashboard](../installation/Admin-Dashboard.html) are 
+replaced with proper context menus triggered by right clicks. The configuration tab is also extended 
+to display cached scripted resource with the ability to either remove or recompute the cache entry.
+
+{% include imagegallery.html gallery_id="palantir-dashboard" images=page.palantir_images %}
 
 ## Other Stuff
   
 - Multifactor authentication may also be activated using [SAML2 metadata entity attributes](../mfa/Configuring-Multifactor-Authentication-Triggers-EntityId.html).
 - Releasing attributes via [pattern matching](../integration/Attribute-Release-Policy-PatternMatching.html) accepts Groovy transformation rules.
+- A number of date-formatting operations have switched their base timezone from system default to `UTC`.
 - A large number of dependencies and libraries have been updated to their latest versions.

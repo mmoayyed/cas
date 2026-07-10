@@ -151,6 +151,10 @@ class CasActuatorEndpoints {
         return this.endpoints().oidcjwks || this.endpoints().oidcJwks;
     }
 
+    static groovyCache() {
+        return this.endpoints().groovycache || this.endpoints().groovyCache;
+    }
+    
     static oauthClientSecrets() {
         const endpoints = this.endpoints();
         return endpoints.oauthClientSecrets

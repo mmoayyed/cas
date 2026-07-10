@@ -486,12 +486,6 @@ async function initializeSystemOperations() {
                 casVulnerabilitiesTable.draw();
                 casVulnerabilitiesTable.columns.adjust();
                 renderVulnerabilitySeverityBreakdown(vulnerabilityRows);
-
-                $("#casVulnerabilitiesSummary").html(`
-                    <span class="cas-vulnerability-summary-item">
-                        <i class="mdi mdi-package-variant-closed" aria-hidden="true"></i>
-                        <strong>${escapeHtml(response.dependencyCount ?? 0)}</strong> dependencies
-                    </span>`);
                 const errors = Array.isArray(response.errors) ? response.errors : [];
                 $("#casVulnerabilitiesStatus").text(errors.length > 0 ? errors.join("; ") : "");
                 vulnerabilitiesLoaded = true;

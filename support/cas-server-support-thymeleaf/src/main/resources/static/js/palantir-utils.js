@@ -167,6 +167,35 @@ function contextMenuIcon(icon) {
     return () => `context-menu-icon mdi ${icon}`;
 }
 
+const contextMenuActiveRowClass = "context-menu-active";
+
+function contextMenuRow(options, context) {
+    if (context?.$row?.length) {
+        return context.$row;
+    }
+    if (options?.$trigger?.length) {
+        return options.$trigger.closest("tr");
+    }
+    return $();
+}
+
+function highlightContextMenuRow(options, context) {
+    $(`tr.${contextMenuActiveRowClass}`).removeClass(contextMenuActiveRowClass);
+    const $row = contextMenuRow(options, context);
+    if ($row.length) {
+        $row.addClass(contextMenuActiveRowClass);
+    }
+}
+
+function clearContextMenuRow(options, context) {
+    const $row = contextMenuRow(options, context);
+    if ($row.length) {
+        $row.removeClass(contextMenuActiveRowClass);
+    } else {
+        $(`tr.${contextMenuActiveRowClass}`).removeClass(contextMenuActiveRowClass);
+    }
+}
+
 function prepareContextMenuItems(items, context) {
     const sourceItems = typeof items === "function" ? items(context) : items;
     const menuItems = {};
@@ -219,6 +248,14 @@ function initializeContextMenu({selector, callback, items, build, trigger = "rig
         callback: function (key, options) {
             callback(key, options);
         },
+        events: {
+            show: function (options) {
+                highlightContextMenuRow(options);
+            },
+            hide: function (options) {
+                clearContextMenuRow(options);
+            }
+        },
         items: items
     };
 
@@ -230,6 +267,11 @@ function initializeContextMenu({selector, callback, items, build, trigger = "rig
             if (!context) {
                 return false;
             }
+            if (typeof context === "object") {
+                context.$trigger ??= $trigger;
+                context.$row ??= $trigger.closest("tr");
+                context.event ??= event;
+            }
 
             const menuItems = prepareContextMenuItems(items, context);
             if (Object.keys(menuItems).length === 0) {
@@ -240,6 +282,16 @@ function initializeContextMenu({selector, callback, items, build, trigger = "rig
                 callback: function (key, options) {
                     options.context = context;
                     callback(key, options);
+                },
+                events: {
+                    show: function (options) {
+                        options.context = context;
+                        highlightContextMenuRow(options, context);
+                    },
+                    hide: function (options) {
+                        options.context = context;
+                        clearContextMenuRow(options, context);
+                    }
                 },
                 items: menuItems
             };
