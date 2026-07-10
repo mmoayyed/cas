@@ -11,14 +11,24 @@ function escapeMfaHtml(str) {
 function switchToConfigurationDynamicSourcesTab() {
     activateDashboardTab(Tabs.CONFIGURATION.index);
     selectSidebarMenuTab(Tabs.CONFIGURATION.index);
+    $("#configuration-tabs").tabs("option", "active", $("#mutableConfigSources").index());
+}
+
+function overrideMfaProviderConfigurationPropertyValue(propertyName, propertyValue) {
+    if (mfaProviderPropertiesMutable()) {
+        switchToConfigurationDynamicSourcesTab();
+        overrideConfigPropertyValue(propertyName, propertyValue);
+    }
 }
 
 function overrideMfaProviderPropertyValue(button) {
-    if (mfaProviderPropertiesMutable()) {
-        const propertyName = $(button).data("key");
-        const propertyValue = $(button).data("value");
+    overrideMfaProviderConfigurationPropertyValue($(button).data("key"), $(button).data("value"));
+}
+
+function showMfaProviderConfigurationPropertyHelp(propertyName) {
+    if (CasActuatorEndpoints.configurationMetadata()) {
         switchToConfigurationDynamicSourcesTab();
-        overrideConfigPropertyValue(propertyName, propertyValue);
+        searchForConfigPropertyButton(propertyName);
     }
 }
 
@@ -78,23 +88,32 @@ async function populateMultifactorProviderTables() {
                         $(node).find("td").addClass("mdc-data-table__cell");
                     }
                 }).clear();
-                if (mutableProperties) {
-                    $(".mfa-provider-table").each(function () {
-                        const table = $(this).DataTable();
-                        initializeDataTableContextMenu({
-                            table: table,
-                            selector: `#${$.escapeSelector(this.id)} tbody tr`,
-                            items: {
-                                override: {name: "Override Configuration Property Value", icon: contextMenuIcon("mdi-arrow-left-circle")}
+                $(".mfa-provider-table").each(function () {
+                    const table = $(this).DataTable();
+                    initializeDataTableContextMenu({
+                        table: table,
+                        selector: `#${$.escapeSelector(this.id)} tbody tr`,
+                        items: {
+                            help: {
+                                name: "Configuration Property Help",
+                                icon: contextMenuIcon("mdi-help"),
+                                visible: () => CasActuatorEndpoints.configurationMetadata()
                             },
-                            callback: (key, context) => {
-                                if (key === "override") {
-                                    overrideConfigPropertyValue(context.rowData.propertyName, context.rowData.propertyValue);
-                                }
+                            override: {
+                                name: "Override Configuration Property Value",
+                                icon: contextMenuIcon("mdi-arrow-left-circle"),
+                                visible: () => mutableProperties
                             }
-                        });
+                        },
+                        callback: (key, context) => {
+                            if (key === "help") {
+                                showMfaProviderConfigurationPropertyHelp(context.rowData.propertyName);
+                            } else if (key === "override") {
+                                overrideMfaProviderConfigurationPropertyValue(context.rowData.propertyName, context.rowData.propertyValue);
+                            }
+                        }
                     });
-                }
+                });
 
                 for (const key of Object.keys(CasDiscoveryProfile.multifactorAuthenticationProviders())) {
                     const namespace = key.includes("duo") ? "duo" : key.replace("mfa-", "")

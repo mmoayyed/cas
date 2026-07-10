@@ -116,7 +116,7 @@ public class CasPasswordlessAuthenticationAutoConfiguration {
             final ConfigurableApplicationContext applicationContext,
             final CasConfigurationProperties casProperties,
             @Qualifier(ScriptResourceCacheManager.BEAN_NAME)
-            final ScriptResourceCacheManager scriptResourceCacheManager) throws Exception {
+            final ScriptResourceCacheManager scriptResourceCacheManager) {
             val resource = casProperties.getAuthn().getPasswordless().getCore()
                 .getPasswordlessAccountCustomizerScript().getLocation();
             val scriptFactory = ExecutableCompiledScriptFactory.findExecutableCompiledScriptFactory();

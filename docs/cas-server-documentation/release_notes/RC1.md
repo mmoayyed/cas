@@ -105,7 +105,7 @@ during resolution, allowing definitions to build on values produced by other def
 
 Inlined table buttons in [Palantir Admin Dashboard](../installation/Admin-Dashboard.html) are 
 replaced with proper context menus triggered by right clicks. The configuration tab is also extended 
-to display cached scripted resource with the ability to either remove or recompute the cache entry.
+to display cached scripted resources with the ability to either remove or recompute the cache entry.
 
 {% include imagegallery.html gallery_id="palantir-dashboard" images=page.palantir_images %}
 

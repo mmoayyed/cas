@@ -40,6 +40,62 @@ async function initializeCasProtocolOperations() {
     $("button[name=casProtocolV3Button]").off().on("click", () => buildCasProtocolPayload("p3/serviceValidate", "xml"));
 }
 
+function protocolConfigurationPropertiesMutable() {
+    return PalantirDashboardConfiguration.mutablePropertySourcesAvailable() && CasActuatorEndpoints.casConfig();
+}
+
+function escapeProtocolHtml(str) {
+    return String(str ?? "").replace(/[&<>"']/g, s => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+    }[s]));
+}
+
+function switchToConfigurationDynamicSourcesTabFromProtocol() {
+    activateDashboardTab(Tabs.CONFIGURATION.index);
+    selectSidebarMenuTab(Tabs.CONFIGURATION.index);
+}
+
+function showProtocolConfigurationPropertyHelp(propertyName) {
+    if (CasActuatorEndpoints.configurationMetadata()) {
+        switchToConfigurationDynamicSourcesTabFromProtocol();
+        searchForConfigPropertyButton(propertyName);
+    }
+}
+
+function overrideProtocolConfigurationPropertyValue(propertyName, propertyValue) {
+    if (protocolConfigurationPropertiesMutable()) {
+        switchToConfigurationDynamicSourcesTabFromProtocol();
+        overrideConfigPropertyValue(propertyName, propertyValue);
+    }
+}
+
+function initializeProtocolConfigurationPropertiesContextMenu(table, selector) {
+    initializeDataTableContextMenu({
+        table: table,
+        selector: selector,
+        items: {
+            help: {
+                name: "Configuration Property Help",
+                icon: contextMenuIcon("mdi-help"),
+                visible: () => CasActuatorEndpoints.configurationMetadata()
+            },
+            override: {
+                name: "Override Configuration Property Value",
+                icon: contextMenuIcon("mdi-arrow-left-circle"),
+                visible: () => protocolConfigurationPropertiesMutable()
+            }
+        },
+        callback: (key, context) => {
+            const {propertyName, propertyValue} = context.rowData;
+            if (key === "help") {
+                showProtocolConfigurationPropertyHelp(propertyName);
+            } else if (key === "override") {
+                overrideProtocolConfigurationPropertyValue(propertyName, propertyValue);
+            }
+        }
+    });
+}
+
 async function initializeSAML1ProtocolOperations() {
     $("button[name=saml1ProtocolButton]").off().on("click", () => {
         const form = document.getElementById("fmSaml1Protocol");
@@ -372,19 +428,33 @@ async function initializeOidcProtocolOperations() {
 
         if (CasActuatorEndpoints.env()) {
             const oidcConfigurationPropsTable = $("#oidcConfigurationPropsTable").DataTable({
-                lengthChange: false
+                lengthChange: false,
+                columnDefs: [
+                    {
+                        targets: 1,
+                        className: "dt-left"
+                    }
+                ],
+                drawCallback: () => {
+                    $("#oidcConfigurationPropsTable tr").addClass("mdc-data-table__row");
+                    $("#oidcConfigurationPropsTable td").addClass("mdc-data-table__cell");
+                }
             });
             oidcConfigurationPropsTable.clear();
+            initializeProtocolConfigurationPropertiesContextMenu(
+                oidcConfigurationPropsTable,
+                "#oidcConfigurationPropsTable tbody tr");
 
             $.get(`${CasActuatorEndpoints.env()}?pattern=cas.authn.oidc`, response => {
                 response.propertySources.forEach(source => {
                     let properties = source.properties && Object.entries(source.properties || {});
                     properties.forEach(([propKey, propValue]) => {
-                        oidcConfigurationPropsTable.row.add(
-                            $("<tr class=\"mdc-data-table__row\">")
-                                .append(`<td class="mdc-data-table__cell"><code>${propKey}</code></td>`)
-                                .append(`<td class="mdc-data-table__cell"><code>${propValue.value}</code></td>`)
-                        ).draw(false);
+                        oidcConfigurationPropsTable.row.add({
+                            0: `<code>${escapeProtocolHtml(propKey)}</code>`,
+                            1: `<code>${escapeProtocolHtml(propValue.value)}</code>`,
+                            propertyName: propKey,
+                            propertyValue: propValue.value
+                        }).draw(false);
                     });
                 });
                 updateNavigationSidebar();
@@ -919,19 +989,27 @@ async function initializeSAML2ProtocolOperations() {
                         targets: 1,
                         className: "dt-left"
                     }
-                ]
+                ],
+                drawCallback: () => {
+                    $("#saml2ConfigurationPropsTable tr").addClass("mdc-data-table__row");
+                    $("#saml2ConfigurationPropsTable td").addClass("mdc-data-table__cell");
+                }
             });
             saml2ConfigurationPropsTable.clear();
+            initializeProtocolConfigurationPropertiesContextMenu(
+                saml2ConfigurationPropsTable,
+                "#saml2ConfigurationPropsTable tbody tr");
 
             $.get(`${CasActuatorEndpoints.env()}?pattern=cas.authn.saml-idp`, response => {
                 response.propertySources.forEach(source => {
                     let properties = source.properties && Object.entries(source.properties || {});
                     properties.forEach(([propKey, propValue]) => {
-                        saml2ConfigurationPropsTable.row.add(
-                            $("<tr class=\"mdc-data-table__row\">")
-                                .append(`<td class="mdc-data-table__cell"><code>${propKey}</code></td>`)
-                                .append(`<td class="mdc-data-table__cell"><code>${propValue.value}</code></td>`)
-                        ).draw(false);
+                        saml2ConfigurationPropsTable.row.add({
+                            0: `<code>${escapeProtocolHtml(propKey)}</code>`,
+                            1: `<code>${escapeProtocolHtml(propValue.value)}</code>`,
+                            propertyName: propKey,
+                            propertyValue: propValue.value
+                        }).draw(false);
                     });
                 });
                 updateNavigationSidebar();

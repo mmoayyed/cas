@@ -17,6 +17,7 @@ import org.apereo.cas.notifications.CommunicationsManager;
 import org.apereo.cas.services.ServicesManager;
 import org.apereo.cas.util.nativex.CasRuntimeHintsRegistrar;
 import org.apereo.cas.util.scripting.ExecutableCompiledScriptFactory;
+import org.apereo.cas.util.scripting.ScriptResourceCacheManager;
 import org.apereo.cas.util.serialization.ComponentSerializationPlanConfigurer;
 import org.apereo.cas.util.spring.beans.BeanCondition;
 import org.apereo.cas.util.spring.beans.BeanSupplier;
@@ -391,18 +392,18 @@ public class CasPasswordlessAuthenticationWebflowAutoConfiguration {
             final ConfigurableApplicationContext applicationContext,
             @Qualifier(DelegatedClientIdentityProviderConfigurationProducer.BEAN_NAME)
             final ObjectProvider<DelegatedClientIdentityProviderConfigurationProducer> pp,
-            final CasConfigurationProperties casProperties) {
+            final CasConfigurationProperties casProperties,
+            @Qualifier(ScriptResourceCacheManager.BEAN_NAME)
+            final ObjectProvider<ScriptResourceCacheManager> scriptResourceCacheManager) {
             return WebflowActionBeanSupplier.builder()
                 .withApplicationContext(applicationContext)
                 .withProperties(casProperties)
                 .withAction(() -> {
                     val scriptFactory = ExecutableCompiledScriptFactory.findExecutableCompiledScriptFactory();
                     if (pp.getIfAvailable() != null && CasRuntimeHintsRegistrar.notInNativeImage() && scriptFactory.isPresent()) {
-                        val selectorScriptResource = casProperties.getAuthn().getPasswordless().getCore()
-                            .getDelegatedAuthenticationSelectorScript().getLocation();
                         return new PasswordlessDetermineDelegatedAuthenticationAction(casProperties,
-                            multifactorTriggerSelectionStrategy, passwordlessPrincipalFactory, authenticationSystemSupport,
-                            pp.getObject(), scriptFactory.get().fromResource(selectorScriptResource));
+                            multifactorTriggerSelectionStrategy, passwordlessPrincipalFactory,
+                            authenticationSystemSupport, pp.getObject(), scriptResourceCacheManager);
                     }
                     return new StaticEventExecutionAction(CasWebflowConstants.TRANSITION_ID_SUCCESS);
                 })
