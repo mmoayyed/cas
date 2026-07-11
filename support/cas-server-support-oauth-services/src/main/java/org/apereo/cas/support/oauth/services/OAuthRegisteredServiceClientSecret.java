@@ -37,7 +37,7 @@ public class OAuthRegisteredServiceClientSecret implements Serializable {
     
     private String value;
 
-    @JsonInclude(value = JsonInclude.Include.NON_EMPTY)
+    @JsonInclude(JsonInclude.Include.NON_EMPTY)
     @Nullable
     private String expiration;
 
@@ -65,7 +65,7 @@ public class OAuthRegisteredServiceClientSecret implements Serializable {
      */
     @JsonIgnore
     public boolean isWithoutExpiration() {
-        return StringUtils.isNotBlank(expiration) && StringUtils.isNotBlank(value);
+        return StringUtils.isBlank(expiration) && StringUtils.isNotBlank(value);
     }
 
     /**
@@ -114,6 +114,6 @@ public class OAuthRegisteredServiceClientSecret implements Serializable {
      * @return the secret
      */
     public static OAuthRegisteredServiceClientSecret withoutExpiration(final String value) {
-        return new OAuthRegisteredServiceClientSecret(value, StringUtils.EMPTY);
+        return new OAuthRegisteredServiceClientSecret(value, (String) null);
     }
 }

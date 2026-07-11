@@ -4,10 +4,13 @@ import module java.base;
 import org.apereo.cas.configuration.CasConfigurationProperties;
 import org.apereo.cas.heimdall.authorizer.repository.AuthorizableResourceRepository;
 import org.apereo.cas.heimdall.authorizer.resource.AuthorizableResource;
+import org.apereo.cas.heimdall.authorizer.resource.AuthorizableResources;
 import org.apereo.cas.web.BaseCasRestActuatorEndpoint;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.enums.ParameterIn;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.springframework.boot.actuate.endpoint.Access;
@@ -44,7 +47,7 @@ public class HeimdallAuthorizationEndpoint extends BaseCasRestActuatorEndpoint {
      * @param request the request
      * @return the response entity
      */
-    @PostMapping(path = "/resource", produces = MediaType.APPLICATION_JSON_VALUE)
+    @GetMapping(path = "/resource", produces = MediaType.APPLICATION_JSON_VALUE)
     @Operation(summary = "Fetch authorizable resource matching the given authorization request in the body",
         parameters = @Parameter(name = "request", required = true, description = "Authorization request in the body"))
     public ResponseEntity<AuthorizableResource> fetchResource(@RequestBody final AuthorizationRequest request) {
@@ -97,4 +100,26 @@ public class HeimdallAuthorizationEndpoint extends BaseCasRestActuatorEndpoint {
         return ResponseEntity.of(resource);
     }
 
+    /**
+     * Create resource.
+     *
+     * @param resources the resources
+     */
+    @PostMapping(path = "/resources",
+        consumes = MediaType.APPLICATION_JSON_VALUE,
+        produces = MediaType.APPLICATION_JSON_VALUE)
+    @Operation(
+        summary = "Store authorizable resource",
+        requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
+            required = true,
+            description = "The authorizable resources to store",
+            content = @Content(
+                mediaType = MediaType.APPLICATION_JSON_VALUE,
+                schema = @Schema(implementation = AuthorizableResources.class)
+            )
+        )
+    )
+    public ResponseEntity createResource(@RequestBody final AuthorizableResources resources) {
+        return ResponseEntity.ok(authorizableResourceRepository.store(resources));
+    }
 }

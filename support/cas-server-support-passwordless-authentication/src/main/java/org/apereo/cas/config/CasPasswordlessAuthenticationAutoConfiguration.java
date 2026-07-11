@@ -36,6 +36,7 @@ import org.apereo.cas.util.spring.boot.ConditionalOnMissingGraalVMNativeImage;
 import lombok.val;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.validator.routines.EmailValidator;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -116,12 +117,13 @@ public class CasPasswordlessAuthenticationAutoConfiguration {
             final ConfigurableApplicationContext applicationContext,
             final CasConfigurationProperties casProperties,
             @Qualifier(ScriptResourceCacheManager.BEAN_NAME)
-            final ScriptResourceCacheManager scriptResourceCacheManager) {
+            final ObjectProvider<ScriptResourceCacheManager> scriptResourceCacheManager) {
             val resource = casProperties.getAuthn().getPasswordless().getCore()
                 .getPasswordlessAccountCustomizerScript().getLocation();
             val scriptFactory = ExecutableCompiledScriptFactory.findExecutableCompiledScriptFactory();
             if (resource != null && CasRuntimeHintsRegistrar.notInNativeImage() && scriptFactory.isPresent()) {
-                return new GroovyPasswordlessUserAccountCustomizer(casProperties, applicationContext, scriptResourceCacheManager);
+                return new GroovyPasswordlessUserAccountCustomizer(casProperties,
+                    applicationContext, scriptResourceCacheManager.getObject());
             }
             return PasswordlessUserAccountCustomizer.noOp();
         }
