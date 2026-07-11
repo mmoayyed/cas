@@ -35,8 +35,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * @author Misagh Moayyed
  * @since 7.1.0
  */
-@Tag("Simple")
-@Tag("Simple")
+@Tag("ActuatorEndpoint")
 @ExtendWith(CasTestExtension.class)
 @SpringBootTestAutoConfigurations
 @SpringBootTest(classes = {

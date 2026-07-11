@@ -167,10 +167,10 @@ while (( "$#" )); do
           for tag in "${CHANGED_CATEGORIES[@]}"; do
              category+="${tag} "
           done
+          formatted=$(printf '%s\n' "$category" | awk '{ for (i = 1; i <= NF; i++) print "  - " $i }')
+          printf "👷 ${GREEN}Test categories for current changeset are:\n${formatted} ${ENDCOLOR}\n\n"
         fi
-        formatted=$(printf '%s\n' "$category" | awk '{ for (i = 1; i <= NF; i++) print "  - " $i }')
-        printf "👷 ${GREEN}Test categories for current changeset are:\n${formatted} ${ENDCOLOR}\n\n"
-        
+
         for item in $(echo "$category" | sed "s/,/ /g")
         do
             categoryItem=$(echo "${item}" | awk '{print tolower($0)}')

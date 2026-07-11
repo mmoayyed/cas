@@ -54,7 +54,7 @@ public class OidcClientRegistrationUtils {
                 return new OAuthRegisteredServiceClientSecret(Objects.requireNonNull(decoded), secret.getExpiration());
             })
             .findFirst()
-            .orElseThrow();
+            .orElseThrow(() -> new IllegalArgumentException("No client secret is defined for service " + registeredService.getName()));
 
         clientResponse.setClientSecret(decodedSecret.getValue());
         clientResponse.setSubjectType(registeredService.getSubjectType());

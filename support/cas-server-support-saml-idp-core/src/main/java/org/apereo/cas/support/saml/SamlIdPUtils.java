@@ -147,7 +147,7 @@ public class SamlIdPUtils {
                     : null;
 
                 if (StringUtils.isNotBlank(acsUrl) && locations.stream().anyMatch(acsUrl::equalsIgnoreCase)) {
-                    return buildAssertionConsumerService(binding, acsUrl, Objects.requireNonNull(acsIndex));
+                    return buildAssertionConsumerService(binding, acsUrl, acsIndex);
                 }
 
                 if (acsIndex != null) {
@@ -164,7 +164,9 @@ public class SamlIdPUtils {
         return acsFromMetadata;
     }
 
-    private static AssertionConsumerService buildAssertionConsumerService(final String binding, final String acsUrl, final Integer acsIndex) {
+    private static AssertionConsumerService buildAssertionConsumerService(final String binding,
+                                                                          final String acsUrl,
+                                                                          @Nullable final Integer acsIndex) {
         val acs = new AssertionConsumerServiceBuilder().buildObject();
         acs.setBinding(binding);
         acs.setLocation(acsUrl);
