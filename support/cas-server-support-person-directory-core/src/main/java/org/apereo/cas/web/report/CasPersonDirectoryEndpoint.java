@@ -6,6 +6,7 @@ import org.apereo.cas.authentication.principal.attribute.PersonAttributes;
 import org.apereo.cas.configuration.CasConfigurationProperties;
 import org.apereo.cas.persondir.PersonDirectoryAttributeRepositoryPlan;
 import org.apereo.cas.persondir.cache.CachingPersonAttributeDaoImpl;
+import org.apereo.cas.util.Couplet;
 import org.apereo.cas.web.BaseCasRestActuatorEndpoint;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -76,11 +77,11 @@ public class CasPersonDirectoryEndpoint extends BaseCasRestActuatorEndpoint {
      */
     @GetMapping(value = "/repositories", produces = MediaType.APPLICATION_JSON_VALUE)
     @Operation(summary = "Display available attribute repositories and their order of execution")
-    public List<AttributeRepository> showAttributeRepositories() {
+    public List<Couplet> showAttributeRepositories() {
         return attributeRepositoryPlan.getObject()
             .getAttributeRepositories()
             .stream()
-            .map(repository -> new AttributeRepository(List.of(repository.getId()), repository.getOrder(), repository.getTags()))
+            .map(repository -> Couplet.of(List.of(repository.getId()), repository.toConfiguration()))
             .toList();
     }
 
@@ -88,9 +89,6 @@ public class CasPersonDirectoryEndpoint extends BaseCasRestActuatorEndpoint {
         val cachingRepository = (CachingPersonAttributeDaoImpl) cachingAttributeRepository.getObject();
         Objects.requireNonNull(cachingRepository, "Unable to locate caching attribute repository from application context");
         return cachingRepository;
-    }
-
-    public record AttributeRepository(List<String> id, int order, Map<String, Object> tags) {
     }
 }
 

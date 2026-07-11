@@ -60,9 +60,100 @@ async function initializePersonDirectoryOperations() {
     const attributeRepositoriesTable = $("#attributeRepositoriesTable").DataTable({
         pageLength: 10,
         autoWidth: false,
+        columns: [
+            {
+                data: "id",
+                render: (data, type) => type === "display"
+                    ? `<code>${escapePersonDirectoryHtml(data)}</code>`
+                    : data
+            }
+        ],
         drawCallback: () => {
             $("#attributeRepositoriesTable tr").addClass("mdc-data-table__row");
             $("#attributeRepositoriesTable td").addClass("mdc-data-table__cell");
+        }
+    });
+
+    const attributeRepositoryConfigTable = $("#attributeRepositoryConfigTable").DataTable({
+        pageLength: 10,
+        autoWidth: false,
+        columns: [
+            {
+                data: "property",
+                render: (data, type) => type === "display"
+                    ? `<code>${escapePersonDirectoryHtml(data)}</code>`
+                    : data
+            },
+            {
+                data: "value",
+                className: "dt-left wrap",
+                render: (data, type) => type === "display"
+                    ? `<code>${escapePersonDirectoryHtml(formatAttributeRepositoryConfigValue(data))}</code>`
+                    : formatAttributeRepositoryConfigValue(data)
+            }
+        ],
+        drawCallback: () => {
+            $("#attributeRepositoryConfigTable tr").addClass("mdc-data-table__row");
+            $("#attributeRepositoryConfigTable td").addClass("mdc-data-table__cell");
+        }
+    });
+
+    $("#attributeRepositoryConfigDialog").dialog({
+        autoOpen: false,
+        modal: true,
+        width: Math.min($(window).width() * 0.75, 1200),
+        height: Math.min($(window).height() * 0.75, 800),
+        position: {
+            my: "center top",
+            at: "center top+100",
+            of: window
+        },
+        open: () => attributeRepositoryConfigTable.columns.adjust(),
+        buttons: {
+            Close: function () {
+                $(this).dialog("close");
+            }
+        }
+    });
+
+    function normalizeAttributeRepositoryEntry(entry) {
+        const ids = entry?.left ?? entry?.key ?? entry?.ids ?? entry?.id ?? [];
+        return {
+            id: Array.isArray(ids) ? ids.join(", ") : `${ids ?? "N/A"}`,
+            config: entry?.right ?? entry?.value ?? entry?.config ?? entry?.configuration ?? {}
+        };
+    }
+
+    function showAttributeRepositoryConfig(entry) {
+        attributeRepositoryConfigTable.clear();
+        const flattened = flattenAttributeRepositoryConfig(entry.config ?? {});
+        for (const [property, value] of Object.entries(flattened)) {
+            attributeRepositoryConfigTable.row.add({
+                property: property,
+                value: value
+            });
+        }
+        if (Object.keys(flattened).length === 0) {
+            attributeRepositoryConfigTable.row.add({
+                property: "configuration",
+                value: "N/A"
+            });
+        }
+        attributeRepositoryConfigTable.draw();
+        $("#attributeRepositoryConfigDialog").dialog("option", "title", `Attribute Repository Configuration: ${entry.id}`);
+        $("#attributeRepositoryConfigDialog").dialog("open");
+    }
+
+    initializeDataTableContextMenu({
+        table: attributeRepositoriesTable,
+        selector: "#attributeRepositoriesTable tbody tr",
+        items: {
+            view: {name: "View Configuration", icon: contextMenuIcon("mdi-eye")}
+        },
+        callback: (key, context) => {
+            if (key === "view") {
+                showAttributeRepositoryConfig(context.rowData);
+            }
         }
     });
 
@@ -173,11 +264,7 @@ async function initializePersonDirectoryOperations() {
     if (CasActuatorEndpoints.personDirectory()) {
         $.get(`${CasActuatorEndpoints.personDirectory()}/repositories`, response => {
             for (const definition of response) {
-                attributeRepositoriesTable.row.add({
-                    0: `<code>${definition.id ?? "N/A"}</code>`,
-                    1: `<code>${definition.order ?? "0"}</code>`,
-                    2: `<code>${JSON.stringify(definition.tags)}</code>`
-                });
+                attributeRepositoriesTable.row.add(normalizeAttributeRepositoryEntry(definition));
                 attributeRepositories++;
             }
             attributeRepositoriesTable.draw();
@@ -187,6 +274,49 @@ async function initializePersonDirectoryOperations() {
             displayBanner(xhr);
         });
     }
+}
+
+function escapePersonDirectoryHtml(str) {
+    return String(str ?? "").replace(/[&<>"']/g, s => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+    }[s]));
+}
+
+function formatAttributeRepositoryConfigValue(value) {
+    if (value === null || value === undefined || value === "") {
+        return "N/A";
+    }
+    if (Array.isArray(value)) {
+        return value.map(formatAttributeRepositoryConfigValue).join(", ");
+    }
+    if (typeof value === "object") {
+        return JSON.stringify(value);
+    }
+    return value;
+}
+
+function flattenAttributeRepositoryConfig(data) {
+    const result = {};
+
+    function recurse(cur, prop) {
+        if (Array.isArray(cur)) {
+            result[prop] = cur.map(formatAttributeRepositoryConfigValue).join(", ");
+        } else if (Object(cur) !== cur) {
+            result[prop] = cur;
+        } else {
+            let isEmpty = true;
+            for (const p in cur) {
+                isEmpty = false;
+                recurse(cur[p], prop ? `${prop}.${p}` : p);
+            }
+            if (isEmpty && prop) {
+                result[prop] = {};
+            }
+        }
+    }
+
+    recurse(data, "");
+    return result;
 }
 
 function attrDefTypeIcon(definition) {
