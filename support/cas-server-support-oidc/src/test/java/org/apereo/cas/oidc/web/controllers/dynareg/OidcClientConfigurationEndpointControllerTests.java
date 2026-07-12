@@ -164,7 +164,7 @@ class OidcClientConfigurationEndpointControllerTests {
             service.getClientSecrets().forEach(secret -> assertNotEquals(secret.getExpiration(), clientSecretExpiration));
         }
 
-    }
+    }    
 
     @Nested
     @TestPropertySource(properties = {

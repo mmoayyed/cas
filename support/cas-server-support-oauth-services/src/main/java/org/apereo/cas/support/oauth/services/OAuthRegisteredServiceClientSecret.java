@@ -5,6 +5,7 @@ import org.apereo.cas.util.DateTimeUtils;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
+import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import lombok.AllArgsConstructor;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
@@ -53,9 +54,12 @@ public class OAuthRegisteredServiceClientSecret implements Serializable {
      * Expire at.
      *
      * @param time the time
+     * @return the o auth registered service client secret
      */
-    public void expireAt(final ZonedDateTime time) {
+    @CanIgnoreReturnValue
+    public OAuthRegisteredServiceClientSecret expireAt(final ZonedDateTime time) {
         this.expiration = String.valueOf(time.toEpochSecond());
+        return this;
     }
     
     /**

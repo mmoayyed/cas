@@ -3,6 +3,7 @@ package org.apereo.cas.logging;
 import module java.base;
 import org.apereo.cas.config.CasCoreScriptingAutoConfiguration;
 import org.apereo.cas.config.CasCoreUtilAutoConfiguration;
+import org.apereo.cas.config.CasCoreWebAutoConfiguration;
 import org.apereo.cas.config.CasGoogleCloudLoggingAutoConfiguration;
 import org.apereo.cas.configuration.CasConfigurationProperties;
 import org.apereo.cas.test.CasTestExtension;
@@ -42,6 +43,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
     GoogleCloudLogsEndpointTests.GoogleCloudTestConfiguration.class,
     CasCoreUtilAutoConfiguration.class,
     CasCoreScriptingAutoConfiguration.class,
+    CasCoreWebAutoConfiguration.class,
     CasGoogleCloudLoggingAutoConfiguration.class
 }, properties = {
     "cas.logging.gcp.log-name=projects/cas-project-id/logs/cas-server",

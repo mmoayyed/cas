@@ -137,6 +137,11 @@
             <div id="heimdall-tab">
                <p>Examine the list of authorizable resources and APIs registered with the CAS authorization engine.</p>
 
+                <div id="newHeimdallResourceDialogFields" style="display: none">
+                    <div th:replace="~{fragments/switchbutton :: switchbutton (id='showHeimdallResourceJsonEditor', label='#Show JSON Editor', cssClass='always-show', selected=true, dataAttrs='changeEventHandler=toggleHeimdallResourceEditorVisibility')}"/>
+                    <div th:replace="~{fragments/switchbutton :: switchbutton (id='heimdallEnforceAllPolicies', label='#Enforce All Policies', cssClass='always-show mb-2', selected=false, dataAttrs='changeEventHandler=generateHeimdallResourcePayload')}"/>
+                </div>
+
                 <table id="heimdallResourcesTable" class="mdc-data-table__table table table-striped noborder">
                     <thead>
                         <tr class="mdc-data-table__header-row">
@@ -150,19 +155,6 @@
                     <tbody class="mdc-data-table__content">
                     </tbody>
                 </table>
-                
-                <div class="mdc-dialog modal" id="heimdallViewResourceDialog" role="alertdialog"
-                                 aria-modal="true" aria-label="Resource definition"
-                                 aria-describedby="heimdallViewResourceDialog-content">
-                    <div class="mdc-dialog__container w-100 modal-dialog">
-                        <div class="mdc-dialog__surface mw-100 w-75 modal-content min-height-60">
-                            <div class="mdc-dialog__content modal-body" id="heimdallViewResourceDialog-content">
-                                <div class="ace-editor ace-absolute" id="heimdallViewResourceEditor"></div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="mdc-dialog__scrim"></div>
-                </div>
                 
             </div>
         </div>

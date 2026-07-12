@@ -994,6 +994,8 @@ select + span[role="combobox"] {
 
 .http-exchange-method.method-head,
 .http-exchange-method.method-options,
+.http-exchange-method.method-trace,
+.http-exchange-method.method-connect,
 .http-exchange-method.method-any,
 .http-exchange-status.status-informational {
     background: #607d8b;
@@ -2313,4 +2315,205 @@ select + span[role="combobox"] {
     white-space: pre-wrap;
     overflow-wrap: anywhere;
     word-break: break-word;
+}
+
+.heimdall-resource-dialog-layout {
+    display: flex;
+    gap: 1rem;
+    min-height: 0;
+    height: 100%;
+    overflow: hidden;
+}
+
+.heimdall-resource-controls {
+    flex: 0 0 31rem;
+    max-width: 31rem;
+    padding-top: .75rem;
+    padding-right: .75rem;
+    overflow-x: hidden;
+    overflow-y: auto;
+    scrollbar-gutter: stable;
+}
+
+.heimdall-resource-controls-expanded {
+    flex-basis: 100%;
+    max-width: 100%;
+}
+
+.heimdall-resource-editor-container {
+    flex: 1 1 auto;
+    min-width: 30rem;
+    border: 1px solid var(--cas-theme-primary, #153e50);
+    border-radius: .25rem;
+    overflow: hidden;
+}
+
+.heimdall-policy-card {
+    border: 1px solid #c7d5e1;
+    border-radius: .5rem;
+    background: var(--mdc-theme-surface, #fff);
+    box-shadow: 0 1px 3px rgb(0 0 0 / 8%);
+}
+
+.heimdall-policy-card-header {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+    gap: .75rem;
+}
+
+.heimdall-policy-type-label,
+.heimdall-select-field {
+    display: block;
+    min-width: 0;
+    color: var(--mdc-theme-text-primary-on-background, #333);
+    font-size: .875rem;
+    font-weight: 500;
+}
+
+.heimdall-policy-type-label > span,
+.heimdall-select-field > span {
+    display: block;
+    margin-bottom: .25rem;
+}
+
+.heimdall-policy-card .ui-selectmenu-button.ui-button {
+    display: flex;
+    align-items: center;
+    width: 100% !important;
+    min-height: 2.75rem;
+    margin: 0;
+    font-family: var(--mdc-typography-font-family);
+    font-size: 1rem;
+}
+
+.heimdall-policy-card .ui-selectmenu-button .ui-selectmenu-text {
+    flex: 1 1 auto;
+    margin-right: .5rem;
+}
+
+.heimdall-policy-actions {
+    display: flex;
+    align-items: center;
+    gap: .25rem;
+    margin-top: 1.35rem;
+}
+
+.heimdall-policy-action.mdc-button {
+    width: 2.35rem;
+    min-width: 2.35rem;
+    height: 2.75rem;
+    padding: 0;
+}
+
+.heimdall-policy-action .mdi {
+    font-size: 1.25rem;
+}
+
+.heimdall-policy-drag-handle {
+    cursor: grab;
+    touch-action: none;
+}
+
+.heimdall-policy-drag-handle:active,
+.heimdall-policy-card-dragging .heimdall-policy-drag-handle {
+    cursor: grabbing;
+}
+
+.heimdall-policy-card-collapsed .heimdall-policy-card-header {
+    margin-bottom: 0 !important;
+}
+
+.heimdall-policy-card-dragging {
+    z-index: 10001;
+    box-shadow: 0 8px 24px rgb(0 0 0 / 22%);
+}
+
+.heimdall-policy-sort-placeholder {
+    visibility: visible !important;
+    min-height: 4.5rem;
+    margin-bottom: 1rem;
+    border: 2px dashed var(--cas-theme-primary, #153e50);
+    border-radius: .5rem;
+    background: rgb(21 62 80 / 6%);
+}
+
+.heimdall-dialog-footer-toggles {
+    display: flex;
+    align-items: center;
+    margin-right: auto;
+}
+
+.heimdall-policy-enforcement {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.35rem;
+    line-height: 1;
+}
+
+.heimdall-policy-enforcement-enforced {
+    color: #168a55;
+}
+
+.heimdall-policy-enforcement-not-enforced {
+    color: #607d8b;
+}
+
+#registeredServiceHeimdallResourcePropertyKeyMapContainer .heimdallResourcePropertyKey-map-row,
+.heimdall-policy-map-host [data-mapped-input-row="true"] {
+    align-items: center;
+    gap: .5rem;
+}
+
+#registeredServiceHeimdallResourcePropertyKeyMapContainer .mdc-text-field,
+.heimdall-policy-map-host [data-mapped-input-row="true"] .mdc-text-field {
+    flex: 1 1 0;
+    min-width: 0;
+    margin-bottom: 0 !important;
+}
+
+#registeredServiceHeimdallResourcePropertyKeyMapContainer .mdc-button--inline-row,
+.heimdall-policy-map-host .mdc-button--inline-row {
+    flex: 0 0 auto;
+    min-width: 2.5rem;
+}
+
+.heimdall-policy-fields > .mdc-text-field {
+    display: flex;
+    width: 100%;
+}
+
+@media (max-width: 900px) {
+    .heimdall-resource-dialog-layout {
+        display: block;
+        overflow-y: auto;
+    }
+
+    .heimdall-resource-controls {
+        height: auto;
+        overflow: visible;
+    }
+
+    .heimdall-resource-controls,
+    .heimdall-resource-editor-container {
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+    }
+
+    .heimdall-resource-editor-container {
+        height: 28rem !important;
+        margin-top: 1rem;
+    }
+
+    .heimdall-policy-card-header {
+        grid-template-columns: 1fr;
+        align-items: stretch;
+    }
+
+    .heimdall-policy-actions {
+        justify-content: flex-end;
+        margin-top: 0;
+    }
 }

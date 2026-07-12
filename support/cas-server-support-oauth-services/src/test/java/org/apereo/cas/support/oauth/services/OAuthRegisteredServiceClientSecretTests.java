@@ -49,7 +49,7 @@ class OAuthRegisteredServiceClientSecretTests {
         assertEquals(1, deserialized.getClientSecrets().size());
         val clientSecret = deserialized.getClientSecrets().getFirst();
         assertEquals("clientSecret", clientSecret.getValue());
-        assertEquals(StringUtils.EMPTY, clientSecret.getExpiration());
+        assertNull(clientSecret.getExpiration());
         assertFalse(clientSecret.hasClientSecretExpired(deserialized));
     }
 
@@ -61,9 +61,9 @@ class OAuthRegisteredServiceClientSecretTests {
 
         assertEquals(2, registeredService.getClientSecrets().size());
         assertEquals("clientSecret", registeredService.getClientSecrets().getFirst().getValue());
-        assertEquals(StringUtils.EMPTY, registeredService.getClientSecrets().getFirst().getExpiration());
+        assertNull(registeredService.getClientSecrets().getFirst().getExpiration());
         assertEquals("anotherSecret", registeredService.getClientSecrets().get(1).getValue());
-        assertEquals(StringUtils.EMPTY, registeredService.getClientSecrets().get(1).getExpiration());
+        assertNull(registeredService.getClientSecrets().get(1).getExpiration());
         assertEquals("clientSecret", registeredService.getClientSecret());
     }
 
@@ -116,7 +116,7 @@ class OAuthRegisteredServiceClientSecretTests {
         assertFalse(expiredSecret.hasClientSecretExpired(registeredService));
 
         val withoutExpiration = OAuthRegisteredServiceClientSecret.withoutExpiration("clientSecret");
-        assertEquals(StringUtils.EMPTY, withoutExpiration.getExpiration());
+        assertNull(withoutExpiration.getExpiration());
         assertFalse(withoutExpiration.hasClientSecretExpired(registeredService));
     }
 
