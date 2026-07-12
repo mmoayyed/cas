@@ -9,6 +9,18 @@ palantir_images:
   - src: img_2.png
     alt: Palantir applications view
     title: Palantir applications view
+  - src: img_3.png
+    alt: Palantir Heimdall authorization view
+    title: Palantir Heimdall authorization view
+  - src: img_4.png
+    alt: Palantir Heimdall authorization view
+    title: Palantir Heimdall authorization view
+  - src: img_5.png
+    alt: Palantir attribute repositories view
+    title: Palantir attribute repositories view
+  - src: img_6.png
+    alt: Palantir attribute repositories view
+    title: Palantir attribute repositories view
 ---
 
 {% include variables.html %}
@@ -106,6 +118,11 @@ during resolution, allowing definitions to build on values produced by other def
 Inlined table buttons in [Palantir Admin Dashboard](../installation/Admin-Dashboard.html) are 
 replaced with proper context menus triggered by right clicks. The configuration tab is also extended 
 to display cached scripted resources with the ability to either remove or recompute the cache entry.
+     
+Furthermore, [Heimdall authorization policies](../authorization/Heimdall-Authorization-Overview.html)
+can now be created, edited and removed from the [Palantir Admin Dashboard](../installation/Admin-Dashboard.html).
+
+Configuration for almost all attribute repositories can also be viewed in better detail.
 
 {% include imagegallery.html gallery_id="palantir-dashboard" images=page.palantir_images %}
 
