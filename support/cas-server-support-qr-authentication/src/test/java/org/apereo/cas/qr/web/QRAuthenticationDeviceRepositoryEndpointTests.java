@@ -25,6 +25,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Tag("ActuatorEndpoint")
 @SpringBootTest(classes = BaseQRAuthenticationTokenValidatorServiceTests.SharedTestConfiguration.class,
     properties = {
+        "cas.authn.qr.json.location=file:${java.io.tmpdir}/cas-qr-devices.json",
         "management.endpoint.qrDevices.access=UNRESTRICTED",
         "management.endpoints.web.exposure.include=*"
     },
@@ -48,6 +49,7 @@ class QRAuthenticationDeviceRepositoryEndpointTests {
         mockMvc.perform(post("/actuator/qrDevices/%s/%s".formatted(username, deviceId))
                 .accept(MediaType.APPLICATION_JSON))
             .andExpect(status().isNoContent());
+        
         mockMvc.perform(get("/actuator/qrDevices/%s".formatted(username))
                 .accept(MediaType.APPLICATION_JSON))
             .andExpect(status().isOk())
@@ -55,7 +57,7 @@ class QRAuthenticationDeviceRepositoryEndpointTests {
 
         mockMvc.perform(delete("/actuator/qrDevices/%s".formatted(deviceId))
                 .accept(MediaType.APPLICATION_JSON))
-            .andExpect(status().isOk());
+            .andExpect(status().isNoContent());
     }
 
 }

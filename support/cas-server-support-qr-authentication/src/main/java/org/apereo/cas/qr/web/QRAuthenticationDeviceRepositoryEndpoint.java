@@ -66,6 +66,6 @@ public class QRAuthenticationDeviceRepositoryEndpoint extends BaseCasActuatorEnd
             @Parameter(name = "deviceId", required = true, description = "The device id to register")
         })
     public void registerDevice(@Selector final String principal, @Selector final String deviceId) {
-        repository.getObject().authorizeDeviceFor(principal, deviceId);
+        repository.getObject().authorizeDeviceFor(deviceId, principal);
     }
 }

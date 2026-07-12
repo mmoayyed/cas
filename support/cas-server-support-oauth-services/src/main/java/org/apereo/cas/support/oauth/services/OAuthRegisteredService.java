@@ -33,7 +33,7 @@ public class OAuthRegisteredService extends BaseWebBasedRegisteredService {
     @Serial
     private static final long serialVersionUID = 5318897374067731021L;
 
-    private List<OAuthRegisteredServiceClientSecret> clientSecrets;
+    private List<OAuthRegisteredServiceClientSecret> clientSecrets = new ArrayList<>();
 
     private String clientId;
 
