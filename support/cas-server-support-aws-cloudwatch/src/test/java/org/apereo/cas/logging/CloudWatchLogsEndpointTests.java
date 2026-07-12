@@ -3,6 +3,7 @@ package org.apereo.cas.logging;
 import module java.base;
 import org.apereo.cas.config.CasAmazonCloudWatchAutoConfiguration;
 import org.apereo.cas.config.CasAmazonCoreAutoConfiguration;
+import org.apereo.cas.config.CasCoreWebAutoConfiguration;
 import org.apereo.cas.test.CasTestExtension;
 import org.apereo.cas.util.junit.EnabledIfListeningOnPort;
 import org.apereo.cas.util.spring.boot.SpringBootTestAutoConfigurations;
@@ -30,6 +31,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTestAutoConfigurations
 @SpringBootTest(
     classes = {
+        CasCoreWebAutoConfiguration.class,
         CasAmazonCoreAutoConfiguration.class,
         CasAmazonCloudWatchAutoConfiguration.class
     },
