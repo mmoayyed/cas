@@ -18,12 +18,14 @@ import org.springframework.boot.actuate.endpoint.annotation.Endpoint;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 
 /**
  * This is {@link GroovyScriptCacheManagerEndpoint}.
@@ -126,5 +128,30 @@ public class GroovyScriptCacheManagerEndpoint extends BaseCasRestActuatorEndpoin
                 cacheManager.cacheScriptableResource(script, key);
             }
         }
+    }
+
+    /**
+     * Validate script.
+     *
+     * @param script the script
+     * @return the response entity
+     * @throws Exception the exception
+     */
+    @Operation(summary = "Parse and compile the given inline script")
+    @PostMapping(path = "/resources/validate", consumes = MediaType.TEXT_PLAIN_VALUE)
+    public ResponseEntity validate(@RequestBody final String script) throws Exception {
+        return FunctionUtils.doAndHandle(() -> {
+            var resourceToUse = script;
+            if (ScriptingUtils.isInlineGroovyScript(resourceToUse)) {
+                val matcher = ScriptingUtils.getMatcherForInlineGroovyScript(resourceToUse);
+                if (matcher.find()) {
+                    resourceToUse = matcher.group(1);
+                }
+            }
+            val scriptFactory = ExecutableCompiledScriptFactory.getExecutableCompiledScriptFactory();
+            return Optional.ofNullable(scriptFactory.fromScript(resourceToUse).compileScript())
+                .map(result -> ResponseEntity.status(HttpStatus.OK).build())
+                .orElseGet(() -> ResponseEntity.status(HttpStatus.BAD_REQUEST).build());
+        }, e -> ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", e.getMessage()))).get();
     }
 }

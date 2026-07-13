@@ -743,7 +743,7 @@ function openAttributeDefinitionDialog(existingDefinition) {
     });
 
     if (PalantirDashboardConfiguration.scriptFactoryAvailable()) {
-        createInputField({
+        const scriptInput = createInputField({
             labelTitle: "Script",
             name: "attributeDefinitionScript",
             required: false,
@@ -751,6 +751,10 @@ function openAttributeDefinitionDialog(existingDefinition) {
             title: "The script to run for the attribute value.",
             cssClasses: "always-show",
             paramName: "script"
+        });
+        attachPalantirGroovyEditorButton({
+            target: scriptInput,
+            title: "Attribute Definition Groovy Script",
         });
     }
 
@@ -851,6 +855,7 @@ function openAttributeDefinitionDialog(existingDefinition) {
         valueField: "attrDefPatternValue",
         valueLabel: "Value / Script",
         cssClasses: "always-show",
+        groovyEditorTitle: "Attribute Definition Pattern Groovy Script",
         onChangeCallback: generateAttrDefPayload
     }).addClass("mb-3");
 

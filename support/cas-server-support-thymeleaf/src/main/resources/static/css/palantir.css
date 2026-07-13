@@ -2460,6 +2460,69 @@ select + span[role="combobox"] {
     color: #607d8b;
 }
 
+.palantir-code-input-group {
+    width: 100%;
+}
+
+.palantir-code-field-container {
+    display: block;
+}
+
+.palantir-code-input-group .mdc-input-group-field {
+    min-width: 0;
+}
+
+.palantir-code-editor-button {
+    min-width: 5.25rem;
+    gap: .35rem;
+    margin-left: 2px;
+}
+
+.palantir-code-editor-button .mdc-button__label {
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+}
+
+.ui-dialog-content.palantir-code-editor-dialog {
+    display: flex !important;
+    flex-direction: column;
+    gap: .5rem;
+    overflow: hidden !important;
+}
+
+.palantir-code-editor {
+    flex: 1 1 auto;
+    width: 100%;
+    min-height: 22rem;
+    margin: 0;
+}
+
+.palantir-code-editor-status {
+    flex: 0 0 auto;
+    padding: .65rem .85rem;
+    border-radius: .3rem;
+    font-weight: 600;
+}
+
+.palantir-code-editor-status-info {
+    color: #084298;
+    background: #cfe2ff;
+    border: 1px solid #9ec5fe;
+}
+
+.palantir-code-editor-status-success {
+    color: #0f5132;
+    background: #d1e7dd;
+    border: 1px solid #a3cfbb;
+}
+
+.palantir-code-editor-status-error {
+    color: #842029;
+    background: #f8d7da;
+    border: 1px solid #f1aeb5;
+}
+
 #registeredServiceHeimdallResourcePropertyKeyMapContainer .heimdallResourcePropertyKey-map-row,
 .heimdall-policy-map-host [data-mapped-input-row="true"] {
     align-items: center;

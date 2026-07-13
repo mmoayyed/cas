@@ -7,6 +7,7 @@ import org.apereo.cas.config.CasTokenAuthenticationWebflowAutoConfiguration;
 import org.apereo.cas.services.DefaultRegisteredServiceAccessStrategy;
 import org.apereo.cas.services.RegisteredServiceTestUtils;
 import org.apereo.cas.token.authentication.TokenCredential;
+import org.apereo.cas.util.JsonUtils;
 import org.apereo.cas.util.serialization.JacksonObjectMapperFactory;
 import org.apereo.cas.web.report.AbstractCasEndpointTests;
 import lombok.val;
@@ -42,7 +43,7 @@ class TokenAuthenticationEndpointTests extends AbstractCasEndpointTests {
     @Autowired
     @Qualifier("tokenAuthenticationHandler")
     private AuthenticationHandler tokenAuthenticationHandler;
-    
+
     @Test
     void verifyOperation() throws Throwable {
         val registeredService = RegisteredServiceTestUtils.getRegisteredService(RegisteredServiceTestUtils.CONST_TEST_URL);
@@ -50,7 +51,8 @@ class TokenAuthenticationEndpointTests extends AbstractCasEndpointTests {
         servicesManager.save(registeredService);
         val response = mockMvc.perform(post("/actuator/tokenAuth/{username}", "casuser")
                 .with(csrf())
-                .param("service", RegisteredServiceTestUtils.CONST_TEST_URL)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(JsonUtils.render(Map.of("service", RegisteredServiceTestUtils.CONST_TEST_URL)))
                 .accept(MediaType.APPLICATION_JSON))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.registeredService").exists())

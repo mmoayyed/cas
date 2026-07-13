@@ -33,6 +33,22 @@ class GroovyScriptCacheManagerEndpointTests extends AbstractCasEndpointTests {
     private ScriptResourceCacheManager<String, ExecutableCompiledScript> scriptResourceCacheManager;
 
     @Test
+    void verifyCompilation() throws Throwable {
+        mockMvc.perform(post("/actuator/groovyCache/resources/validate")
+                .contentType(MediaType.TEXT_PLAIN_VALUE)
+                .accept(MediaType.APPLICATION_JSON)
+                .content("groovy { return 1L}")
+            )
+            .andExpect(status().isOk());
+        mockMvc.perform(post("/actuator/groovyCache/resources/validate")
+                .contentType(MediaType.TEXT_PLAIN_VALUE)
+                .accept(MediaType.APPLICATION_JSON)
+                .content("println('Hello")
+            )
+            .andExpect(status().isBadRequest());
+    }
+    
+    @Test
     void verifyOperation() throws Throwable {
         val inlineScriptKey = UUID.randomUUID().toString();
         val classpathScriptKey = UUID.randomUUID().toString();

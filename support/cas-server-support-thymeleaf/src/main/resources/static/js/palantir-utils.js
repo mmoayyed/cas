@@ -12,6 +12,257 @@ function showElements(elements) {
         .removeClass("d-none");
 }
 
+let palantirCodeEditorSequence = 0;
+let palantirGroovyCompleterRegistered = false;
+
+function unwrapPalantirGroovyScript(value) {
+    const script = String(value ?? "").trim();
+    const match = script.match(/^groovy\s*\{([\s\S]*)\}\s*$/);
+    return match ? match[1].trim() : script;
+}
+
+function formatPalantirGroovyScript(value) {
+    const script = String(value ?? "").trim();
+    return script ? `groovy { ${script} }` : "";
+}
+
+/**
+ * Validate Groovy source through the Groovy script-cache actuator endpoint.
+ * The endpoint returns an empty successful response when the script compiles
+ * and a non-successful status when parsing or compilation fails.
+ */
+function validatePalantirGroovyScript(value) {
+    const endpoint = CasActuatorEndpoints.groovyCache();
+    if (!endpoint) {
+        return Promise.reject(new Error("The Groovy script validation endpoint is not available."));
+    }
+
+    const url = `${String(endpoint).replace(/\/$/, "")}/resources/validate`;
+    return new Promise((resolve, reject) => {
+        $.ajax({
+            url: url,
+            method: "POST",
+            contentType: "text/plain; charset=UTF-8",
+            processData: false,
+            data: String(value ?? "")
+        }).done(() => resolve({
+            valid: true,
+            message: "Groovy script validation succeeded."
+        })).fail(xhr => {
+            const responseMessage = xhr.responseJSON?.message
+                ?? xhr.responseJSON?.error
+                ?? String(xhr.responseText ?? "").trim();
+            const message = responseMessage
+                || (xhr.status === 400
+                    ? "Groovy script validation failed. Check the script syntax."
+                    : `Unable to validate the Groovy script${xhr.status ? ` (HTTP ${xhr.status})` : ""}.`);
+            reject(new Error(message));
+        });
+    });
+}
+
+function registerPalantirGroovyCompleter() {
+    if (palantirGroovyCompleterRegistered) {
+        return;
+    }
+    const languageTools = ace.require("ace/ext/language_tools");
+    const completions = [
+        {caption: "def", value: "def ", meta: "Groovy keyword"},
+        {caption: "println", snippet: "println(${1:value})", meta: "Groovy method"},
+        {caption: "each", snippet: "each { item ->\n    ${1}\n}", meta: "Groovy closure"},
+        {caption: "eachWithIndex", snippet: "eachWithIndex { item, index ->\n    ${1}\n}", meta: "Groovy closure"},
+        {caption: "collect", snippet: "collect { item ->\n    ${1:item}\n}", meta: "Groovy collection"},
+        {caption: "find", snippet: "find { item -> ${1:condition} }", meta: "Groovy collection"},
+        {caption: "findAll", snippet: "findAll { item -> ${1:condition} }", meta: "Groovy collection"},
+        {caption: "any", snippet: "any { item -> ${1:condition} }", meta: "Groovy collection"},
+        {caption: "every", snippet: "every { item -> ${1:condition} }", meta: "Groovy collection"},
+        {caption: "inject", snippet: "inject(${1:initial}) { result, item ->\n    ${2:result}\n}", meta: "Groovy collection"},
+        {caption: "if", snippet: "if (${1:condition}) {\n    ${2}\n}", meta: "Groovy statement"},
+        {caption: "try/catch", snippet: "try {\n    ${1}\n} catch (${2:Exception} e) {\n    ${3}\n}", meta: "Groovy statement"},
+        {caption: "return", value: "return ", meta: "Groovy keyword"},
+        {caption: "true", value: "true", meta: "Groovy constant"},
+        {caption: "false", value: "false", meta: "Groovy constant"},
+        {caption: "null", value: "null", meta: "Groovy constant"},
+        {caption: "Map", value: "Map", meta: "Groovy type"},
+        {caption: "List", value: "List", meta: "Groovy type"},
+        {caption: "Set", value: "Set", meta: "Groovy type"},
+        {caption: "String", value: "String", meta: "Groovy type"}
+    ].map(completion => ({score: 1000, ...completion}));
+    languageTools.addCompleter({
+        identifierRegexps: [/[a-zA-Z_0-9.$-]/],
+        getCompletions: (_editor, session, _position, _prefix, callback) => {
+            const modeId = session.$modeId ?? session.getMode()?.$id;
+            callback(null, modeId === "ace/mode/groovy" ? completions : []);
+        }
+    });
+    palantirGroovyCompleterRegistered = true;
+}
+
+/**
+ * Open a reusable, editable Ace code-editor dialog.
+ * Callers may supply prepareValue/formatValue, onAccept, and an asynchronous onValidate callback.
+ * No validation request is attempted when onValidate is absent.
+ */
+function openPalantirCodeEditorDialog(options = {}) {
+    const target = $(options.target);
+    const mode = options.mode ?? "text";
+    const dialogId = `palantirCodeEditorDialog${++palantirCodeEditorSequence}`;
+    const editorId = `${dialogId}Editor`;
+    const statusId = `${dialogId}Status`;
+    const initialValue = options.initialValue !== undefined
+        ? options.initialValue
+        : target.val() ?? "";
+    const preparedValue = typeof options.prepareValue === "function"
+        ? options.prepareValue(initialValue)
+        : initialValue;
+    const infoMessage = options.infoMessage ?? (mode === "groovy"
+        ? "Groovy is a dynamic language. Validate Syntax only parses the script; it does not execute it. "
+            + "Runtime behavior requires an active CAS context and depends on the binding variables and services available when the script runs."
+        : "");
+    const dialog = $(
+        `<div id="${dialogId}" class="palantir-code-editor-dialog">
+            <div id="${statusId}" class="palantir-code-editor-status d-none" role="status" aria-live="polite"></div>
+            <pre id="${editorId}" class="ace-editor ace-relative palantir-code-editor"></pre>
+        </div>`);
+    if (infoMessage) {
+        const infoPanel = $("<div>", {class: "banner banner-info mb-0", role: "note"});
+        infoPanel.append($("<i>", {class: "mdi mdi-information-outline", "aria-hidden": "true"}));
+        infoPanel.append($("<span>").text(infoMessage));
+        dialog.append(infoPanel);
+    }
+    $("body").append(dialog);
+
+    let editor;
+    const setStatus = (message, status = "info") => {
+        const statusPanel = $(`#${statusId}`);
+        statusPanel.removeClass("d-none palantir-code-editor-status-info palantir-code-editor-status-success palantir-code-editor-status-error")
+            .addClass(`palantir-code-editor-status-${status}`)
+            .text(message);
+    };
+    const content = () => editor?.getValue() ?? String(preparedValue ?? "");
+
+    dialog.dialog({
+        title: options.title ?? "Code Editor",
+        modal: true,
+        autoOpen: true,
+        width: Math.min($(window).width() - 60, options.width ?? 1200),
+        height: Math.min($(window).height() - 80, options.height ?? 760),
+        position: {my: "center top", at: "center top+40", of: window},
+        buttons: {
+            "Validate Syntax": function () {
+                const script = content();
+                if (typeof options.onValidate !== "function") {
+                    setStatus(options.validationUnavailableMessage
+                        ?? "Script validation is not configured yet. No request was sent.", "info");
+                    return;
+                }
+                setStatus("Validating script...", "info");
+                Promise.resolve(options.onValidate(script, {editor: editor, dialog: dialog, target: target}))
+                    .then(result => {
+                        const message = typeof result === "string" ? result : result?.message ?? "Script validation succeeded.";
+                        setStatus(message, result?.valid === false ? "error" : "success");
+                    })
+                    .catch(error => setStatus(error?.message ?? "Script validation failed.", "error"));
+            },
+            OK: function () {
+                const value = typeof options.formatValue === "function"
+                    ? options.formatValue(content())
+                    : content();
+                if (target.length > 0) {
+                    target.val(value).trigger("input").trigger("change");
+                }
+                options.onAccept?.(value, {editor: editor, dialog: dialog, target: target});
+                dialog.dialog("close");
+            },
+            Cancel: function () {
+                dialog.dialog("close");
+            }
+        },
+        open: function () {
+            editor = initializeAceEditor(editorId, mode);
+            editor.setReadOnly(false);
+            editor.setValue(String(preparedValue ?? ""), -1);
+            if (mode === "groovy") {
+                registerPalantirGroovyCompleter();
+            }
+            cas.init(`#${dialogId}`);
+            dialog.closest(".ui-dialog").addClass("palantir-code-editor-shell");
+            cas.init(".palantir-code-editor-shell .ui-dialog-buttonpane");
+            setTimeout(() => {
+                editor.resize(true);
+                editor.focus();
+                editor.gotoLine(1);
+            }, 50);
+        },
+        close: function () {
+            editor?.destroy();
+            dialog.dialog("destroy").remove();
+            target.trigger("focus");
+        }
+    });
+    return dialog;
+}
+
+/**
+ * Attach an MDC-themed editor button to a Palantir outlined input field.
+ * All dialog options are forwarded to openPalantirCodeEditorDialog.
+ */
+function attachPalantirCodeEditorButton(options = {}) {
+    const target = $(options.target);
+    if (target.length === 0) {
+        return $();
+    }
+    const attachedButton = target.data("palantir-code-editor-button");
+    if (attachedButton) {
+        return attachedButton;
+    }
+    const textField = target.closest(".mdc-text-field");
+    if (textField.parent().is("span")) {
+        textField.parent().addClass("palantir-code-field-container");
+    }
+    const inputGroup = $("<div>", {class: "mdc-input-group d-flex mb-2 palantir-code-input-group"});
+    const structuralInputClasses = new Set([
+        "mdc-text-field__input", "form-control", "hide", "d-none", "d-block", "d-flex"
+    ]);
+    const visibilityClasses = String(target.attr("class") ?? "")
+        .split(/\s+/)
+        .filter(className => className && !structuralInputClasses.has(className));
+    inputGroup.addClass(visibilityClasses.join(" "));
+    const inputField = $("<div>", {class: "mdc-input-group-field mdc-input-group-field-append flex-grow-1"});
+    const button = $(
+        `<button type="button" class="mdc-button mdc-button--raised mdc-input-group-append palantir-code-editor-button"
+                 title="${options.buttonTitle ?? "Open code editor"}">
+            <span class="mdc-button__label"><i class="mdi mdi-code-braces" aria-hidden="true"></i>${options.buttonLabel ?? "Edit"}</span>
+        </button>`);
+    textField.removeClass("mb-2").before(inputGroup);
+    inputField.append(textField);
+    inputGroup.append(inputField, button);
+    button.on("click", () => {
+        if (!target[0]?.isConnected || !target.is(":visible") || target.prop("disabled")) {
+            return;
+        }
+        openPalantirCodeEditorDialog({...options, target: target});
+    });
+    target.data("palantir-code-editor-button", button);
+    return button;
+}
+
+/**
+ * Attach the standard editable and syntax-validating Groovy editor to an input.
+ */
+function attachPalantirGroovyEditorButton(options = {}) {
+    return attachPalantirCodeEditorButton({
+        title: "Groovy Script",
+        mode: "groovy",
+        buttonTitle: "Open Groovy script editor",
+        buttonLabel: "",
+        prepareValue: unwrapPalantirGroovyScript,
+        formatValue: formatPalantirGroovyScript,
+        onValidate: validatePalantirGroovyScript,
+        ...options
+    });
+}
+
 function hideBanner() {
     notyf.dismissAll();
 }

@@ -2,9 +2,8 @@ async function initializeSystemOperations() {
     function configureAuditEventsChart() {
         if (CasActuatorEndpoints.auditEvents()) {
             $.get(CasActuatorEndpoints.auditEvents(), response => {
-                let auditData = [];
                 const results = response.events.reduce((accumulator, event) => {
-                    let timestamp = formatDateYearMonthDay(event.timestamp);
+                    const timestamp = formatDateYearMonthDay(event.timestamp);
                     const type = event.type;
 
                     if (!accumulator[timestamp]) {
@@ -18,29 +17,19 @@ async function initializeSystemOperations() {
                     return accumulator;
                 }, {});
 
-                for (const [key, value] of Object.entries(results)) {
-                    let auditEntry = Object.assign({timestamp: key}, value);
-                    auditData.push(auditEntry);
-                }
+                const auditData = Object.entries(results)
+                    .sort(([firstTimestamp], [secondTimestamp]) => firstTimestamp.localeCompare(secondTimestamp))
+                    .map(([timestamp, eventCounts]) => ({timestamp, ...eventCounts}));
+                const eventTypes = [...new Set(auditData.flatMap(entry => Object.keys(entry)))]
+                    .filter(type => type !== "timestamp" && type !== "AUTHORIZATION_FAILURE")
+                    .sort();
 
                 auditEventsChart.data.labels = auditData.map(d => d.timestamp);
-                let datasets = [];
-                for (const entry of auditData) {
-                    for (const type of Object.keys(auditData[0])) {
-                        if (type !== "timestamp" && type !== "AUTHORIZATION_FAILURE") {
-                            datasets.push({
-                                borderWidth: 2,
-                                data: auditData,
-                                parsing: {
-                                    xAxisKey: "timestamp",
-                                    yAxisKey: type
-                                },
-                                label: type
-                            });
-                        }
-                    }
-                }
-                auditEventsChart.data.datasets = datasets;
+                auditEventsChart.data.datasets = eventTypes.map(type => ({
+                    borderWidth: 2,
+                    data: auditData.map(entry => entry[type] ?? 0),
+                    label: type
+                }));
                 auditEventsChart.update();
             });
         }

@@ -198,6 +198,12 @@ function heimdallPolicyFieldGroup(policyIndex, policyTypes, fields) {
             element.find("input, textarea, select").val(field.value);
         }
         group.append(element);
+        if (field.groovyEditorTitle) {
+            attachPalantirGroovyEditorButton({
+                target: element.find("input").first(),
+                title: field.groovyEditorTitle
+            });
+        }
     }
     return group;
 }
@@ -267,7 +273,8 @@ function addHeimdallPolicy(policy = null) {
     card.append(header);
 
     card.append(heimdallPolicyFieldGroup(policyIndex, ["GroovyAuthorizationPolicy"], [
-        {key: "script", label: "Groovy Script", title: "Inline Groovy or a script resource location."}
+        {key: "script", label: "Groovy Script", title: "Inline Groovy or a script resource location.",
+            groovyEditorTitle: "Heimdall Authorization Policy Groovy Script"}
     ]));
     card.append(heimdallPolicyFieldGroup(policyIndex, ["RequiredGrouperGroupsAuthorizationPolicy"], [
         {key: "groupField", label: "Grouper Group Field", kind: "select",

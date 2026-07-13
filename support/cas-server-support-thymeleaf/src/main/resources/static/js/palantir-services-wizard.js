@@ -262,7 +262,8 @@ function createRegisteredServiceAttributeReleasePolicy() {
         keyLabel: "Attribute Name",
         valueField: "registeredServiceAttrReleasePolicyRestAttrValue",
         valueLabel: "Source Attributes",
-        containerField: "attributeReleasePolicy.allowedAttributes"
+        containerField: "attributeReleasePolicy.allowedAttributes",
+        groovyEditorTitle: "REST Attribute Release Mapping Groovy Script"
     });
 
     createMappedInputField({
@@ -278,7 +279,8 @@ function createRegisteredServiceAttributeReleasePolicy() {
                 name: "transform",
                 field: "registeredServiceAttrReleasePolicyPatternMatchingAttrTransform",
                 label: "Transform",
-                cssClasses: "ml-2"
+                cssClasses: "ml-2",
+                groovyEditorTitle: "Pattern-Matching Attribute Transform Groovy Script"
             }
         ],
         containerField: "attributeReleasePolicy.allowedAttributes",
@@ -297,7 +299,7 @@ function createRegisteredServiceAttributeReleasePolicy() {
 
 
     if (PalantirDashboardConfiguration.scriptFactoryAvailable()) {
-        createInputField({
+        const scriptInput = createInputField({
             cssClasses: "hide GroovyScriptAttributeReleasePolicy",
             labelTitle: "Groovy Script",
             name: "registeredServiceAttrReleaseGroovyScript",
@@ -305,6 +307,10 @@ function createRegisteredServiceAttributeReleasePolicy() {
             required: false,
             containerId: "editServiceWizardMenuItemAttributeReleasePolicy",
             title: "Define the Groovy script location, inline or external, to determine attribute release."
+        });
+        attachPalantirGroovyEditorButton({
+            target: scriptInput,
+            title: "Attribute Release Policy Groovy Script"
         });
     }
 
@@ -318,7 +324,8 @@ function createRegisteredServiceAttributeReleasePolicy() {
         valueLabel: "CAS Attribute",
         containerField: "attributeReleasePolicy.allowedAttributes",
         multipleValues: true,
-        unwrapSingleElement: true
+        unwrapSingleElement: true,
+        groovyEditorTitle: "Mapped Attribute Release Groovy Script"
     });
 
     createMappedInputField({
@@ -472,7 +479,7 @@ function createRegisteredServiceAttributeReleasePolicy() {
         title: "Define the entity IDs patterns to match for this policy"
     });
 
-    createInputField({
+    const groovySamlScriptInput = createInputField({
         cssClasses: "hide GroovySamlRegisteredServiceAttributeReleasePolicy",
         labelTitle: "Groovy Script",
         name: "registeredServiceAttrReleasePolicyGroovySamlScript",
@@ -481,6 +488,12 @@ function createRegisteredServiceAttributeReleasePolicy() {
         containerId: "editServiceWizardMenuItemAttributeReleasePolicy",
         title: "Define the Groovy script location to determine attribute release."
     });
+    if (PalantirDashboardConfiguration.scriptFactoryAvailable()) {
+        attachPalantirGroovyEditorButton({
+            target: groovySamlScriptInput,
+            title: "SAML Attribute Release Policy Groovy Script"
+        });
+    }
 
 
     createInputField({
@@ -669,7 +682,7 @@ function createRegisteredServiceAttributeReleasePolicyActivationCriteria() {
     });
 
     if (PalantirDashboardConfiguration.scriptFactoryAvailable()) {
-        createInputField({
+        const scriptInput = createInputField({
             paramType: "org.apereo.cas.services.GroovyRegisteredServiceAttributeReleaseActivationCriteria",
             cssClasses: "hide GroovyRegisteredServiceAttributeReleaseActivationCriteria",
             labelTitle: "Groovy Script",
@@ -678,6 +691,10 @@ function createRegisteredServiceAttributeReleasePolicyActivationCriteria() {
             required: false,
             containerId: "editServiceWizardMenuItemAttributeReleasePolicyActivationCriteria",
             title: "Specifies the Groovy script location, inline or external, to determine attribute release activation criteria."
+        });
+        attachPalantirGroovyEditorButton({
+            target: scriptInput,
+            title: "Attribute Release Activation Criteria Groovy Script"
         });
     }
 }
@@ -899,7 +916,7 @@ function createRegisteredServiceAttributeReleaseValueFilters() {
     });
 
     if (PalantirDashboardConfiguration.scriptFactoryAvailable()) {
-        createInputField({
+        const scriptInput = createInputField({
             cssClasses: "hide RegisteredServiceScriptedAttributeFilter",
             labelTitle: "Groovy Script",
             name: "registeredServiceAttrReleasePolicyAttributeValueFilterScript",
@@ -907,6 +924,10 @@ function createRegisteredServiceAttributeReleaseValueFilters() {
             required: false,
             containerId: "editServiceWizardMenuItemAttributeReleaseValueFilters",
             title: "Specifies the Groovy script location, inline or external, to filter attribute values."
+        });
+        attachPalantirGroovyEditorButton({
+            target: scriptInput,
+            title: "Attribute Value Filter Groovy Script"
         });
     }
 
@@ -1085,7 +1106,7 @@ function createRegisteredServiceMultifactorPolicy() {
     `);
 
     if (PalantirDashboardConfiguration.scriptFactoryAvailable()) {
-        createInputField({
+        const scriptInput = createInputField({
             paramType: "org.apereo.cas.services.DefaultRegisteredServiceMultifactorPolicy",
             cssClasses: "advanced-option",
             labelTitle: "Groovy Script",
@@ -1094,6 +1115,10 @@ function createRegisteredServiceMultifactorPolicy() {
             required: false,
             containerId: "editServiceWizardMenuItemMfaPolicy",
             title: "Specifies the Groovy script location, inline or external, to determine multifactor authentication."
+        });
+        attachPalantirGroovyEditorButton({
+            target: scriptInput,
+            title: "Multifactor Policy Groovy Script"
         });
     }
 }
@@ -1334,7 +1359,7 @@ function createRegisteredServiceAccessStrategy() {
     });
 
     if (PalantirDashboardConfiguration.scriptFactoryAvailable()) {
-        createInputField({
+        const scriptInput = createInputField({
             cssClasses: "hide GroovyRegisteredServiceAccessStrategy",
             labelTitle: "Groovy Script",
             name: "registeredServiceAccessStrategyGroovyScript",
@@ -1342,6 +1367,10 @@ function createRegisteredServiceAccessStrategy() {
             required: false,
             containerId: "editServiceWizardMenuItemAccessStrategy",
             title: "Specifies the Groovy script location, inline or external, to determine access strategy."
+        });
+        attachPalantirGroovyEditorButton({
+            target: scriptInput,
+            title: "Access Strategy Groovy Script"
         });
     }
 
@@ -1709,7 +1738,7 @@ function createRegisteredServiceAuthenticationPolicy() {
     });
 
     if (PalantirDashboardConfiguration.scriptFactoryAvailable()) {
-        createInputField({
+        const scriptInput = createInputField({
             cssClasses: "hide GroovyRegisteredServiceAuthenticationPolicyCriteria",
             labelTitle: "Groovy Script",
             name: "registeredServiceAuthenticationPolicyGroovyScript",
@@ -1717,6 +1746,10 @@ function createRegisteredServiceAuthenticationPolicy() {
             required: false,
             containerId: "editServiceWizardMenuItemAuthenticationPolicy",
             title: "Groovy Script"
+        });
+        attachPalantirGroovyEditorButton({
+            target: scriptInput,
+            title: "Authentication Policy Criteria Groovy Script"
         });
     }
 
@@ -1933,7 +1966,7 @@ function createRegisteredServiceSsoParticipationPolicy() {
     });
 
     if (PalantirDashboardConfiguration.scriptFactoryAvailable()) {
-        createInputField({
+        const scriptInput = createInputField({
             cssClasses: "hide GroovyRegisteredServiceSingleSignOnParticipationPolicy",
             labelTitle: "Groovy Script",
             name: "registeredServiceSSOParticipationGroovyValue",
@@ -1941,6 +1974,10 @@ function createRegisteredServiceSsoParticipationPolicy() {
             required: false,
             containerId: "editServiceWizardMenuItemSSOParticipationPolicy",
             title: "Specifies the Groovy script location, inline or external, to be used to generate the username."
+        });
+        attachPalantirGroovyEditorButton({
+            target: scriptInput,
+            title: "Single Sign-On Participation Policy Groovy Script"
         });
     }
 
@@ -2089,7 +2126,7 @@ function createRegisteredServiceUsernameAttributeProvider() {
         });
 
     if (PalantirDashboardConfiguration.scriptFactoryAvailable()) {
-        createInputField({
+        const scriptInput = createInputField({
             cssClasses: "hide GroovyRegisteredServiceUsernameProvider",
             labelTitle: "Groovy Script",
             name: "registeredServiceUsernameAttributeGroovyValue",
@@ -2098,6 +2135,10 @@ function createRegisteredServiceUsernameAttributeProvider() {
             containerId: "editServiceWizardMenuItemUsernameAttribute",
             title: "Specifies the Groovy script location, inline or external, to be used to generate the username."
 
+        });
+        attachPalantirGroovyEditorButton({
+            target: scriptInput,
+            title: "Username Attribute Provider Groovy Script"
         });
     }
 
@@ -2571,7 +2612,8 @@ function generateMappedFieldValue(sectionId, config) {
         multipleValues = false,
         valueFieldRenderer,
         multipleValuesType = "java.util.ArrayList",
-        unwrapSingleElement = false
+        unwrapSingleElement = false,
+        groovyEditorTitle = ""
     } = config;
 
     const definition = {};
@@ -2600,7 +2642,9 @@ function generateMappedFieldValue(sectionId, config) {
                 });
             definition[key] = valueFieldRenderer($keyInput, $valueInput, additionalInputs, $row);
         } else if (value && value.trim().length > 0) {
-            if (multipleValues) {
+            if (groovyEditorTitle && /^groovy\s*\{[\s\S]*\}\s*$/.test(value.trim())) {
+                definition[key] = value.trim();
+            } else if (multipleValues) {
                 const valueArray = value.split(",").filter(s => s.trim().length > 0);
                 if (unwrapSingleElement && valueArray.length === 1) {
                     definition[key] = value.trim();
@@ -2633,6 +2677,7 @@ function createMappedInputField(config) {
         valueFieldRenderer,
         unwrapSingleElement = false,
         onChangeCallback,
+        groovyEditorTitle = "",
         autoComplete = [],
         additionalFields = []
     } = config;
@@ -2773,11 +2818,30 @@ function createMappedInputField(config) {
         });
     }
 
+    function configureGroovyEditors(scope) {
+        const editorFields = [];
+        if (groovyEditorTitle) {
+            editorFields.push({role: "value", title: groovyEditorTitle});
+        }
+        additionalFields.filter(field => field.groovyEditorTitle).forEach(field => {
+            editorFields.push({role: field.name, title: field.groovyEditorTitle});
+        });
+        editorFields.forEach(editorField => {
+            $(scope).find(`input[data-mapped-field-role='${editorField.role}']`).each(function () {
+                attachPalantirGroovyEditorButton({
+                    target: this,
+                    title: editorField.title
+                });
+            });
+        });
+    }
+
     $(`button[name=${addButtonId}]`).off().on("click", () => {
         let elementsToAdd = $(rowElements).removeClass("hide");
         elementsToAdd.find("*").removeClass("hide");
 
         $(`#${sectionContainerId}ToAppend`).append(elementsToAdd);
+        configureGroovyEditors(elementsToAdd);
         configureRemoveMapRowEventHandler();
         cas.attachFields();
         configureInputEventHandler();
@@ -2796,6 +2860,7 @@ function createMappedInputField(config) {
     configureRemoveMapRowEventHandler();
     configureInputEventHandler();
     configureInputRenderer();
+    configureGroovyEditors($(`#${sectionContainerId}`));
 
     if (autoComplete && autoComplete.length > 0) {
        $(`#${inputFieldKeyId}`).autocomplete({

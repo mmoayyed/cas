@@ -92,4 +92,9 @@ public class GroovyShellScript implements ExecutableCompiledScript {
             script.getBytes(StandardCharsets.UTF_8),
             DigestUtils.abbreviate(script));
     }
+
+    @Override
+    public @Nullable Object compileScript() {
+        return ScriptingUtils.parseGroovyShellScript(script);
+    }
 }
