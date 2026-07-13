@@ -2,6 +2,7 @@ package org.apereo.cas.util.scripting;
 
 import module java.base;
 import org.apereo.cas.configuration.CasConfigurationProperties;
+import org.apereo.cas.util.CollectionUtils;
 import org.apereo.cas.util.Couplet;
 import org.apereo.cas.util.ResourceUtils;
 import org.apereo.cas.util.function.FunctionUtils;
@@ -152,6 +153,6 @@ public class GroovyScriptCacheManagerEndpoint extends BaseCasRestActuatorEndpoin
             return Optional.ofNullable(scriptFactory.fromScript(resourceToUse).compileScript())
                 .map(result -> ResponseEntity.status(HttpStatus.OK).build())
                 .orElseGet(() -> ResponseEntity.status(HttpStatus.BAD_REQUEST).build());
-        }, e -> ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", e.getMessage()))).get();
+        }, e -> ResponseEntity.status(HttpStatus.BAD_REQUEST).body(CollectionUtils.wrap("error", e.getMessage()))).get();
     }
 }
