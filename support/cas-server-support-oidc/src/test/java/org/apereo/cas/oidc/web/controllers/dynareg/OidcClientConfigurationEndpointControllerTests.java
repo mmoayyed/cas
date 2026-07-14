@@ -128,6 +128,17 @@ class OidcClientConfigurationEndpointControllerTests {
                     .with(withHttpRequestProcessor())
                 )
                 .andExpect(status().isOk());
+
+            service.getClientSecrets().clear();
+            servicesManager.save(service);
+            mockMvc
+                .perform(get("/cas/oidc/" + OidcConstants.CLIENT_CONFIGURATION_URL)
+                    .param(OAuth20Constants.CLIENT_ID, clientId)
+                    .header(HttpHeaders.AUTHORIZATION, "Bearer %s".formatted(accessToken.getId()))
+                    .accept(MediaType.APPLICATION_JSON)
+                    .with(withHttpRequestProcessor())
+                )
+                .andExpect(status().isOk());
         }
 
         @Test

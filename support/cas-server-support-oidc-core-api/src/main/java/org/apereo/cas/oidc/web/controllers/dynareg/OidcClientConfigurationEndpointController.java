@@ -7,6 +7,7 @@ import org.apereo.cas.oidc.OidcConstants;
 import org.apereo.cas.oidc.dynareg.OidcClientRegistrationRequest;
 import org.apereo.cas.oidc.web.controllers.BaseOidcController;
 import org.apereo.cas.services.OidcRegisteredService;
+import org.apereo.cas.services.RegisteredServiceProperty;
 import org.apereo.cas.support.oauth.OAuth20Constants;
 import org.apereo.cas.support.oauth.services.OAuthRegisteredServiceClientSecret;
 import org.apereo.cas.support.oauth.util.OAuth20Utils;
@@ -149,6 +150,11 @@ public class OidcClientConfigurationEndpointController extends BaseOidcControlle
                         : secret;
                 })
                 .collect(Collectors.toList());
+            val dynamicRegistrationPropName = RegisteredServiceProperty.RegisteredServiceProperties.OIDC_DYNAMIC_CLIENT_REGISTRATION.getPropertyName();
+            if (secrets.isEmpty() && service.getProperties().containsKey(dynamicRegistrationPropName)) {
+                val clientSecretGenerator = getConfigurationContext().getClientSecretGenerator().getNewString();
+                secrets.add(new OAuthRegisteredServiceClientSecret(clientSecretGenerator, expirationDate.toEpochSecond()));
+            }
             service.setClientSecrets(secrets);
             return true;
         }

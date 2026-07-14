@@ -81,7 +81,7 @@ public class OidcIdTokenGeneratorService extends BaseIdTokenGeneratorService<Oid
             LOGGER.debug("ID token generation for grant type [{}] is disabled. Skipping ID token generation.", OAuth20GrantTypes.JWT_BEARER);
             return null;
         }
-        
+
         val claims = buildJwtClaims(context);
         var deviceSecret = StringUtils.EMPTY;
         if (context.getGrantType() == OAuth20GrantTypes.AUTHORIZATION_CODE
@@ -385,7 +385,11 @@ public class OidcIdTokenGeneratorService extends BaseIdTokenGeneratorService<Oid
     protected Set<Object> buildAuthenticationMethods(final Authentication authentication) {
         val allAttributes = new HashMap<>(authentication.getAttributes());
         allAttributes.putAll(authentication.getPrincipal().getAttributes());
-        return Stream.of(AuthenticationHandler.SUCCESSFUL_AUTHENTICATION_HANDLERS, AuthenticationManager.AUTHENTICATION_METHOD_ATTRIBUTE)
+        return Stream.of(
+                AuthenticationHandler.SUCCESSFUL_AUTHENTICATION_HANDLERS,
+                AuthenticationManager.AUTHENTICATION_METHOD_ATTRIBUTE,
+                OidcConstants.AMR
+            )
             .filter(allAttributes::containsKey)
             .map(name -> CollectionUtils.toCollection(allAttributes.get(name)))
             .findFirst()

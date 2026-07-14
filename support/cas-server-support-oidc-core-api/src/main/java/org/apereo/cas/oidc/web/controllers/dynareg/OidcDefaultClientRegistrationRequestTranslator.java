@@ -237,7 +237,12 @@ public class OidcDefaultClientRegistrationRequestTranslator implements OidcClien
             LOGGER.debug("Client secret shall expire at [{}] while now is [{}]", expirationDate, currentTime);
             val secrets = registeredService.getClientSecrets()
                 .stream()
-                .map(secret -> secret.isWithoutExpiration() ? secret.expireAt(expirationDate) : secret)
+                .map(secret -> {
+                    if (secret.isWithoutExpiration() || secret.hasClientSecretExpired(registeredService)) {
+                        return secret.expireAt(expirationDate);
+                    }
+                    return secret;
+                })
                 .collect(Collectors.toList());
             registeredService.setClientSecrets(secrets);
         }
