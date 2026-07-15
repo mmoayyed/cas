@@ -297,7 +297,7 @@ public class OidcIdTokenGeneratorService extends BaseIdTokenGeneratorService<Oid
                 registeredService, principal, claims, principal.getId());
         }
         getConfigurationContext().getIdTokenClaimCollectors()
-            .forEach(collector -> collector.conclude(claims));
+            .forEach(collector -> collector.conclude(registeredService, claims));
     }
 
     private boolean isClaimSupportedForRelease(final String claimName, final RegisteredService registeredService) {
@@ -350,7 +350,7 @@ public class OidcIdTokenGeneratorService extends BaseIdTokenGeneratorService<Oid
         val mapper = getConfigurationContext().getAttributeToScopeClaimMapper();
         val collectionValues = mapper.mapClaim(claimName, registeredService, principal, defaultValue);
         val collectors = getConfigurationContext().getIdTokenClaimCollectors();
-        collectors.forEach(collector -> collector.collect(claims, claimName, collectionValues));
+        collectors.forEach(collector -> collector.collect(registeredService, claims, claimName, collectionValues));
     }
 
     protected String getJwtId(final OAuth20AccessToken ticket) {
