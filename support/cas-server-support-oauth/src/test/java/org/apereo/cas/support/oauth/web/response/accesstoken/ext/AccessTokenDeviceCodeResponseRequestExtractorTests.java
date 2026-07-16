@@ -25,10 +25,6 @@ import static org.junit.jupiter.api.Assertions.*;
 @Tag("OAuth")
 class AccessTokenDeviceCodeResponseRequestExtractorTests extends AbstractOAuth20Tests {
     @Autowired
-    @Qualifier(OAuth20ConfigurationContext.BEAN_NAME)
-    private OAuth20ConfigurationContext oauth20ConfigurationContext;
-
-    @Autowired
     @Qualifier("accessTokenDeviceCodeResponseRequestExtractor")
     private AccessTokenGrantRequestExtractor accessTokenDeviceCodeResponseRequestExtractor;
 
