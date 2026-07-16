@@ -3,6 +3,7 @@ package org.apereo.cas.oidc.claims;
 import module java.base;
 import org.apereo.cas.authentication.attribute.AttributeDefinitionStore;
 import org.apereo.cas.authentication.attribute.DefaultAttributeDefinition;
+import org.apereo.cas.oidc.OidcConstants;
 import org.apereo.cas.oidc.assurance.AssuranceVerifiedClaimsProducer;
 import org.apereo.cas.services.RegisteredService;
 import org.apereo.cas.util.CollectionUtils;
@@ -47,7 +48,7 @@ public class OidcSimpleIdTokenClaimCollector implements OidcIdTokenClaimCollecto
             val attributeDefinition = attributeDefinitionStore.locateAttributeDefinition(name, OidcAttributeDefinition.class)
                 .or(() -> attributeDefinitionStore.locateAttributeDefinitionByName(name, OidcAttributeDefinition.class));
             val finalValue = attributeDefinition.map(definition -> definition.toAttributeValue(values))
-                .orElseGet(() -> values.size() == 1 ? values.getFirst() : values);
+                .orElseGet(() -> (values.size() == 1 && !name.equalsIgnoreCase(OidcConstants.AMR)) ? values.getFirst() : values);
 
             attributeDefinition
                 .stream()

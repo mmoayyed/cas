@@ -33,7 +33,6 @@ import org.apereo.cas.util.CollectionUtils;
 import org.apereo.cas.util.DigestUtils;
 import org.apereo.cas.util.EncodingUtils;
 import org.apereo.cas.util.function.FunctionUtils;
-import com.google.common.collect.ImmutableSet;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.apache.commons.lang3.ArrayUtils;
@@ -53,7 +52,21 @@ import org.springframework.util.Assert;
  */
 @Slf4j
 public class OidcIdTokenGeneratorService extends BaseIdTokenGeneratorService<OidcConfigurationContext> {
-
+    
+    protected static final Set<String> STANDARD_ID_TOKEN_CLAIMS = Set.of(
+        OAuth20Constants.CLAIM_SUB,
+        OAuth20Constants.CLAIM_EXP,
+        OidcConstants.JTI,
+        OidcConstants.IAT,
+        OidcConstants.NBF,
+        OidcConstants.TXN,
+        OidcConstants.AUD,
+        OidcConstants.CLAIM_SESSION_ID,
+        OidcConstants.ISS,
+        OidcConstants.ACR,
+        OidcConstants.AMR
+    );
+    
     public OidcIdTokenGeneratorService(final ObjectProvider<OidcConfigurationContext> configurationContext) {
         super(configurationContext);
     }
@@ -262,8 +275,8 @@ public class OidcIdTokenGeneratorService extends BaseIdTokenGeneratorService<Oid
         }
     }
 
-    private Principal buildPrincipalForAttributeFilter(final OAuth20AccessToken accessToken,
-                                                       final RegisteredService registeredService) throws Throwable {
+    private @Nullable Principal buildPrincipalForAttributeFilter(final OAuth20AccessToken accessToken,
+                                                                 final RegisteredService registeredService) throws Throwable {
         val authentication = accessToken.getAuthentication();
         val attributes = new HashMap<>(authentication.getPrincipal().getAttributes());
         val authnAttributes = getConfigurationContext().getAuthenticationAttributeReleasePolicy()
@@ -305,11 +318,17 @@ public class OidcIdTokenGeneratorService extends BaseIdTokenGeneratorService<Oid
         val mappedClaim = mapper.toMappedClaimName(claimName, registeredService);
         val oidc = getConfigurationContext().getCasProperties().getAuthn().getOidc();
         val claims = oidc.getDiscovery().getClaims();
-        LOGGER.trace("Checking if any of [{}] are specified in the list of discovery claims [{}]", ImmutableSet.of(claimName, mappedClaim), claims);
+        LOGGER.trace("Checking if any of [{}] are specified in the list of discovery claims [{}]", Set.of(claimName, mappedClaim), claims);
         return claims.contains(claimName)
             || claims.contains(mappedClaim)
             || isClaimDefinitionSupportedForRelease(mappedClaim)
-            || isClaimReleasedAllowedByScopeFreePolicy(claimName, registeredService);
+            || isClaimReleasedAllowedByScopeFreePolicy(claimName, registeredService)
+            || isClaimInternalForProtocol(claimName, registeredService);
+    }
+
+    protected boolean isClaimInternalForProtocol(final String claimName, final RegisteredService registeredService) {
+        return StringUtils.isNotBlank(claimName)
+            && STANDARD_ID_TOKEN_CLAIMS.contains(claimName.toLowerCase(Locale.ROOT));
     }
 
     protected boolean isClaimReleasedAllowedByScopeFreePolicy(final String claimName, final RegisteredService registeredService) {
