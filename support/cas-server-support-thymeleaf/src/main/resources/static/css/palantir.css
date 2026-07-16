@@ -2325,6 +2325,64 @@ select + span[role="combobox"] {
     overflow: hidden;
 }
 
+.heimdall-authorization-simulation {
+    border: var(--cas-theme-border-light, 1px solid rgba(0, 0, 0, .2));
+    background: var(--mdc-theme-surface, #fff);
+    color: var(--mdc-theme-text-primary-on-background, #333);
+}
+
+.heimdall-authorization-simulation-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.heimdall-authorization-simulation-title {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    line-height: 1.2;
+}
+
+.heimdall-authorization-simulation-title .mdc-tab__icon {
+    display: inline-flex;
+    align-items: center;
+    flex: 0 0 auto;
+    margin: 0;
+    color: var(--cas-theme-primary, #153e50);
+    line-height: 1;
+}
+
+.heimdall-authorization-mode-buttons {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: .5rem;
+}
+
+.heimdall-authorization-section-title {
+    margin-top: 1.5rem;
+    margin-bottom: .75rem;
+}
+
+.heimdall-authorization-fields {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+    gap: 1rem;
+}
+
+.heimdall-authorization-map-host [data-mapped-input-row="true"] {
+    flex-wrap: wrap;
+}
+
+.heimdall-authorization-editor-container {
+    height: 22rem;
+    border: 1px solid var(--cas-theme-primary, #153e50);
+    border-radius: .25rem;
+    overflow: hidden;
+}
+
 .heimdall-resource-controls {
     flex: 0 0 31rem;
     max-width: 31rem;
@@ -2524,19 +2582,26 @@ select + span[role="combobox"] {
 }
 
 #registeredServiceHeimdallResourcePropertyKeyMapContainer .heimdallResourcePropertyKey-map-row,
+.heimdall-authorization-map-host [data-mapped-input-row="true"],
 .heimdall-policy-map-host [data-mapped-input-row="true"] {
     align-items: center;
     gap: .5rem;
 }
 
 #registeredServiceHeimdallResourcePropertyKeyMapContainer .mdc-text-field,
+.heimdall-authorization-map-host [data-mapped-input-row="true"] .mdc-text-field,
 .heimdall-policy-map-host [data-mapped-input-row="true"] .mdc-text-field {
     flex: 1 1 0;
     min-width: 0;
     margin-bottom: 0 !important;
 }
 
+.heimdall-authorization-map-host [data-mapped-input-row="true"] .mdc-text-field {
+    min-width: min(100%, 12rem);
+}
+
 #registeredServiceHeimdallResourcePropertyKeyMapContainer .mdc-button--inline-row,
+.heimdall-authorization-map-host .mdc-button--inline-row,
 .heimdall-policy-map-host .mdc-button--inline-row {
     flex: 0 0 auto;
     min-width: 2.5rem;
@@ -2548,6 +2613,10 @@ select + span[role="combobox"] {
 }
 
 @media (max-width: 900px) {
+    .heimdall-authorization-simulation-header {
+        flex-direction: column;
+    }
+
     .heimdall-resource-dialog-layout {
         display: block;
         overflow-y: auto;

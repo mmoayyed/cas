@@ -27,6 +27,9 @@ palantir_images:
   - src: img_7.png
     alt: Palantir Groovy script view
     title: Palantir Groovy script view
+  - src: img_8.png
+    alt: Palantir authorization simulation view
+    title: Palantir authorization simulation view
 ---
 
 {% include variables.html %}
@@ -127,6 +130,7 @@ to display cached scripted resources with the ability to either remove or recomp
      
 Furthermore, [Heimdall authorization policies](../authorization/Heimdall-Authorization-Overview.html)
 can now be created, edited and removed from the [Palantir Admin Dashboard](../installation/Admin-Dashboard.html).
+There is also dedicated simulation support to experiment with authorization requests.
 
 Configuration for almost all attribute repositories can also be viewed in better detail. Fields that do support
 [inline Groovy scripts](../integration/Apache-Groovy-Scripting.html) are also allowed to better receive their 
@@ -140,3 +144,4 @@ value from a dedicated editor.
 - Releasing attributes via [pattern matching](../integration/Attribute-Release-Policy-PatternMatching.html) accepts Groovy transformation rules.
 - A number of date-formatting operations have switched their base timezone from system default to `UTC`.
 - A large number of dependencies and libraries have been updated to their latest versions.
+- Custom ID token claims can also be constructed using [Apache Groovy](../authentication/OIDC-Authentication-Claims-Custom.html)

@@ -22,6 +22,8 @@ const HEIMDALL_POLICY_TYPES = [
 let heimdallResourcesByNamespace = {};
 let reloadHeimdallResourcesTable = null;
 let heimdallPolicySequence = 0;
+let heimdallAuthorizationResponseEditor = null;
+let heimdallAuthorizationSimulationMode = "heimdall";
 
 function escapeHeimdallHtml(value) {
     return $("<div>").text(value ?? "").html();
@@ -46,6 +48,166 @@ function renderHeimdallPolicyEnforcement(enforced) {
 
 function heimdallDeepClone(value) {
     return JSON.parse(JSON.stringify(value));
+}
+
+function isHeimdallAuthZenSimulation() {
+    return heimdallAuthorizationSimulationMode === "authzen";
+}
+
+function getHeimdallAuthorizationSimulationMap(containerId) {
+    const result = {};
+    $(`#${containerId} [data-mapped-input-row='true']`).each(function () {
+        const row = $(this);
+        const key = row.find("input[data-mapped-field-role='key']").val()?.trim();
+        if (key) {
+            result[key] = row.find("input[data-mapped-field-role='value']").val() ?? "";
+        }
+    });
+    return result;
+}
+
+function buildHeimdallAuthorizationSimulationPayload() {
+    const field = id => $(`#${id}`).val()?.trim() ?? "";
+    const context = getHeimdallAuthorizationSimulationMap("heimdallAuthorizationContextContainer");
+    if (isHeimdallAuthZenSimulation()) {
+        return {
+            subject: {
+                type: field("heimdallAuthorizationSubjectType"),
+                id: field("heimdallAuthorizationSubjectId"),
+                properties: getHeimdallAuthorizationSimulationMap("heimdallAuthorizationSubjectPropertiesContainer")
+            },
+            resource: {
+                type: field("heimdallAuthorizationResourceType"),
+                id: field("heimdallAuthorizationResourceId"),
+                properties: getHeimdallAuthorizationSimulationMap("heimdallAuthorizationResourcePropertiesContainer")
+            },
+            action: {
+                name: field("heimdallAuthorizationActionName")
+            },
+            context: context
+        };
+    }
+    return {
+        method: field("heimdallAuthorizationMethod"),
+        uri: field("heimdallAuthorizationUri"),
+        namespace: field("heimdallAuthorizationNamespace"),
+        context: context
+    };
+}
+
+function initializeHeimdallAuthorizationSimulationMaps() {
+    const maps = [
+        {
+            containerId: "heimdallAuthorizationSubjectPropertiesContainer",
+            keyField: "heimdallAuthorizationSubjectPropertyKey",
+            valueField: "heimdallAuthorizationSubjectPropertyValue"
+        },
+        {
+            containerId: "heimdallAuthorizationResourcePropertiesContainer",
+            keyField: "heimdallAuthorizationResourcePropertyKey",
+            valueField: "heimdallAuthorizationResourcePropertyValue"
+        },
+        {
+            containerId: "heimdallAuthorizationContextContainer",
+            keyField: "heimdallAuthorizationContextKey",
+            valueField: "heimdallAuthorizationContextValue"
+        }
+    ];
+    maps.forEach(map => {
+        createMappedInputField({
+            ...map,
+            keyLabel: "Key",
+            valueLabel: "Value",
+            cssClasses: "heimdall-authorization-map",
+            onChangeCallback: clearHeimdallAuthorizationSimulationResponse
+        });
+        cas.attachFields(`#${map.containerId}`);
+    });
+}
+
+function clearHeimdallAuthorizationSimulationResponse() {
+    heimdallAuthorizationResponseEditor?.setValue("", -1);
+}
+
+function selectHeimdallAuthorizationSimulationMode(mode) {
+    heimdallAuthorizationSimulationMode = mode;
+    const authZen = mode === "authzen";
+    const standardFields = $("#heimdallAuthorizationStandardFields");
+    const authZenFields = $("#heimdallAuthorizationAuthZenFields");
+    standardFields.find(":input").prop("disabled", authZen);
+    authZenFields.find(":input").prop("disabled", !authZen);
+    if (authZen) {
+        hideElements(standardFields);
+        showElements(authZenFields);
+    } else {
+        showElements(standardFields);
+        hideElements(authZenFields);
+    }
+    $("#heimdallAuthorizationHeimdallModeButton")
+        .toggleClass("mdc-button--raised", !authZen)
+        .toggleClass("mdc-button--outlined", authZen)
+        .attr("aria-pressed", String(!authZen));
+    $("#heimdallAuthorizationAuthZenModeButton")
+        .toggleClass("mdc-button--raised", authZen)
+        .toggleClass("mdc-button--outlined", !authZen)
+        .attr("aria-pressed", String(authZen));
+    $("#heimdallAuthorizationSubmitButtonLabel").text(authZen ? "Evaluate" : "Authorize");
+    clearHeimdallAuthorizationSimulationResponse();
+}
+
+function renderHeimdallAuthorizationResponse(response) {
+    const responseBody = response ?? {};
+    const responseContent = typeof responseBody === "string"
+        ? responseBody
+        : JSON.stringify(responseBody, null, 2);
+    heimdallAuthorizationResponseEditor.setValue(responseContent, -1);
+}
+
+function extractHeimdallAuthorizationErrorResponse(xhr, error) {
+    if (xhr.responseJSON) {
+        return xhr.responseJSON;
+    }
+    const responseText = String(xhr.responseText ?? "").trim();
+    if (responseText) {
+        try {
+            return JSON.parse(responseText);
+        } catch (_ignored) {
+            return {message: responseText};
+        }
+    }
+    return {message: error || "Unable to contact the CAS server."};
+}
+
+function submitHeimdallAuthorizationSimulation() {
+    const form = document.getElementById("heimdallAuthorizationSimulationForm");
+    if (!form.reportValidity()) {
+        return;
+    }
+
+    const authZen = isHeimdallAuthZenSimulation();
+    const payload = buildHeimdallAuthorizationSimulationPayload();
+    const endpoint = `${String(PalantirDashboardConfiguration.casServerPrefix()).replace(/\/$/, "")}`
+        + `/heimdall/${authZen ? "authzen" : "authorize"}`;
+    const submitButton = $("#heimdallAuthorizationSubmitButton");
+    submitButton.prop("disabled", true).attr("aria-busy", "true");
+    heimdallAuthorizationResponseEditor.setValue("", -1);
+
+    $.ajax({
+        url: endpoint,
+        method: "POST",
+        contentType: "application/json",
+        dataType: "json",
+        headers: {
+            Authorization: $("#heimdallAuthorizationHeader").val().trim()
+        },
+        data: JSON.stringify(payload)
+    }).done(response => {
+        renderHeimdallAuthorizationResponse(response);
+    }).fail((xhr, _status, error) => {
+        renderHeimdallAuthorizationResponse(extractHeimdallAuthorizationErrorResponse(xhr, error));
+    }).always(() => {
+        submitButton.prop("disabled", false).removeAttr("aria-busy");
+    });
 }
 
 function heimdallExtractArray(value) {
@@ -920,6 +1082,41 @@ async function initializeHeimdallOperations() {
         hideElements("#heimdall");
         return;
     }
+
+    heimdallAuthorizationResponseEditor = initializeAceEditor("heimdallAuthorizationResponseEditor", "json");
+    heimdallAuthorizationResponseEditor.setReadOnly(true);
+    initializeHeimdallAuthorizationSimulationMaps();
+    selectHeimdallAuthorizationSimulationMode("heimdall");
+
+    $("#heimdallAuthorizationSimulationForm").on("submit", event => {
+        event.preventDefault();
+        submitHeimdallAuthorizationSimulation();
+    });
+    $("#heimdallAuthorizationHeimdallModeButton").on("click", () => {
+        selectHeimdallAuthorizationSimulationMode("heimdall");
+    });
+    $("#heimdallAuthorizationAuthZenModeButton").on("click", () => {
+        selectHeimdallAuthorizationSimulationMode("authzen");
+    });
+    $("#heimdallAuthorizationSimulationForm").on("input", "input", clearHeimdallAuthorizationSimulationResponse);
+    $("#accessstrategy-tabs").on("tabsactivate.heimdallAuthorization", (_event, ui) => {
+        if (ui.newPanel.attr("id") === "heimdall-tab") {
+            setTimeout(() => {
+                heimdallAuthorizationResponseEditor.resize(true);
+            }, 50);
+        }
+    });
+    $("#heimdallAuthorizationHeaderReveal").on("click", function () {
+        const input = $("#heimdallAuthorizationHeader");
+        const showHeader = input.attr("type") === "password";
+        input.attr("type", showHeader ? "text" : "password");
+        $(this)
+            .attr("aria-label", `${showHeader ? "Hide" : "Show"} authorization header`)
+            .attr("aria-pressed", String(showHeader))
+            .find(".mdi")
+            .toggleClass("mdi-eye", !showHeader)
+            .toggleClass("mdi-eye-off", showHeader);
+    });
 
     const heimdallToolbar = document.createElement("div");
     heimdallToolbar.innerHTML = `
