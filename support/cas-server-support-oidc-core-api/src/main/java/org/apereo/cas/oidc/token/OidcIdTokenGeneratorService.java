@@ -318,7 +318,8 @@ public class OidcIdTokenGeneratorService extends BaseIdTokenGeneratorService<Oid
         val mappedClaim = mapper.toMappedClaimName(claimName, registeredService);
         val oidc = getConfigurationContext().getCasProperties().getAuthn().getOidc();
         val claims = oidc.getDiscovery().getClaims();
-        LOGGER.trace("Checking if any of [{}] are specified in the list of discovery claims [{}]", Set.of(claimName, mappedClaim), claims);
+        LOGGER.trace("Checking if any of [{}] are specified in the list of discovery claims [{}]",
+            List.of(claimName, mappedClaim), claims);
         return claims.contains(claimName)
             || claims.contains(mappedClaim)
             || isClaimDefinitionSupportedForRelease(mappedClaim)

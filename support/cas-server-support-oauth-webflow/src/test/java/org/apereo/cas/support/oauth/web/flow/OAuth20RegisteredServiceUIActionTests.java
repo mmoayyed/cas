@@ -42,6 +42,7 @@ class OAuth20RegisteredServiceUIActionTests {
 
     @Autowired
     private ConfigurableApplicationContext applicationContext;
+
     @Test
     void verifyOAuthActionWithoutMDUI() throws Throwable {
         val ctx = MockRequestContext.create(applicationContext);

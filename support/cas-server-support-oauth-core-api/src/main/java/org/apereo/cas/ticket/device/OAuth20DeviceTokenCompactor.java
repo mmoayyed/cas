@@ -46,7 +46,7 @@ public class OAuth20DeviceTokenCompactor implements TicketCompactor<OAuth20Devic
         val service = serviceFactory.createService(structure.ticketElements().get(CompactTicketIndexes.SERVICE.getIndex()));
         val userCode = structure.ticketElements().get(3);
         val codeFactory = (OAuth20DeviceTokenFactory) ticketFactory.getObject().get(getTicketType());
-        val code = codeFactory.createDeviceCode(service);
+        val code = codeFactory.createDeviceCode(service, new ArrayList<>());
         code.setUserCode(StringUtils.trimToNull(userCode));
         code.setExpirationPolicy(new FixedInstantExpirationPolicy(structure.expirationTime()));
         code.setCreationTime(DateTimeUtils.zonedDateTimeOf(structure.creationTime()));

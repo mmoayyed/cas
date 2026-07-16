@@ -68,5 +68,5 @@ public interface OidcIdTokenClaimCollector {
      * @param name   the attribute
      * @param values the values
      */
-    void collect(final RegisteredService registeredService, JwtClaims claims, String name, List<Object> values);
+    void collect(RegisteredService registeredService, JwtClaims claims, String name, List<Object> values);
 }

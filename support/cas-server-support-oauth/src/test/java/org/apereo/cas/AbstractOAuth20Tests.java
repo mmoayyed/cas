@@ -143,10 +143,10 @@ import static org.junit.jupiter.api.Assertions.*;
         "cas.audit.slf4j.use-single-line=true",
 
         "cas.authn.pac4j.core.session-replication.replicate-sessions=true",
-        
+
         "cas.authn.attribute-repository.stub.attributes.uid=cas",
         "cas.authn.attribute-repository.stub.attributes.givenName=apereo-cas",
-        
+
         "cas.authn.oauth.session-replication.replicate-sessions=true",
         "cas.authn.oauth.session-replication.cookie.auto-configure-cookie-path=true",
         "cas.authn.oauth.session-replication.cookie.crypto.enabled=true",
@@ -163,7 +163,7 @@ public abstract class AbstractOAuth20Tests {
 
     public static final ObjectMapper MAPPER = JacksonObjectMapperFactory.builder()
         .defaultTypingEnabled(false).singleArrayElementUnwrapped(true).build().toObjectMapper();
-    
+
     public static final String CONTEXT = OAuth20Constants.BASE_OAUTH20_URL + '/';
 
     public static final String CLIENT_SECRET = "secret";

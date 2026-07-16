@@ -52,9 +52,13 @@ public class AccessTokenDeviceCodeResponseRequestExtractor extends BaseAccessTok
         val accessResult = configurationContext.getRegisteredServiceAccessStrategyEnforcer().execute(audit);
         accessResult.throwExceptionIfNeeded();
 
+        val scopes = configurationContext.getRequestParameterResolver().resolveRequestScopes(context);
+        scopes.retainAll(Objects.requireNonNull(registeredService).getScopes());
+        
         return AccessTokenRequestContext.builder()
             .service(service)
             .authentication(authentication)
+            .scopes(scopes)
             .registeredService(registeredService)
             .responseType(getResponseType())
             .grantType(getGrantType())

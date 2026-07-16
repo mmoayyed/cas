@@ -106,6 +106,10 @@ public class MockTicketGrantingTicket implements TicketGrantingTicket {
         this(principal, new HashMap<>());
     }
 
+    public MockTicketGrantingTicket(final Principal principal) {
+        this(principal.getId(), principal.getAttributes());
+    }
+
     public MockTicketGrantingTicket(final String principal, final Map principalAttributes) {
         this(principal,
             CoreAuthenticationTestUtils.getCredentialsWithDifferentUsernameAndPassword("uid", "password"),
