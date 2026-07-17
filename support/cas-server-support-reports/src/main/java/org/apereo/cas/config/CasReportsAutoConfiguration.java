@@ -13,6 +13,7 @@ import org.apereo.cas.authentication.principal.ServiceFactory;
 import org.apereo.cas.authentication.principal.WebApplicationService;
 import org.apereo.cas.configuration.CasConfigurationProperties;
 import org.apereo.cas.configuration.features.CasFeatureModule;
+import org.apereo.cas.ha.ClusterTopologyManager;
 import org.apereo.cas.logout.slo.SingleLogoutRequestExecutor;
 import org.apereo.cas.services.ServicesManager;
 import org.apereo.cas.services.ServicesManagerConfigurationContext;
@@ -42,6 +43,7 @@ import org.apereo.cas.web.report.CasProtocolValidationEndpoint;
 import org.apereo.cas.web.report.CasReleaseAttributesReportEndpoint;
 import org.apereo.cas.web.report.CasResolveAttributesReportEndpoint;
 import org.apereo.cas.web.report.CasRuntimeModulesEndpoint;
+import org.apereo.cas.web.report.ClusterTopologyEndpoint;
 import org.apereo.cas.web.report.DependenciesEndpoint;
 import org.apereo.cas.web.report.HeapDumpAnalysisEndpoint;
 import org.apereo.cas.web.report.HttpTracesEndpoint;
@@ -430,6 +432,19 @@ public class CasReportsAutoConfiguration {
             final ObjectProvider<LocalTraceStore> localTraceStore,
             final CasConfigurationProperties casProperties) {
             return new HttpTracesEndpoint(casProperties, localTraceStore);
+        }
+    }
+
+    @Configuration(value = "ClusterTopologyEndpointsConfiguration", proxyBeanMethods = false)
+    @EnableConfigurationProperties(CasConfigurationProperties.class)
+    static class ClusterTopologyEndpointsConfiguration {
+        @Bean
+        @ConditionalOnAvailableEndpoint
+        @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
+        public ClusterTopologyEndpoint clusterTopologyEndpoint(
+            final ObjectProvider<ClusterTopologyManager> managers,
+            final CasConfigurationProperties casProperties) {
+            return new ClusterTopologyEndpoint(casProperties, managers);
         }
     }
 }

@@ -501,10 +501,12 @@ while (( "$#" )); do
                 ;;
             mongodbmfa)
                 isDockerOnLinux && ./ci/tests/mongodb/run-mongodb-server.sh || exit 1
+                isDockerOnLinux && ./ci/tests/mongodb/run-mongodb-server-clustered.sh || exit 1
                 task+="testMongoDbMFA "
                 ;;
             mongo|mongodb)
                 isDockerOnLinux && ./ci/tests/mongodb/run-mongodb-server.sh || exit 1
+                isDockerOnLinux && ./ci/tests/mongodb/run-mongodb-server-clustered.sh || exit 1
                 task+="testMongoDb "
                 ;;
             mysql)
@@ -557,6 +559,7 @@ while (( "$#" )); do
                 ;;
             redis)
                 isDockerOnLinux && ./ci/tests/redis/run-redis-server.sh || exit 1
+                isDockerOnLinux && ./ci/tests/redis/run-redis-server.sh --clustered || exit 1
                 task+="testRedis "
                 ;;
             activemq|amq|jms|rabbitmq|artemis|amqp)
