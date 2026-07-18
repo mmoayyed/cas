@@ -53,6 +53,11 @@ public class ClusterTopologyEndpoint extends BaseCasRestActuatorEndpoint {
             .collect(Collectors.toList());
     }
 
+    /**
+     * Discovery list.
+     *
+     * @return the list
+     */
     @GetMapping(
         path = "/discovery",
         produces = MediaType.APPLICATION_JSON_VALUE)
