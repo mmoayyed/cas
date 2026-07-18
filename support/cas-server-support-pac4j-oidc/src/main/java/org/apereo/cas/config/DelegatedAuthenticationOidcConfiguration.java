@@ -137,7 +137,7 @@ class DelegatedAuthenticationOidcConfiguration {
                 if (federation != null) {
                     val entityId = Strings.CI.appendIfMissing(casProperties.getServer().getPrefix(), "/")
                         .concat(DelegatedOidcFederationEntityStatementController.BASE_ENDPOINT_RELYING_PARTY.substring(1)
-                                + "/" + oidcClient.getName());
+                                + '/' + oidcClient.getName());
                     federation.setEntityId(entityId);
                 }
             }
