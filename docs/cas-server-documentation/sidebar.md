@@ -851,6 +851,7 @@ layout: null
 
 * [High Availability](#highavailability)
     *   [Overview](/cas/{{ version }}/high_availability/High-Availability-Guide.html)
+    *   [Cluster Topology](/cas/{{ version }}/high_availability/Cluster-Topology.html)
     *   [Performance Testing](#perftesting)
         *   [Overview](/cas/{{ version }}/high_availability/High-Availability-Performance-Testing.html)
         *   [Locust](/cas/{{ version }}/high_availability/Performance-Testing-Locust.html)
