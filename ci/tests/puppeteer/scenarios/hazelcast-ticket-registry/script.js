@@ -77,13 +77,13 @@ async function executeRequest(url, method, statusCode,
 
     await verifySsoSessions();
 
-    await cas.doGet("https://localhost:8443/cas/actuator/clusterTopology",
+    await cas.doGet("https://localhost:8443/cas/actuator/clusterTopology/topology",
         (res) => {
             assert(res.data.length === 2);
         }, (error) => {
             throw error;
         }, { "Content-Type": "application/json" });
-    await cas.doGet("https://localhost:8444/cas/actuator/clusterTopology",
+    await cas.doGet("https://localhost:8444/cas/actuator/clusterTopology/topology",
         (res) => {
             assert(res.data.length === 2);
         }, (error) => {

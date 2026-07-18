@@ -2672,10 +2672,8 @@ select + span[role="combobox"] {
     font-size: 1.4rem;
 }
 
-.cluster-topology-message-error {
-    color: var(--cas-theme-danger, #58151c);
-    border-color: rgba(162, 3, 35, .3);
-    background: var(--cas-theme-danger-bg, #f8d7da);
+.cluster-members-loading-dialog .mdc-linear-progress {
+    margin: 1.25rem 0 .5rem;
 }
 
 .cluster-topology-owners {

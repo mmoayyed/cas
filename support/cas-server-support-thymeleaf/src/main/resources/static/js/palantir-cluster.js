@@ -1,5 +1,25 @@
-let clusterTopologyMembers = [];
-let clusterTopologyRefreshInProgress = false;
+const clusterTopologyState = {
+    endpointPath: "topology",
+    tabIndex: 0,
+    prefix: "clusterTopology",
+    loadingMessage: "Loading cluster topology...",
+    emptyMessage: "No cluster members were discovered.",
+    members: [],
+    refreshInProgress: false
+};
+
+const clusterDiscoveryState = {
+    endpointPath: "discovery",
+    tabIndex: 1,
+    prefix: "clusterDiscovery",
+    loadingMessage: "Loading cluster discovery...",
+    emptyMessage: "No cluster members were found by the discovery client.",
+    members: [],
+    refreshInProgress: false
+};
+
+let clusterLoadingDialogSequence = 0;
+let activeClusterLoadingDialog = null;
 
 function clusterTopologyText(value, fallback = "Not available") {
     const text = value === null || value === undefined ? "" : String(value).trim();
@@ -25,12 +45,14 @@ function clusterTopologyResponseTime(value) {
     return Number.isFinite(responseTime) ? `${(responseTime * 1_000_000).toLocaleString()} ns` : "Not available";
 }
 
-function clusterTopologyTabIsActive() {
+function clusterTabIsActive(tabIndex) {
     if (currentActiveTab !== Tabs.CLUSTER.index) {
         return false;
     }
     const clusterTabs = $("#cluster-tabs");
-    return !clusterTabs.data("ui-tabs") || clusterTabs.tabs("option", "active") === 0;
+    return clusterTabs.data("ui-tabs")
+        ? clusterTabs.tabs("option", "active") === tabIndex
+        : tabIndex === clusterTopologyState.tabIndex;
 }
 
 function clusterTopologyMetadata(icon, label, value) {
@@ -182,23 +204,23 @@ function createClusterMemberCard(member) {
     return card;
 }
 
-function renderClusterTopologyMembers() {
-    const ownersContainer = $("#clusterTopologyOwners").empty();
-    const status = $("#clusterTopologyStatus");
-    const allMembers = Array.isArray(clusterTopologyMembers) ? clusterTopologyMembers : [];
+function renderClusterMembers(state) {
+    const ownersContainer = $(`#${state.prefix}Owners`).empty();
+    const status = $(`#${state.prefix}Status`);
+    const allMembers = Array.isArray(state.members) ? state.members : [];
     const healthyCount = allMembers.filter(member => member.status === true).length;
     const ownerNames = new Set(allMembers.map(member => clusterTopologyText(member.owner, "Unassigned")));
 
-    $("#clusterTopologyMemberCount").text(allMembers.length);
-    $("#clusterTopologyHealthyCount").text(healthyCount);
-    $("#clusterTopologyUnhealthyCount").text(allMembers.length - healthyCount);
-    $("#clusterTopologyOwnerCount").text(ownerNames.size);
-    showElements($("#clusterTopologySummary"));
+    $(`#${state.prefix}MemberCount`).text(allMembers.length);
+    $(`#${state.prefix}HealthyCount`).text(healthyCount);
+    $(`#${state.prefix}UnhealthyCount`).text(allMembers.length - healthyCount);
+    $(`#${state.prefix}OwnerCount`).text(ownerNames.size);
+    showElements($(`#${state.prefix}Summary`));
 
     if (allMembers.length === 0) {
-        status.removeClass("cluster-topology-message-error").html("");
+        status.html("");
         status.append($("<i>", {class: "mdi mdi-server-off", "aria-hidden": "true"}));
-        status.append(document.createTextNode("No cluster members were discovered."));
+        status.append(document.createTextNode(state.emptyMessage));
         showElements(status);
         return;
     }
@@ -242,48 +264,118 @@ function renderClusterTopologyMembers() {
     }
 }
 
-function refreshClusterTopology() {
-    const endpoint = CasActuatorEndpoints.clusterTopology();
-    if (!endpoint || !clusterTopologyTabIsActive() || clusterTopologyRefreshInProgress) {
+function clearClusterMembers(state) {
+    state.members = [];
+    $(`#${state.prefix}Owners`).empty();
+    $(`#${state.prefix}MemberCount`).text("0");
+    $(`#${state.prefix}HealthyCount`).text("0");
+    $(`#${state.prefix}UnhealthyCount`).text("0");
+    $(`#${state.prefix}OwnerCount`).text("0");
+    hideElements($(`#${state.prefix}Summary`));
+    const status = $(`#${state.prefix}Status`).empty();
+    hideElements(status);
+}
+
+function showClusterLoadingDialog(state) {
+    const dialogId = String(++clusterLoadingDialogSequence);
+    activeClusterLoadingDialog = dialogId;
+    Swal.fire({
+        title: state.loadingMessage,
+        html: `
+            <div role="progressbar" class="mdc-linear-progress mdc-linear-progress--indeterminate"
+                 aria-label="${state.loadingMessage}">
+                <div class="mdc-linear-progress__buffer">
+                    <div class="mdc-linear-progress__buffer-bar"></div>
+                    <div class="mdc-linear-progress__buffer-dots"></div>
+                </div>
+                <div class="mdc-linear-progress__bar mdc-linear-progress__primary-bar">
+                    <span class="mdc-linear-progress__bar-inner"></span>
+                </div>
+                <div class="mdc-linear-progress__bar mdc-linear-progress__secondary-bar">
+                    <span class="mdc-linear-progress__bar-inner"></span>
+                </div>
+            </div>`,
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+        showConfirmButton: false,
+        customClass: {popup: "cluster-members-loading-dialog"},
+        didOpen: popup => {
+            popup.dataset.clusterLoadingDialog = dialogId;
+            cas.init(".cluster-members-loading-dialog");
+        }
+    });
+    return dialogId;
+}
+
+function closeClusterLoadingDialog(dialogId) {
+    if (activeClusterLoadingDialog !== dialogId) {
+        return;
+    }
+    const popup = Swal.getPopup();
+    if (popup?.dataset.clusterLoadingDialog === dialogId) {
+        Swal.close();
+    }
+    activeClusterLoadingDialog = null;
+}
+
+function refreshClusterMembers(state) {
+    const endpointBase = CasActuatorEndpoints.clusterTopology();
+    if (!endpointBase || !clusterTabIsActive(state.tabIndex) || state.refreshInProgress) {
         return Promise.resolve();
     }
-    clusterTopologyRefreshInProgress = true;
-    const status = $("#clusterTopologyStatus").removeClass("cluster-topology-message-error").html("");
-    status.append($("<i>", {class: "mdi mdi-loading mdi-spin", "aria-hidden": "true"}));
-    status.append(document.createTextNode("Loading cluster topology..."));
-    showElements(status);
+    state.refreshInProgress = true;
+    const endpoint = `${String(endpointBase).replace(/\/$/, "")}/${state.endpointPath}`;
+    const loadingDialogId = showClusterLoadingDialog(state);
 
     return $.get(endpoint)
         .done(response => {
-            clusterTopologyMembers = Array.isArray(response) ? response : [];
-            renderClusterTopologyMembers();
+            state.members = Array.isArray(response) ? response : [];
+            renderClusterMembers(state);
         })
         .fail((xhr, requestStatus, error) => {
-            console.error("Error fetching cluster topology:", error);
-            status.addClass("cluster-topology-message-error").html("");
-            status.append($("<i>", {class: "mdi mdi-alert-circle", "aria-hidden": "true"}));
-            status.append(document.createTextNode("Unable to load the cluster topology."));
-            showElements(status);
+            console.error(`Error fetching cluster ${state.endpointPath}:`, error);
+            clearClusterMembers(state);
             displayBanner(xhr);
         })
         .always(() => {
-            clusterTopologyRefreshInProgress = false;
+            state.refreshInProgress = false;
+            closeClusterLoadingDialog(loadingDialogId);
         });
 }
 
+function refreshClusterTopology() {
+    return refreshClusterMembers(clusterTopologyState);
+}
+
+function refreshClusterDiscovery() {
+    return refreshClusterMembers(clusterDiscoveryState);
+}
+
+function refreshActiveClusterTab() {
+    if (clusterTabIsActive(clusterTopologyState.tabIndex)) {
+        return refreshClusterTopology();
+    }
+    if (clusterTabIsActive(clusterDiscoveryState.tabIndex)) {
+        return refreshClusterDiscovery();
+    }
+    return Promise.resolve();
+}
+
 async function initializeClusterTopologyOperations() {
-    if (!CasActuatorEndpoints.clusterTopology() || $("#clusterTopologyOwners").length === 0) {
+    if (!CasActuatorEndpoints.clusterTopology() || $("#cluster-tabs").length === 0) {
         return;
     }
     $("#cluster-tabs").off("tabsactivate.clusterTopology").on("tabsactivate.clusterTopology", (event, ui) => {
         if (ui.newPanel.is("#cluster-topology-tab")) {
             refreshClusterTopology();
+        } else if (ui.newPanel.is("#cluster-discovery-tab")) {
+            refreshClusterDiscovery();
         }
     });
-    refreshClusterTopology();
+    refreshActiveClusterTab();
     setInterval(() => {
-        if (clusterTopologyTabIsActive()) {
-            refreshClusterTopology();
+        if (currentActiveTab === Tabs.CLUSTER.index) {
+            refreshActiveClusterTab();
         }
     }, palantirSettings().refreshInterval);
 }

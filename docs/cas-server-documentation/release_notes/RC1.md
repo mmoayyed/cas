@@ -33,6 +33,9 @@ palantir_images:
   - src: img_9.png
     alt: Palantir cluster topology view
     title: Palantir cluster topology view
+  - src: img_10.png
+    alt: Palantir cluster topology view
+    title: Palantir cluster topology view
 ---
 
 {% include variables.html %}
@@ -140,7 +143,7 @@ Configuration for almost all attribute repositories can also be viewed in better
 value from a dedicated editor.
 
 {% include imagegallery.html gallery_id="palantir-dashboard" images=page.palantir_images %}
-                       
+
 ### Cluster Topology 
 
 A new `clusterTopology` actuator endpoint is available to report on the current cluster topology 

@@ -94,8 +94,8 @@ function activateDashboardTab(idx) {
                 tabs.activateTab(tabIndex);
                 currentActiveTab = tabIndex;
                 updateNavigationSidebar();
-                if (currentActiveTab === Tabs.CLUSTER.index && typeof refreshClusterTopology === "function") {
-                    refreshClusterTopology();
+                if (currentActiveTab === Tabs.CLUSTER.index && typeof refreshActiveClusterTab === "function") {
+                    refreshActiveClusterTab();
                 }
                 break;
         }
