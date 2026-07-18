@@ -3,7 +3,6 @@ package org.apereo.cas.acme;
 import module java.base;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Tag;
-import org.junit.jupiter.api.Test;
 import org.junitpioneer.jupiter.RetryingTest;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;

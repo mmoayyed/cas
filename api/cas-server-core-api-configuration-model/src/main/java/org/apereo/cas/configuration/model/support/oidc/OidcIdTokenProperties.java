@@ -63,7 +63,7 @@ public class OidcIdTokenProperties implements Serializable {
     private boolean generateForJwtBearerGrantType;
 
     /**
-     * Reference to an external script file that alllows
+     * Reference to an external script file that allows
      * one to collect id token in a scripted way.
      */
     @NestedConfigurationProperty
