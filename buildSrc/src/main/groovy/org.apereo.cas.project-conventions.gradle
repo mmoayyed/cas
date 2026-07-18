@@ -248,7 +248,8 @@ if (!providers.systemProperty('skipCheckstyle').present && CasProjectConventions
         minHeapSize = "256m"
         maxHeapSize = "2g"
         classpath = files()
-        exclude("**/build/generated/**")
+        exclude("**/generated/**")
+        enabled = !name.toLowerCase(Locale.ROOT).contains("aot")
     }
 }
 
