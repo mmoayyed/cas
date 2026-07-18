@@ -29,7 +29,15 @@ done
 if [ "$CLUSTERED" = "true" ]; then
     printgreen "Starting Redis docker containers in clustered mode..."
     COMPOSE_FILE=$PWD/ci/tests/redis/docker-compose-clustered.yml
-    export REDIS_CLUSTER_ANNOUNCE_HOST="$(ipconfig getifaddr en0)"
+    case "$(uname -s)" in
+      Darwin)
+        export REDIS_CLUSTER_ANNOUNCE_HOST="$(ipconfig getifaddr en0)"
+        ;;
+      Linux)
+        export REDIS_CLUSTER_ANNOUNCE_HOST="$(hostname -I | awk '{print $1}')"
+        ;;
+    esac
+    printgreen "Redis cluster announce host: $REDIS_CLUSTER_ANNOUNCE_HOST"
 else
     printgreen "Starting Redis docker container..."
     COMPOSE_FILE=$PWD/ci/tests/redis/docker-compose.yml
