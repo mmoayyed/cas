@@ -90,6 +90,7 @@ async function initializePalantir() {
                         initializeThrottlesOperations(),
                         initializeMultifactorOperations(),
                         initializeMultitenancyOperations(),
+                        initializeClusterTopologyOperations(),
                         initializeTrustedMultifactorOperations(),
                         initializeAuditEventsOperations(),
                         initializeCasEventsOperations(),

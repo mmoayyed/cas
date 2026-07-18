@@ -64,6 +64,7 @@
     <script type="text/javascript" th:src="@{/js/palantir-person-directory.js}"></script>
     <script type="text/javascript" th:src="@{/js/palantir-consent.js}"></script>
     <script type="text/javascript" th:src="@{/js/palantir-multitenancy.js}"></script>
+    <script type="text/javascript" th:src="@{/js/palantir-cluster.js}"></script>
     <script type="text/javascript" th:src="@{/js/palantir-throttles.js}"></script>
     <script type="text/javascript" th:src="@{/js/palantir-protocols.js}"></script>
     <script type="text/javascript" th:src="@{/js/palantir-logging.js}"></script>
@@ -114,6 +115,7 @@
             <div th:replace="~{fragments/palantir/throttlestab :: main}"/>
             <div th:replace="~{fragments/palantir/mfatab :: main}"/>
             <div th:replace="~{fragments/palantir/multitenancytab :: main}"/>
+            <div th:replace="~{fragments/palantir/clustertab :: main}"/>
         </div>
 
         <div th:replace="~{fragments/palantir/settingspanel :: main}"/>

@@ -187,6 +187,10 @@ class CasActuatorEndpoints {
         return this.endpoints().multitenancy;
     }
 
+    static clusterTopology() {
+        return this.endpoints().clustertopology || this.endpoints().clusterTopology;
+    }
+
     static samlPostProfileResponse() {
         return this.endpoints().samlpostprofileresponse || this.endpoints().samlPostProfileResponse;
     }

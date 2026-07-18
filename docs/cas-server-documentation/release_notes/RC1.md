@@ -30,6 +30,9 @@ palantir_images:
   - src: img_8.png
     alt: Palantir authorization simulation view
     title: Palantir authorization simulation view
+  - src: img_9.png
+    alt: Palantir cluster topology view
+    title: Palantir cluster topology view
 ---
 
 {% include variables.html %}
@@ -137,6 +140,18 @@ Configuration for almost all attribute repositories can also be viewed in better
 value from a dedicated editor.
 
 {% include imagegallery.html gallery_id="palantir-dashboard" images=page.palantir_images %}
+                       
+### Cluster Topology 
+
+A new `clusterTopology` actuator endpoint is available to report on the current cluster topology 
+and the status of each node in the cluster, particularly relevant when CAS is running in high-availability mode.
+Cluster topology support is available for the following features:
+
+- [MongoDb Ticket Registry](../ticketing/MongoDb-Ticket-Registry.html)
+- [Redis Ticket Registry](../ticketing/Redis-Ticket-Registry.html)
+- [Hazelcast Ticket Registry](../ticketing/Hazelcast-Ticket-Registry.html)
+
+This capability is also supported and available for the [Palantir Admin Dashboard](../installation/Admin-Dashboard.html). 
 
 ## Other Stuff
   
@@ -144,4 +159,5 @@ value from a dedicated editor.
 - Releasing attributes via [pattern matching](../integration/Attribute-Release-Policy-PatternMatching.html) accepts Groovy transformation rules.
 - A number of date-formatting operations have switched their base timezone from system default to `UTC`.
 - A large number of dependencies and libraries have been updated to their latest versions.
-- Custom ID token claims can also be constructed using [Apache Groovy](../authentication/OIDC-Authentication-Claims-Custom.html)
+- Custom ID token claims can also be constructed using [Apache Groovy](../authentication/OIDC-Authentication-Claims-Custom.html).
+- [RediSearch](../ticketing/Redis-Ticket-Registry-RediSearch.html) functionality now supports Redis clustering.

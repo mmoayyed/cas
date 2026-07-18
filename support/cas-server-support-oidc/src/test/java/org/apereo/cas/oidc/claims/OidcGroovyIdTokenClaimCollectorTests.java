@@ -5,6 +5,7 @@ import org.apereo.cas.oidc.AbstractOidcTests;
 import lombok.val;
 import org.jooq.lambda.Unchecked;
 import org.jose4j.jwt.JwtClaims;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.context.TestPropertySource;
 import static org.junit.jupiter.api.Assertions.*;
@@ -16,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * @since 8.0.0
  */
 @TestPropertySource(properties = "cas.authn.oidc.id-token.collector-script.location=classpath:/GroovyIdTokenClaims.groovy")
+@Tag("Groovy")
 public class OidcGroovyIdTokenClaimCollectorTests extends AbstractOidcTests {
     @Test
     void verifyScript() throws Exception {

@@ -685,6 +685,7 @@ class OAuth20AccessTokenEndpointControllerTests {
             val deviceUserCode = ticketRegistry.getTicket(defaultDeviceUserCodeFactory.normalizeUserCode(userCode), OAuth20DeviceUserCode.class);
             assertNotNull(deviceUserCode);
             deviceUserCode.setUserCodeApproved(true);
+            deviceUserCode.setAuthentication(tgt.getAuthentication());
             ticketRegistry.updateTicket(deviceUserCode);
 
             mockRequest.setParameter(OAuth20Constants.CLIENT_ID, service.getClientId());
