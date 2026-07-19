@@ -26,7 +26,8 @@ Cluster topology support is available for the following features:
 - [MongoDb Ticket Registry](../ticketing/MongoDb-Ticket-Registry.html)
 - [Redis Ticket Registry](../ticketing/Redis-Ticket-Registry.html)
 - [Hazelcast Ticket Registry](../ticketing/Hazelcast-Ticket-Registry.html)
-  [Apache Ignite Ticket Registry](../ticketing/Ignite-Ticket-Registry.html)
+- [Apache Ignite Ticket Registry](../ticketing/Ignite-Ticket-Registry.html)
+- [Apache Kafka Ticket Registry](../ticketing/Kafka-Ticket-Registry.html)
 - 
 ## Custom Cluster Topology
 
