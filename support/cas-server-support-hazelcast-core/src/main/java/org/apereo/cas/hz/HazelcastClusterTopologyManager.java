@@ -21,7 +21,7 @@ public class HazelcastClusterTopologyManager implements ClusterTopologyManager {
     private final HazelcastInstance hazelcastInstance;
 
     @Override
-    public List<ClusterMember> discoverMembers() {
+    public List<? extends ClusterMember> discoverMembers() {
         val executor = hazelcastInstance.getExecutorService("hazelcast-cluster-" + hazelcastInstance.getName());
         return hazelcastInstance.getCluster()
             .getMembers()

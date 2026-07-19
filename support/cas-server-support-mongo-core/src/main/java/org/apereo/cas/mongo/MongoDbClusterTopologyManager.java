@@ -21,7 +21,7 @@ public class MongoDbClusterTopologyManager implements ClusterTopologyManager {
     private final MongoOperations mongoTemplate;
 
     @Override
-    public List<ClusterMember> discoverMembers() {
+    public List<? extends ClusterMember> discoverMembers() {
         val adminDatabase = ((MongoTemplate) mongoTemplate).getMongoDatabaseFactory().getMongoDatabase("admin");
         val helloResult = adminDatabase.runCommand(new Document("hello", 1));
         val replicaSetName = helloResult.getString("setName");
@@ -30,7 +30,7 @@ public class MongoDbClusterTopologyManager implements ClusterTopologyManager {
             val members = status.getList("members", Document.class, List.of());
             return members
                 .stream()
-                .<ClusterMember>map(member -> ClusterMember.builder()
+                .map(member -> ClusterMember.builder()
                     .owner(getName())
                     .id(String.valueOf(member.getInteger("_id")))
                     .address(member.getString("name"))

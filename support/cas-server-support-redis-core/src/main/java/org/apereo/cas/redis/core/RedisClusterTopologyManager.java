@@ -20,11 +20,11 @@ public class RedisClusterTopologyManager implements ClusterTopologyManager {
     private final RedisConnectionFactory redisConnectionFactory;
 
     @Override
-    public List<ClusterMember> discoverMembers() {
+    public List<? extends ClusterMember> discoverMembers() {
         val startedAt = System.nanoTime();
         try (val connection = redisConnectionFactory.getClusterConnection()) {
             val stream = StreamSupport.stream(connection.clusterGetNodes().spliterator(), false);
-            return stream.<ClusterMember>map(node -> {
+            return stream.map(node -> {
                 val flags = node.getFlags().stream().map(RedisClusterNode.Flag::getRaw).toList();
                 return ClusterMember.builder()
                     .owner(getName())

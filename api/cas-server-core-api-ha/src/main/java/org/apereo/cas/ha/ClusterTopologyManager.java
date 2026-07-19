@@ -16,5 +16,5 @@ public interface ClusterTopologyManager extends NamedObject {
      *
      * @return the list
      */
-    List<ClusterMember> discoverMembers();
+    List<? extends ClusterMember> discoverMembers();
 }
