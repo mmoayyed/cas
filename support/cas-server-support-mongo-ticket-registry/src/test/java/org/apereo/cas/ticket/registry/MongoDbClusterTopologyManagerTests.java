@@ -32,7 +32,7 @@ class MongoDbClusterTopologyManagerTests {
     private ClusterTopologyManager mongoDbTicketClusterTopologyManager;
 
     @Test
-    void verifyOperation() {
+    void verifyOperation() throws Exception {
         val results = mongoDbTicketClusterTopologyManager.discoverMembers();
         assertFalse(results.isEmpty());
     }

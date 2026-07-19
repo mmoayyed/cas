@@ -56,7 +56,7 @@ class RedisServerClusteredTicketRegistryTests {
         private ClusterTopologyManager redisTicketClusterTopologyManager;
 
         @RepeatedTest(1)
-        void verifyOperation() {
+        void verifyOperation() throws Exception {
             val results = redisTicketClusterTopologyManager.discoverMembers();
             assertFalse(results.isEmpty());
         }

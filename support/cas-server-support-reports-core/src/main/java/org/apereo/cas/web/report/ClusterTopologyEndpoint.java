@@ -8,6 +8,7 @@ import org.apereo.cas.util.spring.beans.BeanSupplier;
 import org.apereo.cas.web.BaseCasRestActuatorEndpoint;
 import io.swagger.v3.oas.annotations.Operation;
 import lombok.val;
+import org.jooq.lambda.Unchecked;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.actuate.endpoint.Access;
 import org.springframework.boot.actuate.endpoint.annotation.Endpoint;
@@ -49,7 +50,7 @@ public class ClusterTopologyEndpoint extends BaseCasRestActuatorEndpoint {
         return managers
             .orderedStream()
             .filter(BeanSupplier::isNotProxy)
-            .flatMap(manager -> manager.discoverMembers().stream())
+            .flatMap(Unchecked.function(manager -> manager.discoverMembers().stream()))
             .collect(Collectors.toList());
     }
 
