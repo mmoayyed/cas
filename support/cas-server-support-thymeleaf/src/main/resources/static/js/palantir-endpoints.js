@@ -255,6 +255,10 @@ class CasActuatorEndpoints {
         return this.endpoints().impersonation;
     }
 
+    static passwordless() {
+        return this.endpoints().passwordless;
+    }
+
     static startup() {
         return this.endpoints().startup;
     }

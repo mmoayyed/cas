@@ -508,6 +508,294 @@ select + span[role="combobox"] {
     width: 100%;
 }
 
+.passwordless-account-panel {
+    width: 99%;
+    margin: 1rem auto 0;
+}
+
+
+.passwordless-account-search {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: stretch;
+    gap: .75rem;
+}
+
+.passwordless-account-search-field {
+    min-width: 0;
+}
+
+.passwordless-account-search-button {
+    min-height: 3.5rem;
+    padding-right: 1.25rem;
+    padding-left: 1.25rem;
+}
+
+.passwordless-account-message {
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+}
+
+.passwordless-account-message > .mdi {
+    flex: 0 0 auto;
+    font-size: 1.4rem;
+}
+
+.passwordless-account-card {
+    overflow: hidden;
+    border: var(--cas-theme-border-light, 1px solid rgba(0, 0, 0, .2));
+    border-radius: .75rem;
+    background: var(--mdc-theme-surface, #fff);
+    color: var(--mdc-theme-text-primary-on-background, #263238);
+    box-shadow: 0 10px 28px rgba(31, 53, 73, .14);
+}
+
+.passwordless-account-card-header {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 1rem;
+    padding: 1.35rem 1.5rem;
+    background: linear-gradient(135deg, var(--cas-theme-primary, #153e50), #2675a8);
+    color: #fff;
+}
+
+.passwordless-account-avatar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 4rem;
+    height: 4rem;
+    border: 2px solid rgba(255, 255, 255, .68);
+    border-radius: 50%;
+    background: rgba(255, 255, 255, .16);
+}
+
+.passwordless-account-avatar .mdi {
+    font-size: 2.25rem;
+    line-height: 1;
+}
+
+.passwordless-account-identity {
+    min-width: 0;
+}
+
+.passwordless-account-identity h3,
+.passwordless-account-username {
+    overflow-wrap: anywhere;
+}
+
+.passwordless-account-eyebrow {
+    display: block;
+    margin-bottom: .15rem;
+    font-size: .75rem;
+    font-weight: 700;
+    letter-spacing: .1em;
+    opacity: .8;
+    text-transform: uppercase;
+}
+
+.passwordless-account-username {
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    opacity: .9;
+}
+
+.passwordless-account-contact-status {
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    padding: .45rem .75rem;
+    border: 1px solid rgba(255, 255, 255, .55);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, .16);
+    font-size: .8rem;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.passwordless-account-contact-status.passwordless-account-contact-missing {
+    border-color: #ffe08a;
+    background: rgba(255, 193, 7, .2);
+}
+
+.passwordless-account-card-body {
+    padding: 1.5rem;
+}
+
+.passwordless-account-detail-grid,
+.passwordless-account-capability-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
+    gap: .85rem;
+}
+
+.passwordless-account-detail,
+.passwordless-account-capability {
+    min-width: 0;
+    border: 1px solid rgba(21, 62, 80, .16);
+    border-radius: .6rem;
+    background: var(--cas-theme-primary-bg, rgba(21, 62, 80, .07));
+}
+
+.passwordless-account-detail {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    padding: .9rem 1rem;
+}
+
+.passwordless-account-detail > .mdi {
+    flex: 0 0 auto;
+    color: var(--cas-theme-primary, #153e50);
+    font-size: 1.65rem;
+}
+
+.passwordless-account-detail-label,
+.passwordless-account-detail-value {
+    display: block;
+}
+
+.passwordless-account-detail-label {
+    margin-bottom: .15rem;
+    color: var(--cas-theme-primary, #153e50);
+    font-size: .75rem;
+    font-weight: 700;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+}
+
+.passwordless-account-detail-value {
+    overflow-wrap: anywhere;
+    font-weight: 600;
+}
+
+.passwordless-account-section {
+    margin-top: 1.35rem;
+}
+
+.passwordless-account-section-title {
+    display: flex;
+    align-items: center;
+    gap: .45rem;
+    margin-top: 1.35rem;
+    margin-bottom: .7rem;
+    color: var(--cas-theme-primary, #153e50);
+}
+
+.passwordless-account-section-title .mdi {
+    font-size: 1.35rem;
+}
+
+.passwordless-account-capability {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .75rem;
+    padding: .8rem .9rem;
+    font-weight: 600;
+}
+
+.passwordless-account-state {
+    display: inline-flex;
+    align-items: center;
+    gap: .3rem;
+    flex: 0 0 auto;
+    padding: .3rem .6rem;
+    border: 1px solid #aab4ba;
+    border-radius: 999px;
+    background: #eef1f3;
+    color: #455a64;
+    font-size: .75rem;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.passwordless-account-state-enabled {
+    border-color: var(--cas-theme-success, #74c163);
+    background: rgba(116, 193, 99, .2);
+    color: #235b2d;
+}
+
+.passwordless-account-state-unknown {
+    border-color: var(--cas-theme-warning, #e6a210);
+    background: var(--cas-theme-warning-bg, #fff3cd);
+    color: var(--cas-theme-warning, #664d03);
+}
+
+.passwordless-account-chip-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .5rem;
+}
+
+.passwordless-account-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    padding: .4rem .7rem;
+    border: 1px solid var(--cas-theme-primary, #153e50);
+    border-radius: 999px;
+    background: var(--cas-theme-primary-bg, rgba(21, 62, 80, .1));
+    color: var(--cas-theme-primary, #153e50);
+    font-weight: 600;
+}
+
+.passwordless-account-empty-value {
+    color: #607d8b;
+    font-style: italic;
+}
+
+.passwordless-account-attributes-table-container {
+    width: 100%;
+    overflow-x: auto;
+}
+
+#passwordlessAccountAttributesTable td {
+    vertical-align: top;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+@media (max-width: 700px) {
+    .passwordless-account-search {
+        grid-template-columns: 1fr;
+    }
+
+    .passwordless-account-card-header {
+        grid-template-columns: auto minmax(0, 1fr);
+    }
+
+    .passwordless-account-contact-status {
+        grid-column: 1 / -1;
+        justify-self: start;
+    }
+}
+
+.palantir-service-editor-layout {
+    display: flex;
+    direction: ltr;
+    flex-flow: row nowrap;
+    gap: .5rem;
+    min-width: 0;
+}
+
+.palantir-service-template-sidebar {
+    order: 0;
+    flex: 0 0 25%;
+    min-width: 0;
+    overflow-y: auto;
+}
+
+.palantir-service-definition-editor {
+    order: 1;
+    flex: 1 1 auto;
+    width: auto;
+    min-width: 0;
+}
+
 .registered-service-client-secret-row {
     gap: .5rem;
     flex-wrap: wrap;

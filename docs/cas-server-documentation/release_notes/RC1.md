@@ -36,6 +36,9 @@ palantir_images:
   - src: img_10.png
     alt: Palantir cluster topology view
     title: Palantir cluster topology view
+  - src: img_11.png
+    alt: Palantir passwordless authentication view
+    title: Palantir passwordless authentication view
 ---
 
 {% include variables.html %}
@@ -156,6 +159,12 @@ Cluster topology support is available for the following features:
 - [Apache Ignite Ticket Registry](../ticketing/Ignite-Ticket-Registry.html)
 
 This capability is also supported and available for the [Palantir Admin Dashboard](../installation/Admin-Dashboard.html). 
+          
+### Passwordless Authentication
+                   
+A dedicated actuator endpoint, `passwordless`, is available to allows one to query a username
+and retrieve the associated [passwordless account](../authentication/Passwordless-Authentication-Account-Storage.html) information. 
+This capability is also supported and available for the [Palantir Admin Dashboard](../installation/Admin-Dashboard.html).
 
 ## Other Stuff
   

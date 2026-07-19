@@ -985,6 +985,154 @@ function reloadAuthenticationHandlersTable() {
     }
 }
 
+let passwordlessAccountAttributesTable = null;
+
+function passwordlessAccountDisplayValue(value, fallback = "Not provided") {
+    if (value === null || value === undefined) {
+        return fallback;
+    }
+    if (Array.isArray(value)) {
+        const values = value.map(entry => passwordlessAccountDisplayValue(entry, "")).filter(entry => entry.length > 0);
+        return values.length > 0 ? values.join(", ") : fallback;
+    }
+    if (typeof value === "object") {
+        try {
+            return JSON.stringify(value);
+        } catch (error) {
+            return String(value);
+        }
+    }
+    const text = String(value).trim();
+    return text || fallback;
+}
+
+function passwordlessAccountState(value) {
+    if (value === true || String(value).toUpperCase() === "TRUE") {
+        return "enabled";
+    }
+    if (value === false || String(value).toUpperCase() === "FALSE") {
+        return "disabled";
+    }
+    return "unknown";
+}
+
+function updatePasswordlessAccountState(selector, value, labels) {
+    const state = passwordlessAccountState(value);
+    const icons = {
+        enabled: "mdi-check-circle",
+        disabled: "mdi-minus-circle-outline",
+        unknown: "mdi-help-circle-outline"
+    };
+    const $state = $(selector);
+    $state
+        .removeClass("passwordless-account-state-enabled passwordless-account-state-disabled passwordless-account-state-unknown")
+        .addClass(`passwordless-account-state-${state}`)
+        .empty()
+        .append($("<i>", {class: `mdi ${icons[state]}`, "aria-hidden": "true"}))
+        .append($("<span>").text(labels[state]));
+}
+
+function showPasswordlessAccountMessage(type, message) {
+    const icons = {
+        info: "mdi-information-outline",
+        warning: "mdi-account-question-outline",
+        danger: "mdi-alert-circle-outline"
+    };
+    const $message = $("#passwordlessAccountLookupMessage");
+    $message
+        .removeClass("banner-info banner-warning banner-danger")
+        .addClass(`banner-${type}`);
+    $message.find(".mdi").attr("class", `mdi ${icons[type]}`);
+    $message.find(".passwordless-account-message-text").text(message);
+    showElements($message);
+}
+
+function renderPasswordlessAccount(account) {
+    const username = passwordlessAccountDisplayValue(account.username, "Unknown username");
+    const name = passwordlessAccountDisplayValue(account.name, username);
+    const email = passwordlessAccountDisplayValue(account.email, "");
+    const phone = passwordlessAccountDisplayValue(account.phoneNumber, "");
+    const source = passwordlessAccountDisplayValue(account.source, "");
+
+    $("#passwordlessAccountName").text(name);
+    $("#passwordlessAccountUsername").text(username);
+
+    [
+        ["#passwordlessAccountEmail", email],
+        ["#passwordlessAccountPhone", phone],
+        ["#passwordlessAccountSource", source]
+    ].forEach(([selector, value]) => {
+        $(selector)
+            .text(value || "Not provided")
+            .toggleClass("passwordless-account-empty-value", !value);
+    });
+
+    const hasContactInformation = email.length > 0 || phone.length > 0;
+    const $contactStatus = $("#passwordlessAccountContactStatus");
+    $contactStatus
+        .toggleClass("passwordless-account-contact-missing", !hasContactInformation)
+        .empty()
+        .append($("<i>", {
+            class: `mdi ${hasContactInformation ? "mdi-check-circle-outline" : "mdi-alert-circle-outline"}`,
+            "aria-hidden": "true"
+        }))
+        .append($("<span>").text(hasContactInformation ? "Contact channel available" : "No contact channel"));
+
+    updatePasswordlessAccountState(
+        "#passwordlessAccountMfaEligibility",
+        account.multifactorAuthenticationEligible,
+        {enabled: "Eligible", disabled: "Not eligible", unknown: "Unspecified"}
+    );
+    updatePasswordlessAccountState(
+        "#passwordlessAccountDelegatedEligibility",
+        account.delegatedAuthenticationEligible,
+        {enabled: "Eligible", disabled: "Not eligible", unknown: "Unspecified"}
+    );
+    updatePasswordlessAccountState(
+        "#passwordlessAccountRequestPassword",
+        account.requestPassword,
+        {enabled: "Requested", disabled: "Not requested", unknown: "Unspecified"}
+    );
+    updatePasswordlessAccountState(
+        "#passwordlessAccountSelectionMenu",
+        account.allowSelectionMenu,
+        {enabled: "Enabled", disabled: "Disabled", unknown: "Unspecified"}
+    );
+
+    const $clients = $("#passwordlessAccountDelegatedClients").empty();
+    const delegatedClients = Array.isArray(account.allowedDelegatedClients)
+        ? account.allowedDelegatedClients
+        : account.allowedDelegatedClients
+            ? [account.allowedDelegatedClients]
+            : [];
+    if (delegatedClients.length > 0) {
+        delegatedClients.forEach(client => {
+            const chip = $("<span>", {class: "passwordless-account-chip"});
+            chip.append($("<i>", {class: "mdi mdi-shield-account-outline", "aria-hidden": "true"}));
+            chip.append($("<span>").text(passwordlessAccountDisplayValue(client)));
+            $clients.append(chip);
+        });
+    } else {
+        $clients.append($("<span>", {class: "passwordless-account-empty-value"})
+            .text("No delegated clients are explicitly configured."));
+    }
+
+    const attributeEntries = account.attributes && typeof account.attributes === "object" && !Array.isArray(account.attributes)
+        ? Object.entries(account.attributes)
+        : [];
+    passwordlessAccountAttributesTable.clear();
+    for (const [attributeName, values] of attributeEntries) {
+        passwordlessAccountAttributesTable.row.add([
+            attributeName,
+            passwordlessAccountDisplayValue(values)
+        ]);
+    }
+    passwordlessAccountAttributesTable.draw();
+
+    showElements($("#passwordlessAccountResult"));
+    passwordlessAccountAttributesTable.columns.adjust();
+}
+
 async function initializeAuthenticationOperations() {
     const authnHandlersToolbar = document.createElement("div");
     let authnHandlersToolbarEntries = "";
@@ -1215,6 +1363,82 @@ async function initializeAuthenticationOperations() {
                 }
             });
         });
+    }
+
+    const passwordlessEndpoint = CasActuatorEndpoints.passwordless();
+    if (passwordlessEndpoint) {
+        showElements($("#passwordless").parent());
+        passwordlessAccountAttributesTable = $("#passwordlessAccountAttributesTable").DataTable({
+            pageLength: 5,
+            lengthMenu: [5, 10, 25, 50],
+            autoWidth: false,
+            order: [[0, "asc"]],
+            language: {
+                emptyTable: "The account store did not return resolved attributes."
+            },
+            columnDefs: [
+                {
+                    targets: 0,
+                    width: "30%"
+                },
+                {
+                    targets: [0, 1],
+                    render: (data, type) => type === "display"
+                        ? $("<div>").text(data ?? "").html()
+                        : data
+                }
+            ],
+            drawCallback: () => {
+                $("#passwordlessAccountAttributesTable tr").addClass("mdc-data-table__row");
+                $("#passwordlessAccountAttributesTable td").addClass("mdc-data-table__cell");
+            }
+        });
+
+        $("#fmPasswordlessAccount").off("submit.passwordless").on("submit.passwordless", event => {
+            event.preventDefault();
+            const form = document.getElementById("fmPasswordlessAccount");
+            if (!form.reportValidity()) {
+                return;
+            }
+
+            const username = $("#passwordlessUsername").val().trim();
+            const $button = $("#fetchPasswordlessAccountButton");
+            const $buttonLabel = $button.find(".mdc-button__label");
+            $button.prop("disabled", true);
+            $buttonLabel.html('<i class="mdc-tab__icon mdi mdi-loading mdi-spin" aria-hidden="true"></i>Looking Up...');
+            hideElements($("#passwordlessAccountResult"));
+            showPasswordlessAccountMessage("info", `Looking up the passwordless account for ${username}...`);
+
+            $.ajax({
+                url: passwordlessEndpoint,
+                method: "GET",
+                data: {username: username},
+                dataType: "json",
+                success: account => {
+                    if (account) {
+                        hideElements($("#passwordlessAccountLookupMessage"));
+                        renderPasswordlessAccount(account);
+                    } else {
+                        showPasswordlessAccountMessage("warning", `No passwordless account was found for ${username}.`);
+                    }
+                },
+                error: xhr => {
+                    if (xhr.status === 404) {
+                        showPasswordlessAccountMessage("warning", `No passwordless account was found for ${username}.`);
+                    } else {
+                        console.error("Error fetching passwordless account:", xhr.responseText);
+                        showPasswordlessAccountMessage("danger", `Unable to retrieve the passwordless account for ${username}.`);
+                    }
+                },
+                complete: () => {
+                    $button.prop("disabled", false);
+                    $buttonLabel.html('<i class="mdc-tab__icon mdi mdi-magnify" aria-hidden="true"></i>Look Up Account');
+                }
+            });
+        });
+    } else {
+        hideElements($("#passwordless").parent());
+        hideElements($("#passwordlessauthn-tab"));
     }
 
 }

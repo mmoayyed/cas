@@ -361,8 +361,11 @@ function initializeDropDowns() {
         width: "360px",
         change: function (event, ui) {
             const $select = $(this);
-            const handlerNames = $select.data("change-handler").split(",");
-            for (const handlerName of handlerNames) {
+            const handlerNames = $select.data("change-handler");
+            if (!handlerNames) {
+                return;
+            }
+            for (const handlerName of handlerNames.split(",")) {
                 if (handlerName && handlerName.length > 0 && typeof window[handlerName] === "function") {
                     const result = window[handlerName]($select, ui);
                     if (result !== undefined && result === false) {

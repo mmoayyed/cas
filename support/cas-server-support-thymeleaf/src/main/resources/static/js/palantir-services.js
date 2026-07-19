@@ -95,9 +95,16 @@ async function initializeServicesOperations() {
 let serviceEditorInstance = null;
 let editServiceDialogInstance = null;
 
+function getEditServiceDialogInstance() {
+    if (!editServiceDialogInstance) {
+        editServiceDialogInstance = window.mdc.dialog.MDCDialog.attachTo(document.getElementById("editServiceDialog"));
+    }
+    return editServiceDialogInstance;
+}
+
 async function initializeServiceButtons() {
     serviceEditorInstance = initializeAceEditor("serviceEditor");
-    editServiceDialogInstance = window.mdc.dialog.MDCDialog.attachTo(document.getElementById("editServiceDialog"));
+    getEditServiceDialogInstance();
 
     function viewEntityHistory(serviceId) {
         const entityHistoryTable = $("#entityHistoryTable").DataTable();
@@ -193,7 +200,7 @@ async function initializeServiceButtons() {
                 serviceEditorInstance.gotoLine(1);
                 const editServiceDialogElement = document.getElementById("editServiceDialog");
                 $(editServiceDialogElement).attr("newService", false);
-                editServiceDialogInstance["open"]();
+                getEditServiceDialogInstance()["open"]();
             }).fail((xhr, status, error) => {
                 console.error("Error fetching data:", error);
                 displayBanner(xhr);
@@ -205,6 +212,7 @@ async function initializeServiceButtons() {
         if (CasActuatorEndpoints.registeredServices()) {
             let isNewService = false;
             let value = "";
+            let dialogInstance = null;
 
             const saveButton = $(this);
             switch (saveButton.attr("name")) {
@@ -213,11 +221,13 @@ async function initializeServiceButtons() {
                 isNewService = $(editServiceWizardDialogElement).attr("newService") === "true";
                 const wizardEditor = initializeAceEditor("wizardServiceEditor");
                 value = wizardEditor.getValue();
+                dialogInstance = editServiceWizardDialog;
                 break;
             case "saveService":
                 const editServiceDialogElement = document.getElementById("editServiceDialog");
                 isNewService = $(editServiceDialogElement).attr("newService") === "true";
                 value = serviceEditorInstance.getValue();
+                dialogInstance = getEditServiceDialogInstance();
                 break;
             }
 
@@ -236,7 +246,7 @@ async function initializeServiceButtons() {
                             contentType: "application/json",
                             data: value,
                             success: async response => {
-                                editServiceDialog["close"]();
+                                dialogInstance["close"]();
                                 await fetchServices(() => {
                                     let newServiceId = response.id;
                                     $("#applicationsTable tr").removeClass("selected");
@@ -277,7 +287,7 @@ async function initializeServiceButtons() {
 
                 const editServiceDialogElement = document.getElementById("editServiceDialog");
                 $(editServiceDialogElement).attr("newService", true);
-                editServiceDialogInstance["open"]();
+                getEditServiceDialogInstance()["open"]();
             }).fail((xhr, status, error) => {
                 console.error("Error fetching data:", error);
                 displayBanner(xhr);
@@ -481,13 +491,12 @@ async function initializeFooterButtons() {
     $("button[name=newServicePlain]").off().on("click", () => {
         if (CasActuatorEndpoints.registeredServices()) {
             const editServiceDialogElement = document.getElementById("editServiceDialog");
-            let editServiceDialog = window.mdc.dialog.MDCDialog.attachTo(editServiceDialogElement);
             const editor = initializeAceEditor("serviceEditor", "json");
             editor.setValue("");
             editor.gotoLine(1);
 
             $(editServiceDialogElement).attr("newService", true);
-            editServiceDialog["open"]();
+            getEditServiceDialogInstance()["open"]();
         }
     });
 
