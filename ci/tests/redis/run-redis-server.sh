@@ -52,7 +52,7 @@ docker ps
 
 if [ "$CLUSTERED" = "true" ]; then
   printgreen "Creating Redis cluster..."
-  docker exec -it redis-1 redis-cli --cluster create \
+  docker exec redis-1 redis-cli --cluster create \
     redis-1:7001 \
     redis-2:7002 \
     redis-3:7003 \

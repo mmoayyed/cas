@@ -440,7 +440,7 @@ public abstract class AbstractOidcTests {
     }
 
     protected JwtClaims getClaims(final String subject, final String issuer,
-                                  final String clientId, final String audience) {
+                                  final String clientId, final String... audience) {
         val claims = new JwtClaims();
         claims.setJwtId(RandomUtils.randomAlphanumeric(16));
         claims.setIssuer(issuer);
