@@ -296,6 +296,7 @@ function heimdallTextField({id, label, type = "text", title = "", required = fal
                    ${required ? "required" : ""}/>
         </label>`);
     field.find("input").val(value);
+    decoratePalantirInputIcons(field[0]);
     return field;
 }
 

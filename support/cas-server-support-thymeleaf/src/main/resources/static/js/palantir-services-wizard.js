@@ -2797,7 +2797,9 @@ function createMappedInputField(config) {
         </div>
         `;
 
-    $(`#${containerId}`).append($(`${html}`));
+    const section = $(`${html}`);
+    decoratePalantirInputIcons(section[0]);
+    $(`#${containerId}`).append(section);
 
     function configureRemoveMapRowEventHandler() {
         $(`button[name=${removeButtonId}]`).off().on("click", function () {
@@ -2840,6 +2842,7 @@ function createMappedInputField(config) {
         let elementsToAdd = $(rowElements).removeClass("hide");
         elementsToAdd.find("*").removeClass("hide");
 
+        decoratePalantirInputIcons(elementsToAdd[0]);
         $(`#${sectionContainerId}ToAppend`).append(elementsToAdd);
         configureGroovyEditors(elementsToAdd);
         configureRemoveMapRowEventHandler();
@@ -3162,6 +3165,7 @@ function createInputField(config) {
         input.data(key, value);
     });
     label.append(outline, input);
+    decoratePalantirInputIcons(label[0]);
 
     const container = $("<span>", {
         id: `${name}FieldContainer`,

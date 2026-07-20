@@ -112,6 +112,7 @@ async function initializePalantir() {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
+    initializePalantirInputIcons();
     initializeTabs();
     initializeMenus();
     initializeDropDowns();

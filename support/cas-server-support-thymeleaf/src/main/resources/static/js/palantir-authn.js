@@ -1047,6 +1047,29 @@ function showPasswordlessAccountMessage(type, message) {
     showElements($message);
 }
 
+function showPasswordlessAccountProgress(username) {
+    Swal.fire({
+        title: "Passwordless Account Lookup",
+        html: `
+            <div class="passwordless-account-swal-progress">
+                <div class="passwordless-account-swal-progress-message"></div>
+                <div class="passwordless-account-swal-progress-track"
+                     role="progressbar" aria-label="Looking up passwordless account"
+                     aria-valuetext="Lookup in progress">
+                    <span></span>
+                </div>
+            </div>`,
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+        showConfirmButton: false,
+        didOpen: () => {
+            const container = Swal.getHtmlContainer();
+            container.querySelector(".passwordless-account-swal-progress-message").textContent =
+                `Looking up the passwordless account for ${username}...`;
+        }
+    });
+}
+
 function renderPasswordlessAccount(account) {
     const username = passwordlessAccountDisplayValue(account.username, "Unknown username");
     const name = passwordlessAccountDisplayValue(account.name, username);
@@ -1407,7 +1430,8 @@ async function initializeAuthenticationOperations() {
             $button.prop("disabled", true);
             $buttonLabel.html('<i class="mdc-tab__icon mdi mdi-loading mdi-spin" aria-hidden="true"></i>Looking Up...');
             hideElements($("#passwordlessAccountResult"));
-            showPasswordlessAccountMessage("info", `Looking up the passwordless account for ${username}...`);
+            hideElements($("#passwordlessAccountLookupMessage"));
+            showPasswordlessAccountProgress(username);
 
             $.ajax({
                 url: passwordlessEndpoint,
@@ -1431,6 +1455,7 @@ async function initializeAuthenticationOperations() {
                     }
                 },
                 complete: () => {
+                    Swal.close();
                     $button.prop("disabled", false);
                     $buttonLabel.html('<i class="mdc-tab__icon mdi mdi-magnify" aria-hidden="true"></i>Look Up Account');
                 }

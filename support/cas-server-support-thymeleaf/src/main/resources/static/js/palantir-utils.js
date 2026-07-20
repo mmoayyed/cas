@@ -336,6 +336,148 @@ function highlightElements() {
     hljs.highlightAll();
 }
 
+const palantirInputIconRules = [
+    {
+        icon: "mdi-key-variant",
+        pattern: /\b(client secrets?|api keys?|access tokens?|bearer tokens?|auth(?:orization)? headers?|secrets?|tokens?)\b/
+    },
+    {icon: "mdi-lock-outline", pattern: /\b(passwords?|passphrases?|credentials?)\b/},
+    {icon: "mdi-card-account-details-outline", pattern: /\b(user ?name attribute|principal (?:id )?attribute)\b/},
+    {
+        icon: "mdi-identifier",
+        pattern: /\b(client ids?|entity ids?|tenant ids?|store ids?|requester ids?|subject ids?|resource ids?|zone ids?)\b/
+    },
+    {icon: "mdi-account-search", pattern: /\b(user ?names?|user ids?|principal names?|principal ids?)\b/},
+    {icon: "mdi-email-outline", pattern: /\b(e-?mails?|mail addresses?)\b/},
+    {icon: "mdi-phone-outline", pattern: /\b(phones?|telephones?|mobiles?|sms numbers?)\b/},
+    {icon: "mdi-ticket-confirmation-outline", pattern: /\btickets?\b/},
+    {icon: "mdi-link-variant", pattern: /\b(urls?|uris?|endpoints?|redirects?|callbacks?|webhooks?)\b/},
+    {icon: "mdi-file-outline", pattern: /\b(files?|file paths?|resource paths?|metadata locations?)\b/},
+    {icon: "mdi-web", pattern: /\b(services?|applications?)\b/},
+    {icon: "mdi-ip-network", pattern: /\b(ip address|network address)\b/},
+    {icon: "mdi-server", pattern: /\b(host ?name|server address|server host)\b/},
+    {icon: "mdi-ethernet", pattern: /\b(port number|server port|ldap port)\b/},
+    {icon: "mdi-database", pattern: /\b(database|data source|datasource|jdbc|sql query|database query)\b/},
+    {icon: "mdi-certificate", pattern: /\b(certificate|key store|keystore|trust store|truststore|public key)\b/},
+    {icon: "mdi-regex", pattern: /\b(regex|regular expressions?|patterns?)\b/},
+    {icon: "mdi-calendar-clock", pattern: /\b(date|time|duration|expiration|expiry|timeout)\b/},
+    {icon: "mdi-card-account-details-outline", pattern: /\b(attributes?|claims?)\b/},
+    {icon: "mdi-account-group", pattern: /\bgroups?\b/},
+    {icon: "mdi-shield-account", pattern: /\b(roles?|permissions?)\b/},
+    {icon: "mdi-target", pattern: /\bscopes?\b/},
+    {icon: "mdi-domain", pattern: /\b(domains?|namespaces?|tenants?|organizations?)\b/},
+    {icon: "mdi-translate", pattern: /\b(locales?|languages?)\b/},
+    {icon: "mdi-database-search", pattern: /\bqueries?\b/}
+];
+const palantirIconInputTypes = new Set([
+    "text", "password", "email", "tel", "url", "search", "number", "date", "datetime-local", "time"
+]);
+
+function normalizePalantirInputDescriptor(value) {
+    return String(value ?? "")
+        .replace(/([a-z\d])([A-Z])/g, "$1 $2")
+        .replace(/[_./:-]+/g, " ")
+        .replace(/[^a-z\d\s-]/gi, " ")
+        .replace(/\s+/g, " ")
+        .trim()
+        .toLowerCase();
+}
+
+function palantirInputDescriptors(input) {
+    const textField = input.closest(".mdc-text-field");
+    const floatingLabel = textField?.querySelector(".mdc-floating-label")?.textContent;
+    const associatedLabel = !floatingLabel && input.labels?.length > 0
+        ? input.labels[0].textContent
+        : "";
+    const identity = normalizePalantirInputDescriptor([input.id, input.name].filter(Boolean).join(" "))
+        .replace(/\bregistered service\b/g, " ");
+    return [
+        normalizePalantirInputDescriptor([
+            input.dataset.paramName,
+            input.autocomplete,
+            input.placeholder,
+            floatingLabel,
+            associatedLabel
+        ].filter(Boolean).join(" ")),
+        normalizePalantirInputDescriptor(identity),
+        normalizePalantirInputDescriptor(input.title)
+    ].filter(Boolean);
+}
+
+function resolvePalantirInputIcon(input) {
+    const type = String(input.type ?? "text").toLowerCase();
+    const descriptors = palantirInputDescriptors(input);
+    if (type === "password") {
+        return descriptors.some(descriptor => /\b(secret|token|authorization header)\b/.test(descriptor))
+            ? "mdi-key-variant"
+            : "mdi-lock-outline";
+    }
+    const typeIcons = {
+        email: "mdi-email-outline",
+        tel: "mdi-phone-outline",
+        url: "mdi-link-variant",
+        search: "mdi-magnify",
+        date: "mdi-calendar-clock",
+        "datetime-local": "mdi-calendar-clock",
+        time: "mdi-clock-outline"
+    };
+    if (typeIcons[type]) {
+        return typeIcons[type];
+    }
+    for (const descriptor of descriptors) {
+        const rule = palantirInputIconRules.find(candidate => candidate.pattern.test(descriptor));
+        if (rule) {
+            return rule.icon;
+        }
+    }
+    return undefined;
+}
+
+function decoratePalantirInputIcon(input) {
+    const type = String(input.type ?? "text").toLowerCase();
+    const textField = input.closest(".mdc-text-field");
+    if (!textField || !palantirIconInputTypes.has(type)
+        || textField.querySelector(".mdc-text-field__icon--leading")) {
+        return;
+    }
+
+    const iconName = resolvePalantirInputIcon(input);
+    if (!iconName) {
+        return;
+    }
+
+    const icon = document.createElement("i");
+    icon.className = `mdi ${iconName} mdc-text-field__icon mdc-text-field__icon--leading palantir-input-icon`;
+    icon.setAttribute("aria-hidden", "true");
+    icon.setAttribute("tabindex", "-1");
+    input.before(icon);
+    const outline = Array.from(textField.children)
+        .find(child => child.classList.contains("mdc-notched-outline"));
+    if (outline) {
+        textField.append(outline);
+    }
+    textField.classList.add("mdc-text-field--with-leading-icon");
+}
+
+function decoratePalantirInputIcons(root = document) {
+    const selector = "input.mdc-text-field__input";
+    if (root.matches?.(selector)) {
+        decoratePalantirInputIcon(root);
+    }
+    root.querySelectorAll?.(selector).forEach(decoratePalantirInputIcon);
+}
+
+function initializePalantirInputIcons() {
+    decoratePalantirInputIcons();
+    const observer = new MutationObserver(mutations => mutations.forEach(mutation =>
+        mutation.addedNodes.forEach(node => {
+            if (node.nodeType === Node.ELEMENT_NODE) {
+                decoratePalantirInputIcons(node);
+            }
+        })));
+    observer.observe(document.body, {childList: true, subtree: true});
+}
+
 
 function initializeTabs() {
     $(".jqueryui-tabs").tabs({

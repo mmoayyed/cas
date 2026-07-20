@@ -434,6 +434,7 @@ function addRegisteredServiceClientSecretRow(secret = {}) {
             </button>
         </div>`);
 
+    decoratePalantirInputIcons(row[0]);
     $("#registeredServiceClientSecretsRows").append(row);
 
     const $secret = $(`#${secretId}`);
