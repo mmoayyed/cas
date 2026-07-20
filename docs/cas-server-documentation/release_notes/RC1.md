@@ -158,6 +158,7 @@ Cluster topology support is available for the following features:
 - [Hazelcast Ticket Registry](../ticketing/Hazelcast-Ticket-Registry.html)
 - [Apache Ignite Ticket Registry](../ticketing/Ignite-Ticket-Registry.html)
 - [Apache Kafka Ticket Registry](../ticketing/Kafka-Ticket-Registry.html)
+- [Apache Pulsar Ticket Registry](../ticketing/Pulsar-Ticket-Registry.html)
 
 This capability is also supported and available for the [Palantir Admin Dashboard](../installation/Admin-Dashboard.html). 
           

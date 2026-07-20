@@ -83,9 +83,13 @@ class OidcAccessTokenEndpointControllerTests {
             registeredService.setEncryptIdToken(false);
             registeredService.setJwks(key);
             registeredService.setTokenEndpointAuthenticationMethod(OAuth20ClientAuthenticationMethods.PRIVATE_KEY_JWT.getType());
+
+            val audience = casProperties.getServer().getPrefix().concat('/'
+                + OidcConstants.BASE_OIDC_URL + '/' + OidcConstants.ACCESS_TOKEN_URL);
             val claims = getClaims(registeredService.getClientId(),
-                oidcIssuerService.determineIssuer(Optional.of(registeredService)),
-                registeredService.getClientId(), registeredService.getClientId());
+                registeredService.getClientId(),
+                registeredService.getClientId(),
+                audience);
             registeredService.setSupportedGrantTypes(Set.of(OAuth20GrantTypes.CLIENT_CREDENTIALS.getType()));
             servicesManager.save(registeredService);
 
