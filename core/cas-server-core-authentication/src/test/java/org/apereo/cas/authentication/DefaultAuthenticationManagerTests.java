@@ -29,6 +29,7 @@ import org.apereo.cas.util.MockRequestContext;
 import org.apereo.cas.util.spring.ApplicationContextProvider;
 import org.apereo.cas.util.spring.DirectObjectProvider;
 import org.apereo.cas.util.spring.boot.SpringBootTestAutoConfigurations;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.junit.jupiter.api.BeforeEach;
@@ -378,21 +379,27 @@ class DefaultAuthenticationManagerTests {
         when(policy.isSatisfiedBy(any(Authentication.class), any(), any(ConfigurableApplicationContext.class)))
             .thenThrow(new GeneralSecurityException(failure));
         authenticationExecutionPlan.registerAuthenticationPolicy(policy);
-        val manager = getAuthenticationManager(authenticationExecutionPlan);
-        val listener =
-            new ApplicationListener<CasAuthenticationPolicyFailureEvent>() {
-                private boolean failureFound;
 
-                @Override
-                public void onApplicationEvent(final CasAuthenticationPolicyFailureEvent event) {
-                    failureFound = event.getAuthentication().getFailures().values().stream()
-                        .anyMatch(t -> t.equals(failure));
-                }
-            };
-        applicationContext.addApplicationListener(listener);
+        val staticApplicationContext = new StaticApplicationContext();
+        staticApplicationContext.refresh();
+
+        val manager = getAuthenticationManager(authenticationExecutionPlan, staticApplicationContext);
+        val listener = new ApplicationListener<CasAuthenticationPolicyFailureEvent>() {
+            @Getter
+            private boolean failureFound;
+
+            @Override
+            public void onApplicationEvent(final CasAuthenticationPolicyFailureEvent event) {
+                failureFound = event.getAuthentication().getFailures()
+                    .values()
+                    .stream()
+                    .anyMatch(t -> t.equals(failure));
+            }
+        };
+        staticApplicationContext.addApplicationListener(listener);
 
         assertThrows(AuthenticationException.class, () -> manager.authenticate(transaction));
-        assertTrue(listener.failureFound, "Failure events captured");
+        assertTrue(listener.isFailureFound(), "Failure events captured");
     }
 
     @Test
@@ -473,9 +480,22 @@ class DefaultAuthenticationManagerTests {
         return getAuthenticationManager(new ReplacingAttributeAdder(), authenticationExecutionPlan);
     }
 
+    private static AuthenticationManager getAuthenticationManager(
+        final AuthenticationEventExecutionPlan authenticationExecutionPlan,
+        final ConfigurableApplicationContext applicationContext) {
+        return getAuthenticationManager(new ReplacingAttributeAdder(), authenticationExecutionPlan, applicationContext);
+    }
+
     private AuthenticationManager getAuthenticationManager(
         final AttributeMerger attributeMerger,
         final AuthenticationEventExecutionPlan authenticationExecutionPlan) {
+        return getAuthenticationManager(attributeMerger, authenticationExecutionPlan, applicationContext);
+    }
+
+    private static AuthenticationManager getAuthenticationManager(
+        final AttributeMerger attributeMerger,
+        final AuthenticationEventExecutionPlan authenticationExecutionPlan,
+        final ConfigurableApplicationContext applicationContext) {
         return new DefaultAuthenticationManager(authenticationExecutionPlan,
             new DirectObjectProvider<>(CoreAuthenticationTestUtils.getAuthenticationSystemSupport(attributeMerger)),
             false, applicationContext);
