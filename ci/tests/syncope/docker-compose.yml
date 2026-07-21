@@ -44,4 +44,3 @@ services:
       SERVICE_DISCOVERY_ADDRESS: http://syncope-console:8080/syncope-console/
       ANONYMOUS_USER: syncope
       ANONYMOUS_KEY: syncope
-      SECURITY_AUTHENTICATIONERROR_EXPOSEDETAILS: "true"
