@@ -3,6 +3,8 @@ package org.apereo.cas.config;
 import module java.base;
 import org.apereo.cas.configuration.CasConfigurationProperties;
 import org.apereo.cas.configuration.features.CasFeatureModule;
+import org.apereo.cas.ha.ClusterTopologyManager;
+import org.apereo.cas.ticket.registry.AMQPClusterTopologyManager;
 import org.apereo.cas.ticket.registry.pubsub.MessageQueueMessageSerializationHandler;
 import org.apereo.cas.ticket.registry.pubsub.queue.QueueableTicketRegistryMessagePublisher;
 import org.apereo.cas.ticket.registry.pubsub.queue.QueueableTicketRegistryMessageReceiver;
@@ -24,6 +26,7 @@ import org.springframework.amqp.rabbit.listener.adapter.MessageListenerAdapter;
 import org.springframework.amqp.support.converter.MessageConverter;
 import org.springframework.amqp.support.converter.SerializerMessageConverter;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.boot.amqp.autoconfigure.RabbitProperties;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -110,4 +113,12 @@ public class CasAMQPTicketRegistryAutoConfiguration {
         return adapter;
     }
 
+    @Bean
+    @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
+    @ConditionalOnMissingBean(name = "amqpTicketRegistryClusterTopologyManager")
+    public ClusterTopologyManager amqpTicketRegistryClusterTopologyManager(
+        final RabbitProperties rabbitProperties,
+        final CasConfigurationProperties casProperties) {
+        return new AMQPClusterTopologyManager(casProperties, rabbitProperties);
+    }
 }

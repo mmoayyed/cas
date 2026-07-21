@@ -564,6 +564,7 @@ while (( "$#" )); do
                 ;;
             activemq|amq|jms|rabbitmq|artemis|amqp)
                 isDockerOnLinux && ./ci/tests/rabbitmq/run-rabbitmq-server.sh || exit 1
+                isDockerOnLinux && ./ci/tests/rabbitmq/run-rabbitmq-server-clustered.sh || exit 1
                 task+="testAMQP "
                 ;;
             *)

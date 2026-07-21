@@ -29,6 +29,7 @@ Cluster topology support is available for the following features:
 - [Apache Ignite Ticket Registry](../ticketing/Ignite-Ticket-Registry.html)
 - [Apache Kafka Ticket Registry](../ticketing/Kafka-Ticket-Registry.html)
 - [Apache Pulsar Ticket Registry](../ticketing/Pulsar-Ticket-Registry.html)
+- [AMQP Ticket Registry](../ticketing/Messaging-AMQP-Ticket-Registry.html)
 
 ## Custom Cluster Topology
 
