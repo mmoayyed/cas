@@ -147,6 +147,17 @@ value from a dedicated editor.
 
 {% include imagegallery.html gallery_id="palantir-dashboard" images=page.palantir_images %}
 
+### Palantir User vs. Admin Roles
+
+The [Palantir Admin Dashboard](../installation/Admin-Dashboard.html) now supports basic user roles and permissions. 
+By default, all authenticated users are assigned a `ROLE_USER` role/authority. To access critical functionality as an admin, 
+you will need to resolve and release a `role` attribute to Palantir with a value of `ADMIN` or `ROLE_ADMIN` if you are
+accessing Palantir via external CAS authentication, or your configuration needs to assign the authenticated user role
+via `spring.security.user.roles=ADMIN`.
+  
+At this moment, all Palantir functionality is disabled and hidden for non-admin users, except 
+for the ability to manage the list of registered applications.
+
 ### Cluster Topology 
 
 A new `clusterTopology` actuator endpoint is available to report on the current cluster topology 
