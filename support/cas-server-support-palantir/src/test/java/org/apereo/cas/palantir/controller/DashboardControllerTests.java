@@ -19,9 +19,8 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.web.context.WebApplicationContext;
 import static org.junit.jupiter.api.Assertions.*;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.*;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -40,9 +39,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Tag("Web")
 @ExtendWith(CasTestExtension.class)
 class DashboardControllerTests {
-    @Autowired
-    private WebApplicationContext webApplicationContext;
-
     @Autowired
     @Qualifier("mockMvc")
     private MockMvc mvc;
