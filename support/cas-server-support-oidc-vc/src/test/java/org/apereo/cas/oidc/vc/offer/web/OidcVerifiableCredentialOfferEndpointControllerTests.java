@@ -31,7 +31,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Tag("OIDCWeb")
 @ImportAutoConfiguration(CasOidcVerifiableCredentialsAutoConfiguration.class)
 @TestPropertySource(properties = {
-    "cas.authn.oidc.vc.issuer.credential-configurations.UniversityDegreeCredential.format=vc+sd-jwt",
+    "cas.authn.oidc.vc.issuer.credential-configurations.UniversityDegreeCredential.format=dc+sd-jwt",
     "cas.authn.oidc.vc.issuer.credential-configurations.UniversityDegreeCredential.scope=UniversityDegree"
 })
 class OidcVerifiableCredentialOfferEndpointControllerTests extends AbstractOidcTests {
@@ -89,7 +89,7 @@ class OidcVerifiableCredentialOfferEndpointControllerTests extends AbstractOidcT
             .andExpect(jsonPath("$." + OAuth20Constants.TOKEN_TYPE).exists())
             .andExpect(jsonPath("$." + OAuth20Constants.EXPIRES_IN).exists())
             .andExpect(jsonPath("$." + OidcConstants.C_NONCE).exists())
-            .andExpect(jsonPath("$." + OidcConstants.C_NONCE_EXPIRES_AT).exists());
+            .andExpect(jsonPath("$." + OidcConstants.C_NONCE_EXPIRES_IN).exists());
     }
 
     @Test

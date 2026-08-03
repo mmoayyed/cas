@@ -42,7 +42,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
     "cas.authn.attribute-repository.stub.attributes.score=95.5",
     "cas.authn.attribute-repository.stub.attributes.roles=admin,user",
 
-    "cas.authn.oidc.vc.issuer.credential-configurations.myorg.format=vc+sd-jwt",
+    "cas.authn.oidc.vc.issuer.credential-configurations.myorg.format=dc+sd-jwt",
     "cas.authn.oidc.vc.issuer.credential-configurations.myorg.scope=UniversityIDCredential",
     "cas.authn.oidc.vc.issuer.credential-configurations.myorg.claims.given_name.mandatory=true",
     "cas.authn.oidc.vc.issuer.credential-configurations.myorg.claims.family_name.mandatory=true",
@@ -118,7 +118,7 @@ class OidcVerifiableCredentialAuthorizationCodeAuthorizationResponseBuilderTests
             .andExpect(status().isOk())
             .andExpect(jsonPath("$." + OAuth20Constants.ACCESS_TOKEN).exists())
             .andExpect(jsonPath("$." + OidcConstants.C_NONCE).exists())
-            .andExpect(jsonPath("$." + OidcConstants.C_NONCE_EXPIRES_AT).exists())
+            .andExpect(jsonPath("$." + OidcConstants.C_NONCE_EXPIRES_IN).exists())
             .andExpect(jsonPath("$." + OAuth20Constants.AUTHORIZATION_DETAILS).exists());
     }
 }

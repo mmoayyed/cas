@@ -8,6 +8,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.SuperBuilder;
+import lombok.extern.jackson.Jacksonized;
 
 /**
  * This is {@link OidcCredentialIssuerMetadata}.
@@ -35,6 +36,9 @@ public class OidcCredentialIssuerMetadata implements Serializable {
     @JsonProperty("nonce_endpoint")
     private String nonceEndpoint;
 
+    @JsonProperty("batch_credential_endpoint")
+    private String batchCredentialEndpoint;
+
     @JsonProperty("credential_configurations_supported")
     private Map<String, CredentialConfiguration> credentialConfigurationsSupported;
 
@@ -46,7 +50,7 @@ public class OidcCredentialIssuerMetadata implements Serializable {
         private static final long serialVersionUID = 7169398914160552045L;
 
         @JsonProperty("format")
-        private String format = CredentialConfigurationFormats.VC_SD_JWT.getFormat();
+        private String format = CredentialConfigurationFormats.DC_SD_JWT.getFormat();
 
         @JsonProperty("scope")
         private String scope;
@@ -70,6 +74,9 @@ public class OidcCredentialIssuerMetadata implements Serializable {
     @JsonInclude(JsonInclude.Include.NON_EMPTY)
     @Getter
     @Setter
+    @NoArgsConstructor
+    @SuperBuilder
+    @Jacksonized
     public static class CredentialMetadata implements Serializable {
         @Serial
         private static final long serialVersionUID = 7269398914160552045L;
@@ -84,17 +91,24 @@ public class OidcCredentialIssuerMetadata implements Serializable {
     @JsonInclude(JsonInclude.Include.NON_EMPTY)
     @Getter
     @Setter
+    @NoArgsConstructor
+    @SuperBuilder
+    @Jacksonized
     public static class ProofTypeSupported implements Serializable {
         @Serial
         private static final long serialVersionUID = 5908913328617999837L;
 
         @JsonProperty("proof_signing_alg_values_supported")
+        @Builder.Default
         private List<String> proofSigningAlgValuesSupported = Stream.of("ES256", "RS256").toList();
     }
 
     @JsonInclude(JsonInclude.Include.NON_EMPTY)
     @Getter
     @Setter
+    @NoArgsConstructor
+    @SuperBuilder
+    @Jacksonized
     public static class ClaimMetadata implements Serializable {
         @Serial
         private static final long serialVersionUID = 216197021376111794L;
@@ -109,6 +123,8 @@ public class OidcCredentialIssuerMetadata implements Serializable {
         @Getter
         @Setter
         @SuperBuilder
+        @Jacksonized
+        @NoArgsConstructor
         public static class ClaimDisplay implements Serializable {
             @Serial
             private static final long serialVersionUID = 216197021376111795L;

@@ -17,6 +17,7 @@ import org.jose4j.jwt.JwtClaims;
 import org.jspecify.annotations.NonNull;
 import java.time.Clock;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
@@ -33,11 +34,13 @@ import java.util.UUID;
  */
 @RequiredArgsConstructor
 public class OidcDefaultVerifiableCredentialIssuerService implements OidcVerifiableCredentialIssuerService {
+    private static final int CLAIM_VALIDITY_IN_MINUTES = 5;
+    
     private final OidcConfigurationContext configurationContext;
     private final OidcVerifiableCredentialProofValidator credentialProofValidator;
 
     @Override
-    public OidcVerifiableCredentialResponse issue(final OidcVerifiableCredentialValidationContext context) throws Throwable {
+    public OidcVerifiableCredentialIssuerResponse issue(final OidcVerifiableCredentialValidationContext context) throws Throwable {
         val proof = credentialProofValidator.validate(context.credentialRequest());
 
         val authentication = Objects.requireNonNull(context.accessToken().getAuthentication());
@@ -55,14 +58,14 @@ public class OidcDefaultVerifiableCredentialIssuerService implements OidcVerifia
 
         val payload = new LinkedHashMap<String, Object>();
         return switch (chosenFormat) {
-            case VC_SD_JWT -> {
+            case DC_SD_JWT -> {
                 payload.put("sub", principal.getId());
                 payload.put("client_id", context.accessToken().getClientId());
                 payload.put("credential_configuration_id", configurationId);
                 payload.put("claims", vcClaims);
                 payload.put("cnf", proof.holderJwk().toJSONObject());
                 payload.put("iss", issuer);
-                yield signAndProduceCredentialResponse(context, payload, configuration);
+                yield signAndProduceCredentialResponse(context, payload, configuration, proof);
             }
             case JWT_VC_JSON -> {
                 val credentialSubject = new LinkedHashMap<String, Object>();
@@ -71,8 +74,9 @@ public class OidcDefaultVerifiableCredentialIssuerService implements OidcVerifia
 
                 val vc = new LinkedHashMap<String, Object>();
                 vc.put("@context", List.of("https://www.w3.org/2018/credentials/v1"));
-                vc.put("type", List.of("VerifiableCredential", configurationId, configuration.getScope()));
+                vc.put("type", List.of("VerifiableCredential", configuration.getScope()));
                 vc.put("credentialSubject", credentialSubject);
+                payload.put("vc", vc);
 
                 val now = Instant.now(Clock.systemUTC());
                 payload.put("iss", issuer);
@@ -80,11 +84,33 @@ public class OidcDefaultVerifiableCredentialIssuerService implements OidcVerifia
                 payload.put("iat", now.getEpochSecond());
                 payload.put("nbf", now.getEpochSecond());
                 payload.put("jti", UUID.randomUUID().toString());
-                payload.put("vc", vc);
                 payload.put("cnf", proof.holderJwk().toJSONObject());
-                yield signAndProduceCredentialResponse(context, payload, configuration);
+                yield signAndProduceCredentialResponse(context, payload, configuration, proof);
             }
+            case JWT_VC_JSON_LD -> {
+                val now = Instant.now(Clock.systemUTC());
+                val credentialSubject = new LinkedHashMap<String, Object>();
+                credentialSubject.put("id", principal.getId());
+                credentialSubject.putAll(vcClaims);
 
+                payload.put("@context", List.of(
+                    "https://www.w3.org/ns/credentials/v2",
+                    issuer + "/contexts/" + configuration.getScope() + "-v1.jsonld"
+                ));
+
+                val id = UUID.randomUUID();
+                payload.put("id", "urn:uuid:" + id);
+                payload.put("sub", principal.getId());
+                payload.put("type", List.of("VerifiableCredential", configuration.getScope()));
+                payload.put("credentialSubject", credentialSubject);
+                payload.put("issuer", issuer);
+                payload.put("validFrom", now.toString());
+                payload.put("validUntil", now.plus(CLAIM_VALIDITY_IN_MINUTES, ChronoUnit.MINUTES).toString());
+                payload.put("iat", now.getEpochSecond());
+                payload.put("nbf", now.getEpochSecond());
+                payload.put("jti", id.toString());
+                yield signAndProduceCredentialResponse(context, payload, configuration, proof);
+            }
         };
     }
 
@@ -97,16 +123,18 @@ public class OidcDefaultVerifiableCredentialIssuerService implements OidcVerifia
                 .formatted(configuration.getFormat(), configuration.getScope())));
     }
 
-    protected @NonNull OidcVerifiableCredentialResponse signAndProduceCredentialResponse(
+    protected OidcVerifiableCredentialIssuerResponse signAndProduceCredentialResponse(
         final OidcVerifiableCredentialValidationContext context,
         final Map<String, Object> payload,
-        final OidcVerifiableCredentialConfigurationProperties configuration) throws Throwable {
+        final OidcVerifiableCredentialConfigurationProperties configuration,
+        final OidcVerifiableCredentialProofValidator.VerifiableCredentialProofResult proof) throws Throwable {
 
         val signedCredential = signVerifiableCredential(payload, context, configuration);
-        val response = new OidcVerifiableCredentialResponse();
-        response.setFormat(configuration.getFormat());
-        response.setCredential(signedCredential);
-        return response;
+        return new OidcVerifiableCredentialIssuerResponse(
+            configuration.getFormat(),
+            signedCredential,
+            proof.nonce()
+        );
     }
 
     protected String signVerifiableCredential(final Map<String, Object> payload,
@@ -115,16 +143,20 @@ public class OidcDefaultVerifiableCredentialIssuerService implements OidcVerifia
         val jwtClaims = new JwtClaims();
         jwtClaims.setSubject(payload.get("sub").toString());
         jwtClaims.setIssuedAtToNow();
-        jwtClaims.setExpirationTimeMinutesInTheFuture(5);
+        jwtClaims.setExpirationTimeMinutesInTheFuture(CLAIM_VALIDITY_IN_MINUTES);
+
+        jwtClaims.setStringClaim("typ", "vc+jwt");
+        jwtClaims.setStringClaim("cty", "vc");
 
         val format = determineCredentialFormat(configuration);
         val claims = (Map<String, Object>) switch (format) {
-            case VC_SD_JWT -> payload.get("claims");
+            case DC_SD_JWT -> payload.get("claims");
             case JWT_VC_JSON -> payload.get("vc");
+            case JWT_VC_JSON_LD -> payload.get("credentialSubject");
         };
 
         val disclosures = new ArrayList<Disclosure>();
-        if (format == CredentialConfigurationFormats.VC_SD_JWT) {
+        if (format == CredentialConfigurationFormats.DC_SD_JWT) {
             val sdBuilder = new SDObjectBuilder();
             claims.forEach((claimName, claimValue) -> {
                 val claimDefn = configuration.getClaims().get(claimName);
@@ -146,7 +178,7 @@ public class OidcDefaultVerifiableCredentialIssuerService implements OidcVerifia
             context.accessToken().getClientId());
         val signedClaims = configurationContext.getIdTokenSigningAndEncryptionService()
             .encode(Objects.requireNonNull(registeredService), jwtClaims);
-        return format == CredentialConfigurationFormats.VC_SD_JWT
+        return format == CredentialConfigurationFormats.DC_SD_JWT
             ? new SDJWT(signedClaims, disclosures).toString()
             : signedClaims;
     }

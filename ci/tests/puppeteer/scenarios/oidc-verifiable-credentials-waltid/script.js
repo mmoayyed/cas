@@ -1,10 +1,12 @@
 const cas = require("../../cas.js");
 const assert = require("assert");
 
-async function createVerifiableCredentialTransaction() {
+async function createVerifiableCredentialTransaction(credentialConfigurationIds) {
+    await cas.log(`Creating verifiable credential transaction for ${credentialConfigurationIds}`);
+    
     const body = JSON.stringify({
         "principal": "casuser",
-        "credentialConfigurationIds": ["myorg"]
+        "credentialConfigurationIds": credentialConfigurationIds
     });
     const transaction = JSON.parse(
         await cas.doRequest("https://localhost:8443/cas/oidc/oidcVcCredentialOfferTransactions?scope=openid", "POST",
@@ -38,13 +40,17 @@ async function useCredentialOffer(page, wallet, offerRequest) {
     return response;
 }
 
-(async () => {
+async function startVerifiableCredentialFlowForConfiguration(...configurationId) {
+    await cas.logg(`Starting verifiable credential flow for ${configurationId}`);
+
     const browser = await cas.newBrowser(cas.browserOptions());
     const context = await browser.createBrowserContext();
     const page = await cas.newPage(context);
     await cas.gotoLogout(page);
     const wallet = await loginToWallet(page);
-    const transaction = await createVerifiableCredentialTransaction();
+    await deleteAllCredentialsInWallet(wallet);
+
+    const transaction = await createVerifiableCredentialTransaction(configurationId);
     const credentialOfferUri = new URL(transaction.credentialOfferUri);
 
     await cas.logg(`Credential offer URI ${credentialOfferUri.toString()}`);
@@ -58,25 +64,35 @@ async function useCredentialOffer(page, wallet, offerRequest) {
     await cas.log(`Wallet exchange response ${exchange}`);
 
     const result = JSON.parse(exchange);
-    let credential = result[0];
-    assert.equal(credential.pending, false);
-    assert.equal(credential.format, "vc+sd-jwt");
-    assert.equal(credential.parsedDocument.sub, "casuser");
-    assert.ok(credential.document);
-    assert.match(credential.document, /^[^.]+\.[^.]+\.[^.]+$/);
-    assert.deepEqual(credential.parsedDocument.roles, ["admin", "user"]);
-    assert.equal(credential.parsedDocument.student_id, "S12345");
-    assert.equal(credential.parsedDocument.family_name, "User");
-    assert.equal(credential.parsedDocument.given_name, "CAS");
-    assert.equal(credential.parsedDocument.email, "casuser@example.org");
+    assert(result.length > 0);
 
-    const [headerPart, payloadPart] = credential.document.split(".");
-    const header = JSON.parse(Buffer.from(headerPart, "base64url").toString("utf8"));
-    const payload = JSON.parse(Buffer.from(payloadPart, "base64url").toString("utf8"));
-    assert.equal(header.alg, "RS256");
-    assert.equal(header.client_id, "wallet-client");
-    assert.equal(payload.sub, "casuser");
+    for (const credential of result) {
+        assert.equal(credential.pending, false);
+        switch (configurationId) {
+        case "myorg":
+            assert.equal(credential.format, "dc+sd-jwt");
+            break;
+        case "employee":
+            assert.equal(credential.format, "jwt_vc_json-ld");
+            break;
+        }
+        assert.equal(credential.parsedDocument.sub, "casuser");
+        assert.ok(credential.document);
+        assert.match(credential.document, /^[^.]+\.[^.]+\.[^.]+$/);
+        assert.deepEqual(credential.parsedDocument.roles, ["admin", "user"]);
+        assert.equal(credential.parsedDocument.student_id, "S12345");
+        assert.equal(credential.parsedDocument.family_name, "User");
+        assert.equal(credential.parsedDocument.given_name, "CAS");
+        assert.equal(credential.parsedDocument.email, "casuser@example.org");
 
+        const [headerPart, payloadPart] = credential.document.split(".");
+        const header = JSON.parse(Buffer.from(headerPart, "base64url").toString("utf8"));
+        const payload = JSON.parse(Buffer.from(payloadPart, "base64url").toString("utf8"));
+        assert.equal(header.alg, "RS256");
+        assert.equal(header.client_id, "wallet-client");
+        assert.equal(payload.sub, "casuser");
+    }
+    
     await cas.goto(page, `http://localhost:7104/wallet/${wallet.walletId}`);
     await cas.sleep();
     const href = await cas.attributeValue(page, "main ul li a", "href");
@@ -95,12 +111,12 @@ async function useCredentialOffer(page, wallet, offerRequest) {
         200
     );
 
-    credential = JSON.parse(response);
+    const credential = JSON.parse(response);
     await cas.log(credential);
 
     await context.close();
     await cas.closeBrowser(browser);
-})();
+}
 
 async function loginToWallet(page) {
     await cas.goto(page, "http://localhost:7104/login");
@@ -133,3 +149,42 @@ async function loginToWallet(page) {
         cookie: authCookie
     };
 }
+
+async function deleteAllCredentialsInWallet(wallet) {
+    const apiBase = "http://localhost:7001";
+
+    const credentialsResponse = await cas.doRequest(
+        `${apiBase}/wallet-api/wallet/${wallet.walletId}/credentials`,
+        "GET",
+        {
+            Authorization: `Bearer ${wallet.cookie.value}`,
+            Accept: "application/json"
+        },
+        200
+    );
+
+    const credentials = JSON.parse(credentialsResponse);
+
+    for (const credential of credentials) {
+        const credentialId = credential.id;
+
+        await cas.doRequest(
+            `${apiBase}/wallet-api/wallet/${wallet.walletId}/credentials/`
+            + `${encodeURIComponent(credentialId)}?permanent=true`,
+            "DELETE",
+            {
+                Authorization: `Bearer ${wallet.cookie.value}`,
+                Accept: "application/json"
+            },
+            0
+        );
+    }
+}
+
+(async () => {
+    await startVerifiableCredentialFlowForConfiguration("myorg");
+    await cas.separator();
+    await startVerifiableCredentialFlowForConfiguration("employee");
+    await cas.separator();
+    await startVerifiableCredentialFlowForConfiguration("myorg", "employee");
+})();
