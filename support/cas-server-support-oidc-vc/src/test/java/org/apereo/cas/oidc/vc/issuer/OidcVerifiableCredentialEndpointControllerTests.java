@@ -392,6 +392,18 @@ class OidcVerifiableCredentialEndpointControllerTests {
 
     @Nested
     class BatchCredentialIssuanceTests extends BaseTests {
+        @Test
+        void verifyBatchCredentialIssuanceIsBounded() throws Throwable {
+            val request = new OidcVerifiableCredentialRequest();
+            val batchRequest = new OidcVcBatchCredentialRequest(Collections.nCopies(11, request));
+            mockMvc.perform(post(BATCH_CREDENTIAL_ENDPOINT_URL)
+                    .with(withHttpRequestProcessor())
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(MAPPER.writeValueAsString(batchRequest)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value(OAuth20Constants.INVALID_REQUEST));
+        }
+
         @ParameterizedTest
         @ValueSource(strings = {BATCH_CREDENTIAL_ENDPOINT_URL, CREDENTIAL_ENDPOINT_URL})
         void verifyBatchCredentialIssuance(final String endpointUrl) throws Throwable {

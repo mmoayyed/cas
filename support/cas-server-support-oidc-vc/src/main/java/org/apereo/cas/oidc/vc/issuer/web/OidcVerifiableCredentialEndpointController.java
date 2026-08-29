@@ -81,6 +81,16 @@ public class OidcVerifiableCredentialEndpointController extends BaseOAuth20Contr
         final HttpServletRequest httpRequest,
         final HttpServletResponse httpResponse) throws Throwable {
 
+        val credentialRequests = batchRequest == null ? null : batchRequest.credentialRequests();
+        val maximumBatchSize = getConfigurationContext().getCasProperties()
+            .getAuthn().getOidc().getVc().getIssuer().getBatchSize();
+        if (credentialRequests == null || credentialRequests.isEmpty()
+            || credentialRequests.size() > Math.max(1, maximumBatchSize)) {
+            return ResponseEntity.badRequest()
+                .body(OAuth20Utils.getErrorResponseBody(OAuth20Constants.INVALID_REQUEST,
+                    "Credential batch size is invalid"));
+        }
+
         val verified = verifyRequest(httpRequest, httpResponse);
         if (verified.getRight() != null) {
             return verified.getRight();
@@ -90,17 +100,19 @@ public class OidcVerifiableCredentialEndpointController extends BaseOAuth20Contr
         val responses = new ArrayList<>();
         val nonces = new HashSet<String>();
 
-        for (val credentialRequest : batchRequest.credentialRequests()) {
+        for (val credentialRequest : credentialRequests) {
             val issuanceContext = new OidcVerifiableCredentialValidationContext(
                 Objects.requireNonNull(decodedToken), credentialRequest, httpRequest);
-            val issuedCredentials = credentialIssuerService.issue(issuanceContext);
-            for (val issuedCredential : issuedCredentials) {
-                nonces.add(issuedCredential.nonce());
-                responses.add(OidcVerifiableCredentialResponse
-                    .builder()
-                    .format(issuedCredential.format().getValue())
-                    .credential(issuedCredential.credential())
-                    .build());
+            if (validateAccessTokenForCredentialIssuance(decodedToken, issuanceContext)) {
+                val issuedCredentials = credentialIssuerService.issue(issuanceContext);
+                for (val issuedCredential : issuedCredentials) {
+                    nonces.add(issuedCredential.nonce());
+                    responses.add(OidcVerifiableCredentialResponse
+                        .builder()
+                        .format(issuedCredential.format().getValue())
+                        .credential(issuedCredential.credential())
+                        .build());
+                }
             }
         }
         nonces.forEach(oidcVerifiableCredentialNonceService::remove);
@@ -139,6 +151,12 @@ public class OidcVerifiableCredentialEndpointController extends BaseOAuth20Contr
         val request = MAPPER.treeToValue(body, OidcVerifiableCredentialRequest.class);
         val issuanceContext = new OidcVerifiableCredentialValidationContext(
             Objects.requireNonNull(decodedToken), request, httpRequest);
+        if (!validateAccessTokenForCredentialIssuance(decodedToken, issuanceContext)) {
+            return ResponseEntity.badRequest()
+                .body(OAuth20Utils.getErrorResponseBody(OAuth20Constants.ERROR,
+                    "Access token cannot be accepted for credential issuance"));
+        }
+
         val issuerResponses = credentialIssuerService.issue(issuanceContext);
 
         val responses = new ArrayList<OidcVerifiableCredentialResponse>();
@@ -155,6 +173,13 @@ public class OidcVerifiableCredentialEndpointController extends BaseOAuth20Contr
         return responses.size() == 1
             ? ResponseEntity.ok(responses.getFirst())
             : ResponseEntity.ok(Map.of("credential_responses", responses));
+    }
+
+    protected boolean validateAccessTokenForCredentialIssuance(final OAuth20AccessToken accessToken, final OidcVerifiableCredentialValidationContext issuanceContext) {
+        if (accessToken.getCredentialConfigurationIds() != null && !accessToken.getCredentialConfigurationIds().isEmpty()) {
+            return accessToken.getCredentialConfigurationIds().contains(issuanceContext.credentialRequest().getCredentialConfigurationId());
+        }
+        return true;
     }
 
     protected Couplet<@Nullable OAuth20AccessToken, @Nullable ResponseEntity> verifyRequest(

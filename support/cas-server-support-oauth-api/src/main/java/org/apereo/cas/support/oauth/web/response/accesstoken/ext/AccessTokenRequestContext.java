@@ -112,6 +112,8 @@ public class AccessTokenRequestContext implements Serializable {
 
     private final String issuerState;
 
+    private final String preAuthorizationCode;
+
     @JsonIgnore
     public boolean isCodeToken() {
         return token instanceof OAuth20Code;

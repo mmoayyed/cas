@@ -19,6 +19,8 @@ import org.apereo.cas.oidc.vc.issuer.web.OidcVerifiableCredentialEndpointControl
 import org.apereo.cas.oidc.vc.issuer.web.OidcVerifiableCredentialIssuerMetadataController;
 import org.apereo.cas.oidc.vc.issuer.web.OidcVerifiableCredentialNonceEndpointController;
 import org.apereo.cas.oidc.vc.issuer.web.OidcVerifiableCredentialTypeMetadataController;
+import org.apereo.cas.oidc.vc.offer.OidcVerifiableCredentialTransactionService;
+import org.apereo.cas.oidc.vc.token.OidcVerifiableCredentialsAccessTokenGeneratorCustomizer;
 import lombok.val;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -146,8 +148,19 @@ class OidcVerifiableCredentialsIssuerConfiguration {
     @ConditionalOnMissingBean(name = "oidcVerifiableCredentialNonceEndpointController")
     @Bean
     public OidcVerifiableCredentialNonceEndpointController oidcVerifiableCredentialNonceEndpointController(
-        @Qualifier(OidcVerifiableCredentialNonceService.BEAN_NAME) final OidcVerifiableCredentialNonceService oidcVerifiableCredentialNonceService,
-        @Qualifier(OidcConfigurationContext.BEAN_NAME) final OidcConfigurationContext oidcConfigurationContext) {
+        @Qualifier(OidcVerifiableCredentialNonceService.BEAN_NAME)
+        final OidcVerifiableCredentialNonceService oidcVerifiableCredentialNonceService,
+        @Qualifier(OidcConfigurationContext.BEAN_NAME)
+        final OidcConfigurationContext oidcConfigurationContext) {
         return new OidcVerifiableCredentialNonceEndpointController(oidcConfigurationContext, oidcVerifiableCredentialNonceService);
+    }
+    
+    @Bean
+    @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
+    @ConditionalOnMissingBean(name = "oidcVerifiableCredentialsAccessTokenGeneratorCustomizer")
+    public OidcVerifiableCredentialsAccessTokenGeneratorCustomizer oidcVerifiableCredentialsAccessTokenGeneratorCustomizer(
+        @Qualifier(OidcVerifiableCredentialTransactionService.BEAN_NAME)
+        final OidcVerifiableCredentialTransactionService oidcVerifiableCredentialTransactionService) {
+        return new OidcVerifiableCredentialsAccessTokenGeneratorCustomizer(oidcVerifiableCredentialTransactionService);
     }
 }

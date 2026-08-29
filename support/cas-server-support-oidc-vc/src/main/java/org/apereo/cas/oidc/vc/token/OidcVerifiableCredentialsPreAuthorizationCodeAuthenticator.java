@@ -43,13 +43,16 @@ public class OidcVerifiableCredentialsPreAuthorizationCodeAuthenticator implemen
             val grantType = up.getPassword();
             if (OAuth20Utils.isGrantType(grantType, OAuth20GrantTypes.PRE_AUTHORIZED_CODE)) {
                 val providedPreAuthzCode = up.getUsername();
-                val providedTxCode = requestParameterResolver.resolveRequestParameter(ctx.webContext(), OidcConstants.TX_CODE)
-                    .orElse(StringUtils.EMPTY);
-
                 val preAuthorizationCode = (TransientSessionTicket) transactionService.getObject().fetchPreAuthorizationCode(providedPreAuthzCode);
-                val principalId = Objects.requireNonNull(preAuthorizationCode).getPropertyAsString("principalId");
-                val credentialConfigurationIds = Objects.requireNonNull(preAuthorizationCode).getProperty("credentialConfigurationIds", List.class);
-                val clientId = Objects.requireNonNull(preAuthorizationCode).getPropertyAsString(OAuth20Constants.CLIENT_ID);
+                if (preAuthorizationCode == null || preAuthorizationCode.isExpired()) {
+                    LOGGER.warn("Pre-authorization code [{}] is not found or has expired", providedPreAuthzCode);
+                    return Optional.empty();
+                }
+
+                val providedTxCode = requestParameterResolver.resolveRequestParameter(ctx.webContext(), OidcConstants.TX_CODE).orElse(StringUtils.EMPTY);
+                val principalId = preAuthorizationCode.getPropertyAsString("principalId");
+                val credentialConfigurationIds = preAuthorizationCode.getProperty("credentialConfigurationIds", List.class);
+                val clientId = preAuthorizationCode.getPropertyAsString(OAuth20Constants.CLIENT_ID);
 
                 val transactionCode = preAuthorizationCode.getPropertyAsString("transactionId");
                 val validTransaction = StringUtils.isBlank(providedTxCode) || Strings.CI.equals(transactionCode, providedTxCode);

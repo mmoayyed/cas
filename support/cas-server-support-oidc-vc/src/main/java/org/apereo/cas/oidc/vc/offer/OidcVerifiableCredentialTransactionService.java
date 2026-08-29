@@ -42,4 +42,10 @@ public interface OidcVerifiableCredentialTransactionService {
      */
     @Nullable Ticket fetchPreAuthorizationCode(String preAuthorizationCode);
 
+    /**
+     * Update pre authorization code.
+     *
+     * @param preAuthorizationCode the pre authorization code
+     */
+    void updatePreAuthorizationCode(Ticket preAuthorizationCode);
 }

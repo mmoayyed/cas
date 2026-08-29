@@ -92,12 +92,26 @@ during compile time.
 
 Single-use checking for DPOP proofs is now enforced using the CAS ticket registry. Furthermore, DPOP requests
 are no longer treated as a form of client authentication and now sit on top of existing client authentication
-approaches such as `clientId/clientSecret` for confidenial clients or PKCE. 
+approaches such as `clientId/clientSecret` for confidenial clients or PKCE.
+
 
 ### OpenID Connect Verifiable Credentials
+                   
+Several improvements are now available for [OpenID Connect with Verifiable Credentials](../authentication/OIDC-Authentication-Verifiable-Credentials.html):
 
-[OpenID Connect with Verifiable Credentials](../authentication/OIDC-Authentication-Verifiable-Credentials.html) now
-may require specific principal attributes before a credential offer transaction can be created for a principal. 
+- CAS may require specific principal attributes to determine eligibility before a credential offer transaction can be created for a principal.
+- Pre-authorization codes are now also properly updated and removed from the ticket registry after a credential offer transaction is completed once the ticket is expired. 
+- Access tokens used for credential issuance are now bound to the credential configuration id when the token is minted; this is then enforced when the token is used to request credentials.
+- Transaction-code requirements are enforced during token exchange.
+- Credential batch issuance is limited and capped at a predefined limit.
+
+### OpenID Connect Security 
+
+OpenID Connect security has been strengthened across several flows. Client assertions now require 
+matching subject, issuer, and client identifiers, while JWT IDs are tracked through the shared 
+ticket registry to prevent replay across clustered deployments. Device and CIBA polling are 
+bound to the authenticated client, completed poll-mode requests are consumed, 
+and dynamic client key registrations are memory-bounded.
 
 ## Other Stuff
     

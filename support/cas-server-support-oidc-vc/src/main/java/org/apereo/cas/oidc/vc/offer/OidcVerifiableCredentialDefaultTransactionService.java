@@ -13,6 +13,7 @@ import org.apereo.cas.util.function.FunctionUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
+import org.apache.commons.lang3.StringUtils;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -37,13 +38,13 @@ public class OidcVerifiableCredentialDefaultTransactionService implements OidcVe
         codeProperties.put("principalId", principalId);
         codeProperties.put(OAuth20Constants.CLIENT_ID, clientId);
         codeProperties.put("credentialConfigurationIds", credentialConfigurationIds);
-        
+
         val properties = new LinkedHashMap<>();
         properties.put("issuerState", UUID.randomUUID().toString());
         properties.put("principalId", principalId);
         properties.put(OAuth20Constants.CLIENT_ID, clientId);
         properties.put("credentialConfigurationIds", credentialConfigurationIds);
-        
+
         return FunctionUtils.doUnchecked(() -> {
             val preAuthorizationCode = transientFactory.create(codeProperties);
             val transaction = transientFactory.create(properties);
@@ -66,5 +67,23 @@ public class OidcVerifiableCredentialDefaultTransactionService implements OidcVe
     public @Nullable Ticket fetchPreAuthorizationCode(final String preAuthorizationCode) {
         val ticket = (TransientSessionTicket) configurationContext.getTicketRegistry().getTicket(preAuthorizationCode);
         return ticket != null && !ticket.isExpired() ? ticket : null;
+    }
+
+    @Override
+    public void updatePreAuthorizationCode(final Ticket preAuthorizationCode) {
+        FunctionUtils.doAndHandle(_ -> {
+            if (preAuthorizationCode != null) {
+                val updatedCode = (TransientSessionTicket) preAuthorizationCode.update();
+                if (updatedCode.isExpired()) {
+                    configurationContext.getTicketRegistry().deleteTicket(updatedCode.getId());
+                    val transactionId = updatedCode.getPropertyAsString("transactionId");
+                    if (StringUtils.isNotBlank(transactionId)) {
+                        configurationContext.getTicketRegistry().deleteTicket(transactionId);
+                    }
+                } else {
+                    configurationContext.getTicketRegistry().updateTicket(updatedCode);
+                }
+            }
+        });
     }
 }

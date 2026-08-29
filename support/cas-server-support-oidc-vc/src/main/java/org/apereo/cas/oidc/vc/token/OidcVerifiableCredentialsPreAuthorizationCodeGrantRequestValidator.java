@@ -9,6 +9,7 @@ import org.apereo.cas.support.oauth.validator.token.BaseOAuth20TokenRequestValid
 import org.apereo.cas.ticket.TransientSessionTicket;
 import lombok.Getter;
 import lombok.val;
+import org.apache.commons.lang3.StringUtils;
 import org.pac4j.core.context.WebContext;
 import org.pac4j.core.profile.ProfileManager;
 import org.pac4j.core.profile.UserProfile;
@@ -38,9 +39,17 @@ public class OidcVerifiableCredentialsPreAuthorizationCodeGrantRequestValidator 
     protected boolean validateInternal(final WebContext context, final String grantType, final ProfileManager manager,
                                        final UserProfile userProfile) throws Throwable {
         val requestParameterResolver = getConfigurationContext().getObject().getRequestParameterResolver();
-        val preAuthCode = requestParameterResolver.resolveRequestParameter(context, OidcConstants.PRE_AUTHORIZED_CODE).orElseThrow();
-        val ticket = (TransientSessionTicket) transactionService.fetchPreAuthorizationCode(preAuthCode);
-        return ticket != null && !ticket.isExpired();
+        val preAuthCode = requestParameterResolver.resolveRequestParameter(context, OidcConstants.PRE_AUTHORIZED_CODE);
+        if (preAuthCode.isEmpty()) {
+            return false;
+        }
+        val ticket = (TransientSessionTicket) transactionService.fetchPreAuthorizationCode(preAuthCode.get());
+        if (ticket == null || ticket.isExpired()) {
+            return false;
+        }
+        return requestParameterResolver.resolveRequestParameter(context, OidcConstants.TX_CODE)
+            .stream()
+            .anyMatch(StringUtils::isNotBlank);
     }
 
     @Override

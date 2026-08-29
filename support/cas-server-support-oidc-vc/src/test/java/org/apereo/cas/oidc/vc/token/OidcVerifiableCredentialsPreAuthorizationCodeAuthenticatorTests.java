@@ -92,14 +92,6 @@ public class OidcVerifiableCredentialsPreAuthorizationCodeAuthenticatorTests ext
         assertNull(credentials.getUserProfile());
     }
 
-    @Test
-    void verifyUnknownPreAuthorizationCode() {
-        val credentials = createCredentials(TransientSessionTicket.PREFIX + UUID.randomUUID(),
-            OAuth20GrantTypes.PRE_AUTHORIZED_CODE);
-        assertThrows(NullPointerException.class,
-            () -> oidcVerifiableCredentialsPreAuthorizationCodeAuthenticator.validate(createCallContext(null), credentials));
-    }
-
     private TransientSessionTicket issuePreAuthorizationCode(final List<String> credentialConfigurationIds) {
         val registeredService = getOidcRegisteredService();
         val transaction = (TransientSessionTicket) transactionService.issue(
@@ -114,7 +106,7 @@ public class OidcVerifiableCredentialsPreAuthorizationCodeAuthenticatorTests ext
     }
 
     private static UsernamePasswordCredentials createCredentials(final String preAuthorizationCode,
-                                                                  final OAuth20GrantTypes grantType) {
+                                                                 final OAuth20GrantTypes grantType) {
         return new UsernamePasswordCredentials(preAuthorizationCode, grantType.getType());
     }
 
