@@ -60,6 +60,7 @@ public class UmaCreateResourceSetRegistrationEndpointController extends BaseUmaE
             }
 
             val resourceSet = umaRequest.asResourceSet(profileResult);
+            resourceSet.setId(0);
             resourceSet.validate(profileResult);
 
             val saved = getUmaConfigurationContext().getUmaResourceSetRepository().save(resourceSet);

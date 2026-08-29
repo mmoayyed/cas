@@ -65,7 +65,7 @@ test coverage of the CAS codebase is approximately `94%`.
 
 CAS may be built and run using Java `27` and the build process has been updated to use 
 the latest Java `27` features and capabilities. Please note that this is only a preparatory step for future 
-releases and the baseline requirement will remain to be Java `25`.
+releases and the baseline requirement will remain as it was.
 
 ### Gradle 9.8
 
@@ -105,15 +105,25 @@ Several improvements are now available for [OpenID Connect with Verifiable Crede
 - Transaction-code requirements are enforced during token exchange.
 - Credential batch issuance is limited and capped at a predefined limit.
 
-### OpenID Connect Security 
+### OAuth and OpenID Connect Security
 
-OpenID Connect security has been strengthened across several flows. Client assertions now require 
-matching subject, issuer, and client identifiers, while JWT IDs are tracked through the shared 
-ticket registry to prevent replay across clustered deployments. Device and CIBA polling are 
-bound to the authenticated client, completed poll-mode requests are consumed, 
-and dynamic client key registrations are memory-bounded.
+[OAuth](../protocol/OAuth-Protocol.html) and [OpenID Connect](../authentication/OIDC-Authentication.html)
+security have been strengthened across several flows.
+
+- Client assertions now require matching subject, issuer, and client identifiers.
+- JWT IDs are tracked through the shared ticket registry to prevent replay across clustered deployments.
+- Device and CIBA polling are bound to the authenticated client and completed poll-mode requests are consumed.
+- Dynamic client key registrations are memory-bounded.
+- Token exchanges are now authorized against the authenticated requesting client, and exchanged tokens cannot gain scopes beyond those granted to the subject token and allowed for the requesting client.
+- Client secrets are now compared and enforced using a case sensitive strategy.
+- Token introspection reports tokens from other clients as inactive, while revocation only affects the requesting client's tokens and no longer reveals whether other tokens exist.
+
+### User-Managed Access
+
+[User-Managed Access](../protocol/OAuth-UMA-Protocol.html) resources and policies are now bound to both
+the authenticated client and resource owner. New resource registrations also receive non-sequential,
+server-assigned identifiers.
 
 ## Other Stuff
     
-- OAuth and OpenID Connecty client secrets are now compared and enforced using a case sensitive strategy.          
-- A large number of dependencies and libraries have been updated to their latest versions.
+- As usual, a large number of dependencies and libraries have been updated to their latest versions.

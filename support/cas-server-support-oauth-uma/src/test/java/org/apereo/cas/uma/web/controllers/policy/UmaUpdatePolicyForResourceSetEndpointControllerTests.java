@@ -60,16 +60,15 @@ class UmaUpdatePolicyForResourceSetEndpointControllerTests extends BaseUmaEndpoi
 
     @Test
     void verifyMissingChannel() throws Throwable {
-        var results = authenticateUmaRequestWithProtectionScope();
+        val results = authenticateUmaRequestWithProtectionScope();
         var body = createUmaResourceRegistrationRequest().toJson();
         var result = performUmaRequest(HttpMethod.POST, OAuth20Constants.UMA_RESOURCE_SET_REGISTRATION_URL,
             body, results.getLeft(), results.getMiddle());
-        var model = getMappedResponseBody(result);
+        val model = getMappedResponseBody(result);
         assertNotNull(model);
         val resourceId = ((Number) model.get("resourceId")).longValue();
 
         body = createUmaPolicyRegistrationRequest(getCurrentProfile(results.getLeft(), results.getMiddle())).toJson();
-        results = authenticateUmaRequestWithProtectionScope();
         result = performUmaRequest(HttpMethod.PUT,
             resourceId + "/" + OAuth20Constants.UMA_POLICY_URL + "/2",
             body, results.getLeft(), results.getMiddle());

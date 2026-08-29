@@ -239,6 +239,7 @@ public class OAuth20DefaultTokenGenerator implements OAuth20TokenGenerator {
                                                            final OAuth20AccessToken accessToken,
                                                            final AccessTokenRequestContext tokenRequestContext) throws Throwable {
         val scopes = new HashSet<>(tokenRequestContext.getScopes());
+        scopes.retainAll(accessToken.getScopes());
         scopes.retainAll(tokenRequestContext.getRegisteredService().getScopes());
 
         val credential = new BasicIdentifiableCredential(accessToken.getAuthentication().getPrincipal().getId());
@@ -264,7 +265,7 @@ public class OAuth20DefaultTokenGenerator implements OAuth20TokenGenerator {
             ticketGrantingTicket,
             scopes,
             accessToken,
-            accessToken.getClientId(),
+            tokenRequestContext.getRegisteredService().getClientId(),
             accessToken.getClaims(),
             accessToken.getResponseType(),
             accessToken.getGrantType());
