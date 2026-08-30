@@ -140,6 +140,7 @@ class SamlObjectSignatureValidatorTests extends BaseSamlIdPConfigurationTests {
         handler.invoke(messageContext);
 
         assertDoesNotThrow(() -> samlObjectSignatureValidator.verifySamlProfileRequest(authnRequest, adaptor, request, samlContext));
+        assertTrue(samlContext.ensureSubcontext(SAMLPeerEntityContext.class).isAuthenticated());
     }
 
     @Test

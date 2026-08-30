@@ -12,13 +12,17 @@ import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import net.shibboleth.shared.resolver.CriteriaSet;
 import org.opensaml.core.criterion.EntityIdCriterion;
+import org.opensaml.core.xml.config.XMLObjectProviderRegistrySupport;
 import org.opensaml.messaging.context.MessageContext;
+import org.opensaml.saml.common.binding.security.impl.BaseSAMLSimpleSignatureSecurityHandler;
+import org.opensaml.saml.common.messaging.context.SAMLBindingContext;
 import org.opensaml.saml.common.messaging.context.SAMLPeerEntityContext;
 import org.opensaml.saml.common.messaging.context.SAMLProtocolContext;
 import org.opensaml.saml.common.xml.SAMLConstants;
 import org.opensaml.saml.criterion.EntityRoleCriterion;
 import org.opensaml.saml.metadata.resolver.MetadataResolver;
 import org.opensaml.saml.metadata.resolver.RoleDescriptorResolver;
+import org.opensaml.saml.saml2.binding.security.impl.SAML2HTTPPostSimpleSignSecurityHandler;
 import org.opensaml.saml.saml2.binding.security.impl.SAML2HTTPRedirectDeflateSignatureSecurityHandler;
 import org.opensaml.saml.saml2.core.RequestAbstractType;
 import org.opensaml.saml.saml2.metadata.SPSSODescriptor;
@@ -93,7 +97,9 @@ public class SamlObjectSignatureValidator {
 
         val signature = profileRequest.getSignature();
         if (signature != null) {
-            return validateSignatureOnProfileRequest(profileRequest, signature, roleDescriptorResolver);
+            val signatureValid = validateSignatureOnProfileRequest(profileRequest, signature, roleDescriptorResolver);
+            context.ensureSubcontext(SAMLPeerEntityContext.class).setAuthenticated(signatureValid);
+            return signatureValid;
         }
         return validateSignatureOnAuthenticationRequest(profileRequest, request, context, roleDescriptorResolver);
     }
@@ -129,6 +135,7 @@ public class SamlObjectSignatureValidator {
                                                           final RoleDescriptorResolver roleDescriptorResolver) throws Throwable {
         val peer = context.ensureSubcontext(SAMLPeerEntityContext.class);
         peer.setEntityId(SamlIdPUtils.getIssuerFromSamlObject(profileRequest));
+        peer.setAuthenticated(false);
 
         val peerEntityId = Objects.requireNonNull(peer.getEntityId());
         LOGGER.debug("Validating request signature for [{}]...", peerEntityId);
@@ -164,10 +171,10 @@ public class SamlObjectSignatureValidator {
         val it = credentials.iterator();
         while (!foundValidCredential && it.hasNext()) {
             foundValidCredential = FunctionUtils.doAndHandle(() -> {
-                val handler = new SAML2HTTPRedirectDeflateSignatureSecurityHandler();
                 val credential = it.next();
                 val resolver = new StaticCredentialResolver(credential);
                 val keyResolver = new StaticKeyInfoCredentialResolver(credential);
+                val handler = buildSignatureSecurityHandler(context, keyResolver);
                 val trustEngine = new ExplicitKeySignatureTrustEngine(resolver, keyResolver);
                 validationParams.setSignatureTrustEngine(trustEngine);
                 secCtx.setSignatureValidationParameters(validationParams);
@@ -177,9 +184,12 @@ public class SamlObjectSignatureValidator {
                 handler.initialize();
                 LOGGER.debug("Invoking [{}] to handle signature validation for [{}]", handler.getClass().getSimpleName(), peerEntityId);
                 handler.invoke(context);
-                LOGGER.debug("Successfully validated request signature for [{}].", profileRequest.getIssuer());
+                val signatureValid = peer.isAuthenticated();
+                if (signatureValid) {
+                    LOGGER.debug("Successfully validated request signature for [{}].", profileRequest.getIssuer());
+                }
                 handler.destroy();
-                return true;
+                return signatureValid;
             }, e -> {
                 LOGGER.debug(e.getMessage(), e);
                 return false;
@@ -191,6 +201,19 @@ public class SamlObjectSignatureValidator {
             return new SamlException("No valid signing credentials for authentication request validation could be resolved");
         });
         return true;
+    }
+
+    private static BaseSAMLSimpleSignatureSecurityHandler buildSignatureSecurityHandler(
+        final MessageContext context, final StaticKeyInfoCredentialResolver keyInfoCredentialResolver) {
+        val bindingContext = context.getSubcontext(SAMLBindingContext.class);
+        if (bindingContext != null
+            && SAMLConstants.SAML2_POST_SIMPLE_SIGN_BINDING_URI.equals(bindingContext.getBindingUri())) {
+            val handler = new SAML2HTTPPostSimpleSignSecurityHandler();
+            handler.setParser(Objects.requireNonNull(XMLObjectProviderRegistrySupport.getParserPool()));
+            handler.setKeyInfoResolver(keyInfoCredentialResolver);
+            return handler;
+        }
+        return new SAML2HTTPRedirectDeflateSignatureSecurityHandler();
     }
 
     private boolean validateSignatureOnProfileRequest(final RequestAbstractType profileRequest,

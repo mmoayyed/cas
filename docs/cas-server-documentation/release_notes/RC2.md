@@ -87,13 +87,6 @@ CAS codebase is now annotated with [JSpecify](https://jspecify.dev/) annotations
 return types and fields. We will gradually extend the coverage of such annotations across the entire codebase in future releases
 and will integrate the Gradle build tool with tools such as [NullAway](https://github.com/uber/NullAway) to prevent nullness contract violations
 during compile time.
-    
-### OpenID Connect with DPOP
-
-Single-use checking for DPOP proofs is now enforced using the CAS ticket registry. Furthermore, DPOP requests
-are no longer treated as a form of client authentication and now sit on top of existing client authentication
-approaches such as `clientId/clientSecret` for confidenial clients or PKCE.
-
 
 ### OpenID Connect Verifiable Credentials
                    
@@ -117,6 +110,12 @@ security have been strengthened across several flows.
 - Token exchanges are now authorized against the authenticated requesting client, and exchanged tokens cannot gain scopes beyond those granted to the subject token and allowed for the requesting client.
 - Client secrets are now compared and enforced using a case sensitive strategy.
 - Token introspection reports tokens from other clients as inactive, while revocation only affects the requesting client's tokens and no longer reveals whether other tokens exist.
+- Single-use checking for DPOP proofs is now enforced using the CAS ticket registry. Furthermore, DPOP requests are no longer treated as a form of client authentication and now sit on top of existing client authentication approaches such as `clientId/clientSecret` for confidenial clients or PKCE.
+
+### SAML2 Identity Provider Security
+
+Presented SAML2 authentication request signatures are now validated independently of the metadata signing requirement. Only a
+successfully validated signature may authorize an assertion consumer service URL that is not registered in service provider metadata.
 
 ### User-Managed Access
 
