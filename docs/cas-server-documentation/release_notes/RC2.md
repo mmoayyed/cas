@@ -98,7 +98,7 @@ Several improvements are now available for [OpenID Connect with Verifiable Crede
 - Transaction-code requirements are enforced during token exchange.
 - Credential batch issuance is limited and capped at a predefined limit.
 
-### OAuth and OpenID Connect Security
+### OAuth and OpenID Connect 
 
 [OAuth](../protocol/OAuth-Protocol.html) and [OpenID Connect](../authentication/OIDC-Authentication.html)
 security have been strengthened across several flows.
@@ -111,17 +111,15 @@ security have been strengthened across several flows.
 - Client secrets are now compared and enforced using a case sensitive strategy.
 - Token introspection reports tokens from other clients as inactive, while revocation only affects the requesting client's tokens and no longer reveals whether other tokens exist.
 - Single-use checking for DPOP proofs is now enforced using the CAS ticket registry. Furthermore, DPOP requests are no longer treated as a form of client authentication and now sit on top of existing client authentication approaches such as `clientId/clientSecret` for confidenial clients or PKCE.
+- [User-Managed Access](../protocol/OAuth-UMA-Protocol.html) resources and policies are now bound to both the authenticated client and resource owner. New resource registrations also receive non-sequential, server-assigned identifiers.
 
-### SAML2 Identity Provider Security
+### SAML2 Identity Provider 
 
-Presented SAML2 authentication request signatures are now validated independently of the metadata signing requirement. Only a
-successfully validated signature may authorize an assertion consumer service URL that is not registered in service provider metadata.
-
-### User-Managed Access
-
-[User-Managed Access](../protocol/OAuth-UMA-Protocol.html) resources and policies are now bound to both
-the authenticated client and resource owner. New resource registrations also receive non-sequential,
-server-assigned identifiers.
+- Presented SAML2 authentication request signatures are now validated independently of the metadata signing requirement. Only a successfully validated signature may authorize an assertion consumer service URL that is not registered in service provider metadata.
+- IdP-initiated SSO now also requires a caller-provided `shire` to match a POST assertion consumer service registered in metadata.
+- Inbound encrypted SAML identifiers now use CAS's matching IdP encryption certificate and private key for decryption.
+- Signature algorithm inclusion and exclusion policies are now enforced consistently across all inbound SAML bindings.
+- The `Address` field of the SAML2 `SubjectConfirmationData` is now populated with the requester's IP address when possible.
 
 ## Other Stuff
     

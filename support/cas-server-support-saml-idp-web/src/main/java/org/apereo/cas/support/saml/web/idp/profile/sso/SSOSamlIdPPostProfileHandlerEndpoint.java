@@ -152,7 +152,7 @@ public class SSOSamlIdPPostProfileHandlerEndpoint extends BaseCasRestActuatorEnd
 
 
     /**
-     * Produce logout request post.
+     * Produce logout request.
      *
      * @param entityId the entity id
      * @param response the response

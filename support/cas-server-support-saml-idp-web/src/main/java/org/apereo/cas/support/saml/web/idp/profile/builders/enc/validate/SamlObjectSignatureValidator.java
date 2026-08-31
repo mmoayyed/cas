@@ -11,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import net.shibboleth.shared.resolver.CriteriaSet;
+import net.shibboleth.shared.resolver.ResolverException;
 import org.opensaml.core.criterion.EntityIdCriterion;
 import org.opensaml.core.xml.config.XMLObjectProviderRegistrySupport;
 import org.opensaml.messaging.context.MessageContext;
@@ -37,10 +38,12 @@ import org.opensaml.xmlsec.SignatureValidationParameters;
 import org.opensaml.xmlsec.config.impl.DefaultSecurityConfigurationBootstrap;
 import org.opensaml.xmlsec.context.SecurityParametersContext;
 import org.opensaml.xmlsec.criterion.SignatureValidationConfigurationCriterion;
+import org.opensaml.xmlsec.impl.BasicSignatureValidationParametersResolver;
 import org.opensaml.xmlsec.keyinfo.impl.StaticKeyInfoCredentialResolver;
 import org.opensaml.xmlsec.signature.Signature;
 import org.opensaml.xmlsec.signature.support.SignatureValidator;
 import org.opensaml.xmlsec.signature.support.impl.ExplicitKeySignatureTrustEngine;
+import org.opensaml.xmlsec.signature.support.impl.SignatureAlgorithmValidator;
 import jakarta.servlet.http.HttpServletRequest;
 
 /**
@@ -94,14 +97,17 @@ public class SamlObjectSignatureValidator {
 
         val roleDescriptorResolver = getRoleDescriptorResolver(resolver, context, profileRequest);
         LOGGER.debug("Validating signature for [{}]", profileRequest.getClass().getName());
+        val validationParameters = resolveSignatureValidationParameters();
 
         val signature = profileRequest.getSignature();
         if (signature != null) {
-            val signatureValid = validateSignatureOnProfileRequest(profileRequest, signature, roleDescriptorResolver);
+            val signatureValid = validateSignatureOnProfileRequest(
+                profileRequest, signature, roleDescriptorResolver, validationParameters);
             context.ensureSubcontext(SAMLPeerEntityContext.class).setAuthenticated(signatureValid);
             return signatureValid;
         }
-        return validateSignatureOnAuthenticationRequest(profileRequest, request, context, roleDescriptorResolver);
+        return validateSignatureOnAuthenticationRequest(
+            profileRequest, request, context, roleDescriptorResolver, validationParameters);
     }
 
     /**
@@ -132,7 +138,8 @@ public class SamlObjectSignatureValidator {
     private boolean validateSignatureOnAuthenticationRequest(final RequestAbstractType profileRequest,
                                                           final HttpServletRequest request,
                                                           final MessageContext context,
-                                                          final RoleDescriptorResolver roleDescriptorResolver) throws Throwable {
+                                                          final RoleDescriptorResolver roleDescriptorResolver,
+                                                          final SignatureValidationParameters validationParameters) throws Throwable {
         val peer = context.ensureSubcontext(SAMLPeerEntityContext.class);
         peer.setEntityId(SamlIdPUtils.getIssuerFromSamlObject(profileRequest));
         peer.setAuthenticated(false);
@@ -149,17 +156,6 @@ public class SamlObjectSignatureValidator {
 
         LOGGER.debug("Building security parameters context for signature validation of [{}]", peerEntityId);
         val secCtx = context.ensureSubcontext(SecurityParametersContext.class);
-        val validationParams = new SignatureValidationParameters();
-
-        if (overrideBlockedSignatureAlgorithms != null && !overrideBlockedSignatureAlgorithms.isEmpty()) {
-            validationParams.setExcludedAlgorithms(this.overrideBlockedSignatureAlgorithms);
-            LOGGER.debug("Validation override blocked algorithms are [{}]", this.overrideAllowedAlgorithms);
-        }
-
-        if (overrideAllowedAlgorithms != null && !overrideAllowedAlgorithms.isEmpty()) {
-            validationParams.setIncludedAlgorithms(this.overrideAllowedAlgorithms);
-            LOGGER.debug("Validation override allowed algorithms are [{}]", this.overrideAllowedAlgorithms);
-        }
 
         LOGGER.debug("Resolving signing credentials for [{}]", peerEntityId);
         val credentials = getSigningCredential(roleDescriptorResolver, profileRequest);
@@ -176,8 +172,8 @@ public class SamlObjectSignatureValidator {
                 val keyResolver = new StaticKeyInfoCredentialResolver(credential);
                 val handler = buildSignatureSecurityHandler(context, keyResolver);
                 val trustEngine = new ExplicitKeySignatureTrustEngine(resolver, keyResolver);
-                validationParams.setSignatureTrustEngine(trustEngine);
-                secCtx.setSignatureValidationParameters(validationParams);
+                validationParameters.setSignatureTrustEngine(trustEngine);
+                secCtx.setSignatureValidationParameters(validationParameters);
 
                 handler.setHttpServletRequestSupplier(() -> request);
                 LOGGER.debug("Initializing [{}] to execute signature validation for [{}]", handler.getClass().getSimpleName(), peerEntityId);
@@ -218,12 +214,19 @@ public class SamlObjectSignatureValidator {
 
     private boolean validateSignatureOnProfileRequest(final RequestAbstractType profileRequest,
                                                    final Signature signature,
-                                                   final RoleDescriptorResolver roleDescriptorResolver) throws Throwable {
+                                                   final RoleDescriptorResolver roleDescriptorResolver,
+                                                   final SignatureValidationParameters validationParameters) throws Throwable {
         val validator = new SAMLSignatureProfileValidator();
         LOGGER.debug("Validating profile signature for [{}] via [{}]...", profileRequest.getIssuer(),
             validator.getClass().getSimpleName());
         validator.validate(signature);
         LOGGER.debug("Successfully validated profile signature for [{}].", profileRequest.getIssuer());
+
+        val algorithmValidator = new SignatureAlgorithmValidator(validationParameters);
+        LOGGER.debug("Validating signature algorithms for [{}] via [{}]...", profileRequest.getIssuer(),
+            algorithmValidator.getClass().getSimpleName());
+        algorithmValidator.validate(signature);
+        LOGGER.debug("Successfully validated signature algorithms for [{}].", profileRequest.getIssuer());
 
         val credentials = getSigningCredential(roleDescriptorResolver, profileRequest);
         if (credentials.isEmpty()) {
@@ -290,10 +293,8 @@ public class SamlObjectSignatureValidator {
      */
     protected SignatureValidationConfiguration getSignatureValidationConfiguration() {
         val config = DefaultSecurityConfigurationBootstrap.buildDefaultSignatureValidationConfiguration();
-        val samlIdp = casProperties.getAuthn().getSamlIdp();
 
-        if (this.overrideBlockedSignatureAlgorithms != null
-            && !samlIdp.getAlgs().getOverrideBlockedSignatureSigningAlgorithms().isEmpty()) {
+        if (this.overrideBlockedSignatureAlgorithms != null && !this.overrideBlockedSignatureAlgorithms.isEmpty()) {
             config.setExcludedAlgorithms(this.overrideBlockedSignatureAlgorithms);
             config.setExcludeMerge(true);
         }
@@ -307,6 +308,19 @@ public class SamlObjectSignatureValidator {
         LOGGER.debug("Signature validation allowed algorithms: [{}]", config.getIncludedAlgorithms());
 
         return config;
+    }
+
+    /**
+     * Resolve signature validation parameters.
+     *
+     * @return the signature validation parameters
+     * @throws ResolverException the resolver exception
+     */
+    protected SignatureValidationParameters resolveSignatureValidationParameters() throws ResolverException {
+        val criteria = new CriteriaSet(
+            new SignatureValidationConfigurationCriterion(getSignatureValidationConfiguration()));
+        val resolver = new BasicSignatureValidationParametersResolver();
+        return Objects.requireNonNull(resolver.resolveSingle(criteria));
     }
 
 
