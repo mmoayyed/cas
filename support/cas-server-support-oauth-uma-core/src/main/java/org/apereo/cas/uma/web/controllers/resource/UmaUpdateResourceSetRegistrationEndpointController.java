@@ -74,7 +74,7 @@ public class UmaUpdateResourceSetRegistrationEndpointController extends BaseUmaE
             val saved = getUmaConfigurationContext().getUmaResourceSetRepository().update(resourceSet, newResource);
             val location = getResourceSetUriLocation(saved);
             val model = CollectionUtils.wrap("entity", saved,
-                "resourceId", saved.getId(),
+                "resourceId", String.valueOf(saved.getId()),
                 "location", location);
             return new ResponseEntity(model, HttpStatus.OK);
         } catch (final Exception e) {

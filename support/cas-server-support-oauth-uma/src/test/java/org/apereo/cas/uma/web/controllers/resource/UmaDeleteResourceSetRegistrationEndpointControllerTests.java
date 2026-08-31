@@ -27,7 +27,7 @@ class UmaDeleteResourceSetRegistrationEndpointControllerTests extends BaseUmaEnd
         var result = performUmaRequest(HttpMethod.POST, OAuth20Constants.UMA_RESOURCE_SET_REGISTRATION_URL,
             body, results.getLeft(), results.getMiddle());
         var model = getMappedResponseBody(result);
-        val resourceId = ((Number) model.get("resourceId")).longValue();
+        val resourceId = parseIdentifier(model.get("resourceId"));
 
         result = performUmaRequest(HttpMethod.DELETE,
             OAuth20Constants.UMA_RESOURCE_SET_REGISTRATION_URL + '/' + resourceId,
@@ -53,7 +53,7 @@ class UmaDeleteResourceSetRegistrationEndpointControllerTests extends BaseUmaEnd
         var result = performUmaRequest(HttpMethod.POST, OAuth20Constants.UMA_RESOURCE_SET_REGISTRATION_URL,
             body, resourceOwner.getLeft(), resourceOwner.getMiddle());
         val model = getMappedResponseBody(result);
-        val resourceId = ((Number) model.get("resourceId")).longValue();
+        val resourceId = parseIdentifier(model.get("resourceId"));
 
         val otherClient = authenticateUmaRequestWithProtectionScope();
         val ownerProfile = getCurrentProfile(resourceOwner.getLeft(), resourceOwner.getMiddle());

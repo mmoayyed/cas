@@ -14,6 +14,8 @@ import org.hibernate.annotations.Type;
 import org.pac4j.core.profile.UserProfile;
 import org.springframework.data.annotation.Id;
 import org.springframework.http.HttpStatus;
+import tools.jackson.databind.annotation.JsonSerialize;
+import tools.jackson.databind.ser.std.ToStringSerializer;
 import jakarta.persistence.Column;
 import jakarta.persistence.MappedSuperclass;
 import jakarta.persistence.Transient;
@@ -35,6 +37,7 @@ public class ResourceSet implements Serializable {
 
     @Id
     @Transient
+    @JsonSerialize(using = ToStringSerializer.class)
     private long id;
 
     @Column
