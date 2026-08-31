@@ -31,6 +31,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MvcResult;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -43,6 +44,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
  */
 @Tag("SAML2Web")
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
+@TestPropertySource(properties = "cas.authn.saml-idp.metadata.file-system.location=file:src/test/resources/metadata")
 class SamlIdPSaml1ArtifactResolutionProfileHandlerControllerTests extends BaseSamlIdPConfigurationTests {
     @Autowired
     @Qualifier("samlArtifactTicketFactory")
@@ -86,6 +88,7 @@ class SamlIdPSaml1ArtifactResolutionProfileHandlerControllerTests extends BaseSa
         ticketRegistry.addTicket(ticket);
         val result = performSoapPost(xml);
         assertEquals(HttpStatus.SC_OK, result.getResponse().getStatus());
+        assertNull(result.getRequest().getAttribute(FaultString.class.getSimpleName()));
         assertNull(ticketRegistry.getTicket(ticket.getId()));
 
         val replay = performSoapPost(xml);
