@@ -120,6 +120,8 @@ security have been strengthened across several flows.
 - Inbound encrypted SAML identifiers now use CAS's matching IdP encryption certificate and private key for decryption.
 - Signature algorithm inclusion and exclusion policies are now enforced consistently across all inbound SAML bindings.
 - The `Address` field of the SAML2 `SubjectConfirmationData` is now populated with the requester's IP address when possible.
+- SAML metadata cache entries are now isolated by registered service and resolved without scanning unrelated cached resolvers.
+- SAML authentication request session entries are updated per session and consumed after callback correlation, avoiding controller-wide serialization and retained replicated-session state.
 
 ## Other Stuff
     

@@ -27,7 +27,6 @@ import org.apereo.cas.util.CollectionUtils;
 import org.apereo.cas.util.DateTimeUtils;
 import org.apereo.cas.util.DigestUtils;
 import org.apereo.cas.util.EncodingUtils;
-import org.apereo.cas.util.concurrent.CasReentrantLock;
 import org.apereo.cas.util.function.FunctionUtils;
 import org.apereo.cas.validation.TicketValidationResult;
 import org.apereo.cas.web.AbstractController;
@@ -86,8 +85,6 @@ public abstract class AbstractSamlIdPProfileHandlerController extends AbstractCo
      * SAML profile configuration context.
      */
     protected final SamlProfileHandlerConfigurationContext configurationContext;
-
-    private final CasReentrantLock lock = new CasReentrantLock();
 
     protected static void logCasValidationAssertion(final TicketValidationResult assertion) {
         LOGGER.debug("CAS Assertion Principal: [{}]", assertion.getPrincipal());
@@ -199,6 +196,7 @@ public abstract class AbstractSamlIdPProfileHandlerController extends AbstractCo
         final HttpServletRequest request,
         final HttpServletResponse response) throws Exception {
         val authnRequest = (AuthnRequest) pair.getLeft();
+        storeAuthenticationRequest(request, response, pair);
         val serviceUrl = constructServiceUrl(request, response, pair);
         LOGGER.debug("Created service url [{}]", DigestUtils.abbreviate(serviceUrl));
 
@@ -252,7 +250,6 @@ public abstract class AbstractSamlIdPProfileHandlerController extends AbstractCo
         val builder = new URIBuilder(configurationContext.getCallbackService().getId());
         builder.addParameter(SamlIdPConstants.AUTHN_REQUEST_ID, authnRequest.getID());
         builder.addParameter(SamlProtocolConstants.PARAMETER_ENTITY_ID, SamlIdPUtils.getIssuerFromSamlObject(authnRequest));
-        storeAuthenticationRequest(request, response, pair);
         val url = builder.build().toURL().toExternalForm();
         LOGGER.trace("Built service callback url [{}]", url);
         return url;
@@ -510,32 +507,28 @@ public abstract class AbstractSamlIdPProfileHandlerController extends AbstractCo
 
     protected final Pair<? extends RequestAbstractType, MessageContext> retrieveAuthenticationRequest(
         final HttpServletResponse response, final HttpServletRequest request) {
-        return lock.tryLock(() -> {
-            LOGGER.info("Received SAML2 callback profile request [{}]", request.getRequestURI());
-            val webContext = new JEEContext(request, response);
-            return SamlIdPSessionManager.of(configurationContext.getOpenSamlConfigBean(), configurationContext.getSessionStore())
-                .fetch(webContext, AuthnRequest.class)
-                .orElseThrow(() -> {
-                    val samlAuthnRequestId = webContext.getRequestParameter(SamlIdPConstants.AUTHN_REQUEST_ID).orElse("N/A");
-                    val message = """
-                        SAML2 authentication request cannot be determined from the CAS session store for request id %s.
-                        This typically means that the original SAML2 authentication request that was submitted to CAS via a SAML2 service provider
-                        cannot be retrieved and restored after an authentication attempt. If you are running a multi-node CAS deployment, you may
-                        need to opt for a different session storage mechanism than what is configured now: %s
-                        """;
-                    return new MissingSamlAuthnRequestException(message.stripIndent().stripLeading().trim()
-                        .formatted(samlAuthnRequestId, configurationContext.getSessionStore().getClass().getName()));
-                });
-        });
+        LOGGER.info("Received SAML2 callback profile request [{}]", request.getRequestURI());
+        val webContext = new JEEContext(request, response);
+        return SamlIdPSessionManager.of(configurationContext.getOpenSamlConfigBean(), configurationContext.getSessionStore())
+            .fetchAndRemove(webContext, AuthnRequest.class)
+            .orElseThrow(() -> {
+                val samlAuthnRequestId = webContext.getRequestParameter(SamlIdPConstants.AUTHN_REQUEST_ID).orElse("N/A");
+                val message = """
+                    SAML2 authentication request cannot be determined from the CAS session store for request id %s.
+                    This typically means that the original SAML2 authentication request that was submitted to CAS via a SAML2 service provider
+                    cannot be retrieved and restored after an authentication attempt. If you are running a multi-node CAS deployment, you may
+                    need to opt for a different session storage mechanism than what is configured now: %s
+                    """;
+                return new MissingSamlAuthnRequestException(message.stripIndent().stripLeading().trim()
+                    .formatted(samlAuthnRequestId, configurationContext.getSessionStore().getClass().getName()));
+            });
     }
 
     protected void storeAuthenticationRequest(final HttpServletRequest request, final HttpServletResponse response,
                                               final Pair<? extends SignableSAMLObject, MessageContext> context) {
-        lock.tryLock(_ -> {
-            val webContext = new JEEContext(request, response);
-            SamlIdPSessionManager.of(configurationContext.getOpenSamlConfigBean(),
-                configurationContext.getSessionStore()).store(webContext, context);
-        });
+        val webContext = new JEEContext(request, response);
+        FunctionUtils.doUnchecked(_ -> SamlIdPSessionManager.of(configurationContext.getOpenSamlConfigBean(),
+            configurationContext.getSessionStore()).store(webContext, context));
     }
 
     protected String determineProfileBinding(final Pair<? extends RequestAbstractType, MessageContext> authenticationContext,
