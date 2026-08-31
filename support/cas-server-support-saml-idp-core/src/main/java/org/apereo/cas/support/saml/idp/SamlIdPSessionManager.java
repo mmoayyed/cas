@@ -87,18 +87,6 @@ public class SamlIdPSessionManager {
     }
 
     /**
-     * Retrieve authn request authn request.
-     *
-     * @param context the context
-     * @param clazz   the clazz
-     * @return the request
-     */
-    public Optional<Pair<? extends RequestAbstractType, MessageContext>> fetch(
-        final WebContext context, final Class<? extends RequestAbstractType> clazz) {
-        return fetch(context, clazz, false);
-    }
-
-    /**
      * Retrieve and remove an authentication request from the session.
      *
      * @param context the context
@@ -108,6 +96,18 @@ public class SamlIdPSessionManager {
     public Optional<Pair<? extends RequestAbstractType, MessageContext>> fetchAndRemove(
         final WebContext context, final Class<? extends RequestAbstractType> clazz) {
         return fetch(context, clazz, true);
+    }
+
+    /**
+     * Retrieve authn request authn request.
+     *
+     * @param context the context
+     * @param clazz   the clazz
+     * @return the request
+     */
+    public Optional<Pair<? extends RequestAbstractType, MessageContext>> fetch(
+        final WebContext context, final Class<? extends RequestAbstractType> clazz) {
+        return fetch(context, clazz, false);
     }
 
     private Optional<Pair<? extends RequestAbstractType, MessageContext>> fetch(

@@ -6,6 +6,7 @@ import org.apereo.cas.audit.AuditableContext;
 import org.apereo.cas.authentication.Authentication;
 import org.apereo.cas.authentication.PrincipalException;
 import org.apereo.cas.authentication.principal.Service;
+import org.apereo.cas.configuration.support.Beans;
 import org.apereo.cas.services.RegisteredService;
 import org.apereo.cas.services.RegisteredServiceAttributeReleasePolicyContext;
 import org.apereo.cas.services.RegisteredServiceUsernameProviderContext;
@@ -35,6 +36,8 @@ import org.apereo.cas.web.flow.CasWebflowConstants;
 import org.apereo.cas.web.flow.SingleSignOnParticipationRequest;
 import org.apereo.cas.web.support.CookieUtils;
 import org.apereo.cas.web.support.WebUtils;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -58,6 +61,7 @@ import org.opensaml.saml.saml2.binding.decoding.impl.HTTPSOAP11Decoder;
 import org.opensaml.saml.saml2.core.AuthnRequest;
 import org.opensaml.saml.saml2.core.Issuer;
 import org.opensaml.saml.saml2.core.RequestAbstractType;
+import org.opensaml.saml.saml2.core.StatusResponseType;
 import org.pac4j.jee.context.JEEContext;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -80,11 +84,15 @@ import jakarta.servlet.http.HttpServletResponse;
 @Getter
 @Tag(name = "SAML2")
 public abstract class AbstractSamlIdPProfileHandlerController extends AbstractController {
-
     /**
      * SAML profile configuration context.
      */
     protected final SamlProfileHandlerConfigurationContext configurationContext;
+
+    private final Cache<String, Boolean> messageReplayCache = Caffeine.newBuilder()
+        .expireAfterWrite(Duration.ofMinutes(5))
+        .maximumSize(1000)
+        .build();
 
     protected static void logCasValidationAssertion(final TicketValidationResult assertion) {
         LOGGER.debug("CAS Assertion Principal: [{}]", assertion.getPrincipal());
@@ -440,6 +448,77 @@ public abstract class AbstractSamlIdPProfileHandlerController extends AbstractCo
         } else if (!registeredService.isSkipValidatingAuthnRequest()) {
             LOGGER.trace("The authentication context is signed; Proceeding to validate signatures...");
             configurationContext.getSamlObjectSignatureValidator().verifySamlProfileRequest(authnRequest, adaptor, request, ctx);
+        }
+    }
+
+    protected void verifySamlProfileRequest(final MessageContext messageContext,
+                                            final HttpServletRequest request,
+                                            final RequestAbstractType profileRequest,
+                                            final SamlRegisteredServiceMetadataAdaptor adaptor,
+                                            final SamlRegisteredService registeredService,
+                                            final boolean signatureRequired) throws Throwable {
+        verifySamlProfileMessage(messageContext, request, profileRequest,
+            profileRequest.getID(), profileRequest.getIssueInstant(), profileRequest.getDestination(),
+            adaptor, registeredService, signatureRequired);
+    }
+
+    protected void verifySamlProfileResponse(final MessageContext messageContext,
+                                             final HttpServletRequest request,
+                                             final StatusResponseType profileResponse,
+                                             final SamlRegisteredServiceMetadataAdaptor adaptor,
+                                             final SamlRegisteredService registeredService) throws Throwable {
+        verifySamlProfileMessage(messageContext, request, profileResponse,
+            profileResponse.getID(), profileResponse.getIssueInstant(), profileResponse.getDestination(),
+            adaptor, registeredService, true);
+    }
+
+    private void verifySamlProfileMessage(final MessageContext messageContext,
+                                          final HttpServletRequest request,
+                                          final SignableSAMLObject profileMessage,
+                                          final String messageId,
+                                          final Instant issueInstant,
+                                          final String destination,
+                                          final SamlRegisteredServiceMetadataAdaptor adaptor,
+                                          final SamlRegisteredService registeredService,
+                                          final boolean signatureRequired) throws Throwable {
+        val issuer = SamlIdPUtils.getIssuerFromSamlObject(profileMessage);
+        if (!StringUtils.equals(issuer, adaptor.getEntityId())) {
+            throw new SAMLException("SAML profile message issuer does not match the resolved metadata entity");
+        }
+        if (StringUtils.isBlank(messageId)) {
+            throw new SAMLException("SAML profile message must contain an ID");
+        }
+        if (issueInstant == null) {
+            throw new SAMLException("SAML profile message must contain an IssueInstant");
+        }
+        if (StringUtils.isBlank(destination)
+            || !StringUtils.equals(destination, request.getRequestURL().toString())) {
+            throw new SAMLException("SAML profile message Destination does not match the receiving endpoint");
+        }
+
+        val saml = configurationContext.getCasProperties().getSamlCore();
+        val skewAllowance = StringUtils.isNotBlank(registeredService.getSkewAllowance())
+            ? Beans.newDuration(registeredService.getSkewAllowance())
+            : Beans.newDuration(saml.getSkewAllowance());
+        val messageLifetime = Beans.newDuration(saml.getIssueLength());
+        val now = Instant.now(Clock.systemUTC());
+        if (issueInstant.isAfter(now.plus(skewAllowance))
+            || issueInstant.plus(messageLifetime).plus(skewAllowance).isBefore(now)) {
+            throw new SAMLException("SAML profile message IssueInstant is outside the accepted time window");
+        }
+
+        if (!SAMLBindingSupport.isMessageSigned(messageContext)) {
+            if (signatureRequired) {
+                throw new SAMLException("SAML profile message must be signed");
+            }
+        } else {
+            configurationContext.getSamlObjectSignatureValidator()
+                .verifySamlProfileRequest(profileMessage, adaptor, request, messageContext);
+        }
+
+        val replayKey = "%s:%s:%s".formatted(profileMessage.getElementQName(), issuer, messageId);
+        if (messageReplayCache.asMap().putIfAbsent(replayKey, Boolean.TRUE) != null) {
+            throw new SAMLException("SAML profile message has already been processed");
         }
     }
 

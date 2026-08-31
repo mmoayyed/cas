@@ -15,6 +15,7 @@ import net.shibboleth.shared.resolver.ResolverException;
 import org.opensaml.core.criterion.EntityIdCriterion;
 import org.opensaml.core.xml.config.XMLObjectProviderRegistrySupport;
 import org.opensaml.messaging.context.MessageContext;
+import org.opensaml.saml.common.SignableSAMLObject;
 import org.opensaml.saml.common.binding.security.impl.BaseSAMLSimpleSignatureSecurityHandler;
 import org.opensaml.saml.common.messaging.context.SAMLBindingContext;
 import org.opensaml.saml.common.messaging.context.SAMLPeerEntityContext;
@@ -25,7 +26,6 @@ import org.opensaml.saml.metadata.resolver.MetadataResolver;
 import org.opensaml.saml.metadata.resolver.RoleDescriptorResolver;
 import org.opensaml.saml.saml2.binding.security.impl.SAML2HTTPPostSimpleSignSecurityHandler;
 import org.opensaml.saml.saml2.binding.security.impl.SAML2HTTPRedirectDeflateSignatureSecurityHandler;
-import org.opensaml.saml.saml2.core.RequestAbstractType;
 import org.opensaml.saml.saml2.metadata.SPSSODescriptor;
 import org.opensaml.saml.security.impl.MetadataCredentialResolver;
 import org.opensaml.saml.security.impl.SAMLSignatureProfileValidator;
@@ -90,7 +90,7 @@ public class SamlObjectSignatureValidator {
      * @return true or false
      * @throws Throwable the throwable
      */
-    public boolean verifySamlProfileRequest(final RequestAbstractType profileRequest,
+    public boolean verifySamlProfileRequest(final SignableSAMLObject profileRequest,
                                             final MetadataResolver resolver,
                                             final HttpServletRequest request,
                                             final MessageContext context) throws Throwable {
@@ -120,7 +120,7 @@ public class SamlObjectSignatureValidator {
      * @return true or false
      * @throws Throwable the throwable
      */
-    public boolean verifySamlProfileRequest(final RequestAbstractType profileRequest,
+    public boolean verifySamlProfileRequest(final SignableSAMLObject profileRequest,
                                          final SamlRegisteredServiceMetadataAdaptor adaptor,
                                          final HttpServletRequest request,
                                          final MessageContext context) throws Throwable {
@@ -130,12 +130,12 @@ public class SamlObjectSignatureValidator {
 
     protected RoleDescriptorResolver getRoleDescriptorResolver(final MetadataResolver resolver,
                                                                final MessageContext context,
-                                                               final RequestAbstractType profileRequest) throws Exception {
+                                                               final SignableSAMLObject profileRequest) throws Exception {
         val idp = casProperties.getAuthn().getSamlIdp();
         return SamlIdPUtils.getRoleDescriptorResolver(resolver, idp.getMetadata().getCore().isRequireValidMetadata());
     }
 
-    private boolean validateSignatureOnAuthenticationRequest(final RequestAbstractType profileRequest,
+    private boolean validateSignatureOnAuthenticationRequest(final SignableSAMLObject profileRequest,
                                                           final HttpServletRequest request,
                                                           final MessageContext context,
                                                           final RoleDescriptorResolver roleDescriptorResolver,
@@ -182,7 +182,8 @@ public class SamlObjectSignatureValidator {
                 handler.invoke(context);
                 val signatureValid = peer.isAuthenticated();
                 if (signatureValid) {
-                    LOGGER.debug("Successfully validated request signature for [{}].", profileRequest.getIssuer());
+                    LOGGER.debug("Successfully validated request signature for [{}].",
+                        SamlIdPUtils.getIssuerFromSamlObject(profileRequest));
                 }
                 handler.destroy();
                 return signatureValid;
@@ -193,7 +194,8 @@ public class SamlObjectSignatureValidator {
         }
 
         FunctionUtils.throwIf(!foundValidCredential, () -> {
-            LOGGER.error("No valid credentials could be found to verify the signature for [{}]", profileRequest.getIssuer());
+            LOGGER.error("No valid credentials could be found to verify the signature for [{}]",
+                SamlIdPUtils.getIssuerFromSamlObject(profileRequest));
             return new SamlException("No valid signing credentials for authentication request validation could be resolved");
         });
         return true;
@@ -212,21 +214,22 @@ public class SamlObjectSignatureValidator {
         return new SAML2HTTPRedirectDeflateSignatureSecurityHandler();
     }
 
-    private boolean validateSignatureOnProfileRequest(final RequestAbstractType profileRequest,
+    private boolean validateSignatureOnProfileRequest(final SignableSAMLObject profileRequest,
                                                    final Signature signature,
                                                    final RoleDescriptorResolver roleDescriptorResolver,
                                                    final SignatureValidationParameters validationParameters) throws Throwable {
         val validator = new SAMLSignatureProfileValidator();
-        LOGGER.debug("Validating profile signature for [{}] via [{}]...", profileRequest.getIssuer(),
+        val issuer = SamlIdPUtils.getIssuerFromSamlObject(profileRequest);
+        LOGGER.debug("Validating profile signature for [{}] via [{}]...", issuer,
             validator.getClass().getSimpleName());
         validator.validate(signature);
-        LOGGER.debug("Successfully validated profile signature for [{}].", profileRequest.getIssuer());
+        LOGGER.debug("Successfully validated profile signature for [{}].", issuer);
 
         val algorithmValidator = new SignatureAlgorithmValidator(validationParameters);
-        LOGGER.debug("Validating signature algorithms for [{}] via [{}]...", profileRequest.getIssuer(),
+        LOGGER.debug("Validating signature algorithms for [{}] via [{}]...", issuer,
             algorithmValidator.getClass().getSimpleName());
         algorithmValidator.validate(signature);
-        LOGGER.debug("Successfully validated signature algorithms for [{}].", profileRequest.getIssuer());
+        LOGGER.debug("Successfully validated signature algorithms for [{}].", issuer);
 
         val credentials = getSigningCredential(roleDescriptorResolver, profileRequest);
         if (credentials.isEmpty()) {
@@ -248,14 +251,14 @@ public class SamlObjectSignatureValidator {
         }
 
         FunctionUtils.throwIf(!foundValidCredential, () -> {
-            LOGGER.error("No valid credentials could be found to verify the signature for [{}]", profileRequest.getIssuer());
+            LOGGER.error("No valid credentials could be found to verify the signature for [{}]", issuer);
             return new SamlException("No valid signing credentials for profile request validation could be resolved");
         });
         return true;
     }
 
     private Set<Credential> getSigningCredential(final RoleDescriptorResolver resolver,
-                                                 final RequestAbstractType profileRequest) {
+                                                 final SignableSAMLObject profileRequest) {
         return FunctionUtils.doUnchecked(() -> {
             val kekCredentialResolver = new MetadataCredentialResolver();
             val config = getSignatureValidationConfiguration();
@@ -280,7 +283,7 @@ public class SamlObjectSignatureValidator {
      * @param profileRequest the profile request
      * @param criteriaSet    the criteria set
      */
-    protected void buildEntityCriteriaForSigningCredential(final RequestAbstractType profileRequest, final CriteriaSet criteriaSet) {
+    protected void buildEntityCriteriaForSigningCredential(final SignableSAMLObject profileRequest, final CriteriaSet criteriaSet) {
         criteriaSet.add(new EntityIdCriterion(SamlIdPUtils.getIssuerFromSamlObject(profileRequest)));
         criteriaSet.add(new EntityRoleCriterion(SPSSODescriptor.DEFAULT_ELEMENT_NAME));
     }

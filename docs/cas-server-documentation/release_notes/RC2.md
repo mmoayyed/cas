@@ -110,18 +110,21 @@ security have been strengthened across several flows.
 - Token exchanges are now authorized against the authenticated requesting client, and exchanged tokens cannot gain scopes beyond those granted to the subject token and allowed for the requesting client.
 - Client secrets are now compared and enforced using a case sensitive strategy.
 - Token introspection reports tokens from other clients as inactive, while revocation only affects the requesting client's tokens and no longer reveals whether other tokens exist.
-- Single-use checking for DPOP proofs is now enforced using the CAS ticket registry. Furthermore, DPOP requests are no longer treated as a form of client authentication and now sit on top of existing client authentication approaches such as `clientId/clientSecret` for confidenial clients or PKCE.
+- Single-use checking for DPOP proofs is now enforced using the CAS ticket registry. Furthermore, DPOP requests are no longer treated as a form of client authentication and now sit on top of existing client authentication approaches such as client ID and client secret for confidential clients or PKCE.
 - [User-Managed Access](../protocol/OAuth-UMA-Protocol.html) resources and policies are now bound to both the authenticated client and resource owner. New resource registrations also receive non-sequential, server-assigned identifiers.
 
 ### SAML2 Identity Provider 
 
 - Presented SAML2 authentication request signatures are now validated independently of the metadata signing requirement. Only a successfully validated signature may authorize an assertion consumer service URL that is not registered in service provider metadata.
 - IdP-initiated SSO now also requires a caller-provided `shire` to match a POST assertion consumer service registered in metadata.
-- Inbound encrypted SAML identifiers now use CAS's matching IdP encryption certificate and private key for decryption.
+- Inbound encrypted SAML2 identifiers now use CAS's matching IdP encryption certificate and private key for decryption.
 - Signature algorithm inclusion and exclusion policies are now enforced consistently across all inbound SAML bindings.
 - The `Address` field of the SAML2 `SubjectConfirmationData` is now populated with the requester's IP address when possible.
-- SAML metadata cache entries are now isolated by registered service and resolved without scanning unrelated cached resolvers.
-- SAML authentication request session entries are updated per session and consumed after callback correlation, avoiding controller-wide serialization and retained replicated-session state.
+- SAML2 metadata cache entries are now isolated by registered service and resolved without scanning unrelated cached resolvers.
+- SAML2 authentication request session entries are updated per session and consumed after callback correlation, avoiding controller-wide serialization and retained replicated-session state.
+- Storage-backed SAML2 metadata resolution now uses the requested entity ID to limit document lookups and resolver rebuilds.
+- SAML2 SOAP attribute queries and artifact resolutions now require independently validated signatures, message freshness, destinations, and replay protection; artifact tickets are relying-party bound and consumed atomically.
+- SAML2 single logout now validates request freshness and replay, fully authenticates and correlates logout responses, and generates actuator logout requests with the correct IdP issuer and service-provider destination.
 
 ## Other Stuff
     
