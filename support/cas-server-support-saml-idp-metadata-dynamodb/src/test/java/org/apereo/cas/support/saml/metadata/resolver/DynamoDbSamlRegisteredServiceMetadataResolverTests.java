@@ -59,6 +59,7 @@ class DynamoDbSamlRegisteredServiceMetadataResolverTests extends BaseDynamoDbSam
         val res = new ByteArrayResource("bad-data".getBytes(StandardCharsets.UTF_8));
         val md = new SamlMetadataDocument();
         md.setName("SP");
+        md.setEntityId("https://carmenwiki.osu.edu/shibboleth");
         md.setValue(IOUtils.toString(res.getInputStream(), StandardCharsets.UTF_8));
         val metadataManager = resolver.getMetadataManager().orElseThrow();
         metadataManager.store(md);

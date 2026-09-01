@@ -177,7 +177,7 @@ public class OidcVerifiableCredentialEndpointController extends BaseOAuth20Contr
 
     protected boolean validateAccessTokenForCredentialIssuance(final OAuth20AccessToken accessToken, final OidcVerifiableCredentialValidationContext issuanceContext) {
         if (accessToken.getCredentialConfigurationIds() != null && !accessToken.getCredentialConfigurationIds().isEmpty()) {
-            return accessToken.getCredentialConfigurationIds().contains(issuanceContext.credentialRequest().getCredentialConfigurationId());
+            return accessToken.getCredentialConfigurationIds().contains(issuanceContext.resolveConfigurationId());
         }
         return true;
     }

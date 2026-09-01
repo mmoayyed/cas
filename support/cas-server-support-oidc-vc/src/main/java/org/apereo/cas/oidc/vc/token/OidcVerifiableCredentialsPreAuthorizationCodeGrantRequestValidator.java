@@ -10,6 +10,7 @@ import org.apereo.cas.ticket.TransientSessionTicket;
 import lombok.Getter;
 import lombok.val;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.pac4j.core.context.WebContext;
 import org.pac4j.core.profile.ProfileManager;
 import org.pac4j.core.profile.UserProfile;
@@ -47,9 +48,10 @@ public class OidcVerifiableCredentialsPreAuthorizationCodeGrantRequestValidator 
         if (ticket == null || ticket.isExpired()) {
             return false;
         }
-        return requestParameterResolver.resolveRequestParameter(context, OidcConstants.TX_CODE)
-            .stream()
-            .anyMatch(StringUtils::isNotBlank);
+        val transactionCode = requestParameterResolver.resolveRequestParameter(context, OidcConstants.TX_CODE)
+            .orElse(StringUtils.EMPTY);
+        return StringUtils.isBlank(transactionCode)
+            || Strings.CI.equals(ticket.getPropertyAsString("transactionId"), transactionCode);
     }
 
     @Override

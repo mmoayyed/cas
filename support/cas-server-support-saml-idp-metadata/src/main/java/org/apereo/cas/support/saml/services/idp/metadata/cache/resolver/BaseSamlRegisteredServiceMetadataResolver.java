@@ -79,7 +79,7 @@ public abstract class BaseSamlRegisteredServiceMetadataResolver implements SamlR
     protected boolean matchesEntityIdCriteria(final SamlMetadataDocument document,
                                               @Nullable final CriteriaSet criteriaSet) {
         return getEntityIdFromCriteriaSet(criteriaSet)
-            .map(entityId -> entityId.equals(prepareMetadataDocument(document).getEntityId()))
+            .map(entityId -> entityId.equals(prepareMetadataDocument(document, false).getEntityId()))
             .orElse(true);
     }
 
@@ -90,7 +90,14 @@ public abstract class BaseSamlRegisteredServiceMetadataResolver implements SamlR
      * @return the metadata document
      */
     protected SamlMetadataDocument prepareMetadataDocument(final SamlMetadataDocument document) {
-        document.assignIdIfNecessary();
+        return prepareMetadataDocument(document, true);
+    }
+
+    protected SamlMetadataDocument prepareMetadataDocument(final SamlMetadataDocument document,
+                                                            final boolean assignId) {
+        if (assignId) {
+            document.assignIdIfNecessary();
+        }
         if (StringUtils.isBlank(document.getEntityId())) {
             val entityDescriptor = SamlUtils.transformSamlObject(configBean,
                 document.getDecodedValue(), EntityDescriptor.class);

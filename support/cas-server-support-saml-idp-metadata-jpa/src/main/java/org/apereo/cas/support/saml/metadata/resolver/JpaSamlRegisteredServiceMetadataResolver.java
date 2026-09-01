@@ -87,7 +87,7 @@ public class JpaSamlRegisteredServiceMetadataResolver extends BaseSamlRegistered
 
     @Override
     public SamlMetadataDocument store(final SamlMetadataDocument document) {
-        return this.entityManager.merge(prepareMetadataDocument(document));
+        return this.entityManager.merge(prepareMetadataDocument(document, false));
     }
 
     @Override

@@ -187,7 +187,8 @@ class OidcVerifiableCredentialEndpointControllerTests {
                     "student_id", List.of("S12345"),
                     "active", List.of("true"),
                     "score", List.of("95.5"),
-                    "roles", List.of("admin", "user"))
+                    "roles", List.of("admin", "user"),
+                    "credentialConfigurationIds", List.of("myorg"))
             );
             val accessToken = getAccessToken(principal, clientId);
             when(accessToken.getGrantType()).thenReturn(OAuth20GrantTypes.PRE_AUTHORIZED_CODE);
@@ -248,6 +249,29 @@ class OidcVerifiableCredentialEndpointControllerTests {
                 .getResponse()
                 .getContentAsString();
             assertNotNull(response);
+        }
+
+        @Test
+        void verifyCredentialIssuanceWithResolvedConfigurationId() throws Throwable {
+            val clientId = UUID.randomUUID().toString();
+            val registeredService = getOidcRegisteredService(clientId);
+            servicesManager.save(registeredService);
+
+            val accessToken = createOAuth20AccessToken(clientId);
+            accessToken.setCredentialConfigurationIds(List.of("myorg"));
+            ticketRegistry.updateTicket(accessToken);
+
+            val request = new OidcVerifiableCredentialRequest();
+            request.setProof(buildProof(buildValidRsaProofJwt()));
+
+            mockMvc.perform(post(CREDENTIAL_ENDPOINT_URL)
+                    .with(withHttpRequestProcessor())
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken.getId())
+                    .content(MAPPER.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.format").value(CredentialConfigurationFormats.DC_SD_JWT.getValue()))
+                .andExpect(jsonPath("$.credential").exists());
         }
 
         @Test

@@ -61,7 +61,8 @@ class OidcVerifiableCredentialsPreAuthorizationCodeGrantRequestValidatorTests ex
     @Test
     void verifyValidPreAuthorizationCode() throws Throwable {
         val preAuthorizationCode = issuePreAuthorizationCode();
-        val context = createContext(preAuthorizationCode, "transaction-code");
+        val ticket = (TransientSessionTicket) transactionService.fetchPreAuthorizationCode(preAuthorizationCode);
+        val context = createContext(preAuthorizationCode, ticket.getPropertyAsString("transactionId"));
         assertTrue(oidcVerifiableCredentialsPreAuthorizationCodeGrantRequestValidator.validate(context));
     }
 
@@ -69,6 +70,13 @@ class OidcVerifiableCredentialsPreAuthorizationCodeGrantRequestValidatorTests ex
     void verifyMissingTransactionCode() throws Throwable {
         val preAuthorizationCode = issuePreAuthorizationCode();
         val context = createContext(preAuthorizationCode);
+        assertTrue(oidcVerifiableCredentialsPreAuthorizationCodeGrantRequestValidator.validate(context));
+    }
+
+    @Test
+    void verifyInvalidTransactionCode() throws Throwable {
+        val preAuthorizationCode = issuePreAuthorizationCode();
+        val context = createContext(preAuthorizationCode, "invalid-transaction-code");
         assertFalse(oidcVerifiableCredentialsPreAuthorizationCodeGrantRequestValidator.validate(context));
     }
 
