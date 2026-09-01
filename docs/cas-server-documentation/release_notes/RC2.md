@@ -113,6 +113,11 @@ security have been strengthened across several flows.
 - Single-use checking for DPOP proofs is now enforced using the CAS ticket registry. Furthermore, DPOP requests are no longer treated as a form of client authentication and now sit on top of existing client authentication approaches such as client ID and client secret for confidential clients or PKCE.
 - [User-Managed Access](../protocol/OAuth-UMA-Protocol.html) resources and policies are now bound to both the authenticated client and resource owner. New resource registrations also receive non-sequential, server-assigned identifiers.
 
+### WebAuthn Multifactor Authentication
+
+- Authentication and QR session proofs are now principal-bound and single-use, and configured user verification is enforced for assertions.
+- Credential and user-handle resolution now avoids repeated repository-wide scans.
+
 ### SAML2 Identity Provider 
 
 - Presented SAML2 authentication request signatures are now validated independently of the metadata signing requirement. Only a successfully validated signature may authorize an assertion consumer service URL that is not registered in service provider metadata.
