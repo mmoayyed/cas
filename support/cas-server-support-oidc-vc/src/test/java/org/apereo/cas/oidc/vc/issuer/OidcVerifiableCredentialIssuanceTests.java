@@ -8,6 +8,7 @@ import org.apereo.cas.support.oauth.OAuth20Constants;
 import org.apereo.cas.support.oauth.OAuth20GrantTypes;
 import org.apereo.cas.util.serialization.JacksonObjectMapperFactory;
 import com.jayway.jsonpath.JsonPath;
+import com.nimbusds.jose.JOSEObjectType;
 import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.JWSHeader;
 import com.nimbusds.jose.crypto.RSASSASigner;
@@ -62,6 +63,8 @@ class OidcVerifiableCredentialIssuanceTests extends AbstractOidcTests {
 
     private static final String CREDENTIAL_ISSUER = "https://sso.example.org/cas/oidc";
 
+    private static final JOSEObjectType PROOF_JWT_TYPE = new JOSEObjectType("openid4vci-proof+jwt");
+
     @Test
     void verifyPreAuthorizedCodeExchangeRequiresTransactionCode() throws Exception {
         val registeredService = getOidcRegisteredService(UUID.randomUUID().toString());
@@ -86,18 +89,18 @@ class OidcVerifiableCredentialIssuanceTests extends AbstractOidcTests {
         val registeredService = getOidcRegisteredService(UUID.randomUUID().toString());
         servicesManager.save(registeredService);
 
-        val transactionId = createOfferAndFetchTransactionId(
+        val transaction = createOfferTransaction(
             registeredService.getClientId(), registeredService.getClientSecrets().getFirst().getValue(),
             "casuser", List.of("UniversityDegreeCredential"));
-        val preAuthorizedCode = fetchPreAuthorizedCode(transactionId);
+        val preAuthorizedCode = fetchPreAuthorizedCode(transaction.transactionId());
 
         mockMvc.perform(tokenExchangeRequest(registeredService.getClientId(),
-                registeredService.getClientSecrets().getFirst().getValue(), preAuthorizedCode, transactionId))
+                registeredService.getClientSecrets().getFirst().getValue(), preAuthorizedCode, transaction.txCode()))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$." + OAuth20Constants.ACCESS_TOKEN).exists());
 
         mockMvc.perform(tokenExchangeRequest(registeredService.getClientId(),
-                registeredService.getClientSecrets().getFirst().getValue(), preAuthorizedCode, transactionId))
+                registeredService.getClientSecrets().getFirst().getValue(), preAuthorizedCode, transaction.txCode()))
             .andExpect(status().is4xxClientError());
     }
 
@@ -106,13 +109,13 @@ class OidcVerifiableCredentialIssuanceTests extends AbstractOidcTests {
         val registeredService = getOidcRegisteredService(UUID.randomUUID().toString());
         servicesManager.save(registeredService);
 
-        val transactionId = createOfferAndFetchTransactionId(
+        val transaction = createOfferTransaction(
             registeredService.getClientId(), registeredService.getClientSecrets().getFirst().getValue(),
             "casuser", List.of("UniversityDegreeCredential"));
-        val preAuthorizedCode = fetchPreAuthorizedCode(transactionId);
+        val preAuthorizedCode = fetchPreAuthorizedCode(transaction.transactionId());
 
         val tokenResponseBody = mockMvc.perform(tokenExchangeRequest(registeredService.getClientId(),
-                registeredService.getClientSecrets().getFirst().getValue(), preAuthorizedCode, transactionId))
+                registeredService.getClientSecrets().getFirst().getValue(), preAuthorizedCode, transaction.txCode()))
             .andExpect(status().isOk())
             .andReturn().getResponse().getContentAsString();
         val accessToken = JsonPath.read(tokenResponseBody, "$." + OAuth20Constants.ACCESS_TOKEN).toString();
@@ -136,7 +139,7 @@ class OidcVerifiableCredentialIssuanceTests extends AbstractOidcTests {
             .andExpect(status().is4xxClientError());
     }
 
-    private String createOfferAndFetchTransactionId(final String clientId, final String clientSecret,
+    private OfferTransaction createOfferTransaction(final String clientId, final String clientSecret,
                                                     final String principal, final List<String> credentialConfigurationIds) throws Exception {
         val requestBody = MAPPER.writeValueAsString(
             Map.of("principal", principal, "credentialConfigurationIds", credentialConfigurationIds));
@@ -148,7 +151,9 @@ class OidcVerifiableCredentialIssuanceTests extends AbstractOidcTests {
                 .param(OAuth20Constants.CLIENT_SECRET, clientSecret))
             .andExpect(status().isOk())
             .andReturn().getResponse().getContentAsString();
-        return JsonPath.read(responseBody, "$.transactionId").toString();
+        return new OfferTransaction(
+            JsonPath.read(responseBody, "$.transactionId").toString(),
+            JsonPath.read(responseBody, "$.txCode").toString());
     }
 
     private String fetchPreAuthorizedCode(final String transactionId) throws Exception {
@@ -163,8 +168,11 @@ class OidcVerifiableCredentialIssuanceTests extends AbstractOidcTests {
 
     private String createOfferAndFetchPreAuthorizedCode(final String clientId, final String clientSecret,
                                                         final String principal, final List<String> credentialConfigurationIds) throws Exception {
-        val transactionId = createOfferAndFetchTransactionId(clientId, clientSecret, principal, credentialConfigurationIds);
-        return fetchPreAuthorizedCode(transactionId);
+        val transaction = createOfferTransaction(clientId, clientSecret, principal, credentialConfigurationIds);
+        return fetchPreAuthorizedCode(transaction.transactionId());
+    }
+
+    private record OfferTransaction(String transactionId, String txCode) {
     }
 
     private static MockHttpServletRequestBuilder tokenExchangeRequest(final String clientId, final String clientSecret,
@@ -189,6 +197,7 @@ class OidcVerifiableCredentialIssuanceTests extends AbstractOidcTests {
     private static String buildProofJwt(final String nonce) throws Exception {
         val holderKey = new RSAKeyGenerator(2048).keyID("holder-rsa").generate();
         val header = new JWSHeader.Builder(JWSAlgorithm.RS256)
+            .type(PROOF_JWT_TYPE)
             .jwk(holderKey.toPublicJWK())
             .build();
         val claims = new JWTClaimsSet.Builder()

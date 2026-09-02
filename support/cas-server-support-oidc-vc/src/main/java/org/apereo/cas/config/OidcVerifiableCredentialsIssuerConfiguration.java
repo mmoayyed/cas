@@ -126,14 +126,12 @@ class OidcVerifiableCredentialsIssuerConfiguration {
     @ConditionalOnMissingBean(name = "oidcCredentialEndpointController")
     @Bean
     public OidcVerifiableCredentialEndpointController oidcCredentialEndpointController(
-        @Qualifier(OidcVerifiableCredentialNonceService.BEAN_NAME)
-        final OidcVerifiableCredentialNonceService oidcVerifiableCredentialNonceService,
         @Qualifier(OidcConfigurationContext.BEAN_NAME)
         final OidcConfigurationContext oidcConfigurationContext,
         @Qualifier("oidcVerifiableCredentialIssuerService")
         final OidcVerifiableCredentialIssuerService oidcVerifiableCredentialIssuerService) {
         return new OidcVerifiableCredentialEndpointController(
-            oidcConfigurationContext, oidcVerifiableCredentialIssuerService, oidcVerifiableCredentialNonceService);
+            oidcConfigurationContext, oidcVerifiableCredentialIssuerService);
     }
 
     @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)

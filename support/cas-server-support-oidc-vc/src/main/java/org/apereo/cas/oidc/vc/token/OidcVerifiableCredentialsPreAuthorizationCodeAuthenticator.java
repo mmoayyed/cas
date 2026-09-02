@@ -14,8 +14,6 @@ import org.apereo.cas.util.function.FunctionUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
-import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.Strings;
 import org.pac4j.core.context.CallContext;
 import org.pac4j.core.credentials.Credentials;
 import org.pac4j.core.credentials.UsernamePasswordCredentials;
@@ -49,15 +47,12 @@ public class OidcVerifiableCredentialsPreAuthorizationCodeAuthenticator implemen
                     return Optional.empty();
                 }
 
-                val providedTxCode = requestParameterResolver.resolveRequestParameter(ctx.webContext(), OidcConstants.TX_CODE).orElse(StringUtils.EMPTY);
+                val providedTxCode = requestParameterResolver.resolveRequestParameter(ctx.webContext(), OidcConstants.TX_CODE).orElse(null);
                 val principalId = preAuthorizationCode.getPropertyAsString("principalId");
                 val credentialConfigurationIds = preAuthorizationCode.getProperty("credentialConfigurationIds", List.class);
                 val clientId = preAuthorizationCode.getPropertyAsString(OAuth20Constants.CLIENT_ID);
 
-                val transactionCode = preAuthorizationCode.getPropertyAsString("transactionId");
-                val validTransaction = StringUtils.isBlank(providedTxCode) || Strings.CI.equals(transactionCode, providedTxCode);
-
-                if (validTransaction) {
+                if (transactionService.getObject().isTransactionCodeValid(preAuthorizationCode, providedTxCode)) {
                     val principal = principalResolver.resolve(new BasicIdentifiableCredential(principalId));
                     val profile = new CommonProfile();
                     profile.setId(principal.getId());

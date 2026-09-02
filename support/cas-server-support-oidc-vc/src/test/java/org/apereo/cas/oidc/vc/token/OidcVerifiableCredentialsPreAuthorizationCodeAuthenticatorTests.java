@@ -43,12 +43,16 @@ public class OidcVerifiableCredentialsPreAuthorizationCodeAuthenticatorTests ext
     private OidcVerifiableCredentialTransactionService transactionService;
 
     @Test
-    void verifyValidPreAuthorizationCodeWithoutTransactionCode() {
+    void verifyValidPreAuthorizationCodeWithTransactionCode() {
         val credentialConfigurationIds = List.of("UniversityDegreeCredential", "DriverLicenseCredential");
         val ticket = issuePreAuthorizationCode(credentialConfigurationIds);
+        val transactionCode = ticket.getPropertyAsString(
+            OidcVerifiableCredentialTransactionService.PROPERTY_TRANSACTION_CODE);
+        assertNotNull(transactionCode);
         val credentials = createCredentials(ticket.getId(), OAuth20GrantTypes.PRE_AUTHORIZED_CODE);
 
-        val result = oidcVerifiableCredentialsPreAuthorizationCodeAuthenticator.validate(createCallContext(null), credentials);
+        val result = oidcVerifiableCredentialsPreAuthorizationCodeAuthenticator.validate(
+            createCallContext(transactionCode), credentials);
         assertTrue(result.isPresent());
         assertSame(credentials, result.orElseThrow());
 
@@ -61,16 +65,26 @@ public class OidcVerifiableCredentialsPreAuthorizationCodeAuthenticatorTests ext
     }
 
     @Test
-    void verifyMatchingTransactionCodeIsCaseInsensitive() {
+    void verifyMissingTransactionCodeIsRejected() {
         val ticket = issuePreAuthorizationCode(List.of("UniversityDegreeCredential"));
-        val transactionCode = ticket.getPropertyAsString("transactionId");
-        assertNotNull(transactionCode);
+        val credentials = createCredentials(ticket.getId(), OAuth20GrantTypes.PRE_AUTHORIZED_CODE);
+
+        val result = oidcVerifiableCredentialsPreAuthorizationCodeAuthenticator.validate(createCallContext(null), credentials);
+        assertTrue(result.isEmpty());
+        assertNull(credentials.getUserProfile());
+    }
+
+    @Test
+    void verifyTransactionIdIsNotAcceptedAsTransactionCode() {
+        val ticket = issuePreAuthorizationCode(List.of("UniversityDegreeCredential"));
+        val transactionId = ticket.getPropertyAsString("transactionId");
+        assertNotNull(transactionId);
         val credentials = createCredentials(ticket.getId(), OAuth20GrantTypes.PRE_AUTHORIZED_CODE);
 
         val result = oidcVerifiableCredentialsPreAuthorizationCodeAuthenticator.validate(
-            createCallContext(transactionCode.toLowerCase(Locale.ROOT)), credentials);
-        assertTrue(result.isPresent());
-        assertNotNull(credentials.getUserProfile());
+            createCallContext(transactionId), credentials);
+        assertTrue(result.isEmpty());
+        assertNull(credentials.getUserProfile());
     }
 
     @Test

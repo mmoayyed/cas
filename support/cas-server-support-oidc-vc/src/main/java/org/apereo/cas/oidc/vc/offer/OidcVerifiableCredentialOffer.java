@@ -24,6 +24,13 @@ public class OidcVerifiableCredentialOffer implements Serializable {
     private static final long serialVersionUID = -700734371623770443L;
 
     /**
+     * Identifier of the issuance transaction backing this offer. It addresses the
+     * offer document itself and is never a substitute for the transaction code.
+     */
+    @JsonIgnore
+    private String transactionId;
+
+    /**
      * The credential issuer identifier.
      */
     @JsonProperty("credential_issuer")

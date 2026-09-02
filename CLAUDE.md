@@ -297,3 +297,11 @@ For multi-step tasks, state a brief plan:
 ```
 
 Strong success criteria let you loop independently. Weak criteria ("make it work") require constant clarification.
+
+---
+
+## OIDC Verifiable Credentials Notes
+
+- The OID4VCI Nonce Endpoint is public by specification; never place it behind client authentication.
+- Secrets that gate a flow must be independent of values the caller already possesses, and single-use state must be consumed atomically.
+- Check protocol behavior against the current published specification, not from memory.

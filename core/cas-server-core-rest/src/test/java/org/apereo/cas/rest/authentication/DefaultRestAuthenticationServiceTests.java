@@ -146,7 +146,7 @@ class DefaultRestAuthenticationServiceTests {
 
         val provider = mock(MultifactorAuthenticationProvider.class);
         when(triggerSelectionStrategy.resolve(request, response, null, authentication, service)).thenReturn(Optional.of(provider));
-        val multifactorCredentials = List.of(new TestMultifactorCredential(authentication.getPrincipal().getId()));
+        val multifactorCredentials = List.<Credential>of(new TestMultifactorCredential(authentication.getPrincipal().getId()));
         when(credentialFactory.fromAuthentication(request, body, authentication, provider)).thenReturn(multifactorCredentials);
         when(authenticationSystemSupport.finalizeAuthenticationTransaction(eq(service), anyCollection())).thenReturn(authenticationResult);
 

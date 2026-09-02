@@ -62,15 +62,34 @@ class OidcVerifiableCredentialsPreAuthorizationCodeGrantRequestValidatorTests ex
     void verifyValidPreAuthorizationCode() throws Throwable {
         val preAuthorizationCode = issuePreAuthorizationCode();
         val ticket = (TransientSessionTicket) transactionService.fetchPreAuthorizationCode(preAuthorizationCode);
-        val context = createContext(preAuthorizationCode, ticket.getPropertyAsString("transactionId"));
+        val context = createContext(preAuthorizationCode,
+            ticket.getPropertyAsString(OidcVerifiableCredentialTransactionService.PROPERTY_TRANSACTION_CODE));
         assertTrue(oidcVerifiableCredentialsPreAuthorizationCodeGrantRequestValidator.validate(context));
     }
 
     @Test
-    void verifyMissingTransactionCode() throws Throwable {
+    void verifyMissingTransactionCodeIsRejected() throws Throwable {
         val preAuthorizationCode = issuePreAuthorizationCode();
         val context = createContext(preAuthorizationCode);
-        assertTrue(oidcVerifiableCredentialsPreAuthorizationCodeGrantRequestValidator.validate(context));
+        assertFalse(oidcVerifiableCredentialsPreAuthorizationCodeGrantRequestValidator.validate(context));
+    }
+
+    @Test
+    void verifyTransactionIdIsNotAcceptedAsTransactionCode() throws Throwable {
+        val registeredService = getOidcRegisteredService();
+        val transaction = (TransientSessionTicket) transactionService.issue(
+            registeredService.getClientId(), "casuser", List.of("UniversityDegreeCredential"));
+        assertNotNull(transaction);
+        val preAuthorizationCode = transaction.getProperty("preAuthorizedCode", String.class);
+        assertNotNull(preAuthorizationCode);
+
+        val transactionCode = transaction.getPropertyAsString(
+            OidcVerifiableCredentialTransactionService.PROPERTY_TRANSACTION_CODE);
+        assertNotNull(transactionCode);
+        assertNotEquals(transaction.getId(), transactionCode);
+
+        val context = createContext(preAuthorizationCode, transaction.getId());
+        assertFalse(oidcVerifiableCredentialsPreAuthorizationCodeGrantRequestValidator.validate(context));
     }
 
     @Test

@@ -201,7 +201,10 @@ public abstract class BaseDuoSecurityAuthenticationService implements DuoSecurit
             clientInstanceBuilder.certificatePinner(pinner);
         }
         val clientInstance = clientInstanceBuilder.build();
+
+        @SuppressWarnings("NullAway")
         val existingClient = duoHttpClient.compareAndExchange(null, clientInstance);
+        
         return existingClient != null ? existingClient : clientInstance;
     }
     

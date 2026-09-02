@@ -65,6 +65,7 @@ Guidance for AI coding agents working in the Apereo CAS source tree.
 - If the user requests a `PLANS.md` plan, create it before implementation work and check off each step as it is completed.
 - Honor explicit verification boundaries. If the user asks not to run tests, do not invoke tests or Gradle tasks; perform static review such as `git diff --check` and clearly report what was not run.
 - For release-bound security work, add one brief, user-facing note to the appropriate security/protocol section of the requested release-notes file after the implementation is complete.
+- For all changes, cross check with puppeteer scenarios and make sure they continue to pass and are adjusted correctly.
 
 ## Practical boundaries
 
@@ -73,3 +74,14 @@ Guidance for AI coding agents working in the Apereo CAS source tree.
 - For service-aware logic, look for `ServicesManager.findServiceBy(...)`; for ticket-aware logic, look for `ticketRegistry.getTicket(...)`. Those seams are used repeatedly across `core/` and `support/` and are usually the right integration points.
 - Treat authentication, tickets, webflow, logout, MFA, and crypto as security-sensitive areas. Match existing CAS utilities and flows instead of introducing parallel mechanisms.
 - Keep diffs surgical: this codebase already has strong patterns, so the fastest path is usually “copy the nearest module family pattern and adapt it” rather than inventing a new abstraction.
+
+## OIDC verifiable credentials (OID4VCI / OID4VP)
+
+- The OID4VCI Nonce Endpoint must stay publicly reachable (OID4VCI 1.0, section 7.1: it is not a protected resource). Do not add it to the interceptor's protected list; rate limiting or throttling is the appropriate control there. The presentation request creation endpoint is CAS's own verifier API and should be protected.
+- A credential offer's `tx_code` is optional in the protocol but mandatory once the offer declares one. Keep it independent of any value the caller already holds, and leave a way to disable it for wallets that collect no user input, otherwise the walt.id puppeteer scenario cannot redeem an offer.
+- Verify a JWT proof's `typ` header as well as its signature. A proof or key-binding JWT that is only checked for signature, audience and freshness can be satisfied by a token minted for a different protocol.
+- When reviewing these flows, confirm the normative text against the current published OID4VCI, OID4VP and SD-JWT VC specifications rather than from memory; the drafts changed substantially before 1.0.
+
+## Environment limits
+
+- Gradle may be unavailable in a sandboxed or remote review environment because the wrapper cannot download its distribution. When that happens, say the verification was not run instead of implying a test result, and fall back to static review such as `git diff --check` and targeted reading.

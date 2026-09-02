@@ -15,6 +15,7 @@ import org.apereo.cas.support.oauth.OAuth20GrantTypes;
 import org.apereo.cas.ticket.accesstoken.OAuth20AccessToken;
 import org.apereo.cas.util.CollectionUtils;
 import org.apereo.cas.util.serialization.JacksonObjectMapperFactory;
+import com.nimbusds.jose.JOSEObjectType;
 import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.JWSHeader;
 import com.nimbusds.jose.crypto.ECDSASigner;
@@ -106,6 +107,8 @@ class OidcVerifiableCredentialEndpointControllerTests {
 
         protected static final String CREDENTIAL_ISSUER = "https://sso.example.org/cas/oidc";
 
+        protected static final JOSEObjectType PROOF_JWT_TYPE = new JOSEObjectType("openid4vci-proof+jwt");
+
         @Autowired
         @Qualifier("oidcCredentialIssuerMetadataService")
         protected OidcCredentialIssuerMetadataService oidcCredentialIssuerMetadataService;
@@ -129,6 +132,7 @@ class OidcVerifiableCredentialEndpointControllerTests {
         protected String buildProofJwt(final RSAKey holderKey, final String audience,
                                        final Date issuedAt) throws Exception {
             val header = new JWSHeader.Builder(JWSAlgorithm.RS256)
+                .type(PROOF_JWT_TYPE)
                 .jwk(holderKey.toPublicJWK())
                 .build();
             val nonce = oidcVerifiableCredentialNonceService.create().value();
@@ -150,6 +154,7 @@ class OidcVerifiableCredentialEndpointControllerTests {
         protected String buildProofJwt(final ECKey holderKey, final JWSAlgorithm algorithm,
                                        final String audience, final Date issuedAt) throws Exception {
             val header = new JWSHeader.Builder(algorithm)
+                .type(PROOF_JWT_TYPE)
                 .jwk(holderKey.toPublicJWK())
                 .build();
             val nonce = oidcVerifiableCredentialNonceService.create().value();
@@ -694,6 +699,46 @@ class OidcVerifiableCredentialEndpointControllerTests {
         }
 
         @Test
+        void verifyProofWithoutExpectedTypeFails() throws Throwable {
+            val holderKey = generateRsaHolderKey();
+            val nonce = oidcVerifiableCredentialNonceService.create().value();
+            val header = new JWSHeader.Builder(JWSAlgorithm.RS256)
+                .type(new JOSEObjectType("JWT"))
+                .jwk(holderKey.toPublicJWK())
+                .build();
+            val claims = new JWTClaimsSet.Builder()
+                .jwtID(UUID.randomUUID().toString())
+                .audience(CREDENTIAL_ISSUER)
+                .subject("casuser")
+                .issueTime(new Date())
+                .claim("nonce", nonce)
+                .build();
+            val signedJwt = new SignedJWT(header, claims);
+            signedJwt.sign(new RSASSASigner(holderKey));
+
+            val request = new OidcVerifiableCredentialRequest();
+            request.setCredentialConfigurationId("myorg");
+            request.setProof(buildProof(signedJwt.serialize()));
+            assertThrows(IllegalArgumentException.class, () -> oidcVerifiableCredentialProofValidator.validate(request));
+            assertTrue(oidcVerifiableCredentialNonceService.exists(nonce), "A rejected proof must not burn the nonce");
+        }
+
+        @Test
+        void verifyProofCannotBeReplayed() throws Throwable {
+            val proofJwt = buildValidRsaProofJwt();
+            val request = new OidcVerifiableCredentialRequest();
+            request.setCredentialConfigurationId("myorg");
+            request.setProof(buildProof(proofJwt));
+
+            val result = oidcVerifiableCredentialProofValidator.validate(request);
+            assertNotNull(result);
+            assertNotNull(result.nonce());
+            assertFalse(oidcVerifiableCredentialNonceService.exists(result.nonce()),
+                "The nonce must be consumed as part of proof validation");
+            assertThrows(IllegalArgumentException.class, () -> oidcVerifiableCredentialProofValidator.validate(request));
+        }
+
+        @Test
         void verifyValidEcProof() throws Throwable {
             val holderKey = generateEcHolderKey();
             val proofJwt = buildProofJwt(holderKey, JWSAlgorithm.ES256, CREDENTIAL_ISSUER, new Date());
@@ -716,6 +761,7 @@ class OidcVerifiableCredentialEndpointControllerTests {
                 val signingKey = generateRsaHolderKey();
                 val differentKey = generateRsaHolderKey();
                 val header = new JWSHeader.Builder(JWSAlgorithm.RS256)
+                    .type(PROOF_JWT_TYPE)
                     .jwk(differentKey.toPublicJWK())
                     .build();
                 val claims = new JWTClaimsSet.Builder()
@@ -752,6 +798,7 @@ class OidcVerifiableCredentialEndpointControllerTests {
             assertThrows(Exception.class, () -> {
                 val holderKey = generateRsaHolderKey();
                 val header = new JWSHeader.Builder(JWSAlgorithm.RS256)
+                    .type(PROOF_JWT_TYPE)
                     .jwk(holderKey.toPublicJWK())
                     .build();
                 val claims = new JWTClaimsSet.Builder()
@@ -774,6 +821,7 @@ class OidcVerifiableCredentialEndpointControllerTests {
             assertThrows(IllegalArgumentException.class, () -> {
                 val holderKey = generateRsaHolderKey();
                 val header = new JWSHeader.Builder(JWSAlgorithm.RS256)
+                    .type(PROOF_JWT_TYPE)
                     .jwk(holderKey.toPublicJWK())
                     .build();
                 val claims = new JWTClaimsSet.Builder()
@@ -837,6 +885,7 @@ class OidcVerifiableCredentialEndpointControllerTests {
         void verifyEcProofWithDifferentCurve() throws Throwable {
             val holderKey = new ECKeyGenerator(Curve.P_384).keyID("holder-ec-384").generate();
             val header = new JWSHeader.Builder(JWSAlgorithm.ES384)
+                .type(PROOF_JWT_TYPE)
                 .jwk(holderKey.toPublicJWK())
                 .build();
             var nonce = oidcVerifiableCredentialNonceService.create().value();
@@ -864,6 +913,7 @@ class OidcVerifiableCredentialEndpointControllerTests {
             val holderKey = generateRsaHolderKey();
             val jwtId = UUID.randomUUID().toString();
             val header = new JWSHeader.Builder(JWSAlgorithm.RS256)
+                .type(PROOF_JWT_TYPE)
                 .jwk(holderKey.toPublicJWK())
                 .build();
             var nonce = oidcVerifiableCredentialNonceService.create().value();
@@ -952,6 +1002,7 @@ class OidcVerifiableCredentialEndpointControllerTests {
         void verifyMultipleAudiencesWithCorrectOneSucceeds() throws Throwable {
             val holderKey = generateRsaHolderKey();
             val header = new JWSHeader.Builder(JWSAlgorithm.RS256)
+                .type(PROOF_JWT_TYPE)
                 .jwk(holderKey.toPublicJWK())
                 .build();
             var nonce = oidcVerifiableCredentialNonceService.create().value();
@@ -978,6 +1029,7 @@ class OidcVerifiableCredentialEndpointControllerTests {
             assertThrows(IllegalArgumentException.class, () -> {
                 val holderKey = generateRsaHolderKey();
                 val header = new JWSHeader.Builder(JWSAlgorithm.RS256)
+                    .type(PROOF_JWT_TYPE)
                     .jwk(holderKey.toPublicJWK())
                     .build();
                 val claims = new JWTClaimsSet.Builder()
@@ -1041,6 +1093,7 @@ class OidcVerifiableCredentialEndpointControllerTests {
         void verifyProofWithNoSubjectSucceeds() throws Throwable {
             val holderKey = generateRsaHolderKey();
             val header = new JWSHeader.Builder(JWSAlgorithm.RS256)
+                .type(PROOF_JWT_TYPE)
                 .jwk(holderKey.toPublicJWK())
                 .build();
             var nonce = oidcVerifiableCredentialNonceService.create().value();
@@ -1066,6 +1119,7 @@ class OidcVerifiableCredentialEndpointControllerTests {
         void verifyProofWithNoJwtIdSucceeds() throws Throwable {
             val holderKey = generateRsaHolderKey();
             val header = new JWSHeader.Builder(JWSAlgorithm.RS256)
+                .type(PROOF_JWT_TYPE)
                 .jwk(holderKey.toPublicJWK())
                 .build();
             var nonce = oidcVerifiableCredentialNonceService.create().value();
@@ -1093,6 +1147,7 @@ class OidcVerifiableCredentialEndpointControllerTests {
                 val ecKey = generateEcHolderKey();
                 val rsaKey = generateRsaHolderKey();
                 val header = new JWSHeader.Builder(JWSAlgorithm.ES256)
+                    .type(PROOF_JWT_TYPE)
                     .jwk(rsaKey.toPublicJWK())
                     .build();
                 val claims = new JWTClaimsSet.Builder()
@@ -1115,6 +1170,7 @@ class OidcVerifiableCredentialEndpointControllerTests {
         void verifyRsaProofWithRS384Algorithm() throws Throwable {
             val holderKey = generateRsaHolderKey();
             val header = new JWSHeader.Builder(JWSAlgorithm.RS384)
+                .type(PROOF_JWT_TYPE)
                 .jwk(holderKey.toPublicJWK())
                 .build();
             val claims = new JWTClaimsSet.Builder()
@@ -1140,6 +1196,7 @@ class OidcVerifiableCredentialEndpointControllerTests {
         void verifyRsaProofWithRS512Algorithm() throws Throwable {
             val holderKey = generateRsaHolderKey();
             val header = new JWSHeader.Builder(JWSAlgorithm.RS512)
+                .type(PROOF_JWT_TYPE)
                 .jwk(holderKey.toPublicJWK())
                 .build();
             val claims = new JWTClaimsSet.Builder()
@@ -1165,6 +1222,7 @@ class OidcVerifiableCredentialEndpointControllerTests {
         void verifyEcProofWithES512Algorithm() throws Throwable {
             val holderKey = new ECKeyGenerator(Curve.P_521).keyID("holder-ec-521").generate();
             val header = new JWSHeader.Builder(JWSAlgorithm.ES512)
+                .type(PROOF_JWT_TYPE)
                 .jwk(holderKey.toPublicJWK())
                 .build();
             var nonce = oidcVerifiableCredentialNonceService.create().value();

@@ -141,7 +141,7 @@ public class DuoSecurityUniversalPromptValidateLoginAction extends DuoSecurityAu
         return eventFactory.event(this, CasWebflowConstants.TRANSITION_ID_ERROR);
     }
 
-    private static boolean isValidState(final Object expectedState, final String duoState) {
+    private static boolean isValidState(@Nullable final Object expectedState, final String duoState) {
         return expectedState instanceof final String state
                && MessageDigest.isEqual(state.getBytes(StandardCharsets.UTF_8), duoState.getBytes(StandardCharsets.UTF_8));
     }

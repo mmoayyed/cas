@@ -25,6 +25,12 @@ import org.jspecify.annotations.Nullable;
  */
 @RequiredArgsConstructor
 public class OidcVerifiableCredentialJwtProofValidator implements OidcVerifiableCredentialProofValidator {
+    /**
+     * Media type every OID4VCI JWT proof must declare, so that a token minted
+     * for a different protocol can never be replayed as a proof of possession.
+     */
+    private static final String PROOF_JWT_TYPE = "openid4vci-proof+jwt";
+
     private static final int SECONDS_IN_FUTURE = 30;
     private static final int MINUTES_IN_PAST = 5;
 
@@ -37,6 +43,7 @@ public class OidcVerifiableCredentialJwtProofValidator implements OidcVerifiable
         val signedJwt = SignedJWT.parse(proof.getJwt());
         val holderJwk = signedJwt.getHeader().getJWK();
 
+        verifyType(signedJwt);
         verifySignature(signedJwt, holderJwk);
         verifyAlgorithm(signedJwt, holderJwk);
         verifyAudience(signedJwt);
@@ -53,11 +60,18 @@ public class OidcVerifiableCredentialJwtProofValidator implements OidcVerifiable
         );
     }
 
+    protected void verifyType(final SignedJWT signedJwt) {
+        val type = signedJwt.getHeader().getType();
+        if (type == null || !PROOF_JWT_TYPE.equals(type.toString())) {
+            throw new IllegalArgumentException("Proof JWT type must be " + PROOF_JWT_TYPE);
+        }
+    }
+
     protected @Nullable String verifyNonce(final SignedJWT signedJwt) throws Exception {
         val claims = signedJwt.getJWTClaimsSet();
         val nonce = claims.getStringClaim("nonce");
-        if (nonce == null || !oidcVerifiableCredentialNonceService.exists(nonce)) {
-            throw new IllegalArgumentException("Proof nonce %s is invalid or missing".formatted(nonce));
+        if (nonce == null || !oidcVerifiableCredentialNonceService.consume(nonce)) {
+            throw new IllegalArgumentException("Proof nonce %s is invalid, missing or already used".formatted(nonce));
         }
         return nonce;
     }

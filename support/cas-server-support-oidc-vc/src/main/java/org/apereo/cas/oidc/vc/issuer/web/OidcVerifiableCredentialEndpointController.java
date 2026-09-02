@@ -7,7 +7,6 @@ import org.apereo.cas.oidc.vc.issuer.OidcVerifiableCredentialIssuerService;
 import org.apereo.cas.oidc.vc.issuer.OidcVerifiableCredentialRequest;
 import org.apereo.cas.oidc.vc.issuer.OidcVerifiableCredentialResponse;
 import org.apereo.cas.oidc.vc.issuer.OidcVerifiableCredentialValidationContext;
-import org.apereo.cas.oidc.vc.issuer.nonce.OidcVerifiableCredentialNonceService;
 import org.apereo.cas.support.oauth.OAuth20Constants;
 import org.apereo.cas.support.oauth.OAuth20GrantTypes;
 import org.apereo.cas.support.oauth.util.OAuth20Utils;
@@ -50,15 +49,12 @@ public class OidcVerifiableCredentialEndpointController extends BaseOAuth20Contr
         .defaultTypingEnabled(false).build().toObjectMapper();
 
     protected final OidcVerifiableCredentialIssuerService credentialIssuerService;
-    protected final OidcVerifiableCredentialNonceService oidcVerifiableCredentialNonceService;
 
     public OidcVerifiableCredentialEndpointController(
         final OidcConfigurationContext configurationContext,
-        final OidcVerifiableCredentialIssuerService credentialIssuerService,
-        final OidcVerifiableCredentialNonceService oidcVerifiableCredentialNonceService) {
+        final OidcVerifiableCredentialIssuerService credentialIssuerService) {
         super(configurationContext);
         this.credentialIssuerService = credentialIssuerService;
-        this.oidcVerifiableCredentialNonceService = oidcVerifiableCredentialNonceService;
     }
 
     /**
@@ -98,7 +94,6 @@ public class OidcVerifiableCredentialEndpointController extends BaseOAuth20Contr
         val decodedToken = verified.getLeft();
 
         val responses = new ArrayList<>();
-        val nonces = new HashSet<String>();
 
         for (val credentialRequest : credentialRequests) {
             val issuanceContext = new OidcVerifiableCredentialValidationContext(
@@ -106,7 +101,6 @@ public class OidcVerifiableCredentialEndpointController extends BaseOAuth20Contr
             if (validateAccessTokenForCredentialIssuance(decodedToken, issuanceContext)) {
                 val issuedCredentials = credentialIssuerService.issue(issuanceContext);
                 for (val issuedCredential : issuedCredentials) {
-                    nonces.add(issuedCredential.nonce());
                     responses.add(OidcVerifiableCredentialResponse
                         .builder()
                         .format(issuedCredential.format().getValue())
@@ -115,7 +109,6 @@ public class OidcVerifiableCredentialEndpointController extends BaseOAuth20Contr
                 }
             }
         }
-        nonces.forEach(oidcVerifiableCredentialNonceService::remove);
         return ResponseEntity.ok(Map.of("credential_responses", responses));
     }
 
@@ -160,26 +153,20 @@ public class OidcVerifiableCredentialEndpointController extends BaseOAuth20Contr
         val issuerResponses = credentialIssuerService.issue(issuanceContext);
 
         val responses = new ArrayList<OidcVerifiableCredentialResponse>();
-        val nonces = new HashSet<String>();
         for (val issuedCredential : issuerResponses) {
-            nonces.add(issuedCredential.nonce());
             responses.add(OidcVerifiableCredentialResponse
                 .builder()
                 .format(issuedCredential.format().getValue())
                 .credential(issuedCredential.credential())
                 .build());
         }
-        nonces.forEach(oidcVerifiableCredentialNonceService::remove);
         return responses.size() == 1
             ? ResponseEntity.ok(responses.getFirst())
             : ResponseEntity.ok(Map.of("credential_responses", responses));
     }
 
     protected boolean validateAccessTokenForCredentialIssuance(final OAuth20AccessToken accessToken, final OidcVerifiableCredentialValidationContext issuanceContext) {
-        if (accessToken.getCredentialConfigurationIds() != null && !accessToken.getCredentialConfigurationIds().isEmpty()) {
-            return accessToken.getCredentialConfigurationIds().contains(issuanceContext.resolveConfigurationId());
-        }
-        return true;
+        return accessToken.getCredentialConfigurationIds().contains(issuanceContext.resolveConfigurationId());
     }
 
     protected Couplet<@Nullable OAuth20AccessToken, @Nullable ResponseEntity> verifyRequest(
