@@ -78,7 +78,7 @@ class OidcVerifiableCredentialOfferEndpointControllerTests {
                 .getResponse()
                 .getContentAsString();
 
-            val txCode = JsonPath.read(responseBody, "$.grants.['urn:ietf:params:oauth:grant-type:pre-authorized_code'].tx_code").toString();
+            val txCode = ticket.getId();
             assertNotNull(txCode);
             val preAuthorizedCode = JsonPath.read(responseBody, "$.grants.['urn:ietf:params:oauth:grant-type:pre-authorized_code'].pre-authorized_code").toString();
             assertNotNull(preAuthorizedCode);

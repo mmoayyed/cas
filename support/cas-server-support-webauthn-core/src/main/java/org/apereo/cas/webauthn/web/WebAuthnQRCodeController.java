@@ -46,13 +46,12 @@ import jakarta.servlet.http.HttpServletResponse;
 @Tag(name = "WebAuthN")
 @RequestMapping(BaseWebAuthnController.BASE_ENDPOINT_WEBAUTHN)
 public class WebAuthnQRCodeController extends BaseWebAuthnController {
-
-    private static final String PROPERTY_AUTHENTICATED_USERNAME = WebAuthnQRCodeController.class.getName() + ".authenticatedUsername";
-
     /**
      * Base endpoint.
      */
     public static final String ENDPOINT_QR_VERIFY = "/qrverify";
+
+    private static final String PROPERTY_AUTHENTICATED_USERNAME = WebAuthnQRCodeController.class.getName() + ".authenticatedUsername";
 
     protected final CasConfigurationProperties casProperties;
     protected final TicketRegistry ticketRegistry;
