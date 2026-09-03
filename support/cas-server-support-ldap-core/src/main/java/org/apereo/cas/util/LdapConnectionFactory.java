@@ -158,6 +158,7 @@ public class LdapConnectionFactory implements Closeable {
                 return searchOperation.execute(request);
             }
             val client = new PagedResultsClient(connectionFactory, pageSize);
+            client.setSearchResultHandlers(new FollowSearchReferralHandler());
             return client.executeToCompletion(request);
         } catch (final LdapException e) {
             LOGGER.error("LDAP search operation failed for URL [{}], baseDn [{}], filter [{}]: [{}]",
@@ -207,8 +208,8 @@ public class LdapConnectionFactory implements Closeable {
         try {
             val oldPasswordAvailable = oldPassword != null && oldPassword.length > 0;
             val connConfig = connectionFactory.getConnectionConfig();
-            val secureLdap = connConfig.getLdapUrl() != null && !connConfig.getLdapUrl().toLowerCase(Locale.ENGLISH).contains("ldaps://");
-            if (connConfig.getUseStartTLS() || secureLdap) {
+            val insecureLdap = connConfig.getLdapUrl() != null && !connConfig.getLdapUrl().toLowerCase(Locale.ENGLISH).contains("ldaps://");
+            if (connConfig.getUseStartTLS() || insecureLdap) {
                 LOGGER.warn("Executing password modification op under a non-secure LDAP connection; "
                             + "To modify password attributes, the connection to the LDAP server {} be secured and/or encrypted.",
                     type == AbstractLdapProperties.LdapType.AD ? "MUST" : "SHOULD");

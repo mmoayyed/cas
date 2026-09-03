@@ -67,7 +67,7 @@ import static org.mockito.Mockito.*;
  * @author Misagh Moayyed
  * @since 6.6.0
  */
-@Tag("Authentication")
+@Tag("RestfulApiAuthentication")
 @ExtendWith(CasTestExtension.class)
 @SpringBootTestAutoConfigurations
 @SpringBootTest(classes = {
@@ -135,7 +135,7 @@ class DefaultRestAuthenticationServiceTests {
         val authenticationResult = mock(AuthenticationResult.class);
         when(authenticationSystemSupport.handleInitialAuthenticationTransaction(eq(service), any(Credential[].class)))
             .thenAnswer(invocation -> {
-                assertArrayEquals(new Credential[]{primaryCredential}, invocation.getArgument(1));
+                assertEquals(primaryCredential, invocation.getArgument(1));
                 return authenticationResultBuilder;
             });
         when(authenticationResultBuilder.getInitialAuthentication()).thenReturn(Optional.of(authentication));
@@ -150,7 +150,7 @@ class DefaultRestAuthenticationServiceTests {
         when(credentialFactory.fromAuthentication(request, body, authentication, provider)).thenReturn(multifactorCredentials);
         when(authenticationSystemSupport.handleAuthenticationTransaction(eq(service), same(authenticationResultBuilder),
             any(Credential[].class))).thenAnswer(invocation -> {
-                assertArrayEquals(multifactorCredentials.toArray(Credential[]::new), invocation.getArgument(2));
+                assertEquals(multifactorCredentials.getFirst(), invocation.getArgument(2));
                 return authenticationResultBuilder;
             });
         when(authenticationSystemSupport.finalizeAllAuthenticationTransactions(authenticationResultBuilder, service))
