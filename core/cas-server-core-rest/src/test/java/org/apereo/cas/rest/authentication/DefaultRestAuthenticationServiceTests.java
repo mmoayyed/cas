@@ -148,7 +148,13 @@ class DefaultRestAuthenticationServiceTests {
         when(triggerSelectionStrategy.resolve(request, response, null, authentication, service)).thenReturn(Optional.of(provider));
         val multifactorCredentials = List.<Credential>of(new TestMultifactorCredential(authentication.getPrincipal().getId()));
         when(credentialFactory.fromAuthentication(request, body, authentication, provider)).thenReturn(multifactorCredentials);
-        when(authenticationSystemSupport.finalizeAuthenticationTransaction(eq(service), anyCollection())).thenReturn(authenticationResult);
+        when(authenticationSystemSupport.handleAuthenticationTransaction(eq(service), same(authenticationResultBuilder),
+            any(Credential[].class))).thenAnswer(invocation -> {
+                assertArrayEquals(multifactorCredentials.toArray(Credential[]::new), invocation.getArgument(2));
+                return authenticationResultBuilder;
+            });
+        when(authenticationSystemSupport.finalizeAllAuthenticationTransactions(authenticationResultBuilder, service))
+            .thenReturn(authenticationResult);
 
         val authenticationService = new DefaultRestAuthenticationService(authenticationSystemSupport, credentialFactory,
             serviceFactory, triggerSelectionStrategy, servicesManager, requestedContextValidator, authenticationPolicy, applicationContext);
@@ -157,9 +163,10 @@ class DefaultRestAuthenticationServiceTests {
         verifyNoInteractions(authenticationSystemSupport);
 
         assertSame(authenticationResult, authenticationService.authenticate(body, request, response).orElseThrow());
-        verify(authenticationSystemSupport).finalizeAuthenticationTransaction(service, multifactorCredentials);
-        verify(authenticationSystemSupport, never())
-            .handleAuthenticationTransaction(any(), any(AuthenticationResultBuilder.class), any(Credential[].class));
+        verify(authenticationSystemSupport).handleAuthenticationTransaction(eq(service),
+            same(authenticationResultBuilder), any(Credential[].class));
+        verify(authenticationSystemSupport).finalizeAllAuthenticationTransactions(authenticationResultBuilder, service);
+        verify(authenticationSystemSupport, never()).finalizeAuthenticationTransaction(any(), anyCollection());
     }
 
     private static final class TestMultifactorCredential extends BasicIdentifiableCredential

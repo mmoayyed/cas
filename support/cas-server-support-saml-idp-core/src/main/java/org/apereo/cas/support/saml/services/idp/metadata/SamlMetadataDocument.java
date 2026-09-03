@@ -10,7 +10,7 @@ import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import lombok.experimental.SuperBuilder;
+import lombok.SuperBuilder;
 import org.springframework.data.annotation.Id;
 import tools.jackson.databind.ObjectMapper;
 import jakarta.persistence.Column;
