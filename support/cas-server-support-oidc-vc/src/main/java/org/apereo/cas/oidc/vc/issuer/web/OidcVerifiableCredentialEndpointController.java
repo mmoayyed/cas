@@ -3,6 +3,7 @@ package org.apereo.cas.oidc.vc.issuer.web;
 import module java.base;
 import org.apereo.cas.oidc.OidcConfigurationContext;
 import org.apereo.cas.oidc.OidcConstants;
+import org.apereo.cas.oidc.vc.authz.OidcVerifiableCredentialAuthorizationDetails;
 import org.apereo.cas.oidc.vc.issuer.OidcVerifiableCredentialIssuerService;
 import org.apereo.cas.oidc.vc.issuer.OidcVerifiableCredentialRequest;
 import org.apereo.cas.oidc.vc.issuer.OidcVerifiableCredentialResponse;
@@ -20,6 +21,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
+import org.apache.commons.lang3.StringUtils;
 import org.jspecify.annotations.Nullable;
 import org.pac4j.jee.context.JEEContext;
 import org.springframework.http.HttpStatus;
@@ -94,12 +96,13 @@ public class OidcVerifiableCredentialEndpointController extends BaseOAuth20Contr
         val decodedToken = verified.getLeft();
 
         val responses = new ArrayList<>();
+        val consumedNonces = new HashSet<String>();
 
         for (val credentialRequest : credentialRequests) {
             val issuanceContext = new OidcVerifiableCredentialValidationContext(
                 Objects.requireNonNull(decodedToken), credentialRequest, httpRequest);
             if (validateAccessTokenForCredentialIssuance(decodedToken, issuanceContext)) {
-                val issuedCredentials = credentialIssuerService.issue(issuanceContext);
+                val issuedCredentials = credentialIssuerService.issue(issuanceContext, consumedNonces);
                 for (val issuedCredential : issuedCredentials) {
                     responses.add(OidcVerifiableCredentialResponse
                         .builder()
@@ -150,7 +153,7 @@ public class OidcVerifiableCredentialEndpointController extends BaseOAuth20Contr
                     "Access token cannot be accepted for credential issuance"));
         }
 
-        val issuerResponses = credentialIssuerService.issue(issuanceContext);
+        val issuerResponses = credentialIssuerService.issue(issuanceContext, new HashSet<>());
 
         val responses = new ArrayList<OidcVerifiableCredentialResponse>();
         for (val issuedCredential : issuerResponses) {
@@ -165,8 +168,46 @@ public class OidcVerifiableCredentialEndpointController extends BaseOAuth20Contr
             : ResponseEntity.ok(Map.of("credential_responses", responses));
     }
 
-    protected boolean validateAccessTokenForCredentialIssuance(final OAuth20AccessToken accessToken, final OidcVerifiableCredentialValidationContext issuanceContext) {
-        return accessToken.getCredentialConfigurationIds().contains(issuanceContext.resolveConfigurationId());
+    protected boolean validateAccessTokenForCredentialIssuance(final OAuth20AccessToken accessToken,
+                                                               final OidcVerifiableCredentialValidationContext issuanceContext) {
+        val authorizedConfigurationIds = resolveAuthorizedCredentialConfigurationIds(accessToken);
+        if (authorizedConfigurationIds.isEmpty()) {
+            LOGGER.warn("Access token does not authorize any credential configuration");
+            return false;
+        }
+        return authorizedConfigurationIds.contains(issuanceContext.resolveConfigurationId());
+    }
+
+    /**
+     * Credential configurations the access token is allowed to request. Tokens issued through the
+     * pre-authorized code flow carry the identifiers directly, while the authorization code flow
+     * records them as authorization details attached to the token.
+     *
+     * @param accessToken the access token
+     * @return the authorized credential configuration ids, never null
+     */
+    protected List<String> resolveAuthorizedCredentialConfigurationIds(final OAuth20AccessToken accessToken) {
+        val configurationIds = accessToken.getCredentialConfigurationIds();
+        if (configurationIds != null && !configurationIds.isEmpty()) {
+            return List.copyOf(configurationIds);
+        }
+        val authorizationDetails = accessToken.getAuthorizationDetails();
+        if (authorizationDetails == null) {
+            return List.of();
+        }
+        return authorizationDetails
+            .stream()
+            .map(OidcVerifiableCredentialEndpointController::toCredentialConfigurationId)
+            .filter(StringUtils::isNotBlank)
+            .toList();
+    }
+
+    private static String toCredentialConfigurationId(final Serializable authorizationDetails) {
+        return switch (authorizationDetails) {
+            case final OidcVerifiableCredentialAuthorizationDetails details -> details.getCredentialConfigurationId();
+            case final Map<?, ?> details -> Objects.toString(details.get("credential_configuration_id"), StringUtils.EMPTY);
+            default -> StringUtils.EMPTY;
+        };
     }
 
     protected Couplet<@Nullable OAuth20AccessToken, @Nullable ResponseEntity> verifyRequest(

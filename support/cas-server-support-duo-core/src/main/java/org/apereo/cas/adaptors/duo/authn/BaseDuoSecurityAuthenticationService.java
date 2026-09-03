@@ -181,6 +181,7 @@ public abstract class BaseDuoSecurityAuthenticationService implements DuoSecurit
         return request;
     }
 
+    @SuppressWarnings("NullAway")
     private OkHttpClient getDuoHttpClient(final URI host, final Http request) {
         val currentClient = duoHttpClient.get();
         if (currentClient != null) {
@@ -201,10 +202,7 @@ public abstract class BaseDuoSecurityAuthenticationService implements DuoSecurit
             clientInstanceBuilder.certificatePinner(pinner);
         }
         val clientInstance = clientInstanceBuilder.build();
-
-        @SuppressWarnings("NullAway")
         val existingClient = duoHttpClient.compareAndExchange(null, clientInstance);
-        
         return existingClient != null ? existingClient : clientInstance;
     }
     

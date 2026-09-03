@@ -138,4 +138,4 @@ security have been strengthened across several flows.
 
 ## Other Stuff
     
-- As usual, a large number of dependencies and libraries have been updated to their latest versions.
+- A large number of dependencies and libraries have been updated to their latest versions.
