@@ -115,15 +115,21 @@ security have been strengthened across several flows.
 
 ### WebAuthn Multifactor Authentication
 
+[FIDO2 WebAuthn](../mfa/FIDO2-WebAuthn-Authentication.html) multifactor authentication receives the following improvements:
+
 - Authentication and QR session proofs are now principal-bound and single-use, and configured user verification is enforced for assertions.
 - Credential and user-handle resolution now avoids repeated repository-wide scans.
 
 ### Duo Multifactor Authentication
 
+[Duo Security](../mfa/DuoSecurity-Authentication.html) multifactor authentication receives the following improvements:
+
 - REST passcodes now require completed primary authentication, and Universal Prompt callbacks validate browser-session state before restoring the flow.
 - Duo Auth and Admin API clients now reuse outbound connection pools across requests.
 
 ### SAML2 Identity Provider 
+
+[SAML2 identity provider](../authentication/Configuring-SAML2-Authentication.html) support receives the following improvements:
 
 - Presented SAML2 authentication request signatures are now validated independently of the metadata signing requirement. Only a successfully validated signature may authorize an assertion consumer service URL that is not registered in service provider metadata.
 - IdP-initiated SSO now also requires a caller-provided `shire` to match a POST assertion consumer service registered in metadata.
@@ -135,6 +141,12 @@ security have been strengthened across several flows.
 - Storage-backed SAML2 metadata resolution now uses the requested entity ID to limit document lookups and resolver rebuilds.
 - SAML2 SOAP attribute queries and artifact resolutions now require independently validated signatures, message freshness, destinations, and replay protection; artifact tickets are relying-party bound and consumed atomically.
 - SAML2 single logout now validates request freshness and replay, fully authenticates and correlates logout responses, and generates actuator logout requests with the correct IdP issuer and service-provider destination.
+
+### LDAP Integrations
+
+- [Surrogate authentication](../authentication/Surrogate-Authentication-Storage-LDAP.html), [delegated authentication profile selection](../integration/Delegate-Authentication-ProfileSelection.html), [acceptable usage policy](../webflow/Webflow-Customization-AUP-LDAP.html) and [password management](../password_management/Password-Management.html) now build their LDAP connection pools once and reuse them across requests.
+- LDAP connection pools are now addressed by the directory and base DN they serve, so multiple configuration blocks that point at the same server no longer collapse onto a single set of connection settings.
+- Surrogate search filters that do not reference the impersonated account are now rejected, as such a filter is unable to restrict the accounts a user may impersonate.
 
 ## Other Stuff
     

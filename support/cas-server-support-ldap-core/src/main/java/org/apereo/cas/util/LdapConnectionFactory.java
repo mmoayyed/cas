@@ -42,6 +42,7 @@ import org.ldaptive.referral.FollowSearchReferralHandler;
 @Getter
 public class LdapConnectionFactory implements Closeable {
     private final ConnectionFactory connectionFactory;
+    
     /**
      * Execute add operation.
      *
