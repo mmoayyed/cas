@@ -197,9 +197,6 @@ public abstract class BaseDuoSecurityAuthenticationService implements DuoSecurit
             clientInstanceBuilder
                 .certificatePinner(CertificatePinner.DEFAULT)
                 .sslSocketFactory(factory.getSslContext().getSocketFactory(), (X509TrustManager) factory.getTrustManagers()[0]);
-        } else {
-            val pinner = getDuoClient().createCertificatePinner(host.getHost(), request);
-            clientInstanceBuilder.certificatePinner(pinner);
         }
         val clientInstance = clientInstanceBuilder.build();
         val existingClient = duoHttpClient.compareAndExchange(null, clientInstance);
