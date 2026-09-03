@@ -441,8 +441,13 @@ public abstract class AbstractSamlIdPProfileHandlerController extends AbstractCo
         if (!SAMLBindingSupport.isMessageSigned(ctx)) {
             LOGGER.trace("The authentication context is not signed");
             if (adaptor.isAuthnRequestsSigned() && !registeredService.isSkipValidatingAuthnRequest()) {
-                LOGGER.error("Metadata for [{}] says authentication requests are signed, yet request is not", adaptor.getEntityId());
-                throw new SAMLException("Request is not signed but should be");
+                LOGGER.error("""
+                        SAML2 metadata for [{}] says authentication requests must be signed, and yet this SAML2 authentication request is not. \
+                        CAS is configured to enforce signature validation for authentication requests, and the registered service \
+                        is not configured to skip validation. Consult the SAML2 metadata for this relying party to ensure correctness, \
+                        or adjust the registered service configuration.\
+                        """, adaptor.getEntityId());
+                throw new SAMLException("SAML2 authentication request for " + adaptor.getEntityId() + " is not signed.");
             }
             LOGGER.trace("Request is not signed or validation is skipped, so there is no need to verify its signature.");
         } else if (!registeredService.isSkipValidatingAuthnRequest()) {
