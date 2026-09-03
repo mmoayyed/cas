@@ -18,6 +18,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.validator.routines.EmailValidator;
 import org.jooq.lambda.Unchecked;
+import org.jspecify.annotations.Nullable;
 import org.ldaptive.ConnectionFactory;
 import org.ldaptive.LdapAttribute;
 import org.ldaptive.LdapEntry;
@@ -172,9 +173,9 @@ public class LdapPasswordManagementService extends BasePasswordManagementService
      * @param ldapFilterParam the ldap filter param
      * @return String value of attribute; null if user/attribute not present
      */
-    protected String findAttribute(final PasswordManagementQuery context,
-                                   final List<String> attributeNames,
-                                   final List<String> ldapFilterParam) {
+    protected @Nullable String findAttribute(final PasswordManagementQuery context,
+                                             final List<String> attributeNames,
+                                             final List<String> ldapFilterParam) {
         return findEntries(ldapFilterParam, false)
             .keySet()
             .stream()
@@ -204,7 +205,7 @@ public class LdapPasswordManagementService extends BasePasswordManagementService
             .orElse(null);
     }
 
-    protected Map<LdapEntry, LdapPasswordManagementProperties> findEntries(
+    protected @Nullable Map<LdapEntry, LdapPasswordManagementProperties> findEntries(
         final List<String> filterValues, final boolean transform) {
         val results = new LinkedHashMap<LdapEntry, LdapPasswordManagementProperties>();
         casProperties.getAuthn().getPm().getLdap()
