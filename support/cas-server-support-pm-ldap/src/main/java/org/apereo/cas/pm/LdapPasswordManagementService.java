@@ -44,8 +44,7 @@ public class LdapPasswordManagementService extends BasePasswordManagementService
 
     @Override
     public void destroy() {
-        this.connectionFactoryMap.forEach((ldap, connectionFactory) ->
-            connectionFactory.close());
+        this.connectionFactoryMap.values().forEach(ConnectionFactory::close);
     }
 
     @Override
@@ -79,7 +78,7 @@ public class LdapPasswordManagementService extends BasePasswordManagementService
                 LOGGER.debug("Located LDAP entry [{}] in the response", entry);
                 val questionsAndAnswers = new ArrayDeque<>(ldap.getSecurityQuestionsAttributes().entrySet());
                 LOGGER.debug("Security question attributes are defined to be [{}]", questionsAndAnswers);
-                val ldapConnectionFactory = new LdapConnectionFactory(connectionFactoryMap.get(ldap.getLdapUrl()));
+                val ldapConnectionFactory = connectionFactoryFor(ldap);
 
                 val attributes = new LinkedHashMap<String, Set<String>>();
                 query.getSecurityQuestions().forEach((question, answers) -> {
@@ -96,7 +95,7 @@ public class LdapPasswordManagementService extends BasePasswordManagementService
         val entries = findEntries(CollectionUtils.wrap(credential.getId()), true);
         return entries.entrySet().stream().allMatch(entry -> {
             LOGGER.debug("Located LDAP entry [{}] in the response", entry);
-            val ldapConnectionFactory = new LdapConnectionFactory(connectionFactoryMap.get(entry.getValue().getLdapUrl()));
+            val ldapConnectionFactory = connectionFactoryFor(entry.getValue());
             val attributes = new LinkedHashMap<String, Set<String>>();
             attributes.put(entry.getValue().getAccountLockedAttribute(), Set.of(entry.getValue().getAccountUnlockedAttributeValues()));
             return ldapConnectionFactory.executeModifyOperation(entry.getKey().getDn(), attributes);
@@ -153,7 +152,7 @@ public class LdapPasswordManagementService extends BasePasswordManagementService
             .map(entry -> {
                 val dn = entry.getKey().getDn();
                 LOGGER.debug("Updating account password for [{}]", dn);
-                val ldapConnectionFactory = new LdapConnectionFactory(connectionFactoryMap.get(entry.getValue().getLdapUrl()));
+                val ldapConnectionFactory = connectionFactoryFor(entry.getValue());
                 if (ldapConnectionFactory.executePasswordModifyOperation(dn, bean.getCurrentPassword(),
                     bean.getPassword(), entry.getValue().getType())) {
                     LOGGER.debug("Successfully updated the account password for [{}]", dn);
@@ -221,7 +220,7 @@ public class LdapPasswordManagementService extends BasePasswordManagementService
                 val filter = LdapUtils.newLdaptiveSearchFilter(ldap.getSearchFilter(),
                     LdapUtils.LDAP_SEARCH_FILTER_DEFAULT_PARAM_NAME, effectiveFilters);
                 LOGGER.debug("Constructed LDAP filter [{}]", filter);
-                val ldapConnectionFactory = new LdapConnectionFactory(connectionFactoryMap.get(ldap.getLdapUrl()));
+                val ldapConnectionFactory = connectionFactoryFor(ldap);
                 val response = ldapConnectionFactory.executeSearchOperation(ldap.getBaseDn(), filter, ldap.getPageSize());
                 LOGGER.debug("LDAP response [{}]", response);
                 if (LdapUtils.containsResultEntry(response)) {
@@ -229,5 +228,9 @@ public class LdapPasswordManagementService extends BasePasswordManagementService
                 }
             }));
         return results;
+    }
+
+    private LdapConnectionFactory connectionFactoryFor(final LdapPasswordManagementProperties ldap) {
+        return new LdapConnectionFactory(connectionFactoryMap.get(ldap.toStableIdentifier()));
     }
 }
