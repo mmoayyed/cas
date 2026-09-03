@@ -16,7 +16,7 @@ import com.github.benmanes.caffeine.cache.stats.CacheStats;
 import com.google.common.collect.Iterables;
 import lombok.Builder;
 import lombok.Getter;
-import lombok.experimental.SuperBuilder;
+import lombok.SuperBuilder;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import net.shibboleth.shared.resolver.CriteriaSet;

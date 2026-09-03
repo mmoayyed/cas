@@ -173,7 +173,7 @@ public abstract class BaseDuoSecurityAuthenticationService implements DuoSecurit
         val resultingHost = host.getHost() + (host.getPort() > 0 ? ":" + host.getPort() : StringUtils.EMPTY);
         ReflectionUtils.setField(hostField, request, resultingHost);
 
-        val clientInstance = getDuoHttpClient(host, request);
+        val clientInstance = getDuoHttpClient(host);
         val httpClientField = ReflectionUtils.findField(Http.class, "httpClient");
         ReflectionUtils.makeAccessible(Objects.requireNonNull(httpClientField));
 
@@ -182,7 +182,7 @@ public abstract class BaseDuoSecurityAuthenticationService implements DuoSecurit
     }
 
     @SuppressWarnings("NullAway")
-    private OkHttpClient getDuoHttpClient(final URI host, final Http request) {
+    private OkHttpClient getDuoHttpClient(final URI host) {
         val currentClient = duoHttpClient.get();
         if (currentClient != null) {
             return currentClient;
