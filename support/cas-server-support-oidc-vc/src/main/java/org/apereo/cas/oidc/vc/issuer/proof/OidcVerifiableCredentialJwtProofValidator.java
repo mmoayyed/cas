@@ -38,7 +38,8 @@ public class OidcVerifiableCredentialJwtProofValidator implements OidcVerifiable
     private final OidcVerifiableCredentialNonceService oidcVerifiableCredentialNonceService;
 
     @Override
-    public VerifiableCredentialProofResult validate(final OidcVerifiableCredentialRequest request) throws Exception {
+    public VerifiableCredentialProofResult validate(final OidcVerifiableCredentialRequest request,
+                                                    final Set<String> consumedNonces) throws Exception {
         val proof = request.getProof();
         val signedJwt = SignedJWT.parse(proof.getJwt());
         val holderJwk = signedJwt.getHeader().getJWK();
@@ -48,7 +49,7 @@ public class OidcVerifiableCredentialJwtProofValidator implements OidcVerifiable
         verifyAlgorithm(signedJwt, holderJwk);
         verifyAudience(signedJwt);
         verifyFreshness(signedJwt);
-        val nonce = verifyNonce(signedJwt);
+        val nonce = verifyNonce(signedJwt, consumedNonces);
 
         val claims = signedJwt.getJWTClaimsSet();
         return new VerifiableCredentialProofResult(
@@ -67,12 +68,19 @@ public class OidcVerifiableCredentialJwtProofValidator implements OidcVerifiable
         }
     }
 
-    protected @Nullable String verifyNonce(final SignedJWT signedJwt) throws Exception {
+    protected @Nullable String verifyNonce(final SignedJWT signedJwt, final Set<String> consumedNonces) throws Exception {
         val claims = signedJwt.getJWTClaimsSet();
         val nonce = claims.getStringClaim("nonce");
-        if (nonce == null || !oidcVerifiableCredentialNonceService.consume(nonce)) {
-            throw new IllegalArgumentException("Proof nonce %s is invalid, missing or already used".formatted(nonce));
+        if (nonce == null) {
+            throw new IllegalArgumentException("Proof nonce is missing");
         }
+        if (consumedNonces.contains(nonce)) {
+            return nonce;
+        }
+        if (!oidcVerifiableCredentialNonceService.consume(nonce)) {
+            throw new IllegalArgumentException("Proof nonce %s is invalid, expired or already used".formatted(nonce));
+        }
+        consumedNonces.add(nonce);
         return nonce;
     }
 

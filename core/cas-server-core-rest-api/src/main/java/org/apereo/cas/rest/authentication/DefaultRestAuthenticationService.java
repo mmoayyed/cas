@@ -83,7 +83,9 @@ public class DefaultRestAuthenticationService implements RestAuthenticationServi
                         if (authnCredentials == null || authnCredentials.isEmpty()) {
                             throw new AuthenticationException("Unable to extract credentials for multifactor authentication");
                         }
-                        return authenticationSystemSupport.finalizeAuthenticationTransaction(service, authnCredentials);
+                        val builder = authenticationSystemSupport.handleAuthenticationTransaction(service, result,
+                            authnCredentials.toArray(Credential[]::new));
+                        return authenticationSystemSupport.finalizeAllAuthenticationTransactions(builder, service);
                     }))
                     .orElseGet(Unchecked.supplier(() -> authenticationSystemSupport.finalizeAllAuthenticationTransactions(result, service)))))
                 .orElseGet(Unchecked.supplier(() -> authenticationSystemSupport.finalizeAllAuthenticationTransactions(result, service))));

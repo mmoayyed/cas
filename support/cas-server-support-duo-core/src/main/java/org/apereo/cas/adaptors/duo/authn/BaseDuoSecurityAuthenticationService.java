@@ -173,7 +173,7 @@ public abstract class BaseDuoSecurityAuthenticationService implements DuoSecurit
         val resultingHost = host.getHost() + (host.getPort() > 0 ? ":" + host.getPort() : StringUtils.EMPTY);
         ReflectionUtils.setField(hostField, request, resultingHost);
 
-        val clientInstance = getDuoHttpClient(host, request);
+        val clientInstance = getDuoHttpClient(host);
         val httpClientField = ReflectionUtils.findField(Http.class, "httpClient");
         ReflectionUtils.makeAccessible(Objects.requireNonNull(httpClientField));
 
@@ -181,7 +181,8 @@ public abstract class BaseDuoSecurityAuthenticationService implements DuoSecurit
         return request;
     }
 
-    private OkHttpClient getDuoHttpClient(final URI host, final Http request) {
+    @SuppressWarnings("NullAway")
+    private OkHttpClient getDuoHttpClient(final URI host) {
         val currentClient = duoHttpClient.get();
         if (currentClient != null) {
             return currentClient;
@@ -196,15 +197,9 @@ public abstract class BaseDuoSecurityAuthenticationService implements DuoSecurit
             clientInstanceBuilder
                 .certificatePinner(CertificatePinner.DEFAULT)
                 .sslSocketFactory(factory.getSslContext().getSocketFactory(), (X509TrustManager) factory.getTrustManagers()[0]);
-        } else {
-            val pinner = getDuoClient().createCertificatePinner(host.getHost(), request);
-            clientInstanceBuilder.certificatePinner(pinner);
         }
         val clientInstance = clientInstanceBuilder.build();
-
-        @SuppressWarnings("NullAway")
         val existingClient = duoHttpClient.compareAndExchange(null, clientInstance);
-        
         return existingClient != null ? existingClient : clientInstance;
     }
     

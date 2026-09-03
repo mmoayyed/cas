@@ -151,6 +151,23 @@ class OidcVerifiableCredentialEndpointControllerTests {
             return signedJwt.serialize();
         }
 
+        protected String buildProofJwt(final RSAKey holderKey, final String nonce) throws Exception {
+            val header = new JWSHeader.Builder(JWSAlgorithm.RS256)
+                .type(PROOF_JWT_TYPE)
+                .jwk(holderKey.toPublicJWK())
+                .build();
+            val claims = new JWTClaimsSet.Builder()
+                .jwtID(UUID.randomUUID().toString())
+                .audience(CREDENTIAL_ISSUER)
+                .subject("casuser")
+                .issueTime(new Date())
+                .claim("nonce", nonce)
+                .build();
+            val signedJwt = new SignedJWT(header, claims);
+            signedJwt.sign(new RSASSASigner(holderKey));
+            return signedJwt.serialize();
+        }
+
         protected String buildProofJwt(final ECKey holderKey, final JWSAlgorithm algorithm,
                                        final String audience, final Date issuedAt) throws Exception {
             val header = new JWSHeader.Builder(algorithm)
@@ -197,6 +214,8 @@ class OidcVerifiableCredentialEndpointControllerTests {
             );
             val accessToken = getAccessToken(principal, clientId);
             when(accessToken.getGrantType()).thenReturn(OAuth20GrantTypes.PRE_AUTHORIZED_CODE);
+            when(accessToken.getCredentialConfigurationIds())
+                .thenReturn(List.of("myorg", "employee", "jsonld", "strict"));
             ticketRegistry.addTicket(Objects.requireNonNull(accessToken.getTicketGrantingTicket()));
             ticketRegistry.addTicket(accessToken);
             return accessToken;
@@ -476,6 +495,45 @@ class OidcVerifiableCredentialEndpointControllerTests {
 
             assertFalse(oidcVerifiableCredentialNonceService.exists(firstNonce));
             assertFalse(oidcVerifiableCredentialNonceService.exists(secondNonce));
+        }
+
+        @Test
+        void verifyBatchCredentialIssuanceSharesOneNonceAcrossEntries() throws Throwable {
+            val clientId = UUID.randomUUID().toString();
+            val registeredService = getOidcRegisteredService(clientId);
+            servicesManager.save(registeredService);
+
+            val accessToken = createOAuth20AccessToken(clientId);
+            val holderKey = generateRsaHolderKey();
+            val nonce = oidcVerifiableCredentialNonceService.create().value();
+            assertNotNull(nonce);
+
+            val firstRequest = new OidcVerifiableCredentialRequest();
+            firstRequest.setCredentialConfigurationId("myorg");
+            firstRequest.setProof(buildProof(buildProofJwt(holderKey, nonce)));
+
+            val secondRequest = new OidcVerifiableCredentialRequest();
+            secondRequest.setCredentialConfigurationId("employee");
+            secondRequest.setProof(buildProof(buildProofJwt(holderKey, nonce)));
+
+            val batchRequest = new OidcVcBatchCredentialRequest(List.of(firstRequest, secondRequest));
+            mockMvc.perform(post(BATCH_CREDENTIAL_ENDPOINT_URL)
+                    .with(withHttpRequestProcessor())
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken.getId())
+                    .content(MAPPER.writeValueAsString(batchRequest)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.credential_responses.length()").value(2));
+
+            assertFalse(oidcVerifiableCredentialNonceService.exists(nonce),
+                "The shared nonce must be consumed once the batch has been issued");
+
+            mockMvc.perform(post(BATCH_CREDENTIAL_ENDPOINT_URL)
+                    .with(withHttpRequestProcessor())
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken.getId())
+                    .content(MAPPER.writeValueAsString(batchRequest)))
+                .andExpect(status().isBadRequest());
         }
 
         @Test
