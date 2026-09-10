@@ -327,3 +327,108 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
   effective default of the property the list comes from, not just the CAS-side default.
 - Password-bearing LDAP operations must be checked against RFC 3062 confidentiality requirements. A log
   warning is not enforcement, and the transport check itself should be read carefully for inverted logic.
+
+## Startup Performance Notes
+
+- Startup cost concentrates in three places: work done while the auto-configuration graph is assembled,
+  work done by eagerly-initialized beans, and work done by application lifecycle listeners. Investigate
+  those three before tuning any individual component.
+- `spring.main.lazy-initialization` is enabled for the web application, so every `@Lazy(false)` is a
+  deliberate opt-out that needs a reason. An eager bean drags its whole dependency graph in with it.
+- When a bean is guarded by `BeanSupplier`/`BeanCondition`, declare its collaborators as `ObjectProvider`.
+  Declaring them directly instantiates them before the condition is evaluated, so a feature that is off by
+  default still pays for its dependencies on every startup.
+- `ServiceLoader` lookups and `classpath*:` resource scans are fixed for the lifetime of the JVM. Resolve
+  them once and reuse the result; never place one inside a loop or on a path that runs per bean, per file
+  or per request.
+- Diagnostics that instrument the whole startup sequence — startup-event recording, configuration
+  validation, metadata catalogs — must be opt-in or built lazily. A feature whose only consumer is an
+  actuator endpoint that is not exposed by default should not be enabled by default.
+- Binding `CasConfigurationProperties` walks a property model spanning several hundred classes. Treat any
+  code that re-binds or re-validates that tree as expensive and make sure it happens at most once per run.
+- Reports and summaries should resolve their data sources only after establishing that there is something
+  to report, and expensive indexes should be built on first access rather than in a constructor.
+- Deferring work to the first request is an accepted pattern here (webflow definitions are built that way).
+  Prefer it over doing the work during context refresh.
+- To measure, start the server with `-DCAS_APP_STARTUP=buffering` and read the `startup` actuator endpoint,
+  or `-DCAS_APP_STARTUP=jfr` for a flight-recording session. Both are profiling aids and are off by default.
+- Actuator endpoint discovery does not depend on eager beans. Handler mappings are found by a type
+  lookup, and the endpoint access rules in the security filter chain come from the endpoint suppliers,
+  which are resolved by type while the chain is built. An eager marker on actuator configuration
+  usually only decides when the endpoint beans and their request mappings are created.
+- Module tests do not run with lazy initialization; that setting belongs to the web application's own
+  resources. Any change to bean eagerness must be validated with the puppeteer scenarios covering the
+  affected area, and the report should state which layer each result covers.
+
+## View / Presentation Layer Notes
+
+- The resolver registered with the Thymeleaf engine is `ChainingTemplateViewResolver`, not the
+  delegates inside it. Cache and existence flags on the delegates are discarded — the chain's own
+  `TemplateResolution` decides whether a parsed template is cached. Read the chain's constructor
+  before concluding that `spring.thymeleaf.cache` has any effect.
+- Thymeleaf's template cache key does not include the resolved theme. Any theme-dependent resolver
+  is therefore only safe to cache if the theme is first added to `templateResolutionAttributes`;
+  otherwise one tenant's theme is served to another.
+- Theme names are attacker-controlled by default: `RequestHeaderThemeResolver` reads the `theme`
+  header and `CookieThemeResolver` reads a cookie, both in the default chain. Treat a theme name
+  as untrusted input on every path it reaches — template path interpolation
+  (`String.format(resourceName, themeName)`), `ThemeBasedViewResolver.resolvers`,
+  `ResourceBundleThemeSource.themeCache`, and message-source lookups.
+- Any per-request map keyed by a request-supplied value needs a bound or an allow-list. Several
+  view caches are `ConcurrentHashMap`s that are never evicted.
+- Theme resolution runs once per *template resolution*, not once per request — that means once per
+  fragment, per resolver, per prefix. Anything expensive in a `ThemeResolver` (service lookup,
+  access-strategy evaluation, resource existence checks, HTTP calls) is multiplied accordingly.
+  If a resolver stores its answer in a request attribute, verify something actually reads it back.
+- `th:utext` disables escaping. Reserve it for `#{...}` message lookups; never use it on model
+  values that originate from HTTP input, audit records, service metadata or user profiles.
+- The default `cas.http-web-request.header.content-security-policy` includes `unsafe-inline` and
+  `unsafe-eval`, so CSP is not a mitigation for anything in the view layer. The filter supports an
+  `@nonce@` placeholder — assume it is not in use.
+- `cas.view.template-prefixes` directories are also registered as static resource locations under
+  `/**`. Anything placed there is publicly readable, templates included.
+- Line-delimited protocol output (CAS 1.0, per-line attribute renderers) has no structural
+  escaping. XML/JSON views escape; the plain-text ones do not.
+
+## CAS Protocol Notes (v1 / v2 / v3, SAML 1.1)
+
+- The protocol surface is small and worth memorizing: `support/cas-server-support-validation-core`
+  (`AbstractServiceValidateController` plus the `v1`/`v2`/`v3` subclasses and the response views),
+  `support/cas-server-support-validation` (`CasValidationAutoConfiguration` wires controllers,
+  views and validation specifications), `core/cas-server-core-validation-api` (specifications),
+  `core/cas-server-core/DefaultCentralAuthenticationService` (the whole ticket lifecycle), and
+  `support/cas-server-support-saml` + `support/cas-server-support-saml-core-api` for `/samlValidate`.
+- `DefaultCentralAuthenticationService` is where ST/PT/PGT correctness lives. Read a ticket
+  **inside** `lockRepository.execute(...)`, never before it: a ticket captured outside the lock is a
+  stale snapshot, and single-use enforcement (`countOfUses >= numberOfUses`) evaluated against a
+  snapshot is not enforcement. The default `LockRepository` is JVM-local, so a lock alone never
+  makes an operation cluster-safe.
+- Validation specifications (`ChainingCasProtocolValidationSpecification` and friends) are
+  singleton beans whose `renew` flag is mutated per request by a `ServletRequestDataBinder`.
+  Treat any per-request state on a protocol bean as a concurrency defect at a security boundary.
+- Order matters in `handleTicketValidation`: the proxy-callback path (`pgtUrl` -> authentication
+  transaction -> PGT creation) currently runs before ticket validation. Anything that performs I/O
+  or mints a credential must come after the ticket, service match and validation specification
+  have all been checked.
+- `pgtUrl` is caller-supplied. `RegisteredServiceProxyPolicy.isAllowedProxyCallbackUrl`
+  implementations that use `RegexUtils.find` are doing an unanchored substring search; that is not
+  an authorization check. CAS 3.0 also requires the callback to be HTTPS with peer trust
+  established — no scheme check exists today, and the shared HTTP client follows redirects.
+- Response templates live in `support/cas-server-support-thymeleaf/src/main/resources/templates/protocol/`.
+  `{{{...}}}` is unescaped; anything interpolated there (proxy URLs) or used as an element name
+  (attribute names, only space-sanitized by `CasProtocolAttributesRenderer.sanitizeAttributeName`)
+  is an XML-injection surface.
+- Error codes are part of the protocol. CAS 3.0 requires `INVALID_TICKET_SPEC` for validation
+  specification failures and `INTERNAL_ERROR` for unexpected failures; `CasProtocolConstants`
+  currently has neither, and `messages.properties` defines `INVALID_TICKET_SPEC` text that is
+  never emitted.
+- SAML 1.1: `Response/@InResponseTo` must be the request's `RequestID` and `Response/@Recipient`
+  must be the consumer URL. `Saml10ObjectBuilder.newResponse` overloads `InResponseTo` with the
+  TARGET hostname and never sets `Recipient`. Conditions come from
+  `Saml10ObjectBuilder.newConditions` — `NotBefore` is skew-backdated while `NotOnOrAfter` is
+  computed from `now()`, so the two are not symmetric.
+- Performance hot spot: `validateServiceTicket` evaluates the attribute release policy twice with
+  near-identical contexts and merges four attribute maps, then the views resolve the registered
+  service and attributes again while rendering. Release policies usually hit person-directory
+  back-ends, so duplicated resolution is a real per-validation cost, not a micro-optimization.
+- XXE is already handled in the SAML1 request path; don't re-report it.

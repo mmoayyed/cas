@@ -109,3 +109,99 @@ Guidance for AI coding agents working in the Apereo CAS source tree.
   that are silently ignored when the operator's template does not reference them.
 - Secrets and directory internals must not reach logs or released attributes: password-reset answers, bind
   credentials, diagnostic messages and matched DNs all deserve a second look.
+
+## Startup performance review discipline
+
+- Ask what runs, not what exists. The interesting question for an auto-configuration is not whether it is
+  imported but what executes during condition evaluation, bean construction and the lifecycle events.
+- Trace the three phases separately: context preparation and initializers, context refresh and bean
+  creation, and the started/ready listeners. Duplicated work across two phases is a common defect —
+  the same expensive operation performed once early and once late is easy to miss because each site
+  looks reasonable on its own.
+- The web application enables lazy initialization globally. Read `@Lazy(false)`, `InitializingBean`,
+  `SmartInitializingSingleton` and event listeners as the real eager set, and follow their constructor
+  parameters: a conditionally-disabled bean still builds every collaborator it declares directly, so use
+  `ObjectProvider` on anything a `BeanSupplier` guard may decide not to use.
+- Treat classpath scanning as a resource with a fixed answer. `ServiceLoader.load`, `classpath*:` patterns
+  and resource-pattern resolvers should be evaluated once per JVM; finding one inside a loop, a factory
+  method or a per-request path is a finding, not a nitpick.
+- Check defaults from the operator's point of view. Instrumentation, validation and catalog-building
+  features are useful when asked for and pure overhead otherwise; whichever way the default goes, the
+  documentation table and the code must agree.
+- Prefer deferral over deletion when the work is genuinely needed: build indexes on first access, resolve
+  optional beans through providers, and let first-request initialization carry work that has no reason to
+  block readiness.
+- Startup timings cannot be verified in a sandboxed environment without a JDK matching the build and
+  network access for Gradle. When that is the case, justify each change by naming the beans, scans or
+  binds it removes from the critical path, and say plainly that no timing run was performed.
+- Lazy initialization is a property of the running web application, not of the test suite. The setting
+  lives in the web application's own resources, which are on the `bootRun` source set and not on any
+  module's test classpath, so module tests construct the context eagerly. A change to whether a bean is
+  eager therefore cannot be proven by module tests alone; they only show the eager path still works.
+  Validate it through the puppeteer scenarios that exercise the affected area, and say which layer each
+  result actually covers.
+- Before removing or adding an eager marker, find the bean's real consumers rather than assuming the
+  annotation is what registers it. Framework infrastructure usually discovers collaborators by type,
+  and a type lookup resolves a lazy definition from its declared return type and instantiates it then;
+  the annotation frequently only decides *when* that happens, not *whether* it happens.
+
+## View and presentation layer
+
+- Entry points: `support/cas-server-support-thymeleaf` (auto-configuration),
+  `support/cas-server-support-thymeleaf-core` (resolvers, views, dialect),
+  `support/cas-server-support-themes-core` (theme resolvers and theme sources),
+  `core/cas-server-core-web-api` (`ResponseHeadersEnforcementFilter`, `AbstractCasView`),
+  `support/cas-server-support-validation-core` (protocol response views).
+- The render path is: request → `ChainingThemeResolver` → `ChainingTemplateViewResolver` →
+  delegate template resolvers → `SpringTemplateEngine` → `ThemeBasedViewResolver` /
+  `ThymeleafViewResolver`. Review it as a path; the individual classes look correct in isolation
+  and the defects live at the seams (what the chain discards, what the cache key omits, what the
+  theme name is allowed to be).
+- Theme names come from a request header and a cookie by default and are never validated. Any new
+  consumer of `ThemeResolver.resolveThemeName` must assume hostile input.
+- Caching flags set on a delegate resolver mean nothing if the enclosing chain is not cacheable.
+  When changing cache behaviour here, confirm the effect at `TemplateManager`, not at the bean.
+- Protocol response views: CAS 2.0/3.0 XML escape through `escapeXml10`; mustache `{{ }}` escapes
+  and `{{{ }}}` does not. CAS 1.0 and per-line attribute renderers are plain text with no
+  structural escaping — validate values rather than relying on the template.
+- Templates: use `th:text` for model data and reserve `th:utext` for `#{...}` message codes.
+  Thymeleaf JS inlining (`th:inline="javascript"`, `[[${...}]]`) is safe; string-concatenating a
+  model value into a `<script>` body or into `innerHTML` is not.
+- Puppeteer scenarios that cover this layer: `themes-per-service`, `themes-external-per-service`,
+  `themes-collection-twbs-login`, `themes-collections-example`, `thymeleaf-templates-external`,
+  `thymeleaf-templates-rest`, `cas-validation-protocol-v2`, `cas-validation-protocol-v3`,
+  `pm-account-profile`. Re-run these for any change to theme resolution, template resolution or
+  static-resource registration; `thymeleaf-templates-external` asserts that the configured
+  template prefix directory is reachable over HTTP.
+- Test view components through `MockMvc` and the existing web-test infrastructure; use Lombok
+  (`val`, `@RequiredArgsConstructor`, `@Slf4j`) and current Java features as the rest of the tree does.
+
+## CAS protocol (v1/v2/v3 + SAML 1.1) review discipline
+
+- Entry points to trace, in order: `AbstractServiceValidateController` ->
+  `DefaultCentralAuthenticationService.validateServiceTicket` / `createProxyGrantingTicket` /
+  `grantProxyTicket` -> `ServiceValidationViewFactory` -> the `protocol/{2.0,3.0}` mustache
+  templates or `Saml10SuccessResponseView`. Review the whole chain; the interesting defects are in
+  the ordering between these stages, not inside any one class.
+- Ticket-state correctness rule for this codebase: read, check and mutate a ticket inside the same
+  `lockRepository.execute(...)` block. `LockRepository` defaults to a JVM-local registry, so any
+  invariant that must hold across nodes needs registry-level atomicity, not a lock.
+- Protocol beans reached from a controller are singletons. Never introduce (or leave) per-request
+  mutable state on them; bind request parameters into a local object instead.
+- Anything derived from `pgtUrl`, `service`/`targetService`, or `TARGET` is attacker-controlled at
+  the point CAS first touches it. Authorization checks on those values must be anchored/exact
+  matches, and scheme restrictions must be enforced in code, not documented in Javadoc.
+- Check response wire formats against the published CAS 3.0 protocol spec and the SAML 1.1
+  browser/artifact profile, not from memory: required error codes, `<cas:proxies>` ordering,
+  `InResponseTo`/`Recipient`/`Conditions` on the SAML 1.1 response.
+- Cross-check every protocol change against these puppeteer scenarios:
+  `cas-validation-protocol-v2`, `cas-validation-protocol-v3`, `ticket-validation-cas-renew`,
+  `ticket-validation-saml1`, `ticket-validation-casv3-pgt`, `ticket-validation-casv3-pgtiou`,
+  `ticket-validation-casv3-pgt-multiple-pt`, `ticket-validation-casv3-pgt-stateless`,
+  `single-logout-cas-backchannel`, `single-logout-cas-frontchannel`. Note that some of them assert
+  current non-compliant behavior (`ticket-validation-cas-renew` asserts
+  `code="INVALID_TICKET"` where the spec wants `INVALID_TICKET_SPEC`), so a compliance fix means
+  updating the scenario in the same change.
+- Coverage gaps to be aware of: no scenario exercises concurrent validation of a single ticket, and
+  `ticket-validation-saml1` always supplies a `RequestID`, so the SAML 1.1 default `InResponseTo`
+  path is untested.
