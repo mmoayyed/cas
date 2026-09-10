@@ -155,8 +155,8 @@ security have been strengthened across several flows.
   ticket minted before any of those checks ran, so presenting a leaked service ticket could drive an outbound request
   and leave an unused proxy-granting ticket behind even though validation went on to fail.
 - Validation responses now use the protocol's own error codes for two cases that previously reported something else.
-  A ticket that fails the validation specification without a `renew` request — a proxy ticket presented to
-  `/serviceValidate`, for instance — is reported as `INVALID_TICKET_SPEC` rather than `INVALID_TICKET`, and an
+  A ticket that fails the validation specification without a `renew` request 
+  is reported as `INVALID_TICKET_SPEC` rather than `INVALID_TICKET`, and an
   unexpected failure during validation is reported as `INTERNAL_ERROR` rather than `INVALID_REQUEST`, which stays
   reserved for a request that is missing required parameters. A ticket that did not come from an initial login while
   `renew` was requested continues to be reported as `INVALID_TICKET`, as the protocol specifies.

@@ -48,8 +48,10 @@ public class CasRestServiceRegistryAutoConfiguration {
             .supply(() -> {
                 val registry = casProperties.getServiceRegistry().getRest();
                 LOGGER.debug("Creating REST-based service registry using endpoint [{}]", registry.getUrl());
-                return new RestfulServiceRegistry(applicationContext,
+                val registry = new RestfulServiceRegistry(applicationContext,
                     Optional.ofNullable(serviceRegistryListeners.getIfAvailable()).orElseGet(ArrayList::new), registry);
+                registry.setOrder(casProperties.getServiceRegistry().getRest().getOrder());
+                return registry;
             })
             .otherwiseProxy()
             .get();
