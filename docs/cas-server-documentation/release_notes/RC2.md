@@ -82,8 +82,7 @@ Please refer to the [Spring Boot Wiki](https://github.com/spring-projects/spring
 for more information on the changes and updates in this release. The biggest change to CAS would be support for AMQP 1.0.
 
 REST password management, trusted-device storage, Clickatell SMS and Spring Boot Admin registration now use Spring's
-`RestClient` in place of deprecated `RestTemplate` APIs. Custom password-management HTTP client beans must now be named
-`passwordChangeServiceRestClient` and provide a `RestClient`.
+`RestClient` in place of deprecated `RestTemplate` APIs.
 
 ### JSpecify & NullAway
 
@@ -205,6 +204,12 @@ security have been strengthened across several flows.
 - [Surrogate authentication](../authentication/Surrogate-Authentication-Storage-LDAP.html), [delegated authentication profile selection](../integration/Delegate-Authentication-ProfileSelection.html), [acceptable usage policy](../webflow/Webflow-Customization-AUP-LDAP.html) and [password management](../password_management/Password-Management.html) now build their LDAP connection pools once and reuse them across requests.
 - LDAP connection pools are now addressed by the directory and base DN they serve, so multiple configuration blocks that point at the same server no longer collapse onto a single set of connection settings.
 - Surrogate search filters that do not reference the impersonated account are now rejected, as such a filter is unable to restrict the accounts a user may impersonate.
+
+### JMX Management
+
+[JMX management](../integration/JMX-Integration.html) now includes service reload and lookup, ticket and session
+counts with filtered listings, expired-ticket cleanup, authentication and MFA diagnostics, and principal attribute
+cache invalidation. Service listings also release backend resources correctly.
 
 ## Other Stuff
     
