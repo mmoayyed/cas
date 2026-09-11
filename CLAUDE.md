@@ -432,3 +432,40 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
   service and attributes again while rendering. Release policies usually hit person-directory
   back-ends, so duplicated resolution is a real per-validation cost, not a micro-optimization.
 - XXE is already handled in the SAML1 request path; don't re-report it.
+
+## Interrupt Notifications Notes
+
+- Surface: `support/cas-server-support-interrupt-{api,core,webflow}`, `InterruptWebflowConfigurer` (all state
+  wiring), `FinalizeInterruptFlowAction`/`InquireInterruptAction`, `SimpleInterruptTrackingEngine`, and
+  `templates/interrupt/casInterruptView.html`.
+- Inquiry runs at up to three checkpoints per login (after `realSubmit`/`sendTicketGrantingTicket`, prepended to
+  `createTicketGrantingTicket` in `AFTER_AUTHENTICATION`, prepended to `generateServiceTicket`) and again on every
+  SSO service ticket. The "finalized" marker is request-scoped and set only after the user acts, so a
+  non-interrupting result re-runs every inquirer (REST calls included) at each checkpoint.
+- The skip decision is "tracking cookie equals a fresh inquiry result". The cookie stores
+  `SimpleInterruptTrackingEngine.TrackedInterrupt` (principal id + response) and is ignored for other principals;
+  blocking responses are never tracked (`FinalizeInterruptFlowAction` link path) and never skipped
+  (`InquireInterruptAction`). Keep both guards, and keep the record registered in `CasInterruptRuntimeHints`.
+- Inquirer failures are fail-open (`none()` or `null`). `InterruptResponse`'s no-arg constructor defaults to
+  `interrupt=true`, so any stray JSON body becomes an interrupt; `RestEndpointInterruptInquirer` therefore parses
+  only `2xx` responses. Keep that guard when touching the REST path.
+- `JsonResourceInterruptInquirer` serves lookups from an immutable map swapped atomically on reload; never
+  mutate shared inquirer state in place on the request path. Inquirers are created inside configurer lambdas,
+  not as beans, so their `DisposableBean.destroy()` is never called by Spring.
+- Passive requests: OIDC `prompt=none` and SAML `IsPassive` are mapped to `gateway`. `InquireInterruptAction` returns
+  `gateway` when an interrupt is required on such a request, and every state that runs the inquiry must route
+  `gateway` to `gatewayServicesManagement`. An unmatched event in an action state with prepended actions falls
+  through to the next action (for `createTicketGrantingTicket`, that creates the TGT).
+- `interruptCookieCipherExecutor` auto-enables crypto when keys exist, but `interruptCookieValueManager` reads only
+  `crypto.enabled`; keep the two decisions identical.
+- The view renders `principal.id` (message parameter), `interrupt.message` and `interrupt.data` with `th:utext`.
+- Puppeteer `interrupt-aftersso-login` covers a forged `proceed` on a blocked response; `interrupt-afterauthn-groovy`
+  covers following a blocked link and logging in again without logging out.
+- Protocol modules can reuse an SSO session without the login webflow: the SAML2 IdP builds responses straight from
+  the TGT (`AbstractSamlIdPProfileHandlerController.singleSignOnSessionExists`), so webflow-only checks such as
+  interrupts do not run there. That is accepted for now (maintainer decision); vetoing through
+  `InterruptSingleSignOnParticipationStrategy` was rejected. Expected gateway-like behavior: no SSO session -> no
+  interrupt; SSO session and the request returns to the login flow -> no interrupt, no ticket; SSO session answered
+  outside the login flow -> no interrupt evaluated.
+- Puppeteer `interrupt-gateway-login` covers CAS gateway, OIDC `prompt=none` and SAML2 `IsPassive` without an SSO
+  session, then with a pending interrupt (AFTER_SSO; SAML2 is answered from the SSO session), then after acknowledgement.

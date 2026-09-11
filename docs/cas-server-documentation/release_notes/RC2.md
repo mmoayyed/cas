@@ -211,6 +211,18 @@ security have been strengthened across several flows.
 counts with filtered listings, expired-ticket cleanup, authentication and MFA diagnostics, and principal attribute
 cache invalidation. Service listings also release backend resources correctly.
 
+### Service Change History
+
+The [service history endpoint](../services/Configuring-Service-Version-History.html) can now restore a selected
+registered-service revision to the service registry and live service cache, while retaining its history.
+
+### Interrupt Notifications
+
+- Following a link on a [blocking interrupt](../webflow/Webflow-Customization-Interrupt.html) no longer records the interrupt as acknowledged, and a blocking response is never skipped by [interrupt tracking](../webflow/Webflow-Customization-Interrupt-Tracking.html). Tracking cookies are now bound to the principal; cookies issued by earlier versions are ignored, so users may see an acknowledged interrupt once more.
+- Interrupt notifications no longer render during passive requests (CAS `gateway`, OpenID Connect `prompt=none`, SAML2 `IsPassive`); CAS returns to the application without a ticket instead, as required by the respective specifications.
+- [JSON interrupt notifications](../webflow/Webflow-Customization-Interrupt-JSON.html) now load their policies once and reload file changes atomically, so concurrent logins can no longer skip an interrupt while the file is being re-read.
+- [REST interrupt notifications](../webflow/Webflow-Customization-Interrupt-REST.html) now read the response payload only for successful status codes; error responses no longer interrupt every login with a generic message.
+
 ## Other Stuff
     
 - CloudWatch logging now avoids recursive logging initialization when reporting appender startup or delivery failures.
