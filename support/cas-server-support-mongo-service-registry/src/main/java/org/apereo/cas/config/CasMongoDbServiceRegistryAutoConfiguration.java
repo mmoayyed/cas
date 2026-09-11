@@ -64,8 +64,12 @@ public class CasMongoDbServiceRegistryAutoConfiguration {
         final CasConfigurationProperties casProperties,
         final ConfigurableApplicationContext applicationContext) {
         val mongo = casProperties.getServiceRegistry().getMongo();
-        return new MongoDbServiceRegistry(applicationContext, mongoDbServiceRegistryTemplate, mongo.getCollection(),
+        val registry = new MongoDbServiceRegistry(applicationContext,
+            mongoDbServiceRegistryTemplate,
+            mongo.getCollection(),
             Optional.ofNullable(serviceRegistryListeners.getIfAvailable()).orElseGet(ArrayList::new));
+        registry.setOrder(mongo.getOrder());
+        return registry;
     }
 
     @Bean

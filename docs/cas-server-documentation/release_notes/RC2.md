@@ -155,8 +155,8 @@ security have been strengthened across several flows.
   ticket minted before any of those checks ran, so presenting a leaked service ticket could drive an outbound request
   and leave an unused proxy-granting ticket behind even though validation went on to fail.
 - Validation responses now use the protocol's own error codes for two cases that previously reported something else.
-  A ticket that fails the validation specification without a `renew` request — a proxy ticket presented to
-  `/serviceValidate`, for instance — is reported as `INVALID_TICKET_SPEC` rather than `INVALID_TICKET`, and an
+  A ticket that fails the validation specification without a `renew` request 
+  is reported as `INVALID_TICKET_SPEC` rather than `INVALID_TICKET`, and an
   unexpected failure during validation is reported as `INTERNAL_ERROR` rather than `INVALID_REQUEST`, which stays
   reserved for a request that is missing required parameters. A ticket that did not come from an initial login while
   `renew` was requested continues to be reported as `INVALID_TICKET`, as the protocol specifies.
@@ -210,6 +210,18 @@ security have been strengthened across several flows.
 [JMX management](../integration/JMX-Integration.html) now includes service reload and lookup, ticket and session
 counts with filtered listings, expired-ticket cleanup, authentication and MFA diagnostics, and principal attribute
 cache invalidation. Service listings also release backend resources correctly.
+
+### Service Change History
+
+The [service history endpoint](../services/Configuring-Service-Version-History.html) can now restore a selected
+registered-service revision to the service registry and live service cache, while retaining its history.
+
+### Interrupt Notifications
+
+- Following a link on a [blocking interrupt](../webflow/Webflow-Customization-Interrupt.html) no longer records the interrupt as acknowledged, and a blocking response is never skipped by [interrupt tracking](../webflow/Webflow-Customization-Interrupt-Tracking.html). Tracking cookies are now bound to the principal; cookies issued by earlier versions are ignored, so users may see an acknowledged interrupt once more.
+- Interrupt notifications no longer render during passive requests (CAS `gateway`, OpenID Connect `prompt=none`, SAML2 `IsPassive`); CAS returns to the application without a ticket instead, as required by the respective specifications.
+- [JSON interrupt notifications](../webflow/Webflow-Customization-Interrupt-JSON.html) now load their policies once and reload file changes atomically, so concurrent logins can no longer skip an interrupt while the file is being re-read.
+- [REST interrupt notifications](../webflow/Webflow-Customization-Interrupt-REST.html) now read the response payload only for successful status codes; error responses no longer interrupt every login with a generic message.
 
 ## Other Stuff
     
