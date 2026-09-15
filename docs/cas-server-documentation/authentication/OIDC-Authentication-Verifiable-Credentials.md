@@ -99,7 +99,7 @@ A wallet decides how to authenticate from the authorization server metadata, so 
 has to advertise that it accepts requests with no client authentication. CAS includes `none` in
 authentication methods supported for the token endpoint by default for this reason. If the
 list is narrowed, keep `none` in it; without it a wallet picks one of the credentialed methods it
-sees instead -- typically `private_key_jwt` -- and the exchange is rejected, because the wallet has
+sees instead and the exchange is rejected, because the wallet has
 no client registration to authenticate with.
 
 ### Credential Endpoint
@@ -113,8 +113,9 @@ POST /oidc/oidcVcCredential
 
 This endpoint expects:
 
-- An access token, presented as `Authorization: Bearer ...` or, when the token response named the
-  token type `DPoP`, as `Authorization: DPoP ...` per [RFC 9449](https://www.rfc-editor.org/rfc/rfc9449).
+- An access token, presented in the `Authorization` header as `Bearer ...` or, when the token response
+  named the token type `DPoP`, as `DPoP ...` per [RFC 9449](https://www.rfc-editor.org/rfc/rfc9449).
+  An `access_token` or `token` request parameter is accepted as well, as it is elsewhere in CAS.
   A `DPoP`-bound token must be accompanied by a `DPoP` proof header bound to that token; a request
   without one, or with a proof that does not verify, is answered with `401` and
   `WWW-Authenticate: DPoP error="invalid_dpop_proof"`. A proof may not be reused.
@@ -271,12 +272,69 @@ The general flow is:
 - The wallet calls the credential endpoint with the access token and proof.
 - CAS validates the request and issues the credential.
 
+The pre-authorized code is single use, as OpenID4VCI requires. It is redeemed and deleted before the
+access token is minted, so of several concurrent exchanges of the same code exactly one succeeds and the
+rest are refused; the issuance transaction is removed along with it.
+
 ## Verifiable Presentations
 
 CAS can also act as a verifier and ask a wallet to present a credential. A relying party creates a
 presentation request, and CAS returns a deep link the wallet can open, usually rendered as a QR code.
 
 {% include_cached casproperties.html properties="cas.authn.oidc.vc.presentation" %}
+
+The relying party that created the request collects the outcome from:
+
+```bash
+GET /oidc/oidcVcPresentationResult?requestId=...
+```
+
+This endpoint requires the same client authentication as the request creation endpoint. It answers
+`{"status": "pending"}` while the wallet has not responded, and once it has, `{"status": "verified"}`
+together with the claims that were disclosed, keyed by credential query id. The outcome is delivered
+once and then removed, so a second poll reports `404`, as does a request that expired unanswered.
+
+CAS as a verifier trusts only itself. A presented credential is accepted when its `iss` is this
+deployment's own issuer, its `vct` resolves to one of the credential configurations above, and its
+signature verifies against this deployment's own signing key; `iat` and `exp` are both required, and a
+credential carrying a `status` claim is refused rather than accepted unchecked, since CAS evaluates no
+status list. There is no external issuer trust list, no `x5c` chain validation, no DID resolution, no
+OpenID Federation and no Token Status List, so credentials issued elsewhere are rejected.
+
+This is a trust policy rather than a protocol limitation: OpenID4VP leaves issuer trust to the verifier,
+noting that "Verifiers must verify that the issuer of a received presentation is trusted on their own".
+
+## Authorized Credential Types
+
+The credential configurations above describe what the issuer is able to mint. They say nothing about
+which relying party may ask for what, so by default every registered client may obtain every credential
+the deployment defines. A service narrows that down with a verifiable credentials policy:
+
+```json
+{
+  "@class": "org.apereo.cas.services.OidcRegisteredService",
+  "clientId": "client",
+  "clientSecret": "secret",
+  "serviceId": "^https://app.example.org/.*",
+  "name": "Example",
+  "id": 1,
+  "verifiableCredentialsPolicy": {
+    "@class": "org.apereo.cas.oidc.vc.services.DefaultRegisteredServiceOidcVerifiableCredentialsPolicy",
+    "allowedCredentialTypes": [ "java.util.HashSet", [ "myorg" ] ]
+  }
+}
+```
+
+The entries in `allowedCredentialTypes` are credential configuration ids. A service that defines no
+policy, or whose policy lists no credential types, may obtain every credential configuration the issuer
+publishes; only a policy that actually names types restricts the service to those types. A policy can
+never widen a service beyond what the issuer publishes, so naming a credential configuration that does
+not exist grants nothing.
+
+The policy is enforced wherever a credential type is claimed: when a credential offer transaction is
+created, when authorization details are turned into an authorization code, and again at the credential
+endpoint when the token is spent. That last check reads the policy afresh, so tightening a service takes
+effect against access tokens that are already outstanding.
 
 ## Credential Validity
 
@@ -289,8 +347,33 @@ code, the nonce or the access token used to obtain it.
 
 ## Credential Signing
 
-After claims are collected and validated, CAS signs the credential using issuer key material.
+After claims are collected and validated, CAS signs the credential with its own issuer key, selected the
+same way as for other OpenID Connect artifacts and honoring the service's `jwksKeyId` when one is set.
 
-For JWT-based credential formats, this generally reuses the same signing infrastructure
-used for ID tokens and other JWT artifacts, while still producing a payload that is
-specific to the verifiable credential format being issued.
+A credential is not an ID token, and the relying party's ID token settings do not apply to it. The
+algorithm is the first entry of the credential configuration's `credential-signing-alg-values-supported`
+that the issuer's signing key can perform, so the order of that list is a preference the deployment
+expresses, and that list is also the permitted set, so no other algorithm can be used. This is what keeps
+issuance consistent with the issuer metadata and with what a verifier, CAS included, accepts.
+
+A service may narrow the algorithms used for its own credentials through its verifiable credentials
+policy:
+
+```json
+{
+  "@class": "org.apereo.cas.services.OidcRegisteredService",
+  "clientId": "client",
+  "serviceId": "^https://app.example.org/.*",
+  "name": "Example",
+  "id": 1,
+  "verifiableCredentialsPolicy": {
+    "@class": "org.apereo.cas.oidc.vc.services.DefaultRegisteredServiceOidcVerifiableCredentialsPolicy",
+    "credentialSigningAlgValuesSupported": [ "java.util.HashSet", [ "ES256" ] ]
+  }
+}
+```
+
+As with `allowedCredentialTypes`, this can only narrow: the result is the intersection with what the
+credential configuration advertises, so naming an algorithm the configuration does not offer leaves the
+service with nothing and the request is refused. A policy that names no algorithms leaves the service
+with everything the configuration advertises.
