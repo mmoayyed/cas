@@ -74,7 +74,7 @@ function publishConfigurationMetadata() {
 }
 
 function validateProjectDocumentation() {
-  ruby $PWD/ci/docs/proof.rb
+  BUNDLE_GEMFILE="${BUNDLE_GEMFILE:-$PWD/gh-pages/Gemfile}" bundle exec ruby "$PWD/ci/docs/proof.rb"
 
   retVal=$?
   if [[ ${retVal} -eq 0 ]]; then
@@ -281,8 +281,13 @@ if [[ $cloneRepository == "true" ]]; then
   printgreen "Cloning ${REPOSITORY_NAME}'s [gh-pages] branch..."
   [[ -d "$PWD/gh-pages" ]] && rm -Rf "$PWD/gh-pages"
   mkdir -p "$PWD/gh-pages"
-  git clone --single-branch --depth 1 --branch gh-pages \
+  git clone --single-branch --depth 1 --branch gh-pages --no-checkout \
     --filter=blob:none --no-tags --quiet "${REPOSITORY_ADDR}" "$PWD/gh-pages"
+  printgreen "Checking out the shared site files and $branchVersion only..."
+  git -C "$PWD/gh-pages" sparse-checkout set --no-cone \
+    '/*' '!/*/' '/_includes/' '/_layouts/' '/stylesheets/' '/javascripts/' \
+    '/images/' '/assets/' '/developer/' "/$branchVersion/"
+  git -C "$PWD/gh-pages" checkout --quiet gh-pages
 
   printgreen "Removing previous documentation from $branchVersion..."
   rm -Rf "$PWD/gh-pages/$branchVersion" >/dev/null
@@ -306,6 +311,10 @@ if [[ $cloneRepository == "true" ]]; then
   mv "$PWD/docs-latest/404.md" "$PWD/gh-pages"
   mv "$PWD/docs-latest/_config.yml" "$PWD/gh-pages"
   rm -f "$PWD/gh-pages/Gemfile.lock"
+  [[ -f "$PWD/docs-latest/Gemfile.lock" ]] && mv "$PWD/docs-latest/Gemfile.lock" "$PWD/gh-pages"
+  rm -Rf "$PWD/docs-latest/.bundle"
+  rm -Rf "$PWD/gh-pages/_plugins"
+  mv "$PWD/docs-latest/_plugins" "$PWD/gh-pages/_plugins"
 
   cp -Rf "$PWD"/docs-latest/* "$PWD/gh-pages/$branchVersion"
   if [[ $branchVersion == "development" ]]; then
@@ -454,27 +463,32 @@ if [[ ${buildDocs} == "true" ]]; then
   pushd .
 
   if [[ "$CI" == "true" ]]; then
-    printgreen "Moving jekyll artifacts into $PWD/gh-pages/ directory"
-    mv "$PWD"/jekyll/.jekyll-cache "$PWD/gh-pages/"
-    mv "$PWD"/jekyll/.jekyll-metadata "$PWD/gh-pages/"
-    rm -Rf "$PWD"/jekyll
+    if [[ -d "$PWD/jekyll/.jekyll-cache" ]]; then
+      printgreen "Restoring the Jekyll cache into $PWD/gh-pages/"
+      mv "$PWD/jekyll/.jekyll-cache" "$PWD/gh-pages/"
+    fi
+    rm -Rf "$PWD/jekyll"
   fi
 
   cd "$PWD/gh-pages" || exit
   ruby --version
 
-  printgreen "Installing documentation dependencies..."
-  bundle config set force_ruby_platform true
-  bundle install
+  if bundle check >/dev/null 2>&1; then
+    printgreen "Documentation dependencies are already installed"
+  else
+    printgreen "Installing documentation dependencies..."
+    bundle config set force_ruby_platform true
+    bundle install
+  fi
   printgreen "Building documentation site for $branchVersion with data at $PWD/gh-pages/_data"
   echo -n "Starting at " && date
-  jekyll --version
+  bundle exec jekyll --version
 
   export RUBY_YJIT_ENABLE=1
   if [[ ${serve} == "true" ]]; then
     bundle exec jekyll serve --baseurl "" --profile --incremental --trace
   else
-    bundle exec jekyll build --incremental --trace
+    bundle exec jekyll build --trace
   fi
   retVal=$?
 
@@ -486,12 +500,11 @@ if [[ ${buildDocs} == "true" ]]; then
   popd
 
   if [[ "$CI" == "true" ]]; then
-    echo "Moving jekyll build artifacts into $PWD/jekyll"
     mkdir -p "$PWD/jekyll"
-    mv "$PWD"/gh-pages/.jekyll-cache "$PWD"/jekyll/
-    mv "$PWD"/gh-pages/.jekyll-metadata "$PWD"/jekyll/
-    printgreen "Jekyll cache is now at $PWD/jekyll/"
-    ls -al "$PWD/jekyll/"
+    if [[ -d "$PWD/gh-pages/.jekyll-cache" ]]; then
+      mv "$PWD/gh-pages/.jekyll-cache" "$PWD/jekyll/"
+      printgreen "Jekyll cache is now at $PWD/jekyll/ ($(du -sh "$PWD/jekyll/.jekyll-cache" | cut -f1))"
+    fi
   else
     printyellow "Deleting jekyll build directory"
     rm -Rf "$PWD"/jekyll/
@@ -512,27 +525,20 @@ pushd .
 cd "$PWD/gh-pages" || exit
 
 if [[ $clone == "true" ]]; then
-  rm -Rf .jekyll-cache .jekyll-metadata .sass-cache "$branchVersion/build"
-  rm -Rf "$branchVersion/build"
+  rm -Rf .jekyll-cache .jekyll-metadata .sass-cache "$branchVersion/build" _plugins
   printgreen "Configuring git repository settings..."
-  rm -Rf .git
-  git init
-  git config init.defaultBranch master
-  git remote add origin "${REPOSITORY_ADDR}"
   git config user.email "cas@apereo.org"
   git config user.name "CAS"
   git config core.fileMode false
-
-  printgreen "Checking out gh-pages branch..."
-  git switch gh-pages 2>/dev/null || git switch -c gh-pages 2>/dev/null
-  printgreen "Configuring tracking branches for repository..."
-  git branch -u origin/gh-pages
 
   rm -Rf "./$branchVersion"
   mv "_site/$branchVersion" .
   touch "$branchVersion/.nojekyll"
   rm -Rf _site
   rm -Rf _data
+
+  printgreen "Starting a new single-commit history on top of the cloned objects..."
+  git checkout --quiet --orphan gh-pages-publish
 fi
 
 if [ -z "$GH_PAGES_TOKEN" ] && [ "${GITHUB_REPOSITORY}" != "${REPOSITORY_NAME}" ]; then
@@ -556,7 +562,7 @@ elif [[ "${publishDocs}" == "true" ]]; then
   git status
 
   printgreen "Pushing changes to upstream..."
-  git push -fq origin gh-pages
+  git push -fq origin HEAD:gh-pages
   retVal=$?
   if [[ ${retVal} -eq 1 ]]; then
     printred "Failed to push documentation."
