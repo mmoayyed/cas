@@ -466,7 +466,7 @@ management.endpoints.web.path-mapping.health=healthcheck
                                     <div id="collapseSecurityDiv{{ key }}">
                                         <div class="collapse" id="collapseSecurityBasicAuth{{ key }}">
                                             <div class="card card-body">
-                                                {{ basicauthprops || markdownify }}
+                                                {{ basicauthprops | markdownify }}
 
                                                 <p>For basic authentication, the default username is <code>casuser</code>. The password may be automatically generated at startup and displayed in CAS logs if it is left undefined in CAS settings. Additional sources may also be defined that would authenticate the request via JAAS, LDAP, JDBC, etc. </p>
                                             </div>
