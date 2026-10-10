@@ -1493,6 +1493,25 @@ pre code.hljs {
     grid-column: 1 / -1;
 }
 
+.cas-ui .mdc-text-field > .mdc-text-field__icon--leading {
+    position: static !important;
+    z-index: 3;
+    grid-column: 1;
+    grid-row: 2;
+    align-self: center;
+    justify-self: start;
+    margin: 0 !important;
+    margin-inline-start: 14px !important;
+    padding: 0;
+    transform: none;
+    color: var(--cas-ui-muted);
+    pointer-events: none;
+}
+
+.cas-ui .mdc-text-field:has(> .mdc-text-field__icon--leading) > .mdc-text-field__input {
+    padding-inline-start: 44px !important;
+}
+
 .cas-ui .mdc-text-field-helper-line {
     padding: 4px 0 0;
 }
@@ -1912,6 +1931,11 @@ pre code.hljs {
     white-space: nowrap;
 }
 
+.cas-ui table.table > thead > tr > th .dt-column-title {
+    font-size: inherit;
+    font-weight: inherit;
+}
+
 .cas-ui table.table > thead > tr:first-child > th:first-child {
     border-start-start-radius: var(--cas-ui-radius);
 }
@@ -2018,4 +2042,780 @@ pre code.hljs {
 
 .cas-ui .progress-bar-success .mdc-linear-progress__bar-inner {
     border-color: #1d6b47;
+}
+
+/* Hero screens: passkeys and consent */
+.cas-ui .cas-hero,
+.cas-ui .cas-consent {
+    width: 100% !important;
+    max-width: 600px;
+    margin-inline: auto !important;
+    border: 1px solid var(--cas-ui-divider);
+    border-radius: 20px;
+    box-shadow: 0 1px 2px rgba(16, 40, 70, .06), 0 12px 32px rgba(16, 40, 70, .12);
+}
+
+.cas-ui .cas-hero {
+    align-items: center;
+    text-align: center;
+}
+
+.cas-ui .cas-hero-icon {
+    position: relative;
+    display: inline-grid;
+    place-items: center;
+    width: 76px;
+    height: 76px;
+    margin: 4px auto 18px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 30% 25%, color-mix(in srgb, var(--cas-ui-focus) 24%, #fff), color-mix(in srgb, var(--cas-ui-primary) 14%, #fff));
+    color: var(--cas-ui-primary);
+    font-size: 40px;
+    line-height: 1;
+    box-shadow: 0 0 0 10px color-mix(in srgb, var(--cas-ui-focus) 7%, transparent);
+}
+
+.cas-ui .cas-hero-icon.is-success {
+    background: radial-gradient(circle at 30% 25%, #d7f0e1, #e9f5ee);
+    color: #1d6b47;
+    box-shadow: 0 0 0 10px rgba(29, 107, 71, .08);
+}
+
+.cas-ui .cas-hero-icon.is-danger {
+    background: radial-gradient(circle at 30% 25%, #f6d3d9, #fbe9eb);
+    color: var(--cas-ui-danger);
+    box-shadow: 0 0 0 10px rgba(162, 3, 35, .07);
+}
+
+.cas-ui .cas-hero-icon.is-pulsing::after {
+    position: absolute;
+    inset: -10px;
+    border: 2px solid color-mix(in srgb, var(--cas-ui-focus) 45%, transparent);
+    border-radius: 50%;
+    content: "";
+    animation: cas-hero-pulse 2.4s ease-out infinite;
+}
+
+@keyframes cas-hero-pulse {
+    0% { opacity: .9; transform: scale(.92); }
+    100% { opacity: 0; transform: scale(1.35); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .cas-ui .cas-hero-icon.is-pulsing::after {
+        animation: none;
+        opacity: 0;
+    }
+}
+
+.cas-ui .cas-hero h2 {
+    margin: 0 0 8px;
+    color: var(--cas-ui-text);
+    font-size: 24px;
+    font-weight: 600;
+    line-height: 1.3;
+}
+
+.cas-ui .cas-hero-lead,
+.cas-ui .cas-hero #description,
+.cas-ui .cas-hero #messages p {
+    max-width: 460px;
+    margin: 0 auto 20px;
+    color: var(--cas-ui-muted);
+    font-size: 15px;
+    line-height: 1.55;
+    text-align: center;
+}
+
+.cas-ui .cas-hero #loginPanel .mdc-button {
+    min-width: 220px;
+    min-height: 52px;
+    font-size: 16px;
+}
+
+.cas-ui .cas-hero #loginPanel .mdc-button .mdi {
+    font-size: 22px;
+}
+
+.cas-ui .cas-hero-divider {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    margin: 24px 0 16px;
+    color: var(--cas-ui-muted);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+}
+
+.cas-ui .cas-hero-divider::before,
+.cas-ui .cas-hero-divider::after {
+    flex: 1;
+    height: 1px;
+    background: var(--cas-ui-divider);
+    content: "";
+}
+
+.cas-ui .cas-hero #QRCodeSection {
+    width: 100%;
+    margin: 0;
+}
+
+.cas-ui .cas-hero #QRCodeSection > p {
+    color: var(--cas-ui-muted);
+    font-size: 14px;
+    text-align: center;
+}
+
+.cas-ui .cas-hero #imageQRCode {
+    width: 184px;
+    height: 184px;
+    padding: 12px;
+    border: 1px solid var(--cas-ui-divider);
+    border-radius: 16px;
+    background: #fff;
+    box-shadow: 0 1px 2px rgba(16, 40, 70, .06);
+}
+
+.cas-ui .cas-hero #QRCodeLinkContainer pre {
+    margin: 12px auto 0;
+    padding: 8px 12px;
+    border-radius: 999px;
+    background: var(--cas-ui-subtle);
+    font-size: 12px;
+    white-space: normal;
+    word-break: break-all;
+}
+
+.cas-ui .cas-hero #device-info img[src] {
+    width: 56px;
+    height: 56px;
+    border-radius: 12px;
+}
+
+.cas-ui .cas-hero #device-name {
+    font-weight: 600;
+}
+
+.cas-ui .cas-hero .cas-field {
+    width: 100%;
+    text-align: start;
+}
+
+.cas-ui .cas-choice-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px;
+    width: 100%;
+    text-align: start;
+}
+
+.cas-ui .cas-choice {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 16px;
+    border: 1px solid var(--cas-ui-divider);
+    border-radius: 16px;
+    background: var(--cas-ui-surface);
+    transition: border-color .15s ease, box-shadow .15s ease;
+}
+
+.cas-ui .cas-choice:hover,
+.cas-ui .cas-choice:focus-within {
+    border-color: color-mix(in srgb, var(--cas-ui-focus) 45%, #fff);
+    box-shadow: 0 6px 18px rgba(16, 40, 70, .08);
+}
+
+.cas-ui .cas-choice-icon {
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--cas-ui-focus) 10%, #fff);
+    color: var(--cas-ui-primary);
+    font-size: 22px;
+}
+
+.cas-ui .cas-choice h3 {
+    margin: 0;
+    color: var(--cas-ui-text);
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.cas-ui .cas-choice p,
+.cas-ui .cas-choice #residentKeysPanel p {
+    flex: 1;
+    margin: 0;
+    color: var(--cas-ui-muted);
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.cas-ui .cas-choice #residentKeysPanel {
+    flex: 1;
+    margin: 0 !important;
+}
+
+.cas-ui .cas-choice .mdc-button {
+    align-self: stretch;
+    margin: 4px 0 0 !important;
+}
+
+.cas-ui .cas-choice-recommended {
+    border-color: color-mix(in srgb, var(--cas-ui-focus) 35%, #fff);
+    background: linear-gradient(180deg, color-mix(in srgb, var(--cas-ui-focus) 6%, #fff), #fff 60%);
+}
+
+.cas-ui .cas-choice-tag {
+    align-self: flex-start;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--cas-ui-focus) 14%, #fff);
+    color: var(--cas-ui-primary);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+}
+
+/* Consent */
+.cas-ui .cas-consent-head {
+    margin-bottom: 8px;
+    text-align: center;
+}
+
+.cas-ui .cas-consent-pair {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 16px;
+}
+
+.cas-ui .cas-app-badge {
+    display: grid;
+    place-items: center;
+    width: 60px;
+    height: 60px;
+    overflow: hidden;
+    border-radius: 18px;
+    background: linear-gradient(135deg, var(--cas-ui-button-hover), var(--cas-ui-primary));
+    color: #fff;
+    font-size: 26px;
+    font-weight: 700;
+    box-shadow: 0 6px 16px color-mix(in srgb, var(--cas-ui-primary) 30%, transparent);
+}
+
+.cas-ui .cas-app-badge img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    background: #fff;
+}
+
+.cas-ui .cas-app-badge-cas {
+    background: var(--cas-ui-surface);
+    color: var(--cas-ui-primary);
+    font-size: 32px;
+    box-shadow: inset 0 0 0 1px var(--cas-ui-divider), 0 6px 16px rgba(16, 40, 70, .08);
+}
+
+.cas-ui .cas-consent-link {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 56px;
+    height: 24px;
+    color: #1d6b47;
+    font-size: 14px;
+}
+
+.cas-ui .cas-consent-link::before {
+    position: absolute;
+    inset: 50% 0 auto;
+    border-top: 2px dashed var(--cas-ui-border);
+    content: "";
+}
+
+.cas-ui .cas-consent-link .mdi {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: #e9f5ee;
+    box-shadow: 0 0 0 3px var(--cas-ui-surface);
+}
+
+.cas-ui .cas-consent-eyebrow {
+    margin: 0 0 2px;
+    color: var(--cas-ui-muted);
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.4;
+    letter-spacing: .02em;
+}
+
+.cas-ui .cas-consent-title {
+    margin: 0 0 4px;
+    line-height: 1.3;
+    color: var(--cas-ui-text);
+    font-size: 24px;
+    font-weight: 600;
+}
+
+.cas-ui .cas-consent-lead {
+    margin: 0;
+    color: var(--cas-ui-muted);
+    font-size: 14px;
+}
+
+.cas-ui .cas-consent-section {
+    margin-top: 20px;
+}
+
+.cas-ui .cas-consent-section > h3 {
+    margin: 0 0 4px;
+    color: var(--cas-ui-muted);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+}
+
+.cas-ui .cas-consent-hint {
+    margin: 0 0 10px;
+    color: var(--cas-ui-muted);
+    font-size: 13px;
+}
+
+.cas-ui .cas-perm-list {
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    border: 1px solid var(--cas-ui-divider);
+    border-radius: 14px;
+    list-style: none;
+}
+
+.cas-ui .cas-perm {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--cas-ui-divider);
+    background: var(--cas-ui-surface);
+}
+
+.cas-ui .cas-perm:last-child {
+    border-bottom: 0;
+}
+
+.cas-ui .cas-perm-icon {
+    display: grid;
+    flex: 0 0 36px;
+    place-items: center;
+    height: 36px;
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--cas-ui-focus) 10%, #fff);
+    color: var(--cas-ui-primary);
+    font-size: 20px;
+}
+
+.cas-ui .cas-perm-body {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+    padding-top: 1px;
+}
+
+.cas-ui .cas-perm-name code {
+    padding: 0;
+    background: none;
+    color: var(--cas-ui-text);
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.cas-ui .cas-perm-desc {
+    color: var(--cas-ui-muted);
+    font-size: 13px;
+    line-height: 1.45;
+}
+
+.cas-ui .cas-perm-list-compact .cas-perm {
+    padding: 10px 14px;
+}
+
+.cas-ui .cas-perm-list-compact .cas-perm-icon {
+    flex-basis: 30px;
+    height: 30px;
+    border-radius: 8px;
+    font-size: 17px;
+}
+
+.cas-ui .cas-perm-list-compact .cas-perm-desc {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+}
+
+.cas-ui .cas-consent-question {
+    margin: 24px 0 12px;
+    color: var(--cas-ui-text);
+    font-size: 16px;
+    font-weight: 600;
+    text-align: center;
+}
+
+.cas-ui .cas-consent-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+
+.cas-ui .cas-consent-actions .mdc-button {
+    width: 100%;
+    min-height: 50px;
+    margin: 0 !important;
+}
+
+.cas-ui .cas-consent-links {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 6px 18px;
+    margin-top: 18px;
+    padding-top: 14px;
+    border-top: 1px solid var(--cas-ui-divider);
+    font-size: 13px;
+}
+
+.cas-ui .cas-consent-links a {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--cas-ui-muted);
+}
+
+.cas-ui .cas-binding {
+    margin-top: 20px;
+    text-align: center;
+}
+
+.cas-ui .cas-binding-code {
+    display: inline-block;
+    margin: 6px 0;
+    padding: 12px 22px;
+    border: 2px dashed color-mix(in srgb, var(--cas-ui-focus) 40%, #fff);
+    border-radius: 14px;
+    background: color-mix(in srgb, var(--cas-ui-focus) 6%, #fff);
+    color: var(--cas-ui-primary);
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: .14em;
+}
+
+.cas-ui .cas-ciba-form,
+.cas-ui .cas-ciba-form form {
+    width: 100%;
+    margin-top: 16px;
+}
+
+.cas-ui .cas-ciba-form sub {
+    display: block;
+    margin-top: 6px;
+    color: var(--cas-ui-muted);
+    font-size: 12px;
+    line-height: 1.45;
+}
+
+.cas-ui .cas-consent-actions > :only-child,
+.cas-ui .cas-consent-actions > .mdc-button:only-child {
+    grid-column: 1 / -1;
+    width: 100%;
+}
+
+.cas-ui div#content:has(> :is(.cas-hero, .cas-consent)),
+.cas-ui div#content:has(> div > :is(.cas-hero, .cas-consent)) {
+    box-shadow: none;
+}
+
+.cas-ui .cas-hero-icon .mdi::before {
+    font-size: 40px;
+}
+
+.cas-ui .cas-app-badge .mdi::before {
+    font-size: 32px;
+}
+
+.cas-ui .cas-choice-icon .mdi::before {
+    font-size: 22px;
+}
+
+.cas-ui .cas-perm-list-compact .cas-perm-icon.mdi::before {
+    font-size: 17px;
+}
+
+.cas-ui .cas-consent-link .mdi::before {
+    font-size: 14px;
+}
+
+.cas-ui .cas-hero:has(.cas-choice-grid) {
+    max-width: 720px;
+}
+
+.cas-ui .cas-hero #QRCodeLinkContainer code {
+    padding: 0;
+    background: none;
+    color: var(--cas-ui-muted);
+    box-shadow: none;
+}
+
+.cas-ui .cas-hero #QRCodeLinkContainer pre {
+    box-shadow: none;
+}
+
+#main-content.cas-ui:has(.cas-hero) {
+    max-width: none;
+}
+
+.cas-ui .cas-hero #QRCodeLinkContainer code {
+    border: 0;
+}
+
+/* Hero cards with left-aligned content: interrupt and attribute consent */
+#main-content.cas-ui div#content:is(.cas-hero, .cas-consent) {
+    box-shadow: 0 1px 2px rgba(16, 40, 70, .06), 0 12px 32px rgba(16, 40, 70, .12);
+}
+
+.cas-ui .cas-hero.cas-hero-start {
+    align-items: stretch;
+    text-align: start;
+}
+
+.cas-ui .cas-hero-wide {
+    max-width: 760px;
+}
+
+.cas-ui .cas-hero-head {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 18px;
+    text-align: center;
+}
+
+.cas-ui .cas-hero-head :is(h1, h2) {
+    margin: 0 0 6px;
+    color: var(--cas-ui-text);
+    font-size: 24px;
+    font-weight: 600;
+    line-height: 1.3;
+}
+
+.cas-ui .cas-hero-head p {
+    max-width: 480px;
+    margin: 0;
+    color: var(--cas-ui-muted);
+    font-size: 15px;
+    line-height: 1.55;
+}
+
+.cas-ui .cas-hero-head p strong {
+    color: var(--cas-ui-text);
+}
+
+.cas-ui .cas-callout {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.cas-ui .cas-callout-icon::before {
+    font-size: 22px;
+    line-height: 1.2;
+}
+
+.cas-ui .cas-callout-body {
+    flex: 1;
+    min-width: 0;
+}
+
+.cas-ui .cas-callout #interruptMessage {
+    margin: 0;
+    font-size: 15px;
+}
+
+.cas-ui .cas-callout #interruptMessage:empty {
+    display: none;
+}
+
+.cas-ui .cas-callout #interruptLinks a.mdc-button {
+    min-height: 40px;
+    margin: 12px 8px 0 0 !important;
+    padding: 0 16px;
+    border: 1px solid color-mix(in srgb, var(--cas-ui-focus) 40%, #fff) !important;
+    background: var(--cas-ui-surface) !important;
+    color: var(--cas-ui-primary) !important;
+    font-size: 14px;
+}
+
+.cas-ui .cas-callout #interruptLinks a.mdc-button:hover {
+    border-color: var(--cas-ui-focus) !important;
+    background: color-mix(in srgb, var(--cas-ui-focus) 8%, #fff) !important;
+}
+
+.cas-ui .cas-interrupt .mdc-data-table {
+    display: block;
+    width: 100%;
+    margin-bottom: 8px !important;
+}
+
+.cas-ui .cas-hero-actions {
+    display: grid;
+    margin-top: 16px;
+}
+
+.cas-ui .cas-hero-actions .mdc-button {
+    width: 100%;
+    min-height: 50px;
+    margin: 0 !important;
+}
+
+.cas-ui .cas-segmented.mdc-tab-bar {
+    width: auto;
+    margin: 0 0 20px;
+    padding: 4px;
+    border-radius: 999px;
+    background: var(--cas-ui-subtle);
+}
+
+.cas-ui .cas-segmented .mdc-tab {
+    height: 40px;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    transition: background-color .15s ease, box-shadow .15s ease;
+}
+
+.cas-ui .cas-segmented .mdc-tab--active,
+.cas-ui .cas-segmented .mdc-tab[aria-selected="true"] {
+    background: var(--cas-ui-surface);
+    box-shadow: 0 1px 3px rgba(16, 40, 70, .16);
+}
+
+.cas-ui .cas-segmented .mdc-tab-indicator,
+.cas-ui .cas-segmented .mdc-tab__ripple {
+    display: none;
+}
+
+.cas-ui .cas-segmented .mdc-tab__text-label {
+    color: var(--cas-ui-muted);
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: normal;
+    text-transform: none;
+}
+
+.cas-ui .cas-segmented :is(.mdc-tab--active, .mdc-tab[aria-selected="true"]) .mdc-tab__text-label {
+    color: var(--cas-ui-primary);
+}
+
+.cas-ui .cas-attribute-consent #appTitle {
+    margin: 0 0 4px;
+    text-align: start;
+}
+
+.cas-ui .cas-attribute-consent #divAttributes {
+    margin-top: 12px !important;
+    margin-bottom: 0 !important;
+}
+
+.cas-ui .cas-section-title {
+    margin: 4px 0 10px;
+    color: var(--cas-ui-text);
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 1.4;
+}
+
+.cas-ui .cas-option {
+    margin-bottom: 10px;
+    padding: 12px 14px;
+    border: 1px solid var(--cas-ui-divider);
+    border-radius: 14px;
+    background: var(--cas-ui-surface);
+    transition: border-color .15s ease, background-color .15s ease;
+}
+
+.cas-ui .cas-option:has(input:checked) {
+    border-color: color-mix(in srgb, var(--cas-ui-focus) 50%, #fff);
+    background: color-mix(in srgb, var(--cas-ui-focus) 6%, #fff);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--cas-ui-focus) 30%, transparent);
+}
+
+.cas-ui .cas-option .mdc-form-field {
+    display: flex;
+    align-items: center;
+}
+
+.cas-ui .cas-option .form-check-label {
+    color: var(--cas-ui-text);
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.cas-ui .cas-option .consent-option-description {
+    margin: 0 0 0 52px !important;
+    padding: 0 !important;
+    color: var(--cas-ui-muted);
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.cas-ui .cas-option .consent-option-description ul {
+    margin: 4px 0 0;
+    padding-inline-start: 18px;
+}
+
+.cas-ui .cas-option-hint {
+    margin: 0 0 12px;
+    color: var(--cas-ui-muted);
+    font-size: 14px;
+}
+
+.cas-ui .cas-attribute-consent #reminderPanel .d-flex {
+    align-items: flex-end;
+    gap: 10px;
+}
+
+.cas-ui .cas-attribute-consent #reminderPanel .d-flex > .me-2 {
+    flex: 1 1 auto;
+    margin: 0 !important;
+}
+
+.cas-ui .cas-attribute-consent .cas-consent-actions {
+    margin-top: 24px;
+    padding-top: 20px;
+    border-top: 1px solid var(--cas-ui-divider);
+}
+
+.cas-ui .cas-segmented .mdc-tab:focus-visible {
+    outline-offset: -3px;
+}
+
+.cas-ui .cas-attribute-consent #appTitle {
+    color: var(--cas-ui-muted);
+    font-size: 14px;
 }

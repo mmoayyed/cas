@@ -79,7 +79,9 @@ let cas = {
                 $('.attribute-tab').addClass('d-none');
                 $(`#attribute-tab-${index}`).removeClass('d-none');
             });
+            tabs.focusOnActivate = false;
             tabs.foundation.adapter.activateTabAtIndex(0);
+            tabs.focusOnActivate = true;
         }
 
         for (const el of document.querySelectorAll(`${selector} .mdc-fab`)) {
