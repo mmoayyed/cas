@@ -11,7 +11,6 @@ import groovy.lang.GroovyObject;
 import groovy.lang.GroovyShell;
 import groovy.lang.MissingMethodException;
 import groovy.lang.Script;
-import groovy.transform.CompileStatic;
 import lombok.experimental.UtilityClass;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
@@ -21,7 +20,6 @@ import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.codehaus.groovy.control.CompilerConfiguration;
 import org.codehaus.groovy.control.SourceUnit;
-import org.codehaus.groovy.control.customizers.ASTTransformationCustomizer;
 import org.codehaus.groovy.control.customizers.ImportCustomizer;
 import org.codehaus.groovy.runtime.InvokerInvocationException;
 import org.jspecify.annotations.Nullable;
@@ -470,7 +468,7 @@ public class ScriptingUtils {
         val compilerConfiguration = new CompilerConfiguration();
         val isStaticCompilation = BooleanUtils.toBoolean(System.getProperty(ExecutableCompiledScriptFactory.SYSTEM_PROPERTY_GROOVY_COMPILE_STATIC));
         if (CasRuntimeHintsRegistrar.inNativeImage() || isStaticCompilation) {
-            compilerConfiguration.addCompilationCustomizers(new ASTTransformationCustomizer(CompileStatic.class));
+            compilerConfiguration.addCompilationCustomizers(new GroovyStaticCompilationCustomizer());
         }
         val imports = new ImportCustomizer();
         imports.addStarImports(

@@ -3,12 +3,14 @@ package org.apereo.cas.util;
 import module java.base;
 import org.apereo.cas.util.scripting.ExecutableCompiledScript;
 import org.apereo.cas.util.scripting.ExecutableCompiledScriptFactory;
+import org.apereo.cas.util.scripting.ScriptingUtils;
 import groovy.lang.GroovyRuntimeException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.tuple.Pair;
+import org.codehaus.groovy.control.MultipleCompilationErrorsException;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -29,6 +31,31 @@ class GroovyShellScriptTests {
     @Nested
     @SetSystemProperty(key = ExecutableCompiledScriptFactory.SYSTEM_PROPERTY_GROOVY_COMPILE_STATIC, value = "true")
     class StaticCompilationTests {
+        @Test
+        void verifyClassesAndClosures() {
+            val script = ScriptingUtils.parseGroovyShellScript("""
+                class Message {
+                    static String render(String value) { value.toUpperCase() }
+                }
+                return ['cas', 'native'].collect { String value -> Message.render(value) }.join('-')
+                """);
+            assertNotNull(script);
+            assertEquals("CAS-NATIVE", script.run());
+        }
+
+        @Test
+        void verifyTypeErrorsAreRejected() {
+            assertThrows(MultipleCompilationErrorsException.class,
+                () -> ScriptingUtils.parseGroovyShellScript("return 'cas'.missingMethod()"));
+            assertThrows(MultipleCompilationErrorsException.class,
+                () -> ScriptingUtils.parseGroovyShellScript("""
+                    class Message {
+                        static String render(String value) { value.missingMethod() }
+                    }
+                    return Message.render('cas')
+                    """));
+        }
+
         @Test
         void verifyOperation() {
             val script =
