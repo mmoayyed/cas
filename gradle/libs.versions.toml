@@ -223,6 +223,7 @@ socketJsClient = "1.5.1"
 splunkLogging = "1.11.11"
 spring = "7.1.0-M2"
 springBoot = "4.2.0-M2"
+springAi = "2.1.0-M1"
 springBootAdmin = "4.1.4"
 springCloudAzure = "7.4.0"
 springCloudBus = "5.1.0-M1"
@@ -641,6 +642,7 @@ splunk-library-javalogging = { module = "com.splunk.logging:splunk-library-javal
 spring-aop = { module = "org.springframework:spring-aop", version.ref = "spring" }
 spring-beans = { module = "org.springframework:spring-beans", version.ref = "spring" }
 spring-binding = { module = "org.springframework.webflow:spring-binding", version.ref = "springWebflow" }
+spring-ai-mcp-webmvc = { module = "org.springframework.ai:spring-ai-starter-mcp-server-webmvc", version.ref = "springAi" }
 spring-boot-core = { module = "org.springframework.boot:spring-boot", version.ref = "springBoot" }
 spring-boot-data-redis = { module = "org.springframework.boot:spring-boot-data-redis", version.ref = "springBoot" }
 spring-boot-actuator = { module = "org.springframework.boot:spring-boot-actuator", version.ref = "springBoot" }
