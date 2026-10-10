@@ -11,6 +11,10 @@ ext {
 }
 dependencies {
     implementation libraries.springai
+    implementation libraries.nimbus
+    implementation libraries.jose4j
+    implementation libraries.springsecurityconfig
+    implementation libraries.springsecurityweb
     
     implementation project(":core:cas-server-core-authentication-api")
     implementation project(":core:cas-server-core-util-api")
