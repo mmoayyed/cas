@@ -379,6 +379,20 @@ public class OAuth20Utils {
     }
 
     /**
+     * A public client has no means of authenticating at the token endpoint: no client secret, and no token endpoint
+     * authentication method other than {@code none}.
+     *
+     * @param registeredService the registered service
+     * @return true when the client is public
+     */
+    public boolean isPublicClient(final OAuthRegisteredService registeredService) {
+        val authenticationMethod = registeredService.getTokenEndpointAuthenticationMethod();
+        return !doesServiceNeedAuthentication(registeredService)
+            && (StringUtils.isBlank(authenticationMethod)
+            || Strings.CI.equals(authenticationMethod, OAuth20ClientAuthenticationMethods.NONE.getType()));
+    }
+
+    /**
      * Validate redirect uri.
      *
      * @param redirectUri the redirect uri

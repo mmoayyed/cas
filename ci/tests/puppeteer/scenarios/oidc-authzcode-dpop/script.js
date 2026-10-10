@@ -64,6 +64,14 @@ const jose = require("jose");
         assert(error.response.data.error === "invalid_dpop_proof");
     });
 
+    await cas.log("The client requires DPoP-bound access tokens, so no grant is accepted without a DPoP proof");
+    await cas.doPost(accessTokenUrl, "grant_type=client_credentials&client_id=client&client_secret=secret&scope=openid", {}, () => {
+        throw "Client credentials request without a DPoP proof must fail";
+    }, (error) => {
+        assert.equal(error.response.status, 400);
+        assert(error.response.data.error === "invalid_dpop_proof");
+    });
+
     let accessToken = null;
     await cas.doPost(accessTokenUrl, params, {
         "DPoP": dpopProof
@@ -107,11 +115,22 @@ const jose = require("jose");
         });
     await cas.log(`DPoP JWT is ${dpopProofProfile}`);
 
-    const profileUrl = `https://localhost:8443/cas/oidc/profile?token=${accessToken}`;
-    await cas.log(`Calling user profile ${profileUrl}`);
+    const profileUrl = "https://localhost:8443/cas/oidc/profile";
+    await cas.log("A DPoP-bound access token cannot be presented as a bearer token");
+    await cas.doPost(`${profileUrl}?token=${accessToken}`, "", {
+        "Content-Type": "application/json",
+        "DPoP": dpopProofProfile
+    }, () => {
+        throw "DPoP-bound access token presented as a bearer token must be rejected";
+    }, (error) => {
+        assert.equal(error.response.status, 401);
+        assert(error.response.data.error === "invalid_token");
+    });
 
+    await cas.log(`Calling user profile ${profileUrl}`);
     await cas.doPost(profileUrl, "", {
         "Content-Type": "application/json",
+        "Authorization": `DPoP ${accessToken}`,
         "DPoP": dpopProofProfile
     }, (res) => {
         cas.log(res.data);

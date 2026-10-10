@@ -7,6 +7,7 @@ import org.apereo.cas.configuration.CasConfigurationProperties;
 import org.apereo.cas.configuration.support.Beans;
 import org.apereo.cas.services.ServicesManager;
 import org.apereo.cas.support.oauth.OAuth20Constants;
+import org.apereo.cas.support.oauth.services.OAuthRegisteredService;
 import org.apereo.cas.support.oauth.util.OAuth20Utils;
 import org.apereo.cas.ticket.InvalidTicketException;
 import org.apereo.cas.ticket.OAuth20Token;
@@ -38,6 +39,7 @@ import lombok.val;
 import org.apache.commons.lang3.StringUtils;
 import org.jooq.lambda.Unchecked;
 import org.jspecify.annotations.Nullable;
+import org.pac4j.core.context.HttpConstants;
 import org.pac4j.core.context.WebContext;
 import org.pac4j.core.context.session.SessionStore;
 import org.pac4j.core.profile.ProfileManager;
@@ -74,6 +76,37 @@ public class DefaultOAuth20ProofOfPossessionValidator implements OAuth20ProofOfP
             accessResult.throwExceptionIfNeeded();
             val confirmation = verifyProofOfPossession(webContext, result.get(), clientId);
             adjustUserProfile(webContext, result.get(), clientId, confirmation);
+        } else {
+            val clientId = resolveClientId(webContext, accessToken);
+            if (clientId.isPresent()) {
+                enforceProofOfPossession(OAuth20Utils.getRegisteredOAuthServiceByClientId(this.servicesManager, clientId.get()));
+            }
+        }
+    }
+
+    @Override
+    public void validateTokenRequest(final WebContext webContext, final OAuthRegisteredService registeredService) throws Throwable {
+        val dPopProof = webContext.getRequestHeader(OAuth20Constants.DPOP).filter(StringUtils::isNotBlank);
+        if (dPopProof.isPresent()) {
+            val confirmation = verifyProofOfPossession(webContext, dPopProof.get(), registeredService.getClientId());
+            webContext.setRequestAttribute(OAuth20Constants.DPOP, dPopProof.get());
+            webContext.setRequestAttribute(OAuth20Constants.DPOP_CONFIRMATION, confirmation.getValue().toString());
+        } else {
+            enforceProofOfPossession(registeredService);
+        }
+    }
+
+    /**
+     * A client registered with {@code dpop_bound_access_tokens} must present a DPoP proof with every token request
+     * (RFC 9449, section 5.2).
+     *
+     * @param registeredService the client that makes the token request, if known
+     * @throws InvalidDPoPProofException when the client must present a proof
+     */
+    protected void enforceProofOfPossession(final @Nullable OAuthRegisteredService registeredService) throws InvalidDPoPProofException {
+        if (registeredService != null && registeredService.isDpopBoundAccessTokens()) {
+            throw new InvalidDPoPProofException("Client %s requires DPoP-bound access tokens but the token request carries no DPoP proof"
+                .formatted(registeredService.getClientId()));
         }
     }
 
@@ -122,6 +155,7 @@ public class DefaultOAuth20ProofOfPossessionValidator implements OAuth20ProofOfP
             LOGGER.trace("Access token is not sender-constrained; no DPoP proof is expected");
             return;
         }
+        verifyAuthorizationScheme(webContext, presentedAccessToken);
         val dPopProof = webContext.getRequestHeader(OAuth20Constants.DPOP)
             .filter(StringUtils::isNotBlank)
             .orElseThrow(() -> new InvalidDPoPProofException(
@@ -135,6 +169,25 @@ public class DefaultOAuth20ProofOfPossessionValidator implements OAuth20ProofOfP
             new DPoPIssuer(new ClientID(clientId)), signedProof,
             new DPoPAccessToken(presentedAccessToken), confirmation.get(), dpopNonceService.getAcceptedNonces(signedProof), null);
         verifyNonce(webContext, signedProof);
+    }
+
+    /**
+     * A DPoP-bound access token is accepted only in the {@code Authorization} header under the {@code DPoP} scheme. Taking it
+     * as a bearer token, whether in the header, the form body or the query, would let it be downgraded (RFC 9449, section 7.2).
+     *
+     * @param webContext           the web context
+     * @param presentedAccessToken the access token exactly as the client presented it
+     * @throws DPoPBoundAccessTokenDowngradeException when the token is not presented under the {@code DPoP} scheme
+     */
+    protected void verifyAuthorizationScheme(final WebContext webContext, final String presentedAccessToken)
+        throws DPoPBoundAccessTokenDowngradeException {
+        val scheme = OAuth20Constants.TOKEN_TYPE_DPOP + ' ';
+        val authorization = webContext.getRequestHeader(HttpConstants.AUTHORIZATION_HEADER).orElse(StringUtils.EMPTY);
+        if (!StringUtils.startsWithIgnoreCase(authorization, scheme)
+            || !presentedAccessToken.equals(authorization.substring(scheme.length()).trim())) {
+            throw new DPoPBoundAccessTokenDowngradeException(
+                "DPoP-bound access token must be presented in the Authorization header with the DPoP scheme");
+        }
     }
 
     @Override

@@ -41,6 +41,7 @@ import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.apache.commons.lang3.StringUtils;
 import org.jooq.lambda.Unchecked;
+import org.jspecify.annotations.Nullable;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.core.annotation.AnnotationAwareOrderComparator;
 
@@ -117,6 +118,8 @@ public class OAuth20DefaultTokenGenerator implements OAuth20TokenGenerator {
                     .scopes(deviceCodeTicket.getScopes())
                     .responseType(tokenRequestContext.getResponseType())
                     .generateRefreshToken(tokenRequestContext.getRegisteredService() != null && tokenRequestContext.isGenerateRefreshToken())
+                    .dpop(tokenRequestContext.getDpop())
+                    .dpopConfirmation(tokenRequestContext.getDpopConfirmation())
                     .build();
 
                 val ticketPair = generateAccessTokenOAuthGrantTypes(deviceResult);
@@ -373,7 +376,7 @@ public class OAuth20DefaultTokenGenerator implements OAuth20TokenGenerator {
         val scopes = tokenRequestContext.getGrantType() == OAuth20GrantTypes.REFRESH_TOKEN
             ? tokenRequestContext.getToken().getScopes() : tokenRequestContext.getScopes();
         val refreshToken = refreshTokenFactory.create(tokenRequestContext.getService(),
-            tokenRequestContext.getAuthentication(),
+            bindRefreshTokenToProofOfPossessionKey(tokenRequestContext),
             ticketGrantingTicket,
             scopes,
             tokenRequestContext.getRegisteredService().getClientId(),
@@ -394,6 +397,26 @@ public class OAuth20DefaultTokenGenerator implements OAuth20TokenGenerator {
         LOGGER.debug("Refresh token expiration policy for [{}] does not allow refresh tokens to be added to the registry",
             refreshToken.getId());
         return null;
+    }
+
+    /**
+     * A refresh token issued to a public client that presented a DPoP proof is bound to the proof's key, and may only be used
+     * again with a proof made with that key (RFC 9449, section 5). Refresh tokens of confidential clients are left unbound,
+     * since client authentication already constrains them and the client remains free to rotate its DPoP key.
+     *
+     * @param tokenRequestContext the token request context
+     * @return the authentication of the refresh token
+     */
+    protected @Nullable Authentication bindRefreshTokenToProofOfPossessionKey(final AccessTokenRequestContext tokenRequestContext) {
+        val authentication = tokenRequestContext.getAuthentication();
+        val confirmation = tokenRequestContext.getDpopConfirmation();
+        if (authentication != null && StringUtils.isNotBlank(confirmation)
+            && OAuth20Utils.isPublicClient(tokenRequestContext.getRegisteredService())) {
+            return DefaultAuthenticationBuilder.newInstance(authentication)
+                .addAttribute(OAuth20Constants.DPOP_CONFIRMATION, confirmation)
+                .build();
+        }
+        return authentication;
     }
 
     private OAuth20DeviceUserCode getDeviceUserCodeFromRegistry(final OAuth20DeviceToken deviceCodeTicket) {

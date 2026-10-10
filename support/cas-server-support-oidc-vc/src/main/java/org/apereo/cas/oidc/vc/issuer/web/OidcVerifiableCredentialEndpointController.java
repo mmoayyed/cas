@@ -22,6 +22,7 @@ import org.apereo.cas.services.OidcRegisteredService;
 import org.apereo.cas.support.oauth.OAuth20Constants;
 import org.apereo.cas.support.oauth.OAuth20GrantTypes;
 import org.apereo.cas.support.oauth.util.OAuth20Utils;
+import org.apereo.cas.support.oauth.validator.DPoPBoundAccessTokenDowngradeException;
 import org.apereo.cas.support.oauth.web.endpoints.BaseOAuth20Controller;
 import org.apereo.cas.ticket.accesstoken.OAuth20AccessToken;
 import org.apereo.cas.util.Couplet;
@@ -35,7 +36,6 @@ import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.apache.commons.lang3.StringUtils;
 import org.jspecify.annotations.Nullable;
-import org.pac4j.core.context.WebContext;
 import org.pac4j.jee.context.JEEContext;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -613,51 +613,6 @@ public class OidcVerifiableCredentialEndpointController extends BaseOAuth20Contr
         return Couplet.left(decodedToken);
     }
 
-    /**
-     * The credential endpoint is an OAuth protected resource, so a token that cannot be accepted is a
-     * 401 carrying a {@code WWW-Authenticate} challenge, not a 400. RFC 9110, section 15.5.2 makes the
-     * challenge mandatory on a 401, and RFC 6750, section 3 says to name the error only when the
-     * request actually presented credentials -- a client that sent none is told which scheme to use
-     * and nothing more. The challenge answers in whichever scheme the client used, so a DPoP-bound
-     * token is not told to retry as a bearer token.
-     *
-     * @param request     the request
-     * @param error       the error code, or null when the request carried no token at all
-     * @param description the error description
-     * @return the response entity
-     */
-    protected ResponseEntity unauthorized(final HttpServletRequest request,
-                                          final @Nullable String error,
-                                          final @Nullable String description) {
-        val challenge = new StringBuilder(resolveAuthorizationScheme(request));
-        if (StringUtils.isNotBlank(error)) {
-            challenge.append(" error=\"").append(error).append('"');
-            if (StringUtils.isNotBlank(description)) {
-                challenge.append(", error_description=\"").append(toChallengeValue(description)).append('"');
-            }
-        }
-        val response = ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-            .header(HttpHeaders.WWW_AUTHENTICATE, challenge.toString());
-        return StringUtils.isBlank(error)
-            ? response.build()
-            : response.body(OAuth20Utils.getErrorResponseBody(error, description));
-    }
-
-    /**
-     * Challenge parameters are quoted strings, so anything that would end the quoted string early --
-     * a quote, a backslash or a control character -- is removed rather than escaped.
-     *
-     * @param value the value
-     * @return the sanitized value
-     */
-    protected static String toChallengeValue(final String value) {
-        return value
-            .chars()
-            .filter(character -> character >= ' ' && character != '"' && character != '\\' && !Character.isISOControl(character))
-            .collect(StringBuilder::new, StringBuilder::appendCodePoint, StringBuilder::append)
-            .toString();
-    }
-
     protected static ResponseEntity badRequest(final String error, final String description) {
         return ResponseEntity.badRequest().body(OAuth20Utils.getErrorResponseBody(error, description));
     }
@@ -674,7 +629,7 @@ public class OidcVerifiableCredentialEndpointController extends BaseOAuth20Contr
      * @param accessToken          the access token ticket
      * @return an error response when the proof is missing or does not verify, otherwise null
      */
-    protected @Nullable ResponseEntity verifyProofOfPossession(final WebContext webContext,
+    protected @Nullable ResponseEntity verifyProofOfPossession(final JEEContext webContext,
                                                                final String presentedAccessToken,
                                                                final OAuth20AccessToken accessToken) {
         try {
@@ -684,6 +639,9 @@ public class OidcVerifiableCredentialEndpointController extends BaseOAuth20Contr
         } catch (final InvalidDPoPNonceException e) {
             LOGGER.info("DPoP proof of the credential request carries no valid nonce; a fresh nonce is provided");
             return OAuth20Utils.useDPoPNonceResponse();
+        } catch (final DPoPBoundAccessTokenDowngradeException e) {
+            LOGGER.warn(e.getMessage());
+            return unauthorized(webContext.getNativeRequest(), OAuth20Constants.INVALID_TOKEN, e.getMessage());
         } catch (final Throwable e) {
             LoggingUtils.warn(LOGGER, e);
             val description = StringUtils.defaultIfBlank(e.getMessage(), "DPoP proof validation failed");

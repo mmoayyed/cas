@@ -3,6 +3,7 @@ package org.apereo.cas.support.oauth.web.endpoints;
 import module java.base;
 import org.apereo.cas.support.oauth.OAuth20Constants;
 import org.apereo.cas.support.oauth.util.OAuth20Utils;
+import org.apereo.cas.support.oauth.validator.DPoPBoundAccessTokenDowngradeException;
 import org.apereo.cas.ticket.TicketGrantingTicket;
 import org.apereo.cas.ticket.accesstoken.OAuth20AccessToken;
 import org.apereo.cas.util.LoggingUtils;
@@ -109,6 +110,9 @@ public class OAuth20UserProfileEndpointController<T extends OAuth20Configuration
         } catch (final InvalidDPoPNonceException e) {
             LOGGER.info("DPoP proof of the user profile request carries no valid nonce; a fresh nonce is provided");
             return OAuth20Utils.useDPoPNonceResponse();
+        } catch (final DPoPBoundAccessTokenDowngradeException e) {
+            LOGGER.warn(e.getMessage());
+            return unauthorized(request, OAuth20Constants.INVALID_TOKEN, e.getMessage());
         } catch (final Throwable e) {
             LoggingUtils.error(LOGGER, e);
             return buildUnauthorizedResponseEntity(OAuth20Constants.INVALID_REQUEST);

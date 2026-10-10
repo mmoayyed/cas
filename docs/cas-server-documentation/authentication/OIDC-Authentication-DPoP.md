@@ -30,8 +30,51 @@ To access a protected resource with a DPoP token (such as the `profile` endpoint
 to generate a new DPoP proof, with one additional string claim - `ath`, set to the BASE64URL-encoded 
 SHA-256 hash of the access token value. The `htm` (HTTP method) and `htu` (HTTP URI) claims must match those of the resource.
 
-Note that there is no special configuration required in CAS to enable support for DPoP tokens; however you should note that at this time,
-support for DPoP only covers access tokens. Support for refresh tokens may be worked out in future versions.
+A DPoP-bound access token must be sent in the `Authorization` header with the `DPoP` scheme, as in `Authorization: DPoP <token>`.
+Sent any other way, whether as a bearer token in the `Authorization` header or as a request parameter, it is refused with `401`
+and `invalid_token`, as [RFC 9449](https://www.rfc-editor.org/rfc/rfc9449#section-7.2) requires, even when a valid proof comes with it:
+
+```json
+{
+  "error": "invalid_token",
+  "error_description": "DPoP-bound access token must be presented in the Authorization header with the DPoP scheme"
+}
+```
+
+Note that there is no special configuration required in CAS to enable support for DPoP tokens.
+
+## Refresh Tokens
+
+A refresh token issued to a public client, one with no client secret and no token endpoint authentication method other
+than `none`, is bound to the key of the DPoP proof that came with the token request, as
+[RFC 9449](https://www.rfc-editor.org/rfc/rfc9449#section-5) requires. Every request that uses it must carry a DPoP proof made
+with that key, or it is answered with `400` and `invalid_dpop_proof`, and the refresh token is not used up. A renewed refresh
+token stays bound to the same key. Refresh tokens issued to confidential clients are not bound, since client authentication
+already ties them to the client, and such a client may change its DPoP key without losing them.
+
+## DPoP-Bound Access Tokens
+
+A client may be required to always use DPoP, as the `dpop_bound_access_tokens` client metadata of
+[RFC 9449](https://www.rfc-editor.org/rfc/rfc9449#section-5.2) defines. Every token request from such a client must carry a `DPoP`
+proof header, whatever the grant; one that does not is answered with `400` and `invalid_dpop_proof`, and the grant it presents,
+such as an authorization code, is not redeemed. The setting is turned on in the client's service definition:
+
+```json
+{
+  "@class": "org.apereo.cas.services.OidcRegisteredService",
+  "clientId": "client",
+  "clientSecret": "secret",
+  "serviceId": "^https://app.example.org/.*",
+  "name": "Sample",
+  "id": 1,
+  "dpopBoundAccessTokens": true
+}
+```
+
+A client may also ask for it by sending `"dpop_bound_access_tokens": true` in its
+[dynamic registration request](OIDC-Authentication-Dynamic-Registration.html); the registration response echoes the setting
+when it is on. Token requests made by polling with a device code and with the JWT bearer grant verify their proofs as well, and
+the access tokens they issue are bound to the proof's key.
 
 ## Authorization Code Binding
 

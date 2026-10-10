@@ -102,9 +102,11 @@ class OidcAccessTokenJwtBearerGrantRequestExtractorTests {
             val signAssertion = EncodingUtils.signJwsRSASha512(jsonWebKey.getPrivateKey(),
                 claims.toString().getBytes(StandardCharsets.UTF_8), Map.of());
             request.setParameter(OAuth20Constants.ASSERTION, new String(signAssertion, StandardCharsets.UTF_8));
+            request.setAttribute(OAuth20Constants.DPOP_CONFIRMATION, "thumbprint");
             val tokenRequestContext = extractor.extract(webContext);
             assertNotNull(tokenRequestContext);
             assertNotNull(tokenRequestContext.getAuthentication());
+            assertEquals("thumbprint", tokenRequestContext.getDpopConfirmation());
         }
     }
 

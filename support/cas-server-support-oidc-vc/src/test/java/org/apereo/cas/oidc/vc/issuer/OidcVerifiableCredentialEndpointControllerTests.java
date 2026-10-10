@@ -1138,22 +1138,25 @@ class OidcVerifiableCredentialEndpointControllerTests {
     @Nested
     class ProofOfPossessionTests extends BaseTests {
         @Test
-        void verifySenderConstrainedTokenIsRejectedWithoutProof() throws Throwable {
+        void verifySenderConstrainedTokenIsRejectedWithoutProofOrAsBearerToken() throws Throwable {
             val holderKey = new ECKeyGenerator(Curve.P_256).keyID(UUID.randomUUID().toString()).generate();
             val accessToken = createSenderConstrainedAccessToken(holderKey);
-
             performDPoPCredentialRequest(accessToken, null)
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.error").value(OAuth20Constants.INVALID_DPOP_PROOF));
+            mockMvc.perform(post(CREDENTIAL_ENDPOINT_URL).with(withHttpRequestProcessor()).contentType(MediaType.APPLICATION_JSON)
+                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken.getId())
+                    .header(OAuth20Constants.DPOP, buildDPoPProof(holderKey, accessToken.getId(), null))
+                    .content(MAPPER.writeValueAsString(buildCredentialRequest())))
+                .andExpect(status().isUnauthorized())
+                .andExpect(header().string(HttpHeaders.WWW_AUTHENTICATE, org.hamcrest.Matchers.startsWith("Bearer error=\"invalid_token\"")));
         }
 
         @Test
         void verifySenderConstrainedTokenIsRejectedWhenProofIsBoundToAnotherToken() throws Throwable {
             val holderKey = new ECKeyGenerator(Curve.P_256).keyID(UUID.randomUUID().toString()).generate();
             val accessToken = createSenderConstrainedAccessToken(holderKey);
-
             val proof = buildDPoPProof(holderKey, "AT-" + UUID.randomUUID(), null);
-
             performDPoPCredentialRequest(accessToken, proof)
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.error").value(OAuth20Constants.INVALID_DPOP_PROOF));

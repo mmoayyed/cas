@@ -22,6 +22,9 @@ import org.jspecify.annotations.Nullable;
 import org.pac4j.core.context.HttpConstants;
 import org.pac4j.core.context.WebContext;
 import org.pac4j.core.profile.ProfileManager;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import jakarta.servlet.http.HttpServletRequest;
 
 
@@ -144,5 +147,50 @@ public abstract class BaseOAuth20Controller<T extends OAuth20ConfigurationContex
         return StringUtils.startsWithIgnoreCase(authHeader, OAuth20Constants.TOKEN_TYPE_DPOP + ' ')
             ? OAuth20Constants.TOKEN_TYPE_DPOP
             : OAuth20Constants.TOKEN_TYPE_BEARER;
+    }
+
+    /**
+     * A protected resource answers a token it cannot accept with a 401 carrying a {@code WWW-Authenticate}
+     * challenge, not a 400. RFC 9110, section 15.5.2 makes the challenge mandatory on a 401, and RFC 6750,
+     * section 3 says to name the error only when the request actually presented credentials -- a client that
+     * sent none is told which scheme to use and nothing more. The challenge answers in whichever scheme the
+     * client used, so a DPoP-bound token is not told to retry as a bearer token, and a DPoP-bound token sent
+     * as a bearer token is told so in the {@code Bearer} scheme (RFC 9449, section 7.2).
+     *
+     * @param request     the request
+     * @param error       the error code, or null when the request carried no token at all
+     * @param description the error description
+     * @return the response entity
+     */
+    protected ResponseEntity unauthorized(final HttpServletRequest request,
+                                          final @Nullable String error,
+                                          final @Nullable String description) {
+        val challenge = new StringBuilder(resolveAuthorizationScheme(request));
+        if (StringUtils.isNotBlank(error)) {
+            challenge.append(" error=\"").append(error).append('"');
+            if (StringUtils.isNotBlank(description)) {
+                challenge.append(", error_description=\"").append(toChallengeValue(description)).append('"');
+            }
+        }
+        val response = ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+            .header(HttpHeaders.WWW_AUTHENTICATE, challenge.toString());
+        return StringUtils.isBlank(error)
+            ? response.build()
+            : response.body(OAuth20Utils.getErrorResponseBody(error, description));
+    }
+
+    /**
+     * Challenge parameters are quoted strings, so anything that would end the quoted string early --
+     * a quote, a backslash or a control character -- is removed rather than escaped.
+     *
+     * @param value the value
+     * @return the sanitized value
+     */
+    protected static String toChallengeValue(final String value) {
+        return value
+            .chars()
+            .filter(character -> character >= ' ' && character != '"' && character != '\\' && !Character.isISOControl(character))
+            .collect(StringBuilder::new, StringBuilder::appendCodePoint, StringBuilder::append)
+            .toString();
     }
 }

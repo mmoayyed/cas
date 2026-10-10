@@ -30,6 +30,10 @@ public abstract class BaseAccessTokenGrantRequestExtractor<T extends OAuth20Conf
     @Override
     public AccessTokenRequestContext extract(final WebContext webContext) throws Throwable {
         val tokenRequestContext = extractRequest(webContext);
+        webContext.getRequestAttribute(OAuth20Constants.DPOP_CONFIRMATION)
+            .ifPresent(confirmation -> tokenRequestContext.setDpopConfirmation(confirmation.toString()));
+        webContext.getRequestAttribute(OAuth20Constants.DPOP)
+            .ifPresent(proof -> tokenRequestContext.setDpop(proof.toString()));
         extractUserProfile(webContext).ifPresent(profile -> {
             if (profile.containsAttribute(OAuth20Constants.DPOP_CONFIRMATION)) {
                 tokenRequestContext.setDpopConfirmation(profile.getAttribute(OAuth20Constants.DPOP_CONFIRMATION).toString());

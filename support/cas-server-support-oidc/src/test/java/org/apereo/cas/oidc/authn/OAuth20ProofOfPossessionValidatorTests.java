@@ -16,9 +16,13 @@ import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.jwk.Curve;
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator;
 import com.nimbusds.oauth2.sdk.dpop.DefaultDPoPProofFactory;
+import com.nimbusds.oauth2.sdk.pkce.CodeChallenge;
+import com.nimbusds.oauth2.sdk.pkce.CodeChallengeMethod;
+import com.nimbusds.oauth2.sdk.pkce.CodeVerifier;
 import com.nimbusds.oauth2.sdk.token.DPoPAccessToken;
 import com.nimbusds.openid.connect.sdk.Nonce;
 import lombok.val;
+import org.apache.commons.lang3.StringUtils;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Tag;
@@ -28,6 +32,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.ResultActions;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import static org.hamcrest.Matchers.*;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -42,6 +47,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Tag("OIDCWeb")
 @TestPropertySource(properties = "cas.authn.oidc.client-attestation.trust-anchors=classpath:client-attestation-root.pem")
 class OAuth20ProofOfPossessionValidatorTests extends AbstractOidcTests {
+    private static final URI TOKEN_URI = URI.create("https://sso.example.org/cas/" + OidcConstants.BASE_OIDC_URL + '/' + OidcConstants.TOKEN_URL);
+
+    private static final URI PROFILE_URI = URI.create("https://sso.example.org/cas/" + OidcConstants.BASE_OIDC_URL + '/' + OidcConstants.PROFILE_URL);
 
     @Test
     void verifyDPoPProofWithConfidentialClient() throws Throwable {
@@ -104,17 +112,9 @@ class OAuth20ProofOfPossessionValidatorTests extends AbstractOidcTests {
         val profileUri = new URI("https://sso.example.org/cas/" + OidcConstants.BASE_OIDC_URL + '/' + OidcConstants.PROFILE_URL);
         val profileDpopProof = proofFactory.createDPoPJWT(HttpMethod.POST.name(), profileUri, new DPoPAccessToken(accessToken));
 
-        mockMvc.perform(post("/cas/" + OidcConstants.BASE_OIDC_URL + '/' + OidcConstants.PROFILE_URL)
-                .with(withHttpRequestProcessor())
-                .contentType(MediaType.APPLICATION_FORM_URLENCODED)
-                .header(OAuth20Constants.DPOP, profileDpopProof.serialize())
-                .param(OAuth20Constants.TOKEN, accessToken))
+        performProfileRequest(new DPoPAccessToken(accessToken), profileDpopProof.serialize())
             .andExpect(status().isOk());
-        mockMvc.perform(post("/cas/" + OidcConstants.BASE_OIDC_URL + '/' + OidcConstants.PROFILE_URL)
-                .with(withHttpRequestProcessor())
-                .contentType(MediaType.APPLICATION_FORM_URLENCODED)
-                .header(OAuth20Constants.DPOP, profileDpopProof.serialize())
-                .param(OAuth20Constants.TOKEN, accessToken))
+        performProfileRequest(new DPoPAccessToken(accessToken), profileDpopProof.serialize())
             .andExpect(status().isUnauthorized());
     }
 
@@ -205,18 +205,145 @@ class OAuth20ProofOfPossessionValidatorTests extends AbstractOidcTests {
             .andExpect(jsonPath("$.token_type").value(OAuth20Constants.TOKEN_TYPE_DPOP));
     }
 
+    @Test
+    void verifyClientWithDPoPBoundAccessTokens() throws Throwable {
+        val registeredService = getOidcRegisteredService(UUID.randomUUID().toString());
+        registeredService.setDpopBoundAccessTokens(true);
+        servicesManager.save(registeredService);
+        val code = addCode(CoreAuthenticationTestUtils.getPrincipal("casuser"), registeredService);
+        performTokenRequest(registeredService, code.getId(), null)
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.error").value(OAuth20Constants.INVALID_DPOP_PROOF));
+
+        val tokenUri = new URI("https://sso.example.org/cas/" + OidcConstants.BASE_OIDC_URL + '/' + OidcConstants.TOKEN_URL);
+        val proof = new DefaultDPoPProofFactory(new ECKeyGenerator(Curve.P_256).generate(), JWSAlgorithm.ES256)
+            .createDPoPJWT(HttpMethod.POST.name(), tokenUri).serialize();
+        performTokenRequest(registeredService, code.getId(), proof)
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.token_type").value(OAuth20Constants.TOKEN_TYPE_DPOP));
+    }
+
+    @Test
+    void verifyDPoPBoundAccessTokenIsNotABearerToken() throws Throwable {
+        val registeredService = getOidcRegisteredService(UUID.randomUUID().toString());
+        servicesManager.save(registeredService);
+        val code = addCode(CoreAuthenticationTestUtils.getPrincipal("casuser"), registeredService);
+        val proofFactory = new DefaultDPoPProofFactory(new ECKeyGenerator(Curve.P_256).generate(), JWSAlgorithm.ES256);
+        val tokenResult = performTokenRequest(registeredService, code.getId(),
+                proofFactory.createDPoPJWT(HttpMethod.POST.name(), TOKEN_URI).serialize())
+            .andExpect(status().isOk())
+            .andReturn();
+        val accessToken = new DPoPAccessToken(JsonPath.read(tokenResult.getResponse().getContentAsString(), "$.access_token").toString());
+        val profileProof = proofFactory.createDPoPJWT(HttpMethod.POST.name(), PROFILE_URI, accessToken).serialize();
+
+        val asBearer = profileRequest(profileProof)
+            .header(HttpHeaders.AUTHORIZATION, OAuth20Constants.TOKEN_TYPE_BEARER + ' ' + accessToken.getValue());
+        val asParameter = profileRequest(profileProof).param(OAuth20Constants.TOKEN, accessToken.getValue());
+        for (val request : List.of(asBearer, asParameter)) {
+            mockMvc.perform(request)
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error").value(OAuth20Constants.INVALID_TOKEN))
+                .andExpect(header().string(HttpHeaders.WWW_AUTHENTICATE, startsWith("Bearer error=\"invalid_token\"")));
+        }
+        performProfileRequest(accessToken, profileProof).andExpect(status().isOk());
+    }
+
+    @Test
+    void verifyRefreshTokenOfPublicClientBoundToDPoPKey() throws Throwable {
+        val registeredService = getOidcRegisteredService(UUID.randomUUID().toString());
+        registeredService.setClientSecrets(new ArrayList<>());
+        registeredService.setGenerateRefreshToken(true);
+        registeredService.setRenewRefreshToken(true);
+        servicesManager.save(registeredService);
+        val verifier = new CodeVerifier();
+        val code = defaultOAuthCodeFactory.create(webApplicationServiceFactory.createService(registeredService.getClientId()),
+            RegisteredServiceTestUtils.getAuthentication("casuser"), new MockTicketGrantingTicket("casuser"),
+            List.of(OidcConstants.StandardScopes.OPENID.getScope()), CodeChallenge.compute(CodeChallengeMethod.S256, verifier).getValue(),
+            CodeChallengeMethod.S256.getValue(), registeredService.getClientId(), Map.of(), OAuth20ResponseTypes.CODE,
+            OAuth20GrantTypes.AUTHORIZATION_CODE);
+        ticketRegistry.addTicket(code);
+        val proofFactory = new DefaultDPoPProofFactory(new ECKeyGenerator(Curve.P_256).generate(), JWSAlgorithm.ES256);
+        val refreshToken = readRefreshToken(mockMvc.perform(codeRequest(registeredService, code.getId(),
+            proofFactory.createDPoPJWT(HttpMethod.POST.name(), TOKEN_URI).serialize())
+            .param(OAuth20Constants.CODE_VERIFIER, verifier.getValue())));
+
+        val otherProof = new DefaultDPoPProofFactory(new ECKeyGenerator(Curve.P_256).generate(), JWSAlgorithm.ES256)
+            .createDPoPJWT(HttpMethod.POST.name(), TOKEN_URI).serialize();
+        for (val proof : Arrays.asList(null, otherProof)) {
+            performRefreshTokenRequest(registeredService, refreshToken, proof)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value(OAuth20Constants.INVALID_DPOP_PROOF));
+        }
+        val renewedRefreshToken = readRefreshToken(performRefreshTokenRequest(registeredService, refreshToken,
+            proofFactory.createDPoPJWT(HttpMethod.POST.name(), TOKEN_URI).serialize())
+            .andExpect(jsonPath("$.token_type").value(OAuth20Constants.TOKEN_TYPE_DPOP)));
+        performRefreshTokenRequest(registeredService, renewedRefreshToken, null)
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.error").value(OAuth20Constants.INVALID_DPOP_PROOF));
+    }
+
+    @Test
+    void verifyRefreshTokenOfConfidentialClientNotBoundToDPoPKey() throws Throwable {
+        val registeredService = getOidcRegisteredService(UUID.randomUUID().toString());
+        registeredService.setGenerateRefreshToken(true);
+        servicesManager.save(registeredService);
+        val code = addCode(CoreAuthenticationTestUtils.getPrincipal("casuser"), registeredService);
+        val refreshToken = readRefreshToken(performTokenRequest(registeredService, code.getId(),
+            new DefaultDPoPProofFactory(new ECKeyGenerator(Curve.P_256).generate(), JWSAlgorithm.ES256)
+                .createDPoPJWT(HttpMethod.POST.name(), TOKEN_URI).serialize()));
+        performRefreshTokenRequest(registeredService, refreshToken, null)
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.token_type").value(OAuth20Constants.TOKEN_TYPE_BEARER));
+    }
+
     private ResultActions performTokenRequest(final OidcRegisteredService registeredService, final String code,
                                               @Nullable final String dpopProof)
             throws Exception {
-        val request = post("/cas/" + OidcConstants.BASE_OIDC_URL + '/' + OidcConstants.TOKEN_URL)
-            .with(withHttpRequestProcessor())
-            .contentType(MediaType.APPLICATION_FORM_URLENCODED)
-            .param(OAuth20Constants.CLIENT_ID, registeredService.getClientId())
-            .param(OAuth20Constants.CLIENT_SECRET, registeredService.getClientSecret())
+        return mockMvc.perform(codeRequest(registeredService, code, dpopProof));
+    }
+
+    private MockHttpServletRequestBuilder codeRequest(final OidcRegisteredService registeredService, final String code,
+                                                      @Nullable final String dpopProof) {
+        return tokenRequest(registeredService, dpopProof)
             .param(OAuth20Constants.GRANT_TYPE, OAuth20GrantTypes.AUTHORIZATION_CODE.getType())
             .param(OAuth20Constants.REDIRECT_URI, "https://oauth.example.org")
             .param(OAuth20Constants.CODE, code);
-        return mockMvc.perform(dpopProof == null ? request : request.header(OAuth20Constants.DPOP, dpopProof));
+    }
+
+    private ResultActions performRefreshTokenRequest(final OidcRegisteredService registeredService, final String refreshToken,
+                                                     @Nullable final String dpopProof)
+            throws Exception {
+        return mockMvc.perform(tokenRequest(registeredService, dpopProof)
+            .param(OAuth20Constants.GRANT_TYPE, OAuth20GrantTypes.REFRESH_TOKEN.getType())
+            .param(OAuth20Constants.REFRESH_TOKEN, refreshToken));
+    }
+
+    private MockHttpServletRequestBuilder tokenRequest(final OidcRegisteredService registeredService, @Nullable final String dpopProof) {
+        val request = post("/cas/" + OidcConstants.BASE_OIDC_URL + '/' + OidcConstants.TOKEN_URL)
+            .with(withHttpRequestProcessor())
+            .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+            .param(OAuth20Constants.CLIENT_ID, registeredService.getClientId());
+        if (StringUtils.isNotBlank(registeredService.getClientSecret())) {
+            request.param(OAuth20Constants.CLIENT_SECRET, registeredService.getClientSecret());
+        }
+        return dpopProof == null ? request : request.header(OAuth20Constants.DPOP, dpopProof);
+    }
+
+    private static String readRefreshToken(final ResultActions result) throws Exception {
+        val response = result.andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        return JsonPath.read(response, "$.refresh_token").toString();
+    }
+
+    private ResultActions performProfileRequest(final DPoPAccessToken accessToken, final String dpopProof) throws Exception {
+        return mockMvc.perform(profileRequest(dpopProof)
+            .header(HttpHeaders.AUTHORIZATION, OAuth20Constants.TOKEN_TYPE_DPOP + ' ' + accessToken.getValue()));
+    }
+
+    private MockHttpServletRequestBuilder profileRequest(final String dpopProof) {
+        return post("/cas/" + OidcConstants.BASE_OIDC_URL + '/' + OidcConstants.PROFILE_URL)
+            .with(withHttpRequestProcessor())
+            .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+            .header(OAuth20Constants.DPOP, dpopProof);
     }
 
     /**
@@ -290,14 +417,6 @@ class OAuth20ProofOfPossessionValidatorTests extends AbstractOidcTests {
                 proofFactory.createDPoPJWT(HttpMethod.POST.name(), tokenUri, new Nonce(nonce)).serialize(), addCode(principal, registeredService).getId())
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.token_type").value(OAuth20Constants.TOKEN_TYPE_DPOP));
-        }
-
-        private ResultActions performProfileRequest(final DPoPAccessToken accessToken, final String dpopProof) throws Exception {
-            return mockMvc.perform(post("/cas/" + OidcConstants.BASE_OIDC_URL + '/' + OidcConstants.PROFILE_URL)
-                .with(withHttpRequestProcessor())
-                .contentType(MediaType.APPLICATION_FORM_URLENCODED)
-                .header(OAuth20Constants.DPOP, dpopProof)
-                .param(OAuth20Constants.TOKEN, accessToken.getValue()));
         }
     }
 

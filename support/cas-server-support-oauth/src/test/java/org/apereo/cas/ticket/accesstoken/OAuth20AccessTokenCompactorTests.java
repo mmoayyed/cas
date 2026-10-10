@@ -5,6 +5,7 @@ import org.apereo.cas.AbstractOAuth20Tests;
 import org.apereo.cas.authentication.Authentication;
 import org.apereo.cas.authentication.principal.Service;
 import org.apereo.cas.services.RegisteredServiceTestUtils;
+import org.apereo.cas.support.oauth.OAuth20Constants;
 import org.apereo.cas.support.oauth.OAuth20GrantTypes;
 import org.apereo.cas.support.oauth.OAuth20ResponseTypes;
 import org.apereo.cas.ticket.registry.compact.CompactTicketAuthentication;
@@ -59,6 +60,8 @@ class OAuth20AccessTokenCompactorTests extends AbstractOAuth20Tests {
         assertEquals(authorizationDetails, result.getAuthorizationDetails());
         assertEquals(result.getAuthentication().getPrincipal(), token.getAuthentication().getPrincipal());
         assertEquals(List.of("SAML2Client"), result.getAuthentication().getAttributes().get(CompactTicketAuthentication.CLIENT_NAME_ATTRIBUTE));
+        assertEquals(List.of("NzbLsXh8uDCcd-6MNwXF4W_7noWXFZAfHkxZsRGC9Xs"),
+            result.getAuthentication().getAttributes().get(OAuth20Constants.DPOP_CONFIRMATION));
         assertEquals(token.getCreationTime().toEpochSecond(), result.getCreationTime().toEpochSecond());
         assertEquals(token.getExpirationPolicy().toMaximumExpirationTime(token).toEpochSecond(),
             result.getExpirationPolicy().toMaximumExpirationTime(result).toEpochSecond());
@@ -67,7 +70,8 @@ class OAuth20AccessTokenCompactorTests extends AbstractOAuth20Tests {
     static Stream<Arguments> codeProvider() {
         val service = RegisteredServiceTestUtils.getService("https://code.oauth.org");
         val authentication = RegisteredServiceTestUtils.getAuthentication(RegisteredServiceTestUtils.getPrincipal("casuser"),
-            new HashMap<>(Map.of(CompactTicketAuthentication.CLIENT_NAME_ATTRIBUTE, List.of("SAML2Client"))));
+            new HashMap<>(Map.of(CompactTicketAuthentication.CLIENT_NAME_ATTRIBUTE, List.of("SAML2Client"),
+                OAuth20Constants.DPOP_CONFIRMATION, List.of("NzbLsXh8uDCcd-6MNwXF4W_7noWXFZAfHkxZsRGC9Xs"))));
         return Stream.of(
             Arguments.of(service, authentication,
                 Set.of("Scope1", "Scope2"), "clientid-code",

@@ -72,7 +72,7 @@ public class OAuth20RefreshTokenGrantTypeTokenRequestValidator extends BaseOAuth
             LOGGER.warn("Provided refresh token [{}] does not belong to client [{}]", refreshToken.getId(), clientId);
             return false;
         }
-
+        verifyBoundProofOfPossessionKey(refreshToken, OAuth20Constants.DPOP_CONFIRMATION, manager);
         return true;
     }
 
