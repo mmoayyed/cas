@@ -53,4 +53,15 @@ public interface OAuth20ProofOfPossessionValidator {
      */
     void validateProtectedResourceRequest(WebContext webContext, String presentedAccessToken,
                                           OAuth20AccessToken accessToken) throws Throwable;
+
+    /**
+     * Verify the DPoP proof of a request that binds what it creates to the proof's key without issuing a token, such as a
+     * pushed authorization request (RFC 9449, section 10.1). The proof is checked as at the token endpoint, nonce included,
+     * and the authenticated profile is left untouched.
+     *
+     * @param webContext the web context
+     * @return the SHA-256 JWK thumbprint of the proof's key, or empty when the request carries no DPoP proof
+     * @throws Throwable when the proof does not verify
+     */
+    Optional<String> validateKeyBinding(WebContext webContext) throws Throwable;
 }

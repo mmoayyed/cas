@@ -2,12 +2,15 @@ package org.apereo.cas.oidc.authn;
 
 import module java.base;
 import org.apereo.cas.authentication.CoreAuthenticationTestUtils;
+import org.apereo.cas.mock.MockTicketGrantingTicket;
 import org.apereo.cas.oidc.AbstractOidcTests;
 import org.apereo.cas.oidc.OidcConstants;
 import org.apereo.cas.services.OidcRegisteredService;
+import org.apereo.cas.services.RegisteredServiceTestUtils;
 import org.apereo.cas.support.oauth.OAuth20ClientAuthenticationMethods;
 import org.apereo.cas.support.oauth.OAuth20Constants;
 import org.apereo.cas.support.oauth.OAuth20GrantTypes;
+import org.apereo.cas.support.oauth.OAuth20ResponseTypes;
 import com.jayway.jsonpath.JsonPath;
 import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.jwk.Curve;
@@ -16,6 +19,7 @@ import com.nimbusds.oauth2.sdk.dpop.DefaultDPoPProofFactory;
 import com.nimbusds.oauth2.sdk.token.DPoPAccessToken;
 import com.nimbusds.openid.connect.sdk.Nonce;
 import lombok.val;
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -175,6 +179,45 @@ class OAuth20ProofOfPossessionValidatorTests extends AbstractOidcTests {
             .andExpect(status().isUnauthorized());
     }
 
+    @Test
+    void verifyAuthorizationCodeBoundToDPoPKey() throws Throwable {
+        val registeredService = getOidcRegisteredService(UUID.randomUUID().toString());
+        servicesManager.save(registeredService);
+        val key = new ECKeyGenerator(Curve.P_256).generate();
+        val authentication = RegisteredServiceTestUtils.getAuthentication(CoreAuthenticationTestUtils.getPrincipal("casuser"),
+            Map.of(OAuth20Constants.DPOP_JKT, List.of(key.computeThumbprint().toString())));
+        val code = defaultOAuthCodeFactory.create(webApplicationServiceFactory.createService(registeredService.getClientId()),
+            authentication, new MockTicketGrantingTicket("casuser"), List.of(OidcConstants.StandardScopes.OPENID.getScope()),
+            registeredService.getClientId(), OAuth20ResponseTypes.CODE, OAuth20GrantTypes.AUTHORIZATION_CODE);
+        ticketRegistry.addTicket(code);
+        val tokenUri = new URI("https://sso.example.org/cas/" + OidcConstants.BASE_OIDC_URL + '/' + OidcConstants.TOKEN_URL);
+        val otherProof = new DefaultDPoPProofFactory(new ECKeyGenerator(Curve.P_256).generate(), JWSAlgorithm.ES256)
+            .createDPoPJWT(HttpMethod.POST.name(), tokenUri).serialize();
+
+        for (val proof : Arrays.asList(null, otherProof)) {
+            performTokenRequest(registeredService, code.getId(), proof)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value(OAuth20Constants.INVALID_DPOP_PROOF));
+        }
+        performTokenRequest(registeredService, code.getId(),
+            new DefaultDPoPProofFactory(key, JWSAlgorithm.ES256).createDPoPJWT(HttpMethod.POST.name(), tokenUri).serialize())
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.token_type").value(OAuth20Constants.TOKEN_TYPE_DPOP));
+    }
+
+    private ResultActions performTokenRequest(final OidcRegisteredService registeredService, final String code,
+                                              @Nullable final String dpopProof) throws Exception {
+        val request = post("/cas/" + OidcConstants.BASE_OIDC_URL + '/' + OidcConstants.TOKEN_URL)
+            .with(withHttpRequestProcessor())
+            .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+            .param(OAuth20Constants.CLIENT_ID, registeredService.getClientId())
+            .param(OAuth20Constants.CLIENT_SECRET, registeredService.getClientSecret())
+            .param(OAuth20Constants.GRANT_TYPE, OAuth20GrantTypes.AUTHORIZATION_CODE.getType())
+            .param(OAuth20Constants.REDIRECT_URI, "https://oauth.example.org")
+            .param(OAuth20Constants.CODE, code);
+        return mockMvc.perform(dpopProof == null ? request : request.header(OAuth20Constants.DPOP, dpopProof));
+    }
+
     /**
      * Once DPoP nonces are turned on, every DPoP proof must carry one handed out by CAS.
      */
@@ -246,19 +289,6 @@ class OAuth20ProofOfPossessionValidatorTests extends AbstractOidcTests {
                 proofFactory.createDPoPJWT(HttpMethod.POST.name(), tokenUri, new Nonce(nonce)).serialize(), addCode(principal, registeredService).getId())
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.token_type").value(OAuth20Constants.TOKEN_TYPE_DPOP));
-        }
-
-        private ResultActions performTokenRequest(final OidcRegisteredService registeredService, final String code,
-                                                  final String dpopProof) throws Exception {
-            return mockMvc.perform(post("/cas/" + OidcConstants.BASE_OIDC_URL + '/' + OidcConstants.TOKEN_URL)
-                .with(withHttpRequestProcessor())
-                .contentType(MediaType.APPLICATION_FORM_URLENCODED)
-                .header(OAuth20Constants.DPOP, dpopProof)
-                .param(OAuth20Constants.CLIENT_ID, registeredService.getClientId())
-                .param(OAuth20Constants.CLIENT_SECRET, registeredService.getClientSecret())
-                .param(OAuth20Constants.GRANT_TYPE, OAuth20GrantTypes.AUTHORIZATION_CODE.getType())
-                .param(OAuth20Constants.REDIRECT_URI, "https://oauth.example.org")
-                .param(OAuth20Constants.CODE, code));
         }
 
         private ResultActions performProfileRequest(final DPoPAccessToken accessToken, final String dpopProof) throws Exception {

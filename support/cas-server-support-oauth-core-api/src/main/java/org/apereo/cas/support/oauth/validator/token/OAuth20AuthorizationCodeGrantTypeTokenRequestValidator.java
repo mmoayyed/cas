@@ -10,7 +10,9 @@ import org.apereo.cas.support.oauth.util.OAuth20Utils;
 import org.apereo.cas.support.oauth.web.endpoints.OAuth20ConfigurationContext;
 import org.apereo.cas.ticket.accesstoken.OAuth20AccessToken;
 import org.apereo.cas.ticket.code.OAuth20Code;
+import org.apereo.cas.util.CollectionUtils;
 import org.apereo.cas.util.function.FunctionUtils;
+import com.nimbusds.oauth2.sdk.dpop.verifiers.InvalidDPoPProofException;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.apache.commons.lang3.ObjectUtils;
@@ -108,9 +110,29 @@ public class OAuth20AuthorizationCodeGrantTypeTokenRequestValidator extends Base
                 LOGGER.warn("Requested grant type [{}] is not authorized by service definition [{}]", grantType, registeredService.getServiceId());
                 return false;
             }
+            verifyBoundProofOfPossessionKey(oauthCode, manager);
             return true;
         }
         LOGGER.warn("Access token request cannot be validated for grant type [{}] and client id [{}] given the redirect URI [{}]", grantType, clientId, redirectUri);
         return false;
+    }
+
+    /**
+     * A code bound to a DPoP key with {@code dpop_jkt}, or by the DPoP proof of a pushed authorization request, may only be
+     * redeemed with a DPoP proof made with that key (RFC 9449, section 10). The proof itself was verified before, and its key
+     * thumbprint recorded on the profile. The code is not consumed when the keys do not match.
+     *
+     * @param code    the code
+     * @param manager the profile manager
+     * @throws InvalidDPoPProofException when the request carries no DPoP proof, or one made with another key
+     */
+    protected void verifyBoundProofOfPossessionKey(final OAuth20Code code, final ProfileManager manager) throws InvalidDPoPProofException {
+        val boundKey = CollectionUtils.firstElement(code.getAuthentication().getAttributes().get(OAuth20Constants.DPOP_JKT));
+        if (boundKey.isPresent()) {
+            val presentedKey = manager.getProfile().map(profile -> profile.getAttribute(OAuth20Constants.DPOP_CONFIRMATION));
+            if (presentedKey.isEmpty() || !boundKey.get().toString().equals(presentedKey.get().toString())) {
+                throw new InvalidDPoPProofException("Authorization code is bound to a DPoP key that the request does not prove possession of");
+            }
+        }
     }
 }

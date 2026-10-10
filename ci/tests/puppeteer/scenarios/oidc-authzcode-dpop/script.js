@@ -9,7 +9,11 @@ const jose = require("jose");
 
     const redirectUrl = "https://localhost:9859/anything/cas";
     const scopes = `${encodeURIComponent("openid profile")}`;
-    const url = `https://localhost:8443/cas/oidc/authorize?response_type=code&client_id=client&scope=${scopes}&redirect_uri=${redirectUrl}`;
+    const {publicKey, privateKey} = await jose.generateKeyPair("ES256", { extractable: true });
+    const publicJwk = await jose.exportJWK(publicKey);
+    const thumbprint = await jose.calculateJwkThumbprint(publicJwk, "sha256");
+    await cas.log(`Binding the authorization code to DPoP key ${thumbprint}`);
+    const url = `https://localhost:8443/cas/oidc/authorize?response_type=code&client_id=client&scope=${scopes}&redirect_uri=${redirectUrl}&dpop_jkt=${thumbprint}`;
 
     await cas.goto(page, url);
     await cas.sleep(1000);
@@ -32,8 +36,6 @@ const jose = require("jose");
     await cas.log("DPoP proof payload is");
     await cas.log(payload);
 
-    const {publicKey, privateKey} = await jose.generateKeyPair("ES256", { extractable: true });
-    const publicJwk = await jose.exportJWK(publicKey);
     await cas.log("DPoP public key is");
     await cas.log(publicJwk);
 
@@ -53,6 +55,14 @@ const jose = require("jose");
     await cas.log(`Current code is ${code}`);
     const accessTokenUrl = "https://localhost:8443/cas/oidc/token";
     const params = `grant_type=authorization_code&client_id=client&client_secret=secret&redirect_uri=${redirectUrl}&code=${code}`;
+
+    await cas.log("A token request without a DPoP proof cannot redeem the bound code");
+    await cas.doPost(accessTokenUrl, params, {}, () => {
+        throw "Token request without a DPoP proof must fail";
+    }, (error) => {
+        assert.equal(error.response.status, 400);
+        assert(error.response.data.error === "invalid_dpop_proof");
+    });
 
     let accessToken = null;
     await cas.doPost(accessTokenUrl, params, {

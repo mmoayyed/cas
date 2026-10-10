@@ -33,6 +33,26 @@ SHA-256 hash of the access token value. The `htm` (HTTP method) and `htu` (HTTP 
 Note that there is no special configuration required in CAS to enable support for DPoP tokens; however you should note that at this time,
 support for DPoP only covers access tokens. Support for refresh tokens may be worked out in future versions.
 
+## Authorization Code Binding
+
+An authorization request may bind the authorization code to the client's DPoP key with the `dpop_jkt` parameter, the
+base64url-encoded SHA-256 [JWK thumbprint](https://www.rfc-editor.org/rfc/rfc7638) of its public key, as
+[RFC 9449](https://www.rfc-editor.org/rfc/rfc9449#section-10) defines. The parameter is accepted at the authorization endpoint
+and in the body of a [pushed authorization request](OIDC-Authentication-PAR.html). A pushed authorization request may carry a
+`DPoP` proof header instead: CAS verifies it as it would at the token endpoint, nonce included, and binds the code to its key as if
+its thumbprint had been sent as `dpop_jkt`. When both are sent, they must name the same key, or the request is refused with
+`invalid_dpop_proof`.
+
+The token request that redeems a bound code must carry a DPoP proof made with that key. Otherwise it is answered with `400`:
+
+```json
+{
+  "error": "invalid_dpop_proof"
+}
+```
+
+The code is not redeemed by such a request, so the client that holds the key can still use it.
+
 ## Single-Use Checking
 
 DPoP proofs are designed to be used exactly once. Each proof JWT carries a unique `jti` (JWT ID) claim 

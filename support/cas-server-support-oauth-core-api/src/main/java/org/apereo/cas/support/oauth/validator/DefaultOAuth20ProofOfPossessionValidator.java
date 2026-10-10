@@ -37,6 +37,7 @@ import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.apache.commons.lang3.StringUtils;
 import org.jooq.lambda.Unchecked;
+import org.jspecify.annotations.Nullable;
 import org.pac4j.core.context.WebContext;
 import org.pac4j.core.context.session.SessionStore;
 import org.pac4j.core.profile.ProfileManager;
@@ -88,7 +89,7 @@ public class DefaultOAuth20ProofOfPossessionValidator implements OAuth20ProofOfP
      * @return the client id
      */
     protected Optional<String> resolveClientId(final WebContext webContext,
-                                               final OAuth20AccessToken accessToken) {
+                                               final @Nullable OAuth20AccessToken accessToken) {
         val manager = new ProfileManager(webContext, this.sessionStore);
         return manager.getProfile()
             .map(OAuth20Utils::getClientIdFromAuthenticatedProfile)
@@ -132,6 +133,17 @@ public class DefaultOAuth20ProofOfPossessionValidator implements OAuth20ProofOfP
             new DPoPIssuer(new ClientID(clientId)), signedProof,
             new DPoPAccessToken(presentedAccessToken), confirmation.get(), dpopNonceService.getAcceptedNonces(signedProof), null);
         verifyNonce(webContext, signedProof);
+    }
+
+    @Override
+    public Optional<String> validateKeyBinding(final WebContext webContext) throws Throwable {
+        val dPopProof = webContext.getRequestHeader(OAuth20Constants.DPOP).filter(StringUtils::isNotBlank);
+        if (dPopProof.isEmpty()) {
+            return Optional.empty();
+        }
+        val clientId = resolveClientId(webContext, null)
+            .orElseThrow(() -> new InvalidDPoPProofException("Unable to determine the client that presented the DPoP proof"));
+        return Optional.of(verifyProofOfPossession(webContext, dPopProof.get(), clientId).getValue().toString());
     }
 
     /**

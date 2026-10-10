@@ -392,6 +392,9 @@ looking up audit records reads only the newest matching entries instead of loadi
   turned on with `cas.authn.oidc.dpop.nonce.enabled=true`{: .cas-setting}, the token endpoint and the DPoP combined mode answer
   with `400`, and protected resources with `401`, `use_dpop_nonce` and a fresh nonce in the `DPoP-Nonce` header. The OpenID4VCI
   nonce endpoint and the client attestation challenge endpoint hand out nonces as well.
+- Authorization codes can be bound to the client's [DPoP key](../authentication/OIDC-Authentication-DPoP.html#authorization-code-binding),
+  per RFC 9449: with `dpop_jkt` at the authorization endpoint or in a pushed authorization request, or with a `DPoP` proof sent with
+  the pushed authorization request. The token request must then carry a DPoP proof made with that key, or it is refused with `invalid_dpop_proof`.
 
 ### Stateless Ticket Registry
 {: .action data-area="tickets"}
@@ -575,9 +578,13 @@ authentication. See the [stateless ticket registry documentation](../ticketing/S
   downloading a fresh one fails at startup, for example when the FIDO metadata service rate-limits the request, instead of failing to start.
 - {: .changed data-area="project"} The project [README](https://github.com/apereo/cas) is reworked as a landing page, with a one-minute Docker try-out,
   a link to the new [Quick Start](../planning/Quick-Start.html), features grouped by area and the maintained documentation versions.
-- {: .changed} The [account profile](../registration/Account-Management-Overview.html) and the account management screens (sign-up,
+- {: .changed data-area="ui"} The [account profile](../registration/Account-Management-Overview.html) and the account management screens (sign-up,
   password reset, forgot username, expired or must-change password) are redesigned: the profile gets a section rail,
   an overview with summary cards and lists with inline details, filtering and keyboard support, and every account
   management flow shows its steps beside a single form card. Features are unchanged; colors follow the CAS theme.
+- {: .changed data-area="ui"} Buttons and text fields on CAS pages share one [look](../ux/User-Interface-Customization-CSSJS.html):
+  labels sit above rounded inputs, buttons are pill-shaped and password fields get round reveal and generate buttons, matching
+  the account screens and following the CAS theme colors. Alert boxes, tables and progress bars follow the same style, and
+  page layouts stay as they were.
 
 {% include release-footer.html %}

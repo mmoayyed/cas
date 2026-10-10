@@ -1848,8 +1848,9 @@ class CasOAuth20Configuration {
                 final PrincipalFactory principalFactory,
                 @Qualifier(WebApplicationService.BEAN_NAME_FACTORY)
                 final ServiceFactory serviceFactory) {
-                return new OAuth20CodeCompactor(ticketFactory, serviceFactory, principalFactory,
-                    CompactTicketAuthentication.getRetainedAuthenticationAttributes(casProperties));
+                val retainedAttributes = new LinkedHashSet<>(CompactTicketAuthentication.getRetainedAuthenticationAttributes(casProperties));
+                retainedAttributes.add(OAuth20Constants.DPOP_JKT);
+                return new OAuth20CodeCompactor(ticketFactory, serviceFactory, principalFactory, retainedAttributes);
             }
 
             @Bean
