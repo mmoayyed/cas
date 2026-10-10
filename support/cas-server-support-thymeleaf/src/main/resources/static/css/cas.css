@@ -1349,3 +1349,673 @@ pre code.hljs {
         border-radius: 45% 55% 48% 52%;
     }
 }
+
+/*
+ * Shared buttons and input fields: every page whose main element carries the `cas-ui` class (set by the layout)
+ * gets label-above rounded text fields, pill buttons and round icon buttons. It restyles the existing MDC/Bootstrap
+ * markup, so element ids and form contracts stay as they are. Colors come from the theme variables above.
+ */
+.cas-ui {
+    --cas-ui-primary: var(--cas-theme-primary, #114377);
+    --cas-ui-button: var(--cas-theme-button-bg, #26418f);
+    --cas-ui-button-hover: var(--cas-theme-button-bg-hover, #1678d8);
+    --cas-ui-focus: var(--cas-theme-button-bg-hover, #1678d8);
+    --cas-ui-ring: color-mix(in srgb, var(--cas-ui-focus) 30%, transparent);
+    --cas-ui-text: #1b2733;
+    --cas-ui-muted: #52606d;
+    --cas-ui-border: #c3ccd6;
+    --cas-ui-surface: #fff;
+    --cas-ui-subtle: #f3f6f9;
+    --cas-ui-divider: #dfe6ee;
+    --cas-ui-tint: color-mix(in srgb, var(--cas-ui-primary) 7%, #fff);
+    --cas-ui-danger: var(--mdc-theme-error, #a20323);
+    --cas-ui-radius: 12px;
+    --cas-ui-field-height: 52px;
+}
+
+.cas-ui :is(button, input, select, textarea, .mdc-button, .btn):focus-visible {
+    outline: 3px solid var(--cas-ui-focus);
+    outline-offset: 2px;
+}
+
+/* Text fields: label above a rounded input, whatever order the MDC markup puts them in */
+.cas-ui .mdc-text-field--outlined,
+.cas-ui .mdc-text-field--filled,
+.cas-ui .mdc-text-field--textarea {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    width: 100%;
+    height: auto !important;
+    padding: 0 !important;
+    overflow: visible;
+    border-radius: 0;
+    background: transparent !important;
+}
+
+.cas-ui .mdc-text-field::before,
+.cas-ui .mdc-text-field::after,
+.cas-ui .mdc-text-field .mdc-line-ripple,
+.cas-ui .mdc-text-field .mdc-text-field__ripple {
+    display: none !important;
+}
+
+.cas-ui .mdc-text-field > .mdc-notched-outline {
+    position: static;
+    display: block;
+    grid-column: 1 / -1;
+    grid-row: 1;
+    width: auto;
+    height: auto;
+    text-align: start;
+    pointer-events: auto;
+}
+
+.cas-ui .mdc-text-field .mdc-notched-outline__leading,
+.cas-ui .mdc-text-field .mdc-notched-outline__trailing {
+    display: none !important;
+}
+
+.cas-ui .mdc-text-field .mdc-notched-outline__notch {
+    display: block;
+    width: auto !important;
+    max-width: none !important;
+    padding: 0 !important;
+    border: 0 !important;
+}
+
+.cas-ui .mdc-text-field .mdc-floating-label {
+    position: static !important;
+    display: block;
+    max-width: none;
+    margin: 0 0 6px;
+    overflow: visible;
+    color: var(--cas-ui-text) !important;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 1.4;
+    letter-spacing: normal;
+    white-space: normal;
+    transform: none !important;
+    cursor: default;
+}
+
+.cas-ui .mdc-text-field > .mdc-text-field__input,
+.cas-ui .mdc-text-field > textarea {
+    grid-column: 1;
+    grid-row: 2;
+    width: 100%;
+    height: var(--cas-ui-field-height);
+    padding: 0 16px !important;
+    border: 1px solid var(--cas-ui-border) !important;
+    border-radius: var(--cas-ui-radius) !important;
+    background: var(--cas-ui-surface);
+    color: var(--cas-ui-text);
+    caret-color: var(--cas-ui-primary);
+    font-family: inherit;
+    font-size: 16px;
+    letter-spacing: normal;
+    box-shadow: none;
+}
+
+.cas-ui .mdc-text-field > textarea,
+.cas-ui .mdc-text-field--textarea > .mdc-text-field__input {
+    height: auto;
+    min-height: 96px;
+    padding: 12px 16px !important;
+    resize: vertical;
+}
+
+.cas-ui .mdc-text-field > .mdc-text-field__input:focus,
+.cas-ui .mdc-text-field > textarea:focus {
+    border-color: var(--cas-ui-primary) !important;
+    outline: none;
+    box-shadow: 0 0 0 3px var(--cas-ui-ring);
+}
+
+.cas-ui .mdc-text-field > .mdc-text-field__input[readonly] {
+    background: var(--cas-ui-subtle);
+}
+
+.cas-ui .mdc-text-field--invalid > .mdc-text-field__input,
+.cas-ui .mdc-text-field > .mdc-text-field__input:user-invalid {
+    border-color: var(--cas-ui-danger) !important;
+}
+
+.cas-ui .mdc-text-field > :is(button, .mdc-icon-button, .mdc-text-field__icon, .mdc-button) {
+    grid-column: 2;
+    grid-row: 2;
+    margin-inline-start: 8px;
+}
+
+.cas-ui .mdc-text-field > :not(.mdc-notched-outline, .mdc-text-field__input, textarea, button, .mdc-icon-button, .mdc-text-field__icon, .mdc-button) {
+    grid-column: 1 / -1;
+}
+
+.cas-ui .mdc-text-field-helper-line {
+    padding: 4px 0 0;
+}
+
+.cas-ui .mdc-text-field-helper-text {
+    color: var(--cas-ui-muted);
+    font-size: 13px;
+    letter-spacing: normal;
+}
+
+.cas-ui .mdc-text-field-helper-text--validation-msg {
+    color: var(--cas-ui-danger);
+}
+
+.cas-ui .cas-field.my-3,
+.cas-ui section.form-group {
+    margin-top: 0 !important;
+    margin-bottom: 18px !important;
+}
+
+/* Input groups: field plus trailing icon buttons on one row */
+.cas-ui .mdc-input-group {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 0 8px;
+}
+
+.cas-ui .mdc-input-group > .mdc-input-group-field {
+    flex: 1 1 0;
+    min-width: 0;
+}
+
+.cas-ui .mdc-input-group > .mdc-text-field-helper-line {
+    flex-basis: 100%;
+}
+
+.cas-ui .mdc-input-group .mdc-text-field > .mdc-text-field__input {
+    border-radius: var(--cas-ui-radius) !important;
+}
+
+/* Native selects */
+.cas-ui select:not([multiple], .dt-input, .acct-input),
+.cas-ui .custom-select {
+    width: 100%;
+    height: var(--cas-ui-field-height);
+    padding: 0 40px 0 16px;
+    border: 1px solid var(--cas-ui-border);
+    border-radius: var(--cas-ui-radius);
+    background-color: var(--cas-ui-surface);
+    color: var(--cas-ui-text);
+    font-size: 16px;
+    box-shadow: none;
+}
+
+.cas-ui select:not([multiple], .dt-input, .acct-input):focus {
+    border-color: var(--cas-ui-primary);
+    outline: none;
+    box-shadow: 0 0 0 3px var(--cas-ui-ring);
+}
+
+/* MDC select (authentication source) */
+.cas-ui .mdc-select--outlined .mdc-select__anchor {
+    height: var(--cas-ui-field-height);
+}
+
+.cas-ui .mdc-select--outlined .mdc-notched-outline__leading {
+    border-radius: var(--cas-ui-radius) 0 0 var(--cas-ui-radius) !important;
+    width: var(--cas-ui-radius);
+}
+
+.cas-ui .mdc-select--outlined .mdc-notched-outline__trailing {
+    border-radius: 0 var(--cas-ui-radius) var(--cas-ui-radius) 0 !important;
+}
+
+.cas-ui .mdc-select--outlined :is(.mdc-notched-outline__leading, .mdc-notched-outline__notch, .mdc-notched-outline__trailing) {
+    border-color: var(--cas-ui-border) !important;
+}
+
+/* Buttons */
+.cas-ui .mdc-button,
+.cas-ui .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    height: auto;
+    min-height: 48px;
+    padding: 0 22px;
+    border: 1px solid transparent;
+    border-radius: 999px;
+    font-family: inherit;
+    font-size: 15px;
+    font-weight: 500;
+    letter-spacing: normal;
+    line-height: 1.2;
+    text-decoration: none;
+    text-transform: none;
+    box-shadow: none;
+    filter: none;
+    transform: none;
+    cursor: pointer;
+}
+
+.cas-ui .mdc-button .mdc-button__label {
+    color: inherit;
+    letter-spacing: normal;
+    text-transform: none;
+}
+
+.cas-ui .mdc-button .mdi,
+.cas-ui .btn .mdi {
+    margin: 0;
+    font-size: 18px;
+    line-height: 1;
+}
+
+.cas-ui :is(.mdc-button--raised, .mdc-button--unelevated, .btn-primary):not(.reveal-password, .generate-password, .mdc-icon-button, .mdc-input-group-append) {
+    border-color: var(--cas-ui-button);
+    background: var(--cas-ui-button);
+    color: #fff;
+}
+
+.cas-ui :is(.mdc-button--raised, .mdc-button--unelevated, .btn-primary):not(.reveal-password, .generate-password, .mdc-icon-button, .mdc-input-group-append):not(:disabled):hover {
+    border-color: var(--cas-ui-button-hover);
+    background: var(--cas-ui-button-hover);
+    color: #fff;
+    transform: none;
+    box-shadow: none;
+}
+
+.cas-ui :is(.mdc-button--outlined, .mdc-button--outline, .btn-secondary, .btn-outline-secondary, .btn-outline-primary, .btn-light) {
+    border-color: var(--cas-ui-border);
+    background: var(--cas-ui-surface);
+    color: var(--cas-ui-primary);
+    filter: none;
+}
+
+.cas-ui :is(.mdc-button--outlined, .mdc-button--outline, .btn-secondary, .btn-outline-secondary, .btn-outline-primary, .btn-light):not(:disabled):hover {
+    border-color: var(--cas-ui-primary);
+    background: var(--cas-ui-tint);
+    color: var(--cas-ui-primary);
+}
+
+.cas-ui .mdc-button:not(.mdc-button--raised, .mdc-button--unelevated, .mdc-button--outlined, .mdc-button--outline, .btn-primary, .btn-secondary, .btn-outline-secondary, .btn-outline-primary, .btn-light, .btn-danger, .button-cancel) {
+    color: var(--cas-ui-primary);
+}
+
+.cas-ui .button-cancel {
+    border-color: var(--cas-ui-border) !important;
+    background: var(--cas-ui-surface) !important;
+    color: var(--cas-ui-primary) !important;
+}
+
+.cas-ui .button-cancel:not(:disabled):hover {
+    border-color: var(--cas-ui-primary) !important;
+    background: var(--cas-ui-tint) !important;
+}
+
+.cas-ui .btn-danger {
+    border-color: color-mix(in srgb, var(--cas-ui-danger) 35%, #fff) !important;
+    background: var(--cas-ui-surface) !important;
+    color: var(--cas-ui-danger) !important;
+}
+
+.cas-ui .btn-danger:not(:disabled):hover {
+    background: color-mix(in srgb, var(--cas-ui-danger) 7%, #fff) !important;
+}
+
+.cas-ui :is(.mdc-button, .btn):disabled {
+    border-color: #c9d1da !important;
+    background: #c9d1da !important;
+    color: #fff !important;
+    cursor: not-allowed;
+}
+
+.cas-ui .drop-button {
+    overflow: visible;
+    box-shadow: none;
+}
+
+.cas-ui .drop-button:hover,
+.cas-ui .drop-button:active {
+    transform: none;
+    box-shadow: none;
+}
+
+.cas-ui .drop-button::before,
+.cas-ui .drop-button::after {
+    display: none;
+}
+
+/* Icon buttons: reveal and generate password, copy, inline actions */
+.cas-ui :is(.reveal-password, .generate-password, .mdc-input-group-append, #content .mdc-icon-button):not(.acct-btn) {
+    display: inline-grid;
+    flex: none;
+    place-items: center;
+    width: var(--cas-ui-field-height);
+    min-width: var(--cas-ui-field-height);
+    height: var(--cas-ui-field-height);
+    min-height: var(--cas-ui-field-height);
+    margin: 0;
+    padding: 0;
+    border: 1px solid var(--cas-ui-border);
+    border-radius: 50%;
+    background: var(--cas-ui-surface);
+    color: var(--cas-ui-primary);
+    box-shadow: none;
+    filter: none;
+    transform: none;
+}
+
+.cas-ui :is(.reveal-password, .generate-password, .mdc-input-group-append, #content .mdc-icon-button):not(.acct-btn):not(:disabled):hover {
+    border-color: var(--cas-ui-primary);
+    background: var(--cas-ui-tint);
+    color: var(--cas-ui-primary);
+}
+
+.cas-ui :is(.reveal-password, .generate-password, .mdc-input-group-append):not(.acct-btn) .mdi {
+    margin: 0;
+    font-size: 20px;
+}
+
+/* Button rows */
+.cas-ui :is(.form-actions, .form-group > .d-flex, .mdc-dialog__actions, .modal-footer) {
+    gap: 10px;
+}
+
+.cas-ui .form-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-top: 8px;
+}
+
+.cas-ui .form-actions > :is(.mdc-button, .btn, span, a) {
+    margin: 0 !important;
+}
+
+.cas-ui :is(.mdc-button, .btn):is(.w-25, .w-50, .w-75) {
+    width: auto !important;
+    min-width: 140px;
+}
+
+/* Field rows: a text field followed by its icon buttons */
+.cas-ui .d-flex:has(> .mdc-text-field) {
+    align-items: flex-end;
+    gap: 8px;
+}
+
+.cas-ui .d-flex > .mdc-text-field {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.cas-ui .d-flex > :is(section, .cas-field, .mdc-input-group, .mdc-input-group-field, .form-group) {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.cas-ui :is(.mdc-input-group-field, .cas-field) > .d-flex {
+    width: 100%;
+}
+
+/* Rows of buttons wrap as a whole instead of squeezing their labels */
+.cas-ui .d-flex:has(> :is(.mdc-button, .btn, form)):not(:has(> .mdc-text-field, > .mdc-input-group-field)) {
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.cas-ui .d-flex > :is(.mdc-button, .btn) {
+    flex-shrink: 0;
+    margin: 0;
+}
+
+/* Alert boxes: banners and alerts keep their place on the page and get the shared shape and tones */
+.cas-ui :is(.banner, .alert):not(.acct-banner) {
+    border: 1px solid var(--cas-ui-divider);
+    border-radius: var(--cas-ui-radius);
+    box-shadow: none;
+}
+
+.cas-ui :is(.banner, .alert):not(.acct-banner, .mdc-card, .card) {
+    padding: 12px 16px;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.cas-ui :is(.banner, .alert):is(.mdc-card, .card):not(.acct-banner) {
+    border-radius: 16px;
+    box-shadow: 0 1px 2px rgba(16, 40, 70, .08);
+}
+
+.cas-ui :is(.banner, .alert):not(.acct-banner, .mdc-card, .card) :is(h1, h2, h3, h4, h5) {
+    margin: 0 0 4px;
+    color: inherit;
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1.4;
+}
+
+.cas-ui :is(.banner, .alert):not(.acct-banner) :is(h1, h2, h3, h4, h5) {
+    color: inherit;
+}
+
+.cas-ui :is(.banner, .alert):not(.acct-banner) :is(h1, h2, h3, h4, h5)::before {
+    margin-inline-end: 8px;
+    vertical-align: -2px;
+}
+
+.cas-ui :is(.banner, .alert):not(.acct-banner, .mdc-card, .card) :is(h1, h2, h3, h4, h5)::before {
+    font-size: 20px;
+    line-height: 1;
+}
+
+.cas-ui :is(.banner, .alert):not(.acct-banner) p:last-child {
+    margin-bottom: 0;
+}
+
+.cas-ui :is(.banner, .alert):not(.acct-banner) a:not(.mdc-button, .btn) {
+    color: inherit;
+    font-weight: 600;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.cas-ui :is(.banner-dismissible, .alert-dismissible):not(.acct-banner, .mdc-card, .card) {
+    padding-inline-end: 48px;
+}
+
+.cas-ui :is(.banner, .alert) .close {
+    top: 8px;
+    right: 8px;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border-radius: 50%;
+    color: inherit;
+    font-size: 20px;
+    line-height: 1;
+    opacity: .75;
+}
+
+.cas-ui :is(.banner, .alert) .close:hover {
+    background: color-mix(in srgb, currentColor 10%, transparent);
+    opacity: 1;
+}
+
+.cas-ui :is(.banner-primary, .banner-info, .alert-info, .alert-primary):not(.acct-banner) {
+    border-color: color-mix(in srgb, var(--cas-ui-focus) 32%, #fff);
+    background-color: color-mix(in srgb, var(--cas-ui-focus) 9%, #fff);
+    color: var(--cas-ui-text);
+}
+
+.cas-ui :is(.banner-primary, .banner-info, .alert-info, .alert-primary):not(.acct-banner) .mdi,
+.cas-ui :is(.banner-primary, .banner-info, .alert-info, .alert-primary):not(.acct-banner) :is(h1, h2, h3, h4, h5)::before {
+    color: var(--cas-ui-primary);
+}
+
+.cas-ui :is(.banner-success, .alert-success):not(.acct-banner) {
+    border-color: #9fd0b1;
+    background-color: #e9f5ee;
+    color: #1d5c34;
+}
+
+.cas-ui :is(.banner-warning, .alert-warning):not(.acct-banner) {
+    border-color: #ecd58a;
+    background-color: var(--cas-theme-warning-bg, #fff3cd);
+    color: var(--cas-theme-warning, #664d03);
+}
+
+.cas-ui :is(.banner-danger, .alert-danger):not(.acct-banner) {
+    border-color: #e7b3bb;
+    background-color: #fbe9eb;
+    color: #7a0b1d;
+}
+
+.cas-ui :is(.banner-success, .banner-warning, .banner-danger, .alert-success, .alert-warning, .alert-danger):not(.acct-banner) .mdi {
+    color: inherit;
+}
+
+/* Tables: rounded frame, quiet header row, light striping */
+.cas-ui .mdc-data-table {
+    border-color: transparent;
+    border-radius: var(--cas-ui-radius);
+    background-color: transparent;
+}
+
+.cas-ui table.table {
+    margin-bottom: 0;
+    border: 1px solid var(--cas-ui-divider);
+    border-collapse: separate;
+    border-spacing: 0;
+    border-radius: var(--cas-ui-radius);
+    font-size: 14px;
+    --bs-table-striped-bg: #f8fafc;
+    --bs-table-hover-bg: var(--cas-ui-tint);
+}
+
+.cas-ui table.table > :is(thead, tbody, tfoot) > tr > :is(th, td) {
+    padding: 10px 12px;
+    border-top: 0;
+    border-inline: 0;
+    border-bottom: 1px solid var(--cas-ui-divider);
+    color: var(--cas-ui-text);
+    vertical-align: middle;
+}
+
+.cas-ui table.table > thead > tr > th {
+    background: var(--cas-ui-subtle);
+    color: var(--cas-ui-muted);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: .04em;
+    text-align: start;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.cas-ui table.table > thead > tr:first-child > th:first-child {
+    border-start-start-radius: var(--cas-ui-radius);
+}
+
+.cas-ui table.table > thead > tr:first-child > th:last-child {
+    border-start-end-radius: var(--cas-ui-radius);
+}
+
+.cas-ui table.table > tbody > tr:last-child > td {
+    border-bottom: 0;
+}
+
+.cas-ui table.table > tbody > tr:last-child > td:first-child {
+    border-end-start-radius: var(--cas-ui-radius);
+}
+
+.cas-ui table.table > tbody > tr:last-child > td:last-child {
+    border-end-end-radius: var(--cas-ui-radius);
+}
+
+.cas-ui table.table :is(code, kbd) {
+    padding: 0;
+    background: none;
+    color: inherit;
+    font-size: 13px;
+    box-shadow: none;
+}
+
+.cas-ui .dt-container :is(.dt-search input, .dt-length select),
+.cas-ui .dataTables_wrapper :is(input, select) {
+    height: 36px;
+    padding: 0 12px;
+    border: 1px solid var(--cas-ui-border);
+    border-radius: 999px;
+    background-color: var(--cas-ui-surface);
+    color: var(--cas-ui-text);
+    font-size: 14px;
+}
+
+.cas-ui .dt-container :is(.dt-info, .dt-search label, .dt-length label) {
+    color: var(--cas-ui-muted);
+    font-size: 13px;
+}
+
+.cas-ui .dt-container .dt-paging :is(.dt-paging-button, .fg-button),
+.cas-ui .dataTables_wrapper .paginate_button {
+    min-width: 32px;
+    height: 32px;
+    padding: 0 8px;
+    border: 1px solid transparent !important;
+    border-radius: 999px !important;
+    background: none !important;
+    color: var(--cas-ui-text) !important;
+    font-size: 14px;
+}
+
+.cas-ui .dt-container .dt-paging :is(.dt-paging-button, .fg-button):is(.disabled, .ui-state-disabled) {
+    color: var(--cas-ui-muted) !important;
+    opacity: .45;
+}
+
+.cas-ui .dt-container .dt-paging :is(.dt-paging-button, .fg-button):not(.disabled, .ui-state-disabled):hover,
+.cas-ui .dataTables_wrapper .paginate_button:not(.disabled):hover {
+    border-color: var(--cas-ui-border) !important;
+    background: var(--cas-ui-subtle) !important;
+}
+
+.cas-ui .dt-container .dt-paging :is(.dt-paging-button, .fg-button):is(.current, .ui-state-active, [aria-current="page"]),
+.cas-ui .dataTables_wrapper .paginate_button.current {
+    border-color: var(--cas-ui-button) !important;
+    background: var(--cas-ui-button) !important;
+    color: #fff !important;
+    opacity: 1;
+}
+
+/* Progress bars: the same rounded track as the password strength meter */
+.cas-ui .mdc-linear-progress {
+    height: 8px;
+    overflow: hidden;
+    border-radius: 4px;
+}
+
+.cas-ui .mdc-linear-progress .mdc-linear-progress__buffer-bar {
+    background-color: var(--cas-ui-divider);
+}
+
+.cas-ui .mdc-linear-progress .mdc-linear-progress__buffer-dots {
+    display: none;
+}
+
+.cas-ui .mdc-linear-progress .mdc-linear-progress__bar-inner {
+    border-top-width: 8px;
+    border-color: var(--cas-ui-button);
+    border-radius: 4px;
+}
+
+.cas-ui .progress-bar-danger .mdc-linear-progress__bar-inner {
+    border-color: var(--cas-ui-danger);
+}
+
+.cas-ui .progress-bar-warning .mdc-linear-progress__bar-inner {
+    border-color: #b07800;
+}
+
+.cas-ui .progress-bar-success .mdc-linear-progress__bar-inner {
+    border-color: #1d6b47;
+}
