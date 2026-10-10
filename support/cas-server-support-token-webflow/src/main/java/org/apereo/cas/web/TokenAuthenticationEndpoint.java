@@ -74,7 +74,8 @@ public class TokenAuthenticationEndpoint extends BaseCasActuatorEndpoint {
         @Parameter(name = "service", required = true, in = ParameterIn.QUERY, description = "May be the service id or its numeric identifier")
     })
     public Map<?, ?> produceToken(@Selector final String username,
-                                  final String service) throws Throwable {
+                                  final String service)
+            throws Throwable {
         val selectedService = serviceFactory.getObject().createService(service);
         val registeredService = NumberUtils.isCreatable(service)
             ? servicesManager.getObject().findServiceBy(Long.parseLong(service))
@@ -109,7 +110,8 @@ public class TokenAuthenticationEndpoint extends BaseCasActuatorEndpoint {
         @Parameter(name = "service", required = true, in = ParameterIn.QUERY, description = "May be the service id or its numeric identifier")
     })
     public Map<?, ?> validateToken(@Selector final String token,
-                                  final String service) throws Throwable {
+                                  final String service)
+            throws Throwable {
         val selectedService = serviceFactory.getObject().createService(service);
         val registeredService = NumberUtils.isCreatable(service)
             ? servicesManager.getObject().findServiceBy(Long.parseLong(service))

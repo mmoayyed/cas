@@ -320,7 +320,8 @@ class OidcVerifiableCredentialPresentationResponseEndpointControllerTests extend
     }
 
     private ResultActions fetchResult(final String requestId, final OidcRegisteredService client,
-                                      final @Nullable String responseCode) throws Exception {
+                                      final @Nullable String responseCode)
+            throws Exception {
         val request = get(PRESENTATION_RESULT_ENDPOINT_URL)
             .with(withHttpRequestProcessor())
             .param(OAuth20Constants.CLIENT_ID, client.getClientId())
@@ -512,7 +513,8 @@ class OidcVerifiableCredentialPresentationResponseEndpointControllerTests extend
     }
 
     private PresentationTransaction createTransaction(final List<ClaimRequest> claimRequests,
-                                                      final @Nullable String redirectUri) throws Throwable {
+                                                      final @Nullable String redirectUri)
+            throws Throwable {
         val nonce = UUID.randomUUID().toString();
         val credentialRequest = new CredentialRequest();
         credentialRequest.setId(CREDENTIAL_QUERY_ID);
@@ -584,7 +586,8 @@ class OidcVerifiableCredentialPresentationResponseEndpointControllerTests extend
     }
 
     private String bindCredential(final CredentialMaterial material, final String nonce,
-                                  final JWSAlgorithm algorithm, final JWSSigner signer) throws Exception {
+                                  final JWSAlgorithm algorithm, final JWSSigner signer)
+            throws Exception {
         val header = new JWSHeader.Builder(algorithm)
             .type(new JOSEObjectType("kb+jwt"))
             .build();
@@ -594,7 +597,8 @@ class OidcVerifiableCredentialPresentationResponseEndpointControllerTests extend
     }
 
     private String bindCredentialWithEd25519(final CredentialMaterial material, final String nonce,
-                                             final String algorithm, final KeyPair holderKey) throws Exception {
+                                             final String algorithm, final KeyPair holderKey)
+            throws Exception {
         val header = Base64URL.encode("{\"alg\":\"%s\",\"typ\":\"kb+jwt\"}".formatted(algorithm));
         val payload = Base64URL.encode(keyBindingClaims(material, nonce).toString());
         val signingInput = header + "." + payload;
@@ -647,7 +651,8 @@ class OidcVerifiableCredentialPresentationResponseEndpointControllerTests extend
     }
 
     private static String encryptResponse(final PublicJsonWebKey key, final String contentEncryption,
-                                          final Map<String, Object> parameters) throws Exception {
+                                          final Map<String, Object> parameters)
+            throws Exception {
         val jwe = new JsonWebEncryption();
         jwe.setAlgorithmHeaderValue(KeyManagementAlgorithmIdentifiers.ECDH_ES);
         jwe.setEncryptionMethodHeaderParameter(contentEncryption);
@@ -666,7 +671,8 @@ class OidcVerifiableCredentialPresentationResponseEndpointControllerTests extend
     }
 
     private ResultActions submitDigitalCredentialsResponse(final String requestId, final Map<String, Object> data,
-                                                           final OidcRegisteredService client) throws Exception {
+                                                           final OidcRegisteredService client)
+            throws Exception {
         return mockMvc.perform(post(PRESENTATION_RESULT_ENDPOINT_URL)
             .with(withHttpRequestProcessor())
             .param(OAuth20Constants.CLIENT_ID, client.getClientId())

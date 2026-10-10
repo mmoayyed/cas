@@ -56,7 +56,8 @@ public class OAuth20UserProfileEndpointController<T extends OAuth20Configuration
     @Operation(summary = "Handle user profile request",
         parameters = @Parameter(name = "access_token", in = ParameterIn.QUERY, required = true, description = "Access token"))
     public ResponseEntity<String> handlePostRequest(final HttpServletRequest request,
-                                                    final HttpServletResponse response) throws Exception {
+                                                    final HttpServletResponse response)
+            throws Exception {
         return handleGetRequest(request, response);
     }
 
@@ -73,7 +74,8 @@ public class OAuth20UserProfileEndpointController<T extends OAuth20Configuration
     @Operation(summary = "Handle user profile request",
         parameters = @Parameter(name = "access_token", in = ParameterIn.QUERY, required = true, description = "Access token"))
     public ResponseEntity<String> handleGetRequest(final HttpServletRequest request,
-                                                            final HttpServletResponse response) throws Exception {
+                                                            final HttpServletResponse response)
+            throws Exception {
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         val accessTokenResult = FunctionUtils.doAndHandle(() -> getAccessTokenFromRequest(request));
         if (accessTokenResult == null) {
@@ -127,7 +129,8 @@ public class OAuth20UserProfileEndpointController<T extends OAuth20Configuration
      */
     protected void validateProofOfPossession(final HttpServletRequest request, final HttpServletResponse response,
                                              final String presentedAccessToken,
-                                             final OAuth20AccessToken accessTokenTicket) throws Throwable {
+                                             final OAuth20AccessToken accessTokenTicket)
+            throws Throwable {
         val webContext = new JEEContext(request, response);
         configurationContext.getProofOfPossessionValidator()
             .validateProtectedResourceRequest(webContext, presentedAccessToken, accessTokenTicket);
@@ -146,7 +149,8 @@ public class OAuth20UserProfileEndpointController<T extends OAuth20Configuration
      */
     protected void validateAccessToken(final String accessTokenId, final OAuth20AccessToken accessToken,
                                        final HttpServletRequest request,
-                                       final HttpServletResponse response) throws Throwable {
+                                       final HttpServletResponse response)
+            throws Throwable {
     }
 
     protected void updateAccessTokenUsage(final OAuth20AccessToken accessTokenTicket) throws Exception {

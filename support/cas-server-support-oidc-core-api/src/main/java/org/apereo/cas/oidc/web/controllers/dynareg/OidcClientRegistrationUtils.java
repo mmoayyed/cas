@@ -126,7 +126,8 @@ public class OidcClientRegistrationUtils {
      * @throws URISyntaxException the uri syntax exception
      */
     public static String getClientConfigurationUri(final OidcRegisteredService registeredService,
-                                                   final String serverPrefix) throws URISyntaxException {
+                                                   final String serverPrefix)
+            throws URISyntaxException {
         return new URIBuilder(serverPrefix
             .concat('/' + OidcConstants.BASE_OIDC_URL + '/' + OidcConstants.CLIENT_CONFIGURATION_URL))
             .addParameter(OAuth20Constants.CLIENT_ID, registeredService.getClientId())

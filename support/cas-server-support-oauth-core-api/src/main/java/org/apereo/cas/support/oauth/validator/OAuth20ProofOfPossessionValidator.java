@@ -52,7 +52,8 @@ public interface OAuth20ProofOfPossessionValidator {
      *                   proof does not verify
      */
     void validateProtectedResourceRequest(WebContext webContext, String presentedAccessToken,
-                                          OAuth20AccessToken accessToken) throws Throwable;
+                                          OAuth20AccessToken accessToken)
+            throws Throwable;
 
     /**
      * Verify the DPoP proof of a request that binds what it creates to the proof's key without issuing a token, such as a

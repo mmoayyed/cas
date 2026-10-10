@@ -72,7 +72,8 @@ public class OAuth20AuthorizeEndpointController<T extends OAuth20ConfigurationCo
     @GetMapping(path = OAuth20Constants.BASE_OAUTH20_URL + '/' + OAuth20Constants.AUTHORIZE_URL)
     @Operation(summary = "Handle OAuth authorization request")
     public @Nullable ModelAndView handleRequest(final HttpServletRequest request,
-                                                final HttpServletResponse response) throws Throwable {
+                                                final HttpServletResponse response)
+            throws Throwable {
         val requestParameterResolver = getConfigurationContext().getRequestParameterResolver();
 
         val webContext = new JEEContext(request, response);
@@ -139,7 +140,8 @@ public class OAuth20AuthorizeEndpointController<T extends OAuth20ConfigurationCo
 
     protected @Nullable ModelAndView redirectToCallbackRedirectUrl(final ProfileManager manager,
                                                                    final OAuthRegisteredService registeredService,
-                                                                   final JEEContext context) throws Throwable {
+                                                                   final JEEContext context)
+            throws Throwable {
         val profile = verifyAndReturnAuthenticatedProfile(manager, context);
         val service = getConfigurationContext().getAuthenticationBuilder()
             .buildService(registeredService, context, false);
@@ -268,7 +270,8 @@ public class OAuth20AuthorizeEndpointController<T extends OAuth20ConfigurationCo
         final OAuthRegisteredService registeredService,
         final JEEContext context,
         final Service service,
-        final Authentication authentication) throws Exception {
+        final Authentication authentication)
+            throws Exception {
 
         var payloadBuilder = AccessTokenRequestContext.builder();
         if (authzRequest.isSingleSignOnSessionRequired()) {

@@ -182,7 +182,8 @@ public class OidcVerifiableCredentialPresentationRequestEndpointController exten
     public ResponseEntity<String> fetchRequest(
         @PathVariable final String requestId,
         final HttpServletRequest httpRequest,
-        final HttpServletResponse httpResponse) throws Throwable {
+        final HttpServletResponse httpResponse)
+            throws Throwable {
 
         if (!isRequestObjectSigned()) {
             LOGGER.warn("Presentation requests are not signed and are passed to the wallet by value; "
@@ -335,7 +336,8 @@ public class OidcVerifiableCredentialPresentationRequestEndpointController exten
     public ResponseEntity handle(
         @Valid @RequestBody final OidcVerifiableCredentialPresentationRequest request,
         final HttpServletRequest httpRequest,
-        final HttpServletResponse httpResponse) throws Throwable {
+        final HttpServletResponse httpResponse)
+            throws Throwable {
 
         val clientId = resolveAuthenticatedClientId(httpRequest, httpResponse);
         val responseMode = resolveResponseMode(request);
@@ -463,7 +465,8 @@ public class OidcVerifiableCredentialPresentationRequestEndpointController exten
      * @throws Throwable the throwable
      */
     protected Map<String, Object> buildDigitalCredentialsRequest(final Map<String, Object> parameters,
-                                                                 final TransientSessionTicket transientSessionTicket) throws Throwable {
+                                                                 final TransientSessionTicket transientSessionTicket)
+            throws Throwable {
         return isRequestObjectSigned()
             ? Map.of("protocol", DIGITAL_CREDENTIALS_PROTOCOL_SIGNED,
                 "data", Map.of("request", signAuthorizationRequest(parameters, transientSessionTicket)))
@@ -662,7 +665,8 @@ public class OidcVerifiableCredentialPresentationRequestEndpointController exten
      * @throws Throwable the throwable
      */
     protected String signAuthorizationRequest(final Map<String, Object> parameters,
-                                              final TransientSessionTicket transientSessionTicket) throws Throwable {
+                                              final TransientSessionTicket transientSessionTicket)
+            throws Throwable {
         val signingKey = configurationContext.getIdTokenSigningAndEncryptionService()
             .getJsonWebKeySigningKey(Optional.empty());
         Objects.requireNonNull(signingKey, "CAS has no OpenID Connect signing key to sign the request object");
@@ -707,7 +711,8 @@ public class OidcVerifiableCredentialPresentationRequestEndpointController exten
      * @throws Exception the exception
      */
     protected List<X509Certificate> verifyCertificateChain(final PublicJsonWebKey signingKey,
-                                                           final String clientId) throws Exception {
+                                                           final String clientId)
+            throws Exception {
         val certificateChain = resolveCertificateChain(signingKey);
         if (clientId.startsWith(ClientIdentifierPrefixes.X509_SAN_DNS.getValue() + ':')) {
             val dnsName = StringUtils.substringAfter(clientId, ":");

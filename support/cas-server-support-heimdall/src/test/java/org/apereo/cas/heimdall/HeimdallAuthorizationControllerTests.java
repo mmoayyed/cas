@@ -683,7 +683,8 @@ class HeimdallAuthorizationControllerTests {
         "document,doc-9,can_read,false"
     })
     void verifyAuthZenResourcesAcrossNamespaces(final String type, final String id,
-                                                final String action, final boolean decision) throws Throwable {
+                                                final String action, final boolean decision)
+            throws Throwable {
         val request = authZenRequest()
             .withResource(AuthZenResource.builder().type(type).id(id).build())
             .withAction(AuthZenAction.builder().name(action).build());
@@ -827,7 +828,8 @@ class HeimdallAuthorizationControllerTests {
         "unguarded,anything,can_read,no_policies"
     })
     void verifyAuthZenDecisionContext(final String type, final String id, final String action,
-                                      final @Nullable String reason) throws Throwable {
+                                      final @Nullable String reason)
+            throws Throwable {
         val request = authZenRequest()
             .withResource(AuthZenResource.builder().type(type).id(id).build())
             .withAction(AuthZenAction.builder().name(action).build());

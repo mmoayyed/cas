@@ -99,7 +99,8 @@ public abstract class BaseOAuth20TokenRequestValidator<T extends OAuth20Configur
     protected boolean validateInternal(final WebContext context,
                                        final String grantType,
                                        final ProfileManager manager,
-                                       final UserProfile userProfile) throws Throwable {
+                                       final UserProfile userProfile)
+            throws Throwable {
         return false;
     }
 

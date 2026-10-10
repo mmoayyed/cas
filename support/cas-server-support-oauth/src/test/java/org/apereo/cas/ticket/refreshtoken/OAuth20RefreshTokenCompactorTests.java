@@ -33,7 +33,8 @@ class OAuth20RefreshTokenCompactorTests extends AbstractOAuth20Tests {
     @MethodSource("codeProvider")
     void verifyOperation(final Service service, final Authentication authentication,
                          final Set scopes, final String clientId, final OAuth20ResponseTypes responseType,
-                         final OAuth20GrantTypes grantType) throws Throwable {
+                         final OAuth20GrantTypes grantType)
+            throws Throwable {
         val registeredService = getRegisteredService("https://code.oauth.org", clientId, "secret-at");
         servicesManager.save(registeredService);
         val token = defaultRefreshTokenFactory.create(service, authentication, null, scopes,

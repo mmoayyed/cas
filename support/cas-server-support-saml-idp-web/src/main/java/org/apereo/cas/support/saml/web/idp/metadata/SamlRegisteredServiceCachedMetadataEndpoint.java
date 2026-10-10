@@ -93,7 +93,8 @@ public class SamlRegisteredServiceCachedMetadataEndpoint extends BaseCasRestActu
         @Nullable
         @RequestParam(required = false) final String serviceId,
         @Nullable
-        @RequestParam(required = false) final String entityId) throws Throwable {
+        @RequestParam(required = false) final String entityId)
+            throws Throwable {
 
         if (StringUtils.isBlank(serviceId)) {
             cachingMetadataResolver.getObject().invalidate();

@@ -205,7 +205,8 @@ class OidcPushedAuthorizeEndpointControllerTests extends AbstractOidcTests {
 
     private ResultActions performKeyBoundPushedAuthorizationRequest(final String clientId, final String clientSecret,
                                                                     @Nullable final String thumbprint,
-                                                                    final String... dpopProofs) throws Exception {
+                                                                    final String... dpopProofs)
+            throws Exception {
         val request = post("/cas/oidc/" + OidcConstants.PUSHED_AUTHORIZE_URL)
             .param(OAuth20Constants.CLIENT_ID, clientId)
             .param(OAuth20Constants.CLIENT_SECRET, clientSecret)
@@ -230,7 +231,8 @@ class OidcPushedAuthorizeEndpointControllerTests extends AbstractOidcTests {
     }
 
     private ResultActions performPushedAuthorizationRequest(final String clientId, final String attestation,
-                                                            final String proof) throws Exception {
+                                                            final String proof)
+            throws Exception {
         return mockMvc.perform(post("/cas/oidc/" + OidcConstants.PUSHED_AUTHORIZE_URL)
             .param(OAuth20Constants.CLIENT_ID, clientId)
             .param(OAuth20Constants.REDIRECT_URI, "https://oauth.example.org/")
@@ -241,7 +243,8 @@ class OidcPushedAuthorizeEndpointControllerTests extends AbstractOidcTests {
     }
 
     private ResultActions performPushedAuthorizationRequestWithDPoP(final String clientId, final String attestation,
-                                                                    final String dpopProof) throws Exception {
+                                                                    final String dpopProof)
+            throws Exception {
         return mockMvc.perform(post("/cas/oidc/" + OidcConstants.PUSHED_AUTHORIZE_URL)
             .param(OAuth20Constants.CLIENT_ID, clientId)
             .param(OAuth20Constants.REDIRECT_URI, "https://oauth.example.org/")

@@ -163,7 +163,8 @@ public class ScriptingUtils {
      */
     public static <T> @Nullable T executeGroovyScript(final GroovyObject groovyObject,
                                                       final Object[] args, final Class<T> clazz,
-                                                      final boolean failOnError) throws Throwable {
+                                                      final boolean failOnError)
+            throws Throwable {
         return executeGroovyScript(groovyObject, "run", args, clazz, failOnError);
     }
 
@@ -245,7 +246,8 @@ public class ScriptingUtils {
                                                       final String methodName,
                                                       final Object[] args,
                                                       final Class<T> clazz,
-                                                      final boolean failOnError) throws Throwable {
+                                                      final boolean failOnError)
+            throws Throwable {
         try {
             LOGGER.trace("Executing groovy script's [{}] method, with parameters [{}]", methodName, args);
             val result = groovyObject.invokeMethod(methodName, args);
@@ -354,7 +356,8 @@ public class ScriptingUtils {
     }
 
     private @Nullable Class loadGroovyClass(final Resource groovyScript,
-                                            final GroovyClassLoader loader) throws IOException {
+                                            final GroovyClassLoader loader)
+            throws IOException {
         if (ResourceUtils.isJarResource(groovyScript)) {
             try (val groovyReader = new BufferedReader(new InputStreamReader(groovyScript.getInputStream(), StandardCharsets.UTF_8))) {
                 return loader.parseClass(groovyReader, groovyScript.getFilename());
@@ -372,7 +375,8 @@ public class ScriptingUtils {
                                                    final String methodName,
                                                    final Object[] args,
                                                    final Class<T> clazz,
-                                                   final boolean failOnError) throws Throwable {
+                                                   final boolean failOnError)
+            throws Throwable {
         try {
             val groovyObject = parseGroovyScript(groovyScript, failOnError);
             if (groovyObject == null) {

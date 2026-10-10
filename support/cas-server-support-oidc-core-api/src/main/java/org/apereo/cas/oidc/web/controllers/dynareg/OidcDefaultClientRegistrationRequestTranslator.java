@@ -54,7 +54,8 @@ public class OidcDefaultClientRegistrationRequestTranslator implements OidcClien
     @Override
     public OidcRegisteredService translate(
         final OidcClientRegistrationRequest registrationRequest,
-        final Optional<OidcRegisteredService> givenService) throws Exception {
+        final Optional<OidcRegisteredService> givenService)
+            throws Exception {
 
         val context = configurationContext.getObject();
 
@@ -256,7 +257,8 @@ public class OidcDefaultClientRegistrationRequestTranslator implements OidcClien
     }
 
     private void validate(final OidcClientRegistrationRequest registrationRequest,
-                          final OidcRegisteredService registeredService) throws Exception {
+                          final OidcRegisteredService registeredService)
+            throws Exception {
         val context = configurationContext.getObject();
         if (StringUtils.isNotBlank(registeredService.getSectorIdentifierUri())) {
             HttpResponse sectorResponse = null;

@@ -88,7 +88,8 @@ public class GenerateFullJwtCommand implements CasShellCommand {
             description = "Subject"
         )
         final String sub
-    ) throws Exception {
+    )
+            throws Exception {
 
         val jwtClaims = new JwtClaims();
         jwtClaims.setJwtId(RandomUtils.randomAlphanumeric(8));

@@ -206,7 +206,8 @@ class OAuth20ProofOfPossessionValidatorTests extends AbstractOidcTests {
     }
 
     private ResultActions performTokenRequest(final OidcRegisteredService registeredService, final String code,
-                                              @Nullable final String dpopProof) throws Exception {
+                                              @Nullable final String dpopProof)
+            throws Exception {
         val request = post("/cas/" + OidcConstants.BASE_OIDC_URL + '/' + OidcConstants.TOKEN_URL)
             .with(withHttpRequestProcessor())
             .contentType(MediaType.APPLICATION_FORM_URLENCODED)
@@ -301,7 +302,8 @@ class OAuth20ProofOfPossessionValidatorTests extends AbstractOidcTests {
     }
 
     private ResultActions performCombinedTokenRequest(final OidcRegisteredService registeredService, final String attestation,
-                                                      final String dpopProof, final String code) throws Exception {
+                                                      final String dpopProof, final String code)
+            throws Exception {
         return mockMvc.perform(post("/cas/" + OidcConstants.BASE_OIDC_URL + '/' + OidcConstants.TOKEN_URL)
             .with(withHttpRequestProcessor())
             .contentType(MediaType.APPLICATION_FORM_URLENCODED)

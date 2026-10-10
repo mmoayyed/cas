@@ -412,7 +412,8 @@ public abstract class AbstractTicketRegistry implements TicketRegistry {
      * once per proxy-granting ticket, nor once more after they are gone.
      */
     private void deleteLinkedProxyGrantingTickets(final AtomicLong count,
-                                                  final TicketGrantingTicket tgt) throws Exception {
+                                                  final TicketGrantingTicket tgt)
+            throws Exception {
         for (val proxyGrantingTicketId : List.copyOf(tgt.getProxyGrantingTickets().keySet())) {
             val proxyGrantingTicket = getTicket(proxyGrantingTicketId, _ -> true);
             if (proxyGrantingTicket != null) {

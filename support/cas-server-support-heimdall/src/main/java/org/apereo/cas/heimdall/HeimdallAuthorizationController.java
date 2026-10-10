@@ -285,7 +285,8 @@ public class HeimdallAuthorizationController {
 
     private AuthorizationRequest prepareAuthorizationRequest(final AuthorizationRequest authorizationRequest,
                                                              final HttpServletRequest request,
-                                                             final HttpServletResponse response) throws Throwable {
+                                                             final HttpServletResponse response)
+            throws Throwable {
         val authorizationHeader = Objects.requireNonNull(request.getHeader(HttpHeaders.AUTHORIZATION));
         Assert.hasText(authorizationHeader, "Authorization header cannot be blank");
         val principal = principalParser.parse(authorizationHeader, authorizationRequest, new JEEContext(request, response));

@@ -43,7 +43,8 @@ public class OidcImplicitIdTokenAndTokenAuthorizationResponseBuilder<T extends O
     protected ModelAndView buildCallbackUrlResponseType(final AccessTokenRequestContext tokenRequestContext,
                                                         final Ticket givenAccessToken,
                                                         final Ticket givenRefreshToken,
-                                                        final List<NameValuePair> parameters) throws Throwable {
+                                                        final List<NameValuePair> parameters)
+            throws Throwable {
         val accessToken = resolveAccessToken(givenAccessToken);
         val encodedAccessToken = encodeAccessTokenForResponse(tokenRequestContext, accessToken);
 

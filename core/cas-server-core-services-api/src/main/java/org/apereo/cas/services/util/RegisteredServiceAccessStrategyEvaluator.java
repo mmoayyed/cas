@@ -147,7 +147,8 @@ public class RegisteredServiceAccessStrategyEvaluator implements Function<Regist
 
     protected boolean requiredAttributeFound(final String attributeName,
                                              final RegisteredServiceAccessStrategyRequest request,
-                                             final Map<String, Set<String>> requiredAttributes) throws Throwable {
+                                             final Map<String, Set<String>> requiredAttributes)
+            throws Throwable {
         val requiredValues = requiredAttributes.get(attributeName);
         val availableValues = CollectionUtils.toCollection(request.getAttributes().get(attributeName));
 

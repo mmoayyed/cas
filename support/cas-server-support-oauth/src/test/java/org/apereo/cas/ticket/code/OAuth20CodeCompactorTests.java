@@ -39,7 +39,8 @@ class OAuth20CodeCompactorTests extends AbstractOAuth20Tests {
                          final String codeChallengeMethod,
                          final String clientId, final Map claims,
                          final OAuth20ResponseTypes responseType,
-                         final OAuth20GrantTypes grantType) throws Throwable {
+                         final OAuth20GrantTypes grantType)
+            throws Throwable {
         val registeredService = getRegisteredService("https://code.oauth.org", clientId, "secret-at");
         servicesManager.save(registeredService);
         val token = defaultOAuthCodeFactory.create(service, authentication, tgt,

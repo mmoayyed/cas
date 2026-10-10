@@ -33,7 +33,8 @@ public class OAuth20ResponseModeFragmentBuilder implements OAuth20ResponseModeBu
 
     @Override
     public ModelAndView build(final RegisteredService registeredService, final String redirectUrl,
-                              final Map<String, String> parameters) throws Exception {
+                              final Map<String, String> parameters)
+            throws Exception {
 
         val urlBuilder = new URIBuilder(redirectUrl);
         val currentParams = urlBuilder.getQueryParams();

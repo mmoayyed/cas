@@ -60,7 +60,8 @@ public class OAuth20TokenAuthorizationResponseBuilder<T extends OAuth20Configura
 
     protected ModelAndView buildCallbackUrlResponseType(final AccessTokenRequestContext tokenRequestContext,
                                                         final Ticket givenAccessToken, final Ticket givenRefreshToken,
-                                                        final List<NameValuePair> parameters) throws Throwable {
+                                                        final List<NameValuePair> parameters)
+            throws Throwable {
         val attributes = tokenRequestContext.getAuthentication().getAttributes();
         
         val accessToken = resolveAccessToken(givenAccessToken);

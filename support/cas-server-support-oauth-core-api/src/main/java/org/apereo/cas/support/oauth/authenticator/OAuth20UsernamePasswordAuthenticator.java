@@ -116,7 +116,8 @@ public class OAuth20UsernamePasswordAuthenticator implements Authenticator {
 
     protected Principal buildAuthenticatedPrincipal(final AuthenticationResult authenticationResult,
                                                     final OAuthRegisteredService registeredService,
-                                                    final Service service, final CallContext callContext) throws Throwable {
+                                                    final Service service, final CallContext callContext)
+            throws Throwable {
         val authentication = authenticationResult.getAuthentication();
         val principal = authentication.getPrincipal();
 

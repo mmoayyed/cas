@@ -1069,7 +1069,8 @@ class OAuth20AccessTokenEndpointControllerTests {
         }
 
         private void assertUserAuth(final boolean refreshToken, final boolean withClientSecret,
-                                    final OAuthRegisteredService registeredService) throws Throwable {
+                                    final OAuthRegisteredService registeredService)
+                throws Throwable {
             val mockRequest = new MockHttpServletRequest(HttpMethod.POST.name(), CONTEXT + OAuth20Constants.ACCESS_TOKEN_URL);
             mockRequest.setParameter(OAuth20Constants.CLIENT_ID, registeredService.getClientId());
             if (withClientSecret) {
@@ -1100,7 +1101,8 @@ class OAuth20AccessTokenEndpointControllerTests {
 
         private OAuth20RefreshToken addRefreshTokenWithScope(
             final Principal principal, final List<String> scopes,
-            final OAuthRegisteredService registeredService) throws Throwable {
+            final OAuthRegisteredService registeredService)
+                throws Throwable {
             val authentication = getAuthentication(principal);
             val service = serviceFactory.createService(registeredService.getServiceId());
             val refreshToken = defaultRefreshTokenFactory.create(service, authentication,

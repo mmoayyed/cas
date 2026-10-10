@@ -138,7 +138,8 @@ public class OAuth20ClientIdClientSecretAuthenticator implements Authenticator {
     }
 
     protected Principal buildAuthenticatedPrincipal(final Principal resolvedPrincipal, final OAuthRegisteredService registeredService,
-                                                    final WebApplicationService service, final CallContext callContext) throws Throwable {
+                                                    final WebApplicationService service, final CallContext callContext)
+            throws Throwable {
         val accessTokenFactory = (OAuth20AccessTokenFactory) ticketFactory.get(OAuth20AccessToken.class);
         val scopes = resolveRequestedScopes(callContext);
         val responseType = requestParameterResolver.resolveResponseType(callContext.webContext());

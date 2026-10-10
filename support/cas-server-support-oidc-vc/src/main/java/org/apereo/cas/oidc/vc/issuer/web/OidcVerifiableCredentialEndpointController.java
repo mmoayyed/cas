@@ -110,7 +110,8 @@ public class OidcVerifiableCredentialEndpointController extends BaseOAuth20Contr
     public ResponseEntity handle(
         @RequestBody final String body,
         final HttpServletRequest httpRequest,
-        final HttpServletResponse httpResponse) throws Throwable {
+        final HttpServletResponse httpResponse)
+            throws Throwable {
 
         val verified = verifyRequest(httpRequest, httpResponse, OidcConstants.VC_CREDENTIAL_URL);
         if (verified.getRight() != null) {
@@ -176,7 +177,8 @@ public class OidcVerifiableCredentialEndpointController extends BaseOAuth20Contr
     public ResponseEntity handleDeferred(
         @RequestBody final String body,
         final HttpServletRequest httpRequest,
-        final HttpServletResponse httpResponse) throws Throwable {
+        final HttpServletResponse httpResponse)
+            throws Throwable {
         val verified = verifyRequest(httpRequest, httpResponse, OidcConstants.VC_DEFERRED_CREDENTIAL_URL);
         if (verified.getRight() != null) {
             return verified.getRight();
@@ -223,7 +225,8 @@ public class OidcVerifiableCredentialEndpointController extends BaseOAuth20Contr
      */
     protected ResponseEntity deliverDeferredCredentials(final OAuth20AccessToken accessToken, final DeferredTransaction transaction,
                                                         final OidcVerifiableCredentialDeferredRequest request,
-                                                        final HttpServletRequest httpRequest) throws Throwable {
+                                                        final HttpServletRequest httpRequest)
+            throws Throwable {
         val credentialRequest = new OidcVerifiableCredentialRequest();
         credentialRequest.setCredentialConfigurationId(transaction.credentialConfigurationId());
         val issuanceContext = new OidcVerifiableCredentialValidationContext(accessToken, credentialRequest, httpRequest);
@@ -240,13 +243,15 @@ public class OidcVerifiableCredentialEndpointController extends BaseOAuth20Contr
 
     protected ResponseEntity issueCredentials(final OidcVerifiableCredentialValidationContext issuanceContext,
                                               final List<VerifiableCredentialProofResult> proofs,
-                                              final OidcVerifiableCredentialRequest.@Nullable CredentialResponseEncryption responseEncryption) throws Throwable {
+                                              final OidcVerifiableCredentialRequest.@Nullable CredentialResponseEncryption responseEncryption)
+            throws Throwable {
         return respondWithCredentials(issuanceContext, encodeCredentials(issuanceContext, proofs), responseEncryption);
     }
 
     protected List<OidcVerifiableCredentialResponse.IssuedCredential> encodeCredentials(
         final OidcVerifiableCredentialValidationContext issuanceContext,
-        final List<VerifiableCredentialProofResult> proofs) throws Throwable {
+        final List<VerifiableCredentialProofResult> proofs)
+            throws Throwable {
         return credentialIssuerService.encode(issuanceContext, proofs)
             .stream()
             .<OidcVerifiableCredentialResponse.IssuedCredential>map(issued -> OidcVerifiableCredentialResponse.IssuedCredential
@@ -258,7 +263,8 @@ public class OidcVerifiableCredentialEndpointController extends BaseOAuth20Contr
 
     protected ResponseEntity respondWithCredentials(final OidcVerifiableCredentialValidationContext issuanceContext,
                                                     final List<OidcVerifiableCredentialResponse.IssuedCredential> credentials,
-                                                    final OidcVerifiableCredentialRequest.@Nullable CredentialResponseEncryption responseEncryption) throws Throwable {
+                                                    final OidcVerifiableCredentialRequest.@Nullable CredentialResponseEncryption responseEncryption)
+            throws Throwable {
         val response = OidcVerifiableCredentialResponse.builder()
             .credentials(credentials)
             .notificationId(notificationService.register(issuanceContext.accessToken(), issuanceContext.resolveConfigurationId()))

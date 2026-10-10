@@ -39,7 +39,8 @@ public abstract class BaseWSFederationRequestController extends AbstractControll
 
     protected String constructServiceUrl(final HttpServletRequest request,
                                          final HttpServletResponse response,
-                                         final WSFederationRequest wsfedRequest) throws Exception {
+                                         final WSFederationRequest wsfedRequest)
+            throws Exception {
         val builder = new URIBuilder(configContext.getCallbackService().getId());
 
         builder.addParameter(WSFederationConstants.WA, wsfedRequest.wa());

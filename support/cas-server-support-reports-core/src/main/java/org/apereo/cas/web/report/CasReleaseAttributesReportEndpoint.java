@@ -70,7 +70,8 @@ public class CasReleaseAttributesReportEndpoint extends BaseCasActuatorEndpoint 
     protected Map<String, Object> releasePrincipalAttributes(
         final String username,
         @Nullable final String password,
-        final String service) throws Throwable {
+        final String service)
+            throws Throwable {
 
         val selectedService = serviceFactory.getObject().createService(service);
         val registeredService = NumberUtils.isCreatable(service)
@@ -115,7 +116,8 @@ public class CasReleaseAttributesReportEndpoint extends BaseCasActuatorEndpoint 
     }
 
     private Authentication buildAuthentication(final String username, final String password,
-                                               final WebApplicationService selectedService) throws Throwable {
+                                               final WebApplicationService selectedService)
+            throws Throwable {
         if (StringUtils.isNotBlank(password)) {
             val credential = new UsernamePasswordCredential(username, password);
             val result = authenticationSystemSupport.getObject().finalizeAuthenticationTransaction(selectedService, credential);
@@ -146,7 +148,8 @@ public class CasReleaseAttributesReportEndpoint extends BaseCasActuatorEndpoint 
             @Parameter(name = "service", required = true, description = "May be the service id or its numeric identifier")
         })
     public Map<String, Object> releaseAttributes(final String username, @Nullable final String password,
-                                                 final String service) throws Throwable {
+                                                 final String service)
+            throws Throwable {
         val map = releasePrincipalAttributes(username, password, service);
         val assertion = (ImmutableAssertion) map.get("assertion");
         return Map.of("username", username, "attributes", assertion.getPrimaryAuthentication().getPrincipal().getAttributes());

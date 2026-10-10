@@ -100,7 +100,8 @@ public class DefaultOAuth20ProofOfPossessionValidator implements OAuth20ProofOfP
 
     protected JWKThumbprintConfirmation verifyProofOfPossession(final WebContext webContext,
                                                                 final String dPopProof,
-                                                                final String clientId) throws Throwable {
+                                                                final String clientId)
+            throws Throwable {
         val endpointURI = new URI(webContext.getRequestURL());
         val verifier = new DPoPTokenRequestVerifier(getAcceptedSigningAlgorithms(), endpointURI,
             getMaximumAgeInSeconds(), getMaximumAgeInSeconds(), getSingleUseChecker(dPopProof, clientId));
@@ -114,7 +115,8 @@ public class DefaultOAuth20ProofOfPossessionValidator implements OAuth20ProofOfP
     @Override
     public void validateProtectedResourceRequest(final WebContext webContext,
                                                  final String presentedAccessToken,
-                                                 final OAuth20AccessToken accessToken) throws Throwable {
+                                                 final OAuth20AccessToken accessToken)
+            throws Throwable {
         val confirmation = resolveThumbprintConfirmation(accessToken);
         if (confirmation.isEmpty()) {
             LOGGER.trace("Access token is not sender-constrained; no DPoP proof is expected");
@@ -216,7 +218,8 @@ public class DefaultOAuth20ProofOfPossessionValidator implements OAuth20ProofOfP
     protected void adjustUserProfile(final WebContext webContext,
                                      final String dPopProof,
                                      final String clientId,
-                                     final JWKThumbprintConfirmation confirmation) throws Throwable {
+                                     final JWKThumbprintConfirmation confirmation)
+            throws Throwable {
         val manager = new ProfileManager(webContext, this.sessionStore);
         manager.getProfile().ifPresent(Unchecked.consumer(profile -> {
             val signedProof = getSignedProofOfPosessionJwt(dPopProof);

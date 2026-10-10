@@ -248,7 +248,8 @@ public class GeodeTicketRegistry extends AbstractTicketRegistry implements Dispo
     }
 
     private Integer countTicketsFor(final Class<? extends Ticket> clazz,
-                                    final String where, final Object[] parameters) throws Exception {
+                                    final String where, final Object[] parameters)
+            throws Exception {
         val metadata = ticketCatalog.findTicketDefinition(clazz).orElseThrow();
         val cache = getCacheFromMetadata(metadata);
         val queryString = "SELECT COUNT(t.id) FROM /%s t WHERE %s"

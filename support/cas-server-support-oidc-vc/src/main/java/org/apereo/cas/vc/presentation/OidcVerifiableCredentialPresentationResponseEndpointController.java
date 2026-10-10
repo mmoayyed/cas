@@ -316,7 +316,8 @@ public class OidcVerifiableCredentialPresentationResponseEndpointController exte
      * @throws Exception the exception
      */
     protected @Nullable String readDigitalCredentialsPresentation(final TransientSessionTicket transaction,
-                                                                  final Map<String, Object> data) throws Exception {
+                                                                  final Map<String, Object> data)
+            throws Exception {
         if (transaction.getPropertyAsString(PROPERTY_RESPONSE_ENCRYPTION_KEY) == null) {
             require(!data.containsKey("response"), "Presentation transaction did not ask for an encrypted response");
             return toVpToken(data.get("vp_token"));
@@ -337,7 +338,8 @@ public class OidcVerifiableCredentialPresentationResponseEndpointController exte
      * @throws Throwable the throwable
      */
     protected Map<String, Map<String, Object>> verifyPresentation(final String vpToken,
-                                                                  final TransientSessionTicket transientSessionTicket) throws Throwable {
+                                                                  final TransientSessionTicket transientSessionTicket)
+            throws Throwable {
         val nonce = transientSessionTicket.getPropertyAsString("nonce");
         require(nonce != null && !nonce.isBlank(), "Presentation transaction has no nonce");
         val credentials = (List<CredentialRequest>) transientSessionTicket.getProperty("credentials", List.class);
@@ -379,7 +381,8 @@ public class OidcVerifiableCredentialPresentationResponseEndpointController exte
      */
     protected Map<String, Object> recordPresentationResult(final TransientSessionTicket transaction,
                                                            final Map<String, Object> outcome,
-                                                           final String resultId) throws Exception {
+                                                           final String resultId)
+            throws Exception {
         val result = new LinkedHashMap<String, Object>(outcome);
         val clientId = transaction.getPropertyAsString(PROPERTY_CLIENT_ID);
         if (clientId != null) {
@@ -422,7 +425,8 @@ public class OidcVerifiableCredentialPresentationResponseEndpointController exte
     private Map<String, Map<String, Object>> validatePresentation(final String vpToken,
                                       final List<CredentialRequest> credentials,
                                       final String nonce,
-                                      final TransientSessionTicket transientSessionTicket) throws Throwable {
+                                      final TransientSessionTicket transientSessionTicket)
+            throws Throwable {
         val credentialQueries = new LinkedHashMap<String, CredentialRequest>();
         for (val credential : credentials) {
             require(credential != null && credential.getId() != null && !credential.getId().isBlank(),
@@ -457,7 +461,8 @@ public class OidcVerifiableCredentialPresentationResponseEndpointController exte
     private Map<String, Object> validateSdJwtPresentation(final String presentation,
                                            final CredentialRequest credentialQuery,
                                            final String nonce,
-                                           final TransientSessionTicket transientSessionTicket) throws Throwable {
+                                           final TransientSessionTicket transientSessionTicket)
+            throws Throwable {
         val sdJwt = SDJWT.parse(presentation);
         require(sdJwt != null && "sha-256".equals(sdJwt.getHashAlgorithm()), "SD-JWT hash algorithm is not supported");
         require(sdJwt.getBindingJwt() != null && !sdJwt.getBindingJwt().isBlank(),
@@ -540,7 +545,8 @@ public class OidcVerifiableCredentialPresentationResponseEndpointController exte
                                               final JWK holderJwk,
                                               final String nonce,
                                               final List<String> expectedAudiences,
-                                              final TransientSessionTicket transientSessionTicket) throws Exception {
+                                              final TransientSessionTicket transientSessionTicket)
+            throws Exception {
         val bindingJwt = parseSignedJwt(sdJwt.getBindingJwt());
         require(bindingJwt.getHeader().getType() != null
                 && "kb+jwt".equals(bindingJwt.getHeader().getType().toString()),
@@ -566,7 +572,8 @@ public class OidcVerifiableCredentialPresentationResponseEndpointController exte
 
     private static Map<String, Object> decodeDisclosures(final Map<String, Object> encodedClaims,
                                                          final List<Disclosure> disclosures,
-                                                         final String hashAlgorithm) throws Exception {
+                                                         final String hashAlgorithm)
+            throws Exception {
         val disclosuresByDigest = new LinkedHashMap<String, Disclosure>();
         val disclosureValues = new HashSet<String>();
         for (val disclosure : disclosures) {

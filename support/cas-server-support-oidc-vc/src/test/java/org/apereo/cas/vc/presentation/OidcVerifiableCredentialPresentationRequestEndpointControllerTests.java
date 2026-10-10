@@ -96,7 +96,8 @@ class OidcVerifiableCredentialPresentationRequestEndpointControllerTests {
         }
 
         protected OidcVerifiableCredentialPresentationResponse createPresentationRequest(
-            final OidcVerifiableCredentialPresentationRequest request) throws Exception {
+            final OidcVerifiableCredentialPresentationRequest request)
+                throws Exception {
             val responseBody = performPresentationRequest(request)
                 .andExpect(status().isOk())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))

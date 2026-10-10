@@ -108,7 +108,8 @@ public interface OAuth20RequestParameterResolver {
      * @throws Exception the exception
      */
     <T> T resolveJwtRequestParameter(String jwtRequest, RegisteredService service,
-                                     String name, Class<T> clazz) throws Exception;
+                                     String name, Class<T> clazz)
+            throws Exception;
 
     /**
      * Resolve jwt request.

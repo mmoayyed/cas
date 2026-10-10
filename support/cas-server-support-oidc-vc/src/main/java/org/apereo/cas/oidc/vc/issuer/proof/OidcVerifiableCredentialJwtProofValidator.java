@@ -67,7 +67,8 @@ public class OidcVerifiableCredentialJwtProofValidator implements OidcVerifiable
     @Override
     public VerifiableCredentialProofResult validate(final String proofJwt,
                                                     final @Nullable String configurationId,
-                                                    final Set<String> consumedNonces) throws Exception {
+                                                    final Set<String> consumedNonces)
+            throws Exception {
         try {
             val signedJwt = SignedJWT.parse(proofJwt);
             val configuration = resolveConfiguration(configurationId);
@@ -118,7 +119,8 @@ public class OidcVerifiableCredentialJwtProofValidator implements OidcVerifiable
     @Override
     public List<VerifiableCredentialProofResult> validateAttestation(final String keyAttestation,
                                                                      final @Nullable String configurationId,
-                                                                     final Set<String> consumedNonces) throws Exception {
+                                                                     final Set<String> consumedNonces)
+            throws Exception {
         val configuration = resolveConfiguration(configurationId);
         val attestation = keyAttestationValidator.validate(keyAttestation, configuration);
         if (configuration != null && !configuration.getProofSigningAlgValuesSupported().contains(attestation.algorithm())) {
@@ -147,7 +149,8 @@ public class OidcVerifiableCredentialJwtProofValidator implements OidcVerifiable
      * @throws Exception the exception
      */
     protected void verifyKeyAttestation(final SignedJWT signedJwt, final JWK holderJwk,
-                                        final @Nullable OidcVerifiableCredentialConfigurationProperties configuration) throws Exception {
+                                        final @Nullable OidcVerifiableCredentialConfigurationProperties configuration)
+            throws Exception {
         val keyAttestation = signedJwt.getHeader().getCustomParam(KEY_ATTESTATION_HEADER);
         if (keyAttestation == null) {
             if (configuration != null && configuration.getKeyAttestations().isRequired()) {
@@ -215,7 +218,8 @@ public class OidcVerifiableCredentialJwtProofValidator implements OidcVerifiable
      * @throws Exception the exception
      */
     protected JWK resolveHolderKey(final SignedJWT signedJwt,
-                                   final @Nullable OidcVerifiableCredentialConfigurationProperties configuration) throws Exception {
+                                   final @Nullable OidcVerifiableCredentialConfigurationProperties configuration)
+            throws Exception {
         val header = signedJwt.getHeader();
         val embeddedKey = header.getJWK();
         val certificateChain = header.getX509CertChain();

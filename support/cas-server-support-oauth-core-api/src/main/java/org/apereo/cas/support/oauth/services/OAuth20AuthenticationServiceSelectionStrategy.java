@@ -122,7 +122,8 @@ public class OAuth20AuthenticationServiceSelectionStrategy extends BaseAuthentic
     }
 
     private Optional<String> getJwtRequestParameter(final Service service,
-                                                    final String paramName) throws Exception {
+                                                    final String paramName)
+            throws Exception {
         if (service.getAttributes().containsKey(OAuth20Constants.REQUEST)) {
             val jwtRequest = service.getFirstAttribute(OAuth20Constants.REQUEST, String.class);
             val registeredService = getServicesManager().findServiceBy(service);

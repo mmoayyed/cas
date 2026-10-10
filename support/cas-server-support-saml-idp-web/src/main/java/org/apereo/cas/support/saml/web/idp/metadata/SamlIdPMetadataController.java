@@ -59,7 +59,8 @@ public class SamlIdPMetadataController {
     @GetMapping(path = SamlIdPConstants.ENDPOINT_IDP_METADATA, produces = CONTENT_TYPE)
     public void generateMetadataForIdp(
         @RequestParam(value = "service", required = false) final String service,
-        final HttpServletResponse response) throws Throwable {
+        final HttpServletResponse response)
+            throws Throwable {
 
         val registeredService = getRegisteredServiceIfAny(service);
         metadataAndCertificatesGenerationService.generate(registeredService);
@@ -87,7 +88,8 @@ public class SamlIdPMetadataController {
     @Operation(summary = "Get IdP signing certificate",
         parameters = @Parameter(name = "service", in = ParameterIn.QUERY, required = false, description = "Service identifier"))
     public String idpSigningCertificate(
-        @RequestParam(value = "service", required = false) final String service) throws Throwable {
+        @RequestParam(value = "service", required = false) final String service)
+            throws Throwable {
         val registeredService = getRegisteredServiceIfAny(service);
         metadataAndCertificatesGenerationService.generate(registeredService);
         try (val md = samlIdPMetadataLocator.resolveSigningCertificate(registeredService).getInputStream()) {
@@ -105,7 +107,8 @@ public class SamlIdPMetadataController {
         parameters = @Parameter(name = "service", in = ParameterIn.QUERY, required = false, description = "Service identifier"))
     @GetMapping(path = SamlIdPConstants.ENDPOINT_IDP_METADATA + "/encryptionCertificate", produces = MediaType.TEXT_PLAIN_VALUE)
     public String idpEncryptionCertificate(
-        @RequestParam(value = "service", required = false) final String service) throws Throwable {
+        @RequestParam(value = "service", required = false) final String service)
+            throws Throwable {
         val registeredService = getRegisteredServiceIfAny(service);
         metadataAndCertificatesGenerationService.generate(registeredService);
         try (val md = samlIdPMetadataLocator.resolveEncryptionCertificate(registeredService).getInputStream()) {
