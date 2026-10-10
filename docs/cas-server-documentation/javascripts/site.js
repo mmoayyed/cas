@@ -788,7 +788,24 @@ const CAS_HOME_TITLE_PHRASES = [
     "It Costs $0 Per Active User",
     "Zero Invoices, No XML Psychological Warfare",
     "The Chicken Soup For The Identity's Soul",
-    "Open Source That isn't From 2004"
+    "Open Source That isn't From 2004",
+    "For Those With Major Trust Issues",
+    "Authenticating Humans, Bots, and Suspicious Printers",
+    "One Login, Fewer Existential Crises",
+    "Because “admin/admin” Is Not a Security Policy",
+    "Your Session Expires Before Your Technical Debt",
+    "Making Legacy Apps Feel Young Again",
+    "Less Login Friction, More Time to Blame DNS",
+    "Proof of Identity, Not Proof of Sanity",
+    "Even Your Cron Jobs Need Boundaries",
+    "Keeping Tokens Fresher Than the Office Coffee",
+    "Making “Access Denied” Feel Less Personal",
+    "No, Your Cat Does Not Need Administrator Access",
+    "Because Incognito Mode Isn't an Access Strategy",
+    "Your Browser Remembers. We Still Check.",
+    "Yelling at the Monitor Won't Fix Your Login",
+    "Entra Your Credit Card, Yet?",
+    "Turning “Contact Sales” into “git clone”"
 ];
 
 function initializeHomeTitle() {
@@ -887,7 +904,7 @@ function initializeHomeTitle() {
             const target = nextPhrase();
             for (let i = 1; i <= target.length; i++) {
                 accent.textContent = target.slice(0, i);
-                await wait(55 + Math.random() * 50);
+                await wait(40 + Math.random() * 40);
             }
             title.classList.remove("home-title-typing");
             await wait(4400);

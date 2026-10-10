@@ -2388,6 +2388,10 @@ ul.tab-content > li:not(.active):not(.property-name):not(.property-tab):not(.cas
     .home-quick-start-text {
         display: none;
     }
+    #cas-docs-container .row {
+        margin-right: 0;
+        margin-left: 0;
+    }
     :root {
         --docs-header-height: 6.5rem;
         --docs-masthead-height: 4.3rem;
@@ -2747,9 +2751,14 @@ ul.tab-content > li:not(.active):not(.property-name):not(.property-tab):not(.cas
     font-size: .76rem;
 }
 
+.cas-properties-header > span {
+    min-width: 0;
+}
+
 .cas-properties-header code {
     color: var(--docs-heading);
     background: var(--docs-surface);
+    overflow-wrap: anywhere;
 }
 
 .cas-properties-copy, .cas-property-copy {
@@ -5293,6 +5302,31 @@ li.cas-change-item[data-type-label]::before {
 #cas-docs-container .cas-release-footer li {
     margin: 0 0 .3rem;
     color: var(--docs-muted);
+}
+
+/* Release notes pages read as justified prose throughout, the footer included; short labels such as
+   the stats and facts keep their natural alignment. */
+.docs-release-notes #cas-docs-container :is(p, li, dd, blockquote) {
+    text-align: justify;
+    -webkit-hyphens: auto;
+    hyphens: auto;
+}
+
+.docs-release-notes #cas-docs-container code {
+    -webkit-hyphens: manual;
+    hyphens: manual;
+}
+
+.docs-release-notes #cas-docs-container :is(.cas-release-stats, .cas-release-facts, .cas-release-switcher) :is(li, a) {
+    text-align: start;
+    -webkit-hyphens: manual;
+    hyphens: manual;
+}
+
+.docs-release-notes #cas-docs-container p.cas-release-index-stats {
+    text-align: center;
+    -webkit-hyphens: manual;
+    hyphens: manual;
 }
 
 /* The release notes overview: one card per release candidate, newest first. */
