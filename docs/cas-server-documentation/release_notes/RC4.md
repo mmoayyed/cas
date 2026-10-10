@@ -46,5 +46,9 @@ test coverage of the CAS codebase is approximately `94%`.
 
 
 ## Other Stuff
+- {: .changed data-area="docs"} The documentation sidebar can be filtered by page name, groups its sections under six headings
+  (start, sign-in, protocols and applications, identity data and access, experience and operations), keeps only the current
+  path open with its parent sections pinned at the top while scrolling, and opens a section's overview from the section name
+  itself instead of a separate *Overview* entry.
 
 {% include release-footer.html %}

@@ -175,7 +175,11 @@ The CAS documentation site has received a visual and functional overhaul. Notabl
   where a release has screenshots, a spotlight. Every change below it is tagged by type and grouped by area, and can be
   searched and filtered; the [overview](Overview.html) lists every release candidate with its summary, and
   [the combined release candidate page](RC.html) gathers every change from every release candidate on one page, tagged with the release candidate it shipped in.
-
+- {: .changed data-area="docs"} The documentation sidebar can be filtered by page name, groups its sections under six headings
+  (start, sign-in, protocols and applications, identity data and access, experience and operations), keeps only the current
+  path open with its parent sections pinned at the top while scrolling, and opens a section's overview from the section name
+  itself instead of a separate *Overview* entry.
+  
 ### Heimdall AuthZEN
 {: .changed data-area="authorization"}
 
@@ -395,6 +399,13 @@ looking up audit records reads only the newest matching entries instead of loadi
 - Authorization codes can be bound to the client's [DPoP key](../authentication/OIDC-Authentication-DPoP.html#authorization-code-binding),
   per RFC 9449: with `dpop_jkt` at the authorization endpoint or in a pushed authorization request, or with a `DPoP` proof sent with
   the pushed authorization request. The token request must then carry a DPoP proof made with that key, or it is refused with `invalid_dpop_proof`.
+- Clients can be required to use [DPoP for every token request](../authentication/OIDC-Authentication-DPoP.html#dpop-bound-access-tokens),
+  per RFC 9449, with `dpopBoundAccessTokens` in the service definition or `dpop_bound_access_tokens` in a dynamic registration request.
+  Polling with a device code and the JWT bearer grant now verify DPoP proofs too, and bind the tokens they issue.
+- A [DPoP-bound access token](../authentication/OIDC-Authentication-DPoP.html) is now accepted only in the `Authorization` header
+  with the `DPoP` scheme; sent as a bearer token or as a request parameter, it is refused with `invalid_token`. Refresh tokens
+  issued to public clients are bound to the [DPoP key](../authentication/OIDC-Authentication-DPoP.html#refresh-tokens), per
+  RFC 9449, and the stateless ticket registry keeps the DPoP binding of access and refresh tokens.
 
 ### Stateless Ticket Registry
 {: .action data-area="tickets"}
@@ -586,5 +597,13 @@ authentication. See the [stateless ticket registry documentation](../ticketing/S
   labels sit above rounded inputs, buttons are pill-shaped and password fields get round reveal and generate buttons, matching
   the account screens and following the CAS theme colors. Alert boxes, tables and progress bars follow the same style, and
   page layouts stay as they were.
+- {: .changed data-area="ui"} WebAuthn and consent screens are redesigned. WebAuthn login, registration and QR code pages sit in a
+  centered card with a status icon, and registration offers passkeys and security keys side by side. OpenID Connect, OAuth and
+  CIBA consent show the application up front, list each scope and claim with its own icon, and show the CIBA binding message
+  as a large code. Consent no longer shows two *Deny* buttons, CIBA lists scope names again, OAuth scopes without a
+  description no longer show a raw message key, and the WebAuthn status heading now updates during login and registration.
+- {: .changed data-area="ui"} Interrupt and attribute consent screens follow the same style: a centered card with a status icon,
+  the interrupt message as a callout with its links, attribute consent tabs as a segmented control and consent options as
+  selectable cards. Tabs no longer show a focus ring when a page loads.
 
 {% include release-footer.html %}
