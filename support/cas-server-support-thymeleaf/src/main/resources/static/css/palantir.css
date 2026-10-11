@@ -4444,7 +4444,9 @@ select + span[role="combobox"] {
     padding: 8px 12px !important;
     border: 0 !important;
     border-radius: 10px !important;
-    background-color: #1b2733 !important;
+    /* The shorthand clears the Cupertino .ui-widget-content background image, which otherwise paints
+       a near-white gradient over the color and leaves white text on white. */
+    background: #1b2733 !important;
     color: #fff !important;
     font-size: 13px !important;
     line-height: 1.45;
@@ -4818,9 +4820,12 @@ select + span[role="combobox"] {
     font-size: 22px;
 }
 
+/* Labels may wrap between words but never inside one: keep them short enough to fit 76px. */
 #dashboard nav.sidebar-navigation .sidebar-navigation-label {
     max-width: 100%;
-    overflow-wrap: anywhere;
+    overflow-wrap: normal;
+    word-break: normal;
+    hyphens: none;
 }
 
 #dashboard nav.sidebar-navigation ul li > .sidebar-navigation-button:hover {
@@ -4955,4 +4960,16 @@ select + span[role="combobox"] {
     #dashboard nav.sidebar-navigation ul li > .sidebar-navigation-button[aria-current="page"] {
         border: 2px solid Highlight;
     }
+}
+
+/* Group header rows that DataTables draw callbacks insert (palantirTableGroupRow). A light brand tint
+   with brand-colored text, beating the striping and hover shading DataTables applies to body rows. */
+table.dataTable > tbody > tr.palantir-table-group-row > td,
+table.dataTable > tbody > tr.palantir-table-group-row:hover > td {
+    padding: 8px 12px;
+    border-top: 1px solid color-mix(in srgb, var(--cas-theme-primary, #114377) 20%, #fff);
+    background: color-mix(in srgb, var(--cas-theme-primary, #114377) 10%, #fff) !important;
+    box-shadow: none !important;
+    color: var(--cas-theme-primary, #114377) !important;
+    font-weight: 600;
 }

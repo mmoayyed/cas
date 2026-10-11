@@ -1,3 +1,15 @@
+/**
+ * Build the group header row a DataTables draw callback inserts before the first row of each group.
+ *
+ * @param {string} label the group name, set as text
+ * @param {number} columns the number of columns the row spans
+ * @returns {jQuery} the row
+ */
+function palantirTableGroupRow(label, columns) {
+    return $("<tr>", {class: "palantir-table-group-row"})
+        .append($("<td>", {colspan: columns}).text(label));
+}
+
 function hideElements(elements) {
     $(elements)
         .css("display", "none")
