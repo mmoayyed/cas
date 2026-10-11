@@ -4057,59 +4057,6 @@ select + span[role="combobox"] {
    Accessibility
    ========================================================================== */
 
-/* The rail's label is the accessible name of its button, so it has to stay in
-   the accessibility tree while the rail is collapsed. cas.css hides it with
-   visibility:hidden, which would leave all eighteen buttons nameless until the
-   pointer is over them; opacity plus the rail's own overflow hides it just as
-   well and keeps the name. */
-/* Each of the rail rules below overrides a selector of identical specificity in
-   cas.css. At a tie the later stylesheet wins, and this one is not reliably
-   later, so every selector here carries the nav element to outrank its
-   counterpart whatever the load order turns out to be.
-
-   Getting this wrong is what left both paddings applying at once: the item kept
-   cas.css's 16px/28px and the button added its own on top, so every rail entry
-   was double height and every icon sat 28px right of centre. */
-nav.sidebar-navigation ul li .tooltip {
-    visibility: visible;
-    opacity: 0;
-}
-
-nav.sidebar-navigation:hover ul li .tooltip,
-nav.sidebar-navigation:focus-within ul li .tooltip {
-    visibility: visible;
-    opacity: 1;
-}
-
-/* Keyboard focus should open the rail exactly as hover does. */
-nav.sidebar-navigation:focus-within {
-    width: 260px;
-}
-
-/* The padding moves to the button so the whole row is the click target. The
-   item must give it up, or the two stack. */
-nav.sidebar-navigation ul li {
-    padding: 0;
-}
-
-nav.sidebar-navigation ul li > .sidebar-navigation-button {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    width: 100%;
-    padding: 16px 0 16px 28px;
-    margin: 0;
-    border: 0;
-    background: transparent;
-    color: inherit;
-    font: inherit;
-    text-align: left;
-    cursor: pointer;
-    border-radius: inherit;
-    -webkit-appearance: none;
-    appearance: none;
-}
-
 /* The first tab stop on the dashboard, so a keyboard user can reach the working
    area without walking the whole rail. */
 .palantir-skip-link {
@@ -4140,13 +4087,6 @@ nav.sidebar-navigation ul li > .sidebar-navigation-button {
     outline: 3px solid var(--cas-theme-button-bg-lite, #1e78d0);
     outline-offset: 2px;
     border-radius: 4px;
-}
-
-/* The rail is a dark slab, where the ring above would disappear. */
-nav.sidebar-navigation :focus-visible,
-#dashboard nav.sidebar-navigation :focus-visible {
-    outline: 3px solid #7fd6ef;
-    outline-offset: -3px;
 }
 
 /* Metric tiles.
@@ -4191,35 +4131,7 @@ nav.sidebar-navigation :focus-visible,
     }
 }
 
-/* Shared CAS look for Palantir: rounded rail, pill tabs, softer cards. Layout and colors stay as they are. */
-#dashboard nav.sidebar-navigation {
-    border-radius: 16px;
-}
-
-#dashboard nav.sidebar-navigation ul {
-    gap: 2px;
-    padding: 8px 0;
-}
-
-#dashboard nav.sidebar-navigation ul li {
-    margin: 0 8px;
-    border-radius: 12px;
-}
-
-#dashboard nav.sidebar-navigation ul li > .sidebar-navigation-button {
-    padding: 14px 0 14px 20px;
-}
-
-#dashboard nav.sidebar-navigation ul li:hover,
-#dashboard nav.sidebar-navigation ul li:focus-within {
-    background-color: rgba(255, 255, 255, .12);
-}
-
-#dashboard nav.sidebar-navigation ul li.active {
-    background-color: rgba(255, 255, 255, .2);
-    box-shadow: inset 3px 0 0 #98D7EC;
-}
-
+/* Shared CAS look for Palantir: pill tabs, softer cards. Layout and colors stay as they are. */
 #dashboard #palantirMainPanel {
     border: 1px solid var(--cas-ui-divider, #dfe6ee);
     border-radius: 20px;
@@ -4792,4 +4704,255 @@ nav.sidebar-navigation :focus-visible,
 .ui-dialog.palantir-dialog .ui-dialog-buttonpane .ui-dialog-buttonset .ui-button:first-child:hover {
     border-color: var(--cas-theme-button-bg-hover, #1678d8);
     background: var(--cas-theme-button-bg-hover, #1678d8);
+}
+
+/* ==========================================================================
+   Navigation rail
+
+   Mirrors the account profile rail (.cas-account-rail in account.css): a fixed
+   100px column of icon-over-label destinations on the darkened brand color, the
+   selected one a white pill, settings and sign-out pinned to the bottom. Below
+   768px it turns into a full-screen grid opened from .palantir-sections-toggle.
+
+   Every selector carries #dashboard so it outranks the generic rail in cas.css
+   (hover-to-expand, deepskyblue/steelblue items) whatever the load order.
+   ========================================================================== */
+#dashboard nav.sidebar-navigation {
+    --palantir-rail-primary: var(--cas-theme-primary, #114377);
+    --palantir-rail-muted: color-mix(in srgb, #fff 78%, var(--palantir-rail-primary));
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    width: 100px;
+    margin: 4px 4px 4px 0;
+    padding: 12px 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    border-radius: 16px;
+    background: color-mix(in srgb, var(--palantir-rail-primary) 78%, #000);
+    white-space: normal;
+    transition: none;
+}
+
+#dashboard nav.sidebar-navigation:hover,
+#dashboard nav.sidebar-navigation:focus-within {
+    width: 100px;
+}
+
+#dashboard nav.sidebar-navigation .sidebar-navigation-head {
+    display: none;
+}
+
+#dashboard nav.sidebar-navigation ul {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    height: auto;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+#dashboard nav.sidebar-navigation ul li {
+    display: block;
+    margin: 0;
+    padding: 0;
+    border-radius: 0;
+    background: transparent;
+    transition: none;
+}
+
+#dashboard nav.sidebar-navigation ul li:hover,
+#dashboard nav.sidebar-navigation ul li:focus-within,
+#dashboard nav.sidebar-navigation ul li.active {
+    background: transparent;
+    box-shadow: none;
+}
+
+/* The divider after Applications, as the account rail has after Overview. It lives on the
+   item rather than in a list item of its own: the scripts treat every rail <li> as a destination. */
+#dashboard nav.sidebar-navigation ul li#applicationsTabButton::after {
+    content: "";
+    display: block;
+    width: 40px;
+    height: 1px;
+    margin: 6px auto 4px;
+    background: rgba(255, 255, 255, .15);
+}
+
+#dashboard nav.sidebar-navigation ul li > .sidebar-navigation-button {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    width: 84px;
+    min-height: 60px;
+    margin: 0 auto;
+    padding: 6px 4px;
+    border: 0;
+    border-radius: 12px;
+    background: transparent;
+    color: var(--palantir-rail-muted);
+    font: inherit;
+    font-family: var(--mdc-typography-font-family);
+    font-size: 11.5px;
+    line-height: 1.2;
+    text-align: center;
+    cursor: pointer;
+    -webkit-appearance: none;
+    appearance: none;
+}
+
+#dashboard nav.sidebar-navigation ul li > .sidebar-navigation-button .mdi,
+#dashboard nav.sidebar-navigation ul li.active > .sidebar-navigation-button .mdi {
+    min-width: 0;
+    color: inherit;
+    font-size: 22px;
+    line-height: 1;
+    transition: none;
+}
+
+#dashboard nav.sidebar-navigation ul li > .sidebar-navigation-button .mdi::before {
+    font-size: 22px;
+}
+
+#dashboard nav.sidebar-navigation .sidebar-navigation-label {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+}
+
+#dashboard nav.sidebar-navigation ul li > .sidebar-navigation-button:hover {
+    background: rgba(255, 255, 255, .1);
+    color: #fff;
+}
+
+#dashboard nav.sidebar-navigation ul li > .sidebar-navigation-button[aria-current="page"] {
+    background: #fff;
+    color: var(--palantir-rail-primary);
+    font-weight: 500;
+}
+
+#dashboard nav.sidebar-navigation :focus-visible {
+    outline: 2px solid #fff;
+    outline-offset: -2px;
+}
+
+#dashboard nav.sidebar-navigation ul li > .sidebar-navigation-button[aria-current="page"]:focus-visible {
+    outline-color: var(--palantir-rail-primary);
+}
+
+#dashboard nav.sidebar-navigation ul.sidebar-navigation-actions {
+    margin-top: auto;
+    padding-top: 8px;
+    border-top: 1px solid rgba(255, 255, 255, .15);
+}
+
+#dashboard nav.sidebar-navigation ul li.bottom {
+    margin-top: 0;
+}
+
+#dashboard .palantir-sections-toggle,
+#dashboard nav.sidebar-navigation .sidebar-navigation-close {
+    display: none;
+    align-items: center;
+    gap: 6px;
+    min-height: 36px;
+    padding: 0 14px;
+    border-radius: 999px;
+    font-family: var(--mdc-typography-font-family);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+#dashboard .palantir-sections-toggle {
+    align-self: flex-start;
+    margin: 4px 4px 8px;
+    border: 1px solid var(--cas-ui-border, #c3ccd6);
+    background: var(--cas-ui-surface, #fff);
+    color: var(--cas-theme-primary, #114377);
+}
+
+#dashboard nav.sidebar-navigation .sidebar-navigation-close {
+    display: inline-flex;
+    border: 1px solid rgba(255, 255, 255, .6);
+    background: transparent;
+    color: #fff;
+}
+
+#dashboard nav.sidebar-navigation .sidebar-navigation-close:hover {
+    border-color: #fff;
+    background: rgba(255, 255, 255, .12);
+}
+
+/* The closed overlay is hidden with visibility rather than display: the scripts count and pick
+   rail entries with jQuery's :visible, which a display:none rail would empty. */
+@media (max-width: 767px) {
+    #dashboard nav.sidebar-navigation,
+    #dashboard nav.sidebar-navigation:hover,
+    #dashboard nav.sidebar-navigation:focus-within {
+        position: fixed;
+        inset: 0;
+        z-index: 1100;
+        float: none;
+        display: block;
+        width: auto;
+        height: auto !important;
+        min-height: 0;
+        margin: 0;
+        padding: 16px;
+        border-radius: 0;
+        visibility: hidden;
+    }
+
+    #dashboard.is-nav-open nav.sidebar-navigation {
+        visibility: visible;
+    }
+
+    #dashboard nav.sidebar-navigation .sidebar-navigation-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 12px;
+        color: #fff;
+        font-family: var(--mdc-typography-font-family);
+        font-size: 16px;
+        font-weight: 500;
+    }
+
+    #dashboard nav.sidebar-navigation ul {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 8px;
+    }
+
+    #dashboard nav.sidebar-navigation ul li#applicationsTabButton::after {
+        display: none;
+    }
+
+    #dashboard nav.sidebar-navigation ul li > .sidebar-navigation-button {
+        width: 100%;
+        min-height: 72px;
+        background: rgba(255, 255, 255, .08);
+        color: #fff;
+        font-size: 13px;
+    }
+
+    #dashboard nav.sidebar-navigation ul.sidebar-navigation-actions {
+        margin-top: 8px;
+        padding-top: 0;
+        border-top: 0;
+    }
+
+    #dashboard .palantir-sections-toggle {
+        display: inline-flex;
+    }
+}
+
+@media (forced-colors: active) {
+    #dashboard nav.sidebar-navigation ul li > .sidebar-navigation-button[aria-current="page"] {
+        border: 2px solid Highlight;
+    }
 }

@@ -582,6 +582,9 @@ Guidance for AI coding agents working in the Apereo CAS source tree.
   `<p>` before the existing ones and never remove a wrapping `div`: puppeteer asserts `#content div h2`, `#content h2`,
   first `#content p`, `#login h2/h3/p` and `#main-content h2`. Banner root cards turn neutral under `.cas-hero`. Login gets
   `.cas-login-card` (surface only). Palantir polish lives at the end of `palantir.css`, scoped to `#dashboard`.
+- Palantir's rail (`fragments/palantir/navigationsidebar.html`, styled at the end of `palantir.css`) mirrors the account
+  profile rail: change both together. Only destinations may be `<li>` (scripts treat every `nav.sidebar-navigation ul li`
+  as one, and count them with `:visible`), so the narrow-screen overlay hides with `visibility`, never `display: none`.
 - Palantir dialogs sit outside `#main-content`, so `applySharedDialogStyle()` (palantir-utils.js, called from
   `initializePalantir`) adds `cas-ui palantir-dialog` on `dialogcreate`; style dialogs through those classes, qualified enough
   to beat the Cupertino theme (`.ui-dialog.palantir-dialog …`). Use the `classes` option, not the deprecated `dialogClass`.
