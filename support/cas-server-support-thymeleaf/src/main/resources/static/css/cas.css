@@ -109,17 +109,6 @@ div#content {
 }
 /* widgets */
 
-.notifications-count {
-    position: absolute;
-    top: 8px;
-    right: 4px;
-    background-color: var(--mdc-theme-error, #b00020);
-    color: #fff;
-    border-radius: 50%;
-    padding: 1px 3px;
-    font: 11px Verdana;
-}
-
 .cas-brand {
     height: 48px;
     width: auto;
@@ -397,11 +386,6 @@ form button i.mdi {
 
 .cas-footer > *:last-child {
     margin: 0;
-}
-
-.cas-notification-dialog .mdc-dialog__content > .cas-notification-message:not(:last-child) {
-    border-bottom: 1px solid rgba(0, 0, 0, .2);
-    border-bottom: var(--cas-theme-border-light, 1px solid rgba(0, 0, 0, .2));
 }
 
 .cas-card {
@@ -3032,5 +3016,574 @@ pre code.hljs {
     .cas-ui .cas-login-card .login-section + .login-section {
         border-inline-start: 0;
         border-top: 1px solid var(--cas-ui-divider);
+    }
+}
+
+/*
+ * Header panels: the notifications dialog, the bell that opens it and the resources drawer. Both panels opt into
+ * .cas-ui for its tokens and buttons; Bootstrap themes (twbs) render the same markup through modal and offcanvas.
+ */
+.cas-notification-toggle {
+    position: relative;
+}
+
+.cas-notification-toggle .mdi-bell-outline {
+    display: inline-block;
+    transform-origin: 50% 4px;
+    animation: cas-bell-ring 5s ease-in-out 1.2s infinite;
+}
+
+.notifications-count {
+    position: absolute;
+    top: 6px;
+    right: 4px;
+    display: grid;
+    place-items: center;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: 9px;
+    background: var(--mdc-theme-error, #a20323);
+    box-shadow: 0 0 0 2px var(--mdc-theme-primary, #114377);
+    color: #fff;
+    font: 600 11px/1 var(--mdc-typography-font-family);
+    font-style: normal;
+    pointer-events: none;
+}
+
+.notifications-count:empty {
+    display: none;
+}
+
+@keyframes cas-bell-ring {
+    0%, 12%, 100% { transform: rotate(0); }
+    2% { transform: rotate(14deg); }
+    4% { transform: rotate(-12deg); }
+    6% { transform: rotate(8deg); }
+    8% { transform: rotate(-5deg); }
+    10% { transform: rotate(2deg); }
+}
+
+.cas-notification-dialog {
+    z-index: 10;
+}
+
+.cas-notification-dialog .mdc-dialog__scrim {
+    background-color: rgba(10, 22, 36, .5);
+    backdrop-filter: blur(3px);
+}
+
+.cas-notification-dialog .mdc-dialog__surface {
+    width: min(520px, calc(100vw - 32px));
+    max-width: none;
+    overflow: hidden;
+    border-radius: 20px;
+    background: var(--cas-ui-surface);
+    box-shadow: 0 2px 6px rgba(16, 40, 70, .1), 0 24px 64px rgba(16, 40, 70, .28);
+    color: var(--cas-ui-text);
+}
+
+.cas-notification-head {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 22px 56px 18px 22px;
+    border-bottom: 1px solid var(--cas-ui-divider);
+    background: linear-gradient(180deg, var(--cas-ui-tint), var(--cas-ui-surface));
+}
+
+.cas-notification-head-icon {
+    display: grid;
+    flex: 0 0 44px;
+    place-items: center;
+    height: 44px;
+    border-radius: 14px;
+    background: linear-gradient(135deg, var(--cas-ui-button-hover), var(--cas-ui-primary));
+    box-shadow: 0 6px 16px color-mix(in srgb, var(--cas-ui-primary) 35%, transparent);
+    color: #fff;
+}
+
+.cas-notification-head-icon.mdi::before {
+    font-size: 24px;
+}
+
+.cas-notification-heading {
+    min-width: 0;
+}
+
+.cas-notification-dialog .cas-notification-head .mdc-dialog__title {
+    margin: 0;
+    padding: 0;
+    border: 0;
+    color: var(--cas-ui-text);
+    font-family: inherit;
+    font-size: 18px;
+    font-weight: 600;
+    letter-spacing: normal;
+    line-height: 1.3;
+}
+
+.cas-notification-summary {
+    margin: 2px 0 0;
+    color: var(--cas-ui-muted);
+    font-size: 13px;
+    line-height: 1.45;
+}
+
+.cas-notification-close,
+.cas-drawer-close {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    display: grid;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--cas-ui-muted);
+    cursor: pointer;
+    transition: background-color .15s ease, color .15s ease, transform .2s ease;
+}
+
+.cas-notification-close:hover {
+    background: color-mix(in srgb, var(--cas-ui-primary) 10%, transparent);
+    color: var(--cas-ui-text);
+    transform: rotate(90deg);
+}
+
+.cas-notification-dialog .mdc-dialog__content {
+    max-height: min(60vh, 520px);
+    padding: 18px 22px 6px;
+    color: inherit;
+}
+
+.cas-notification-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.cas-notification-message {
+    --cas-notice: var(--cas-ui-primary);
+    --cas-notice-bg: var(--cas-ui-tint);
+    position: relative;
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    overflow: hidden;
+    padding: 14px 16px 14px 18px;
+    border: 1px solid color-mix(in srgb, var(--cas-notice) 22%, var(--cas-ui-divider));
+    border-radius: 14px;
+    background: linear-gradient(90deg, var(--cas-notice-bg), var(--cas-ui-surface) 70%);
+}
+
+.cas-notification-message::before {
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 4px;
+    background: var(--cas-notice);
+    content: "";
+}
+
+.cas-notification-message[hidden] {
+    display: none;
+}
+
+.cas-notification-message.is-warning {
+    --cas-notice: #b86e00;
+    --cas-notice-bg: #fff6e0;
+}
+
+.cas-notification-message.is-danger {
+    --cas-notice: var(--cas-ui-danger);
+    --cas-notice-bg: #fdecef;
+}
+
+.cas-notification-icon {
+    display: grid;
+    flex: 0 0 38px;
+    place-items: center;
+    height: 38px;
+    border-radius: 11px;
+    background: color-mix(in srgb, var(--cas-notice) 14%, #fff);
+    color: var(--cas-notice);
+}
+
+.cas-notification-icon.mdi::before {
+    font-size: 22px;
+}
+
+.cas-notification-body {
+    flex: 1;
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.cas-notification-body h3 {
+    margin: 1px 0 4px;
+    color: var(--cas-ui-text);
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1.35;
+}
+
+.cas-notification-body p {
+    margin: 0;
+    color: var(--cas-ui-muted);
+    font-size: 13.5px;
+    line-height: 1.55;
+}
+
+.cas-notification-body strong {
+    color: var(--cas-ui-text);
+}
+
+.cas-notification-dialog .mdc-dialog__actions {
+    justify-content: flex-end;
+    padding: 14px 22px 20px;
+    border: 0;
+}
+
+.cas-notification-dialog .mdc-dialog__actions .mdc-button {
+    min-width: 120px;
+}
+
+.cas-notification-dialog.mdc-dialog--open .cas-notification-message {
+    animation: cas-panel-item-in .45s cubic-bezier(.2, .7, .2, 1) both;
+}
+
+.cas-notification-dialog.mdc-dialog--open .cas-notification-message:nth-child(2) {
+    animation-delay: 60ms;
+}
+
+.cas-notification-dialog.mdc-dialog--open .cas-notification-message:nth-child(3) {
+    animation-delay: 120ms;
+}
+
+@keyframes cas-panel-item-in {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: none; }
+}
+
+/* Resources drawer: a full-height modal panel above the top app bar */
+.cas-drawer.mdc-drawer {
+    top: 0;
+    z-index: 9;
+    display: none;
+    flex-direction: column;
+    width: min(340px, calc(100vw - 48px));
+    height: 100%;
+    border: 0;
+    background: var(--cas-ui-surface);
+    box-shadow: 0 0 0 1px rgba(16, 40, 70, .06), 0 24px 64px rgba(16, 40, 70, .3);
+    color: var(--cas-ui-text);
+}
+
+.cas-drawer.mdc-drawer--open {
+    display: flex;
+}
+
+.cas-drawer + .mdc-drawer-scrim {
+    z-index: 8;
+    background-color: rgba(10, 22, 36, .5);
+    backdrop-filter: blur(3px);
+}
+
+.cas-drawer-header {
+    position: relative;
+    flex: 0 0 auto;
+    min-height: 0;
+    overflow: hidden;
+    padding: 28px 56px 26px 22px;
+    background:
+        radial-gradient(circle at 100% 0, rgba(255, 255, 255, .18) 0, rgba(255, 255, 255, 0) 45%),
+        radial-gradient(circle at 0 120%, color-mix(in srgb, var(--cas-ui-button-hover) 70%, transparent) 0, transparent 60%),
+        linear-gradient(135deg, var(--cas-ui-primary), var(--cas-ui-button));
+    color: #fff;
+}
+
+.cas-drawer-header::after {
+    position: absolute;
+    right: -46px;
+    bottom: -70px;
+    width: 180px;
+    height: 180px;
+    border: 26px solid rgba(255, 255, 255, .07);
+    border-radius: 50%;
+    content: "";
+    pointer-events: none;
+}
+
+.cas-drawer-brand {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.cas-drawer-mark {
+    display: grid;
+    flex: 0 0 48px;
+    place-items: center;
+    height: 48px;
+    border: 1px solid rgba(255, 255, 255, .28);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, .14);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .2), 0 8px 20px rgba(0, 0, 0, .18);
+}
+
+.cas-drawer-mark.mdi::before {
+    font-size: 26px;
+}
+
+.cas-drawer-heading {
+    min-width: 0;
+}
+
+.cas-drawer .cas-drawer-heading :is(.mdc-drawer__title, .mdc-drawer__subtitle) {
+    height: auto;
+}
+
+.cas-drawer .cas-drawer-heading :is(.mdc-drawer__title, .mdc-drawer__subtitle)::before,
+.cas-drawer .cas-drawer-heading :is(.mdc-drawer__title, .mdc-drawer__subtitle)::after {
+    display: none;
+}
+
+.cas-drawer .cas-drawer-heading .mdc-drawer__title {
+    margin: 0;
+    color: #fff;
+    font-family: inherit;
+    font-size: 20px;
+    font-weight: 600;
+    letter-spacing: normal;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+}
+
+.cas-drawer .cas-drawer-heading .mdc-drawer__subtitle {
+    margin: 3px 0 0;
+    color: rgba(255, 255, 255, .78);
+    font-family: inherit;
+    font-size: 13px;
+    line-height: 1.4;
+}
+
+.cas-drawer-close {
+    z-index: 1;
+    color: rgba(255, 255, 255, .85);
+}
+
+.cas-drawer-close:hover {
+    background: rgba(255, 255, 255, .16);
+    color: #fff;
+    transform: rotate(90deg);
+}
+
+.cas-ui :is(.cas-drawer-close, .cas-notification-close):focus-visible {
+    outline: 3px solid var(--cas-ui-focus);
+    outline-offset: 0;
+}
+
+.cas-drawer-close:focus-visible {
+    outline-color: #fff !important;
+}
+
+.cas-drawer-body.mdc-drawer__content {
+    flex: 1 1 auto;
+    height: auto;
+    overflow-y: auto;
+    padding: 8px 12px 16px;
+}
+
+.cas-drawer-nav.mdc-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 0;
+}
+
+.cas-drawer-section {
+    margin: 16px 10px 6px;
+    color: var(--cas-ui-muted);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .08em;
+    line-height: 1.4;
+    text-transform: uppercase;
+}
+
+.cas-drawer-link {
+    --cas-accent: var(--cas-ui-primary);
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    height: auto;
+    min-height: 60px;
+    padding: 9px 10px;
+    border-radius: 14px;
+    color: var(--cas-ui-text) !important;
+    text-decoration: none;
+    transition: background-color .18s ease, box-shadow .18s ease;
+}
+
+.cas-drawer-link.is-blue { --cas-accent: #1e6fd0; }
+.cas-drawer-link.is-teal { --cas-accent: #017a72; }
+.cas-drawer-link.is-violet { --cas-accent: #6a48c9; }
+.cas-drawer-link.is-amber { --cas-accent: #b06400; }
+.cas-drawer-link.is-rose { --cas-accent: #c0265a; }
+.cas-drawer-link.is-slate { --cas-accent: #3d5068; }
+
+.cas-drawer-link:hover,
+.cas-drawer-link:focus-visible {
+    background: color-mix(in srgb, var(--cas-accent) 7%, #fff);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--cas-accent) 16%, transparent);
+}
+
+.cas-drawer-link:focus-visible {
+    outline: 3px solid var(--cas-ui-focus);
+    outline-offset: 0;
+}
+
+.cas-drawer-icon {
+    display: grid;
+    flex: 0 0 40px;
+    place-items: center;
+    height: 40px;
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--cas-accent) 11%, #fff);
+    color: var(--cas-accent);
+    transition: background .2s ease, color .2s ease, transform .2s ease, box-shadow .2s ease;
+}
+
+.cas-drawer-icon.mdi::before {
+    font-size: 21px;
+}
+
+.cas-drawer-link:hover .cas-drawer-icon,
+.cas-drawer-link:focus-visible .cas-drawer-icon {
+    background: var(--cas-accent);
+    box-shadow: 0 6px 14px color-mix(in srgb, var(--cas-accent) 35%, transparent);
+    color: #fff;
+    transform: scale(1.05);
+}
+
+.cas-drawer-text.mdc-list-item__text {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 1px;
+    min-width: 0;
+}
+
+.cas-drawer-label {
+    font-size: 14.5px;
+    font-weight: 600;
+    line-height: 1.35;
+}
+
+.cas-drawer-desc {
+    color: var(--cas-ui-muted);
+    font-size: 12.5px;
+    line-height: 1.4;
+}
+
+.cas-drawer-trail {
+    flex: 0 0 auto;
+    color: var(--cas-ui-border);
+    transition: color .18s ease, transform .18s ease;
+}
+
+.cas-drawer-trail.mdi::before {
+    font-size: 18px;
+}
+
+.cas-drawer-link:hover .cas-drawer-trail,
+.cas-drawer-link:focus-visible .cas-drawer-trail {
+    color: var(--cas-accent);
+    transform: translateX(3px);
+}
+
+.cas-drawer-footer {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 6px;
+    padding: 14px 22px;
+    border-top: 1px solid var(--cas-ui-divider);
+    background: var(--cas-ui-subtle);
+    color: var(--cas-ui-muted);
+    font-size: 12.5px;
+}
+
+.cas-drawer-footer .mdi::before {
+    font-size: 17px;
+}
+
+.cas-drawer-footer a {
+    color: var(--cas-ui-primary);
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.cas-drawer-footer a:hover {
+    text-decoration: underline;
+}
+
+.cas-drawer.mdc-drawer--open .cas-drawer-nav > * {
+    animation: cas-panel-item-in .5s cubic-bezier(.2, .7, .2, 1) both;
+}
+
+.cas-drawer.mdc-drawer--open .cas-drawer-nav > :nth-child(2) { animation-delay: 30ms; }
+.cas-drawer.mdc-drawer--open .cas-drawer-nav > :nth-child(3) { animation-delay: 60ms; }
+.cas-drawer.mdc-drawer--open .cas-drawer-nav > :nth-child(4) { animation-delay: 90ms; }
+.cas-drawer.mdc-drawer--open .cas-drawer-nav > :nth-child(5) { animation-delay: 120ms; }
+.cas-drawer.mdc-drawer--open .cas-drawer-nav > :nth-child(6) { animation-delay: 150ms; }
+.cas-drawer.mdc-drawer--open .cas-drawer-nav > :nth-child(7) { animation-delay: 180ms; }
+.cas-drawer.mdc-drawer--open .cas-drawer-nav > :nth-child(8) { animation-delay: 210ms; }
+.cas-drawer.mdc-drawer--open .cas-drawer-nav > :nth-child(9) { animation-delay: 240ms; }
+.cas-drawer.mdc-drawer--open .cas-drawer-nav > :nth-child(n+10) { animation-delay: 270ms; }
+
+@media (max-width: 575.98px) {
+    .cas-notification-head {
+        padding: 18px 52px 16px 16px;
+    }
+
+    .cas-notification-dialog .mdc-dialog__content {
+        padding: 16px 16px 4px;
+    }
+
+    .cas-notification-message {
+        gap: 12px;
+        padding: 12px 12px 12px 16px;
+    }
+
+    .cas-notification-dialog .mdc-dialog__actions {
+        padding: 12px 16px 16px;
+    }
+
+    .cas-notification-dialog .mdc-dialog__actions .mdc-button {
+        flex: 1;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .cas-notification-toggle .mdi-bell-outline,
+    .cas-notification-dialog.mdc-dialog--open .cas-notification-message,
+    .cas-drawer.mdc-drawer--open .cas-drawer-nav > * {
+        animation: none;
+    }
+
+    :is(.cas-notification-close, .cas-drawer-close, .cas-drawer-icon, .cas-drawer-trail) {
+        transition: none;
+        transform: none !important;
     }
 }

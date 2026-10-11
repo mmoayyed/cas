@@ -588,6 +588,11 @@ Guidance for AI coding agents working in the Apereo CAS source tree.
   jQuery 4 dropped `isWindow`/`isFunction`, which the jQuery UI 1.12 position plugin shipped with contextMenu still calls and
   which replaces jQuery UI's own position: `installJQueryCompatibility()` must run before any dialog, menu or tooltip opens.
   Tom Select wrappers carry `z-index: 10000`; open select menus are raised above them.
+- Header panels (`fragments/header.html`, `fragments/logindrawer.html`) carry `.cas-ui` and serve both themes: MDC
+  (`MDCDialog`, modal `MDCDrawer` with its `.mdc-drawer-scrim` as the next sibling) and Bootstrap (`modal`, `offcanvas`), so
+  keep both class sets. The notification count is the number of `.cas-notification-message` items not `[hidden]`; an item
+  shown client-side starts `hidden`. The twbs theme does not load `cas.css` and styles them in its own `cas.css`. Puppeteer
+  uses `#drawerButton`; `#drawerCloseButton` and `#cas-notifications-menu` are wired in `material.js`.
 
 ## CAS protocol (v1/v2/v3 + SAML 1.1) review discipline
 

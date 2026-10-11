@@ -116,6 +116,10 @@ let header = {
                 drawer.open = false;
             };
             drawer.foundation.handleScrimClick = closeDrawer;
+            let closeButton = document.getElementById('drawerCloseButton');
+            if (closeButton != null) {
+                closeButton.addEventListener('click', closeDrawer);
+            }
             document.onkeydown = evt => {
                 evt = evt || window.event;
                 if (evt.keyCode === 27) {
