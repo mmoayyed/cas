@@ -605,5 +605,13 @@ authentication. See the [stateless ticket registry documentation](../ticketing/S
 - {: .changed data-area="ui"} Interrupt and attribute consent screens follow the same style: a centered card with a status icon,
   the interrupt message as a callout with its links, attribute consent tabs as a segmented control and consent options as
   selectable cards. Tabs no longer show a focus ring when a page loads.
+- {: .changed data-area="ui"} The rest of the CAS screens follow the same style: error, account status, logout and confirmation
+  pages show a status icon in a centered card, multifactor, passwordless, delegated, surrogate and other sign-in steps show the
+  provider's icon above their form, provider and option choices appear as cards, and the login card picks up the same surface.
+  Palantir keeps its layout and colors with a rounded navigation rail, pill-style tabs and softer cards.
+- {: .changed data-area="ui"} Palantir dialogs, including the service wizard and editor, use the same look as the rest of CAS:
+  rounded dialogs with a plain title bar, matching buttons (the main action highlighted), select menus and multi-value fields
+  that look like the other inputs, round row buttons, and restyled menus, tooltips and confirmation prompts. Dialogs no
+  longer fail to position themselves when opened before any right-click menu was set up.
 
 {% include release-footer.html %}

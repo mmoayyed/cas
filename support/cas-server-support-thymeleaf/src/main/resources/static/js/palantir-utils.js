@@ -803,7 +803,12 @@ function prepareContextMenuItems(items, context) {
     return menuItems;
 }
 
-function initializeContextMenu({selector, callback, items, build, trigger = "right"}) {
+/**
+ * Restore the jQuery helpers that jQuery 4 removed and that jQuery contextMenu still calls, including the
+ * jQuery UI 1.12 position plugin it ships. That plugin replaces jQuery UI's own position, so until these exist
+ * every dialog, tooltip and menu that positions itself fails, and dialogs open unsized in the corner.
+ */
+function installJQueryCompatibility() {
     if (!jQuery.isFunction) {
         jQuery.isFunction = function (obj) {
             return typeof obj === "function";
@@ -814,7 +819,18 @@ function initializeContextMenu({selector, callback, items, build, trigger = "rig
             return obj != null && obj === obj.window;
         };
     }
+}
 
+/**
+ * Give every jQuery UI dialog the shared CAS look. Dialogs are moved to the end of the body, outside the
+ * main content that carries the cas-ui class, so the class is added to the dialog itself.
+ */
+function applySharedDialogStyle() {
+    $(document).on("dialogcreate", event => $(event.target).closest(".ui-dialog").addClass("cas-ui palantir-dialog"));
+}
+
+function initializeContextMenu({selector, callback, items, build, trigger = "right"}) {
+    installJQueryCompatibility();
     $.contextMenu("destroy", selector);
 
     const contextMenuOptions = {

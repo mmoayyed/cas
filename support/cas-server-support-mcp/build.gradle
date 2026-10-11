@@ -1,6 +1,6 @@
 apply plugin: "org.apereo.cas.project-conventions"
 
-description = "Apereo CAS Model Context Broker (MCP) server."
+description = "Apereo CAS Model Context Protocol (MCP) server."
 ext {
     publishMetadata = true
     projectMetadata = [

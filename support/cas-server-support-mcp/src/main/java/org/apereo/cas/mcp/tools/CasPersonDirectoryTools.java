@@ -21,10 +21,10 @@ public class CasPersonDirectoryTools {
     private final PrincipalResolver principalResolver;
 
     /**
-     * Find registered ticket.
+     * Resolve a person and their directory attributes.
      *
      * @param username the username
-     * @return the registered ticket
+     * @return the resolved principal
      * @throws Throwable the throwable
      */
     @McpTool(description = "Look up a person from the attribute repository store")

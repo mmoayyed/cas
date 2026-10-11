@@ -2819,3 +2819,218 @@ pre code.hljs {
     color: var(--cas-ui-muted);
     font-size: 14px;
 }
+
+/* Icon-first cards on status and step pages */
+.cas-ui .cas-hero > .cas-hero-icon {
+    align-self: center;
+    flex-shrink: 0;
+}
+
+.cas-ui .cas-hero > :is(h1, h2, h3, h4) {
+    margin: 0 0 8px;
+    color: var(--cas-ui-text);
+    font-size: 24px;
+    font-weight: 600;
+    line-height: 1.3;
+}
+
+.cas-ui .cas-hero > p,
+.cas-ui .cas-hero > div > p {
+    color: var(--cas-ui-muted);
+    font-size: 15px;
+    line-height: 1.55;
+}
+
+.cas-ui .cas-hero p strong,
+.cas-ui .cas-hero p b {
+    color: var(--cas-ui-text);
+}
+
+.cas-ui .cas-hero.cas-hero-start > .cas-hero-icon + :is(h1, h2, h3, h4) {
+    text-align: center;
+}
+
+.cas-ui .cas-hero.cas-hero-start > .cas-hero-icon + :is(h1, h2, h3, h4) + p {
+    margin-bottom: 18px;
+    text-align: center;
+}
+
+.cas-ui .cas-hero :is(pre, code) {
+    text-align: start;
+}
+
+.cas-ui .cas-hero > .mdc-button,
+.cas-ui .cas-hero > a.mdc-button {
+    margin-top: 8px;
+}
+
+#main-content.cas-ui .cas-hero:is(.banner, .alert) {
+    border-color: var(--cas-ui-divider);
+    background-color: var(--cas-ui-surface);
+    color: var(--cas-ui-text);
+}
+
+#main-content.cas-ui .cas-hero:is(.banner, .alert) > :is(h1, h2, h3, h4, h5)::before {
+    display: none;
+}
+
+#main-content.cas-ui .cas-hero:is(.banner, .alert) .mdi {
+    color: inherit;
+}
+
+#main-content.cas-ui .cas-hero:is(.banner, .alert) > .cas-hero-icon .mdi {
+    color: inherit;
+}
+
+.cas-ui .cas-hero-icon.is-warning {
+    background: radial-gradient(circle at 30% 25%, #fbeac2, #fff6dc);
+    color: #8a5a00;
+    box-shadow: 0 0 0 10px rgba(176, 120, 0, .08);
+}
+
+.cas-ui .cas-hero.cas-hero-wide {
+    max-width: 760px;
+}
+
+.cas-ui .cas-hero a.mdc-button:not(.mdc-button--raised, .mdc-button--unelevated, .mdc-button--outline, .btn) {
+    min-height: 44px;
+    padding: 0 20px;
+    border: 1px solid var(--cas-ui-border);
+    border-radius: 999px;
+    background: var(--cas-ui-surface);
+    color: var(--cas-ui-primary);
+}
+
+.cas-ui .cas-hero a.mdc-button:not(.mdc-button--raised, .mdc-button--unelevated, .mdc-button--outline, .btn):hover {
+    border-color: var(--cas-ui-focus);
+    background: color-mix(in srgb, var(--cas-ui-focus) 8%, #fff);
+}
+
+.cas-ui .cas-hero.cas-hero-start form {
+    margin-top: 8px;
+}
+
+.cas-ui .cas-hero.cas-hero-start form .mdc-form-field {
+    display: flex;
+    margin: 4px 0 16px;
+}
+
+.cas-ui .cas-hero ul:not([class]) {
+    padding: 0;
+    list-style: none;
+}
+
+.cas-ui .cas-hero.cas-hero-start > .cas-hero-icon + :is(form, div, section) > :is(h1, h2, h3, h4):first-child {
+    margin: 0 0 10px;
+    color: var(--cas-ui-text);
+    font-size: 22px;
+    font-weight: 600;
+    line-height: 1.35;
+    text-align: center;
+}
+
+/* Choice tiles and rows inside hero cards: passwordless options and MFA provider selection */
+.cas-ui .cas-hero .cas-card,
+.cas-ui .cas-hero .card-text > div[id].border-bottom,
+.cas-ui .cas-hero #mfaOptional {
+    margin-bottom: 12px;
+    padding: 16px !important;
+    border: 1px solid var(--cas-ui-divider) !important;
+    border-radius: 16px;
+    background: var(--cas-ui-surface);
+    color: var(--cas-ui-text);
+    box-shadow: none;
+    transition: border-color .15s ease, box-shadow .15s ease;
+}
+
+.cas-ui .cas-hero .cas-card:hover,
+.cas-ui .cas-hero .card-text > div[id].border-bottom:hover {
+    border-color: color-mix(in srgb, var(--cas-ui-focus) 45%, #fff) !important;
+    box-shadow: 0 6px 18px rgba(16, 40, 70, .08);
+}
+
+.cas-ui .cas-hero .cas-card {
+    flex-direction: column;
+    gap: 8px;
+}
+
+.cas-ui .cas-hero .cas-card :is(h3, h4),
+.cas-ui .cas-hero .card-text > div[id] :is(h3, h4),
+.cas-ui .cas-hero #mfaOptional h3 {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0 0 6px;
+    color: var(--cas-ui-text);
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.cas-ui .cas-hero .cas-card :is(h3, h4) .mdi,
+.cas-ui .cas-hero .card-text > div[id] :is(h3, h4) .mdi {
+    display: grid;
+    flex: 0 0 36px;
+    place-items: center;
+    height: 36px;
+    margin: 0 !important;
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--cas-ui-focus) 10%, #fff);
+    color: var(--cas-ui-primary);
+}
+
+.cas-ui .cas-hero .cas-card p,
+.cas-ui .cas-hero .card-text > div[id] p {
+    margin: 0 0 12px;
+    color: var(--cas-ui-muted);
+    font-size: 14px;
+    line-height: 1.5;
+    text-align: start;
+}
+
+.cas-ui .cas-hero .cas-card .mdc-button {
+    width: 100%;
+}
+
+.cas-ui .cas-hero > hr {
+    width: 100%;
+    margin: 4px 0 16px;
+    border: 0;
+    border-top: 1px solid var(--cas-ui-divider);
+    opacity: 1;
+}
+
+/* Login card: same surface as the hero cards, layout unchanged */
+.cas-ui .cas-login-card {
+    overflow: hidden;
+    border: 1px solid var(--cas-ui-divider);
+    border-radius: 20px;
+    box-shadow: 0 1px 2px rgba(16, 40, 70, .06), 0 12px 32px rgba(16, 40, 70, .12);
+}
+
+.cas-ui .cas-login-card .login-section + .login-section {
+    border-inline-start: 1px solid var(--cas-ui-divider);
+}
+
+.cas-ui .cas-login-card .login-form h2.text-center {
+    color: var(--cas-ui-text);
+    font-size: 22px;
+    font-weight: 600;
+}
+
+.cas-ui .cas-login-card .login-form h2.text-center .mdi {
+    color: var(--cas-ui-primary);
+}
+
+.cas-ui .cas-login-card .login-providers h3,
+.cas-ui .cas-login-card .login-qr h3 {
+    color: var(--cas-ui-text);
+    font-size: 16px;
+    font-weight: 600;
+}
+
+@media (max-width: 767.98px) {
+    .cas-ui .cas-login-card .login-section + .login-section {
+        border-inline-start: 0;
+        border-top: 1px solid var(--cas-ui-divider);
+    }
+}
