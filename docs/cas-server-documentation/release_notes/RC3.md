@@ -505,6 +505,17 @@ authentication. See the [stateless ticket registry documentation](../ticketing/S
 - {: .fixed} Service registry listeners that replace a loaded application definition now take effect; the
   [REST service registry](../services/REST-Service-Management.html), among others, used to return the definitions as they
   were before the listeners ran. Single sign-on checks no longer fail with an error when no service is given.
+- {: .changed data-area="saml"} The [SAML2 identity provider](../authentication/Configuring-SAML2-Authentication.html) no longer
+  matches an entity id longer than `cas.service-registry.core.maximum-service-id-length` against application definitions.
+- {: .changed} Inline Groovy scripts used by access strategy and attribute release activation criteria and by single sign-on
+  participation policies are compiled once and shared, instead of being compiled again on every evaluation. Groovy script
+  files used by service definitions resume picking up changes after the script cache expires them, and compiling one script
+  for the first time no longer holds up compiling a different one.
+- {: .fixed} Listing application definitions, for example through the `registeredServices` actuator endpoint or for the
+  [OpenID Connect JWKS endpoint](../authentication/OIDC-Authentication-JWKS.html), no longer includes expired definitions that
+  are set to be deleted when they expire. A definition that is renewed and expires again notifies its contacts again.
+- {: .fixed} A [REST service registry](../services/REST-Service-Management.html) that fails to load no longer reports
+  credentials or query parameters of its endpoint URL in the error.
 - {: .fixed} A `service` parameter that only resembles a number, such as `1.5`, `1e3`, `0x1F` or a value too large for an
   identifier, no longer fails the request while CAS applies the application's [HTTP security headers](../services/Configuring-Service-Http-Security-Headers.html);
   it is matched as a service URL instead.
