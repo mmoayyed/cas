@@ -459,12 +459,18 @@ authentication. See the [stateless ticket registry documentation](../ticketing/S
 ## Other Stuff
 
 - {: .changed data-area="project"} A large number of dependencies and libraries have been updated to their latest versions.
+- {: .changed} [Groovy scripts](../integration/Apache-Groovy-Scripting.html), whether inline or in a file, that keep no state between
+  executions no longer run one request at a time: each execution gets its own instance of the compiled script, so concurrent
+  requests through the same script run in parallel. Scripts that declare fields other than `final` ones holding plain values,
+  such as counters or caches, still run one execution at a time so that their state stays consistent.
 - {: .changed} When the background reload is enabled, a request for an application that matches no cached service definition no longer
   reads the whole service registry; definitions added outside CAS, for example by another node, are recognized at the
   next scheduled reload. Changes picked up by the [JSON](../services/JSON-Service-Management.html) and
   [YAML](../services/YAML-Service-Management.html) registry watchers now update the cache right away, fetching services
   by type through the [`registeredServices` actuator endpoint](../services/Service-Management.html) no longer empties the cache, and CAS warns when the cache
   expires definitions before the scheduler reloads them. See [this guide](../services/Service-Management-Caching-Reloading.html).
+- {: .fixed} Exporting a single service definition through the [`registeredServices` actuator endpoint](../services/Service-Management.html)
+  now answers `404` for an unknown identifier instead of failing with an error.
 - {: .fixed} Saving or deleting a service definition while the service registry is being reloaded now waits for the reload
   to finish. Previously, a save or delete that waited more than five seconds was dropped without an error; the
   `registeredServices` actuator endpoint reported success and a dynamically registered client could receive credentials
@@ -641,6 +647,13 @@ authentication. See the [stateless ticket registry documentation](../ticketing/S
 - {: .changed data-area="oidc"} OAuth and OpenID Connect client authentication at the token endpoint no longer builds a
   throw-away access token to decide which claims to release, and the authorization code or refresh token in the request is
   read from the ticket registry once per request instead of once by every authenticator and validator that inspects it.
+- {: .fixed data-area="oidc"} Authorization responses that return their parameters in the URL fragment, such as those of the
+  implicit flow, no longer repeat every query parameter of the client's redirect URI. When CAS includes the issuer in
+  authorization responses (RFC 9207), it now sends it once, with the other response parameters: it used to be sent twice with
+  the `query` response mode, and also added to the query of `fragment` and `form_post` responses.
+- {: .fixed data-area="oidc"} JWT access tokens returned from the OpenID Connect authorization endpoint, with the `token` and
+  `id_token token` response types, now name the OpenID Connect issuer, as the ID token and the token endpoint do. They used
+  to name the CAS server, so resource servers that check the issuer of a JWT access token rejected them.
 - {: .changed data-area="oidc"} When a request to an [OAuth](../authentication/OAuth-Authentication.html) endpoint carries
   no `client_id` parameter, as when a client authenticates at the token endpoint with HTTP Basic, CAS now takes the client
   from those credentials instead of matching the redirect URI against every OAuth application each time the
@@ -648,6 +661,15 @@ authentication. See the [stateless ticket registry documentation](../ticketing/S
   whose redirect URI patterns overlap are no longer mistaken for one another in this case.
 - {: .changed data-area="oidc"} A request object passed with the `request` parameter is now unpacked and verified once per
   request instead of once for every authorization parameter read from it.
+- {: .changed data-area="oidc"} A client that authenticates at the token endpoint with `private_key_jwt` or `client_secret_jwt`
+  and sends no `client_id` parameter is now identified from its client assertion, whose issuer and subject are the client
+  identifier, instead of by matching the redirect URI against every OAuth application.
+- {: .changed data-area="oidc"} When CAS works out which application a login is for, a request object carried by the
+  OAuth or OpenID Connect authorization request is now unpacked and verified once, instead of once for each of the client
+  identifier, redirect URI and grant type read from it.
+- {: .changed data-area="oidc"} Rotating or revoking keys in the [OpenID Connect keystore](../authentication/OIDC-Authentication-JWKS.html)
+  now also clears the keys CAS signs with on that node, so the new current key is used and a revoked key stops being used right
+  away instead of once the cached keys expire.
 - {: .fixed data-area="oidc"} Changes to an [OpenID Connect keystore](../authentication/OIDC-Authentication-JWKS.html) file
   are announced again once CAS notices them. The file watcher has never broadcast them, so CAS kept signing with the keys it had
   loaded until its key cache expired.
@@ -725,6 +747,12 @@ authentication. See the [stateless ticket registry documentation](../ticketing/S
   connection pooling enabled, every call used to keep a pooled connection until the pool ran out.
 - {: .fixed} The [Redis ticket registry](../ticketing/Redis-Ticket-Registry.html) query for ticket ids and loading all
   [YubiKey](../mfa/YubiKey-Authentication.html) devices from Redis also return their connection when done.
+- {: .fixed data-area="tickets"} The in-memory cache of the [Redis ticket registry](../ticketing/Redis-Ticket-Registry.html)
+  no longer keeps tickets that have changed or been removed on another CAS node. A cached ticket used to stay cached for as
+  long as it was read, so a session ended on one node could stay valid on another and could even be written back to Redis.
+  Tickets are now kept for at most 30 seconds, a ticket read while another node announces a change to it is not kept, and
+  changes are announced to other nodes without the ticket itself, which used to be sent unencrypted to every node on every
+  change even with ticket encryption enabled. Nodes still on an earlier version handle the new notifications correctly.
 - {: .fixed} WebAuthn falls back to the cached [FIDO metadata BLOB](../mfa/FIDO2-WebAuthn-Authentication-Attestation.html) when
   downloading a fresh one fails at startup, for example when the FIDO metadata service rate-limits the request, instead of failing to start.
 - {: .changed data-area="project"} The project [README](https://github.com/apereo/cas) is reworked as a landing page, with a one-minute Docker try-out,
