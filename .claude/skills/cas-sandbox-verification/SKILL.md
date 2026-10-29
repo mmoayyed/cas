@@ -43,3 +43,40 @@ description: "Compile and test CAS changes from a restricted sandbox or remote V
 ## Hazelcast ticket registry
 
 - In the VM test runner, leave `cas-server-*` jars of the Gradle cache off the classpath: released CAS jars such as `cas-server-webapp-resources` bring their own `application.properties` (`spring.mvc.pathmatch.matching-strategy=ant-path-matcher`) and the context fails to start. Processes started in the background are killed when the `device_bash` call returns, even with `setsid nohup`; run each suite in the foreground under the call's time limit, one nested class at a time if needed. To run in parallel like CI, pass all of CI's settings, `junit.jupiter.execution.parallel.config.executor-service=WORKER_THREAD_POOL` included: without it, work stealing runs `@Transactional` base tests on a thread that already holds a test transaction (`Cannot start new transaction without ending existing transaction`), before and after any change. The Hazelcast suites run there (embedded members); modules without prebuilt test classes need their tests compiled first.
+
+## OAuth/OIDC (VM compile and test runner)
+
+- Run the oidc-federation tests from the module directory: they read `./src/test/resources/subordinates` relative to the
+  working directory, and every context fails to load elsewhere.
+- When a rename script converts a variable, check it against the compiler and the diff: a local or constructor parameter
+  that shares the old name but means something else (`OidcConfigurationContext context`, an `OAuth20AuthorizationRequest
+  context`, a log map) still compiles after the rename.
+- Overlaying changed files on a VM copy misses files that were later reverted to the base: keep a list of every file ever
+  touched and ship all of them, or re-extract the base first.
+- The device shell kills background processes when the call returns, so `nohup ... &` test runs die; run the test classes in
+  chunks of about a dozen per call (Spring contexts take 20–90 seconds per chunk).
+- The token-authentication and token-webflow contexts do load in the VM once the class path carries the module's
+  `build.gradle` project closure (main and test classes and resources of every `project(":...")` it names) and the module's
+  own `src/test/resources`. The shared OAuth/OIDC runner class path is wrong for token-webflow: Gradle gives it no OIDC
+  classes, while the shared one registers `OidcTokenAuthenticationHandler` (`@ConditionalOnClass(CasOidcAutoConfiguration)`)
+  and the test then fails for a reason Gradle never sees. Build a per-module class path without any OAuth/OIDC directory
+  (check `cls2/*` too) before reading a token-webflow failure. Do not write such failures off as "Gradle only" without
+  running them this way.
+- Compiling several modules' tests in one `javac` run (or with every module's `build/classes/java/test` on the class path)
+  hides missing test dependencies: Gradle gives a module only the test classes of its `configuration: "tests"`
+  dependencies (`oidc` has no `oauth` test classes, so `OAuth20TestUtils` is out of reach there). Before handing off, compile
+  each changed module's tests on its own, with the oauth/oidc test directories removed from the class path and only its
+  declared test dependencies added back. Put helpers that `oidc` tests need in `AbstractOidcTests`.
+
+## SAML2 identity provider (VM compile and test runner)
+
+- The VM's own hostname does not resolve, so Spring Boot contexts fail with `UnknownHostException`; write a hosts file
+  mapping it to 127.0.0.1 and pass `-Djdk.net.hosts.file=<file>` to the test JVM.
+- Picking the highest jar of every artifact breaks SAML contexts in three ways: commons-codec newer than
+  `gradle/libs.versions.toml` decodes metadata certificates strictly and fails, `bcprov-ext`, Pulsar's shaded Bouncy
+  Castle and `jclouds-bouncycastle` clash with `bcprov`/`bcpkix`, and Saxon takes over `TransformerFactory`. Use the
+  catalog version of commons-codec and leave the others out. A group filter on `org.apereo.cas` also drops
+  `org.apereo.cas.client` (`cas-client-core`), which delegation tests need.
+- For the Error Prone check, put every cached jar on `-processorpath` (Error Prone needs more than its own jars) and
+  restrict annotation processing to Lombok with `-processor lombok.launch.AnnotationProcessorHider$AnnotationProcessor,lombok.launch.AnnotationProcessorHider$ClaimingProcessor`;
+  long class paths go into `@argfiles` for both `javac` and `java`.
