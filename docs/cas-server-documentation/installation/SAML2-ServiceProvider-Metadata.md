@@ -98,6 +98,12 @@ Metadata location can use the [Spring Expression Language](../configuration/Conf
 Multiple locations may be comma-separated. CAS may attempt to reuse the metadata from a previously-downloaded backup file on disk if the metadata file is still seen as valid. 
 This capability will require the forceful fetching of the metadata over HTTP to be disabled.
 
+Comma-separated locations are treated as mirrors of the same document: CAS tries each in turn and only falls back
+onto the backup file once none of them can produce metadata. Downloads are conditional requests based on the `ETag`
+and `Last-Modified` headers of the previous answer, which CAS keeps next to the backup file, so a metadata host that
+answers `304 Not Modified` is not asked to send the document again. When no location works and there is no backup
+file, the failure names every location and why it failed, such as the HTTP status it answered with.
+
 <div class="alert alert-info">:information_source: <strong>Usage</strong>
 <p>
 SAML2 metadata should generally be signed for integrity and authenticity, especially if it’s provided and shared with 

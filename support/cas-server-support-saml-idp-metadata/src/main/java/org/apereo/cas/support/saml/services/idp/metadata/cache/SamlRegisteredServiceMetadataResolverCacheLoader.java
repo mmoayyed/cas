@@ -3,6 +3,7 @@ package org.apereo.cas.support.saml.services.idp.metadata.cache;
 import module java.base;
 import org.apereo.cas.support.saml.OpenSamlConfigBean;
 import org.apereo.cas.support.saml.SamlException;
+import org.apereo.cas.support.saml.services.idp.metadata.cache.resolver.SamlRegisteredServiceMetadataResolver;
 import org.apereo.cas.support.saml.services.idp.metadata.plan.SamlRegisteredServiceMetadataResolutionPlan;
 import org.apereo.cas.util.RandomUtils;
 import org.apereo.cas.util.function.FunctionUtils;
@@ -42,8 +43,17 @@ public class SamlRegisteredServiceMetadataResolverCacheLoader implements CacheLo
         if (metadataResolvers.isEmpty()) {
             val registeredService = cacheKey.getRegisteredService();
             val metadataLocation = SpringExpressionLanguageValueResolver.getInstance().resolve(registeredService.getMetadataLocation());
-            throw new SamlException("No metadata resolvers could be configured for service " + registeredService.getName()
-                + " with metadata location " + metadataLocation);
+            val supportingResolvers = metadataResolutionPlan.getRegisteredMetadataResolvers()
+                .stream()
+                .filter(Objects::nonNull)
+                .filter(resolver -> resolver.supports(registeredService))
+                .map(SamlRegisteredServiceMetadataResolver::getName)
+                .toList();
+            val reason = supportingResolvers.isEmpty()
+                ? "no metadata resolver supports this metadata location"
+                : "metadata resolver(s) %s produced no metadata".formatted(supportingResolvers);
+            throw new SamlException("No metadata resolvers could be configured for service %s with metadata location %s: %s"
+                .formatted(registeredService.getName(), metadataLocation, reason));
         }
 
         val metadataResolver = initializeChainingMetadataResolver(metadataResolvers);

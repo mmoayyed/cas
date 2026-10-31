@@ -3,6 +3,7 @@ name: cas-ticket-registries
 description: "Review and change ticket registries: stateless (compact tickets), queue-backed (Kafka, AMQP, Pulsar, GCP Pub/Sub), JPA (locking, MySQL/Postgres specifics, streams), Hazelcast, and multi-node scenario checks. Use when touching support/cas-server-support-*-ticket-registry or ticket compactors."
 ---
 
+
 # Ticket registries
 
 ## Stateless ticket registry review discipline
@@ -178,6 +179,9 @@ description: "Review and change ticket registries: stateless (compact tickets), 
   (default typing on, as the Kafka registry's mapper), received by `PulsarTicketRegistryMessageListener`. Pulsar's
   `SchemaType.JSON` derives a schema from the declared class, which cannot describe `BaseMessageQueueCommand` subclasses
   carrying a `Ticket` known only at runtime. Any new broker-backed registry should ship its own JSON the same way.
+
+## JPA ticket registry
+
 - JPA ticket registry locking needs Spring Integration's `INT_LOCK` tables, which Spring only creates for embedded
   databases. Scenarios on MySQL/PostgreSQL with `cas.ticket.registry.core.enable-locking=true` must set
   `spring.integration.jdbc.initialize-schema=always`, or every lock fails ("Failed to lock for: TGT-...") and no service
@@ -218,6 +222,9 @@ description: "Review and change ticket registries: stateless (compact tickets), 
   goes back to the pool. Tests that read them wrap the read in `jpaTicketRegistryTransactionTemplate`.
   `getSessionsWithAttributes` is the exception: its results are small and its callers (delegated OIDC/SAML2 logout, MCP
   tools) run without one, so it collects the matches inside its own transaction and returns the list's stream.
+
+## Registry tests and two-node scenarios
+
 - Tests in classes extending `BaseTicketRegistryTests` must be `@RepeatedTest`, never `@Test`: its `@BeforeEach` takes
   a `RepetitionInfo`.
 - Two-node scenarios for any ticket registry call `cas.verifyTicketRegistryAcrossNodes()` (in `cas.js`): ST from node 1

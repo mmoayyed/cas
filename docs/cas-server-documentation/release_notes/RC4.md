@@ -134,6 +134,12 @@ return types and fields. We will gradually extend the coverage of such annotatio
 and will integrate the Gradle build tool with tools such as [NullAway](https://github.com/uber/NullAway) to prevent nullness contract violations
 during compile time.
 
+### Gradle 9.9
+{: .changed data-area="project"}
+
+CAS is now built with Gradle `9.9` and the build process has been updated to use the
+latest Gradle features and capabilities.
+
 ### Spring Boot 4.2
 {: .changed data-area="project"}
 
@@ -485,5 +491,16 @@ one-time codes can be added when `cas.authn.mfa.simple.mail.accepted-email-patte
 - {: .fixed data-area="saml"} [SAML2 identity provider metadata](../installation/Configuring-SAML2-DynamicMetadata.html),
   keys and certificates are fetched again from their storage once `cas.authn.saml-idp.metadata.core.cache-expiration`{: .cas-setting}
   has passed, even while in constant use, so a key rotation in a shared metadata store reaches every node.
+- {: .changed data-area="saml"} [SAML2 service provider metadata](../installation/SAML2-ServiceProvider-Metadata.html#default)
+  downloaded over HTTP or from a [metadata query server](../installation/Configuring-SAML2-DynamicMetadata-MDQ.html) is
+  fetched with conditional requests, and an unchanged document is no longer downloaded again. Comma-separated locations
+  are all tried before the metadata backup file is used, and a failed load names every location and the reason it failed,
+  in the logs and in the answer of the cached metadata endpoint. Validators are kept in a file next to the backup instead
+  of an extended file attribute, which many file systems do not support.
+- {: .changed data-area="saml"} Service provider metadata kept in [Amazon S3](../installation/Configuring-SAML2-DynamicMetadata-AmazonS3.html)
+  is no longer downloaded in full to find one provider: only matching documents are fetched, and buckets with more than
+  1000 documents are read completely. Metadata kept in [Git](../installation/Configuring-SAML2-DynamicMetadata-Git.html)
+  pulls the repository at most once per `cas.authn.saml-idp.metadata.git.schedule.repeat-interval`{: .cas-setting} instead
+  of on every load. The metadata health indicator checks each metadata source once per run rather than once per service.
 
 {% include release-footer.html %}
