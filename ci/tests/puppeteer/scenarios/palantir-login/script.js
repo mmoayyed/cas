@@ -1,6 +1,6 @@
 /* global $, CAS_FEATURES, CasActuatorEndpoints, PalantirDashboardConfiguration,
    RegisteredServiceSections, openRegisteredServiceWizardDialog, isPopulatingWizard,
-   activateDashboardTab */
+   activateDashboardTab, ace */
 const assert = require("assert");
 const cas = require("../../cas.js");
 
@@ -365,18 +365,32 @@ async function inspectWizard(page, serviceClass, hideAdvanced) {
 }
 
 /**
- * Pick an entry in a jQuery UI selectmenu the way an operator does, by opening it and clicking the item.
+ * Pick an entry in a jQuery UI selectmenu through the widget's own menu.
+ *
+ * The open menu is driven with its focus and select methods rather than a click at the item's
+ * coordinates: the menu sits in the dialog, which can scroll under a coordinate click and leave the
+ * choice unmade. Selecting through the menu still runs the selectmenu's change callback, which is
+ * what the wizard relies on to reveal a type's fields.
  *
  * @param page the puppeteer page
  * @param selectId the id of the underlying select element
  * @param text the label of the entry to choose
  */
 async function chooseDropdownOption(page, selectId, text) {
-    await page.evaluate((id) => $(`#${id}`).selectmenu("open"), selectId);
-    const index = await page.evaluate((entry) => $(`#${entry.selectId}`).selectmenu("menuWidget").find("li")
-        .toArray().findIndex((item) => item.textContent.trim() === entry.text), {selectId, text});
-    assert(index >= 0, `${selectId} has no ${text} entry`);
-    await page.click(`#${selectId}-menu li:nth-child(${index + 1})`);
+    const chosen = await page.evaluate((entry) => {
+        const $select = $(`#${entry.selectId}`);
+        $select.selectmenu("open");
+        const $menu = $select.selectmenu("menuWidget");
+        const $item = $menu.find("li").filter((_, item) => item.textContent.trim() === entry.text).first();
+        if ($item.length === 0) {
+            $select.selectmenu("close");
+            return null;
+        }
+        $menu.menu("focus", null, $item);
+        $menu.menu("select", $.Event("click", {target: $item[0]}));
+        return $select.val();
+    }, {selectId, text});
+    assert(chosen, `${selectId} has no ${text} entry`);
 }
 
 /**
@@ -402,9 +416,9 @@ async function verifyWizardDropdowns(page, name) {
 
     const staticFields = "#editServiceWizardMenuItemUsernameAttribute .StaticRegisteredServiceUsernameProvider";
     await chooseDropdownOption(page, "registeredServiceUsernameAttributeProvider", "STATIC");
-    assert(await page.evaluate((selector) => $(selector).is(":visible"), staticFields));
+    await page.waitForFunction((selector) => $(selector).is(":visible"), {timeout: 10000}, staticFields);
     await chooseDropdownOption(page, "registeredServiceUsernameAttributeProvider", "DEFAULT");
-    assert(await page.evaluate((selector) => !$(selector).is(":visible"), staticFields));
+    await page.waitForFunction((selector) => !$(selector).is(":visible"), {timeout: 10000}, staticFields);
     await cas.logg(`${name}: wizard dropdowns reveal the fields of the chosen type`);
 }
 
@@ -419,6 +433,7 @@ async function verifyWizardDropdowns(page, name) {
  */
 async function verifyWizardDatePickers(page, name) {
     const pick = async (selector) => {
+        await page.waitForSelector(selector, {visible: true, timeout: 10000});
         await page.click(selector);
         await page.waitForSelector("#ui-datepicker-div td[data-handler='selectDay']", {visible: true});
         await page.click("#ui-datepicker-div td[data-handler='selectDay'] a");

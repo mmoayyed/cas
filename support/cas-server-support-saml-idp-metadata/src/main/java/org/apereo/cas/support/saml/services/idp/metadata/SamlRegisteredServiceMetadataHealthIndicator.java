@@ -3,11 +3,14 @@ package org.apereo.cas.support.saml.services.idp.metadata;
 import module java.base;
 import org.apereo.cas.services.ServicesManager;
 import org.apereo.cas.support.saml.services.SamlRegisteredService;
+import org.apereo.cas.support.saml.services.idp.metadata.cache.resolver.SamlRegisteredServiceMetadataResolver;
 import org.apereo.cas.support.saml.services.idp.metadata.plan.SamlRegisteredServiceMetadataResolutionPlan;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.apache.commons.lang3.BooleanUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.tuple.Pair;
 import org.springframework.boot.health.contributor.AbstractHealthIndicator;
 import org.springframework.boot.health.contributor.Health;
 
@@ -25,6 +28,14 @@ public class SamlRegisteredServiceMetadataHealthIndicator extends AbstractHealth
 
     private final ServicesManager servicesManager;
 
+    /**
+     * Reports, per SAML service, whether a metadata resolver can serve it. Each resolver is asked about a metadata
+     * location once per health check and the answer is shared by every service with that location: a metadata store
+     * such as {@code jdbc://}, a metadata query server or a federation aggregate is one backend, however many service
+     * definitions point at it, and probing it once per service turned every health check into as many calls.
+     *
+     * @param builder the health builder
+     */
     @Override
     protected void doHealthCheck(final Health.Builder builder) {
         val samlServices = servicesManager.findServiceBy(SamlRegisteredService.class::isInstance);
@@ -34,6 +45,7 @@ public class SamlRegisteredServiceMetadataHealthIndicator extends AbstractHealth
         builder.up();
         builder.withDetail("name", getClass().getSimpleName());
         var count = new AtomicInteger();
+        val probes = new HashMap<Pair<SamlRegisteredServiceMetadataResolver, String>, Boolean>();
         samlServices
             .stream()
             .map(SamlRegisteredService.class::cast)
@@ -47,7 +59,8 @@ public class SamlRegisteredServiceMetadataHealthIndicator extends AbstractHealth
                     .stream()
                     .filter(Objects::nonNull)
                     .filter(r -> r.supports(service))
-                    .anyMatch(r -> r.isAvailable(service));
+                    .anyMatch(r -> probes.computeIfAbsent(Pair.of(r, StringUtils.defaultString(service.getMetadataLocation())),
+                        _ -> r.isAvailable(service)));
                 map.put("availability", BooleanUtils.toStringYesNo(availability));
                 builder.withDetail(service.getName(), map);
                 if (!availability) {
