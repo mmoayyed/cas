@@ -4,6 +4,7 @@ import module java.base;
 import org.apereo.cas.configuration.model.support.oidc.OidcProperties;
 import org.apereo.cas.configuration.model.support.oidc.federation.OidcFederationRole;
 import org.apereo.cas.oidc.OidcConstants;
+import org.apereo.cas.oidc.discovery.OidcFederationEntityMetadataContributor;
 import org.apereo.cas.oidc.discovery.OidcServerDiscoverySettings;
 import org.apereo.cas.oidc.federation.signature.OidcFederationEntityStatementService;
 import org.apereo.cas.oidc.issuer.OidcIssuerService;
@@ -28,19 +29,31 @@ import jakarta.servlet.http.HttpServletResponse;
  */
 @Slf4j
 public class OidcWellKnownFederationEndpointController extends AbstractOidcFederationEndpointController {
+    private static final String FEDERATION_HISTORICAL_KEYS_ENDPOINT = "federation_historical_keys_endpoint";
+
+    private static final String FEDERATION_TRUST_MARK_ENDPOINT = "federation_trust_mark_endpoint";
+
+    private static final String FEDERATION_TRUST_MARK_STATUS_ENDPOINT = "federation_trust_mark_status_endpoint";
+
+    private static final String FEDERATION_TRUST_MARK_LIST_ENDPOINT = "federation_trust_mark_list_endpoint";
 
     private final ObjectProvider<OidcServerDiscoverySettings> serverDiscoverySettings;
 
+    private final ObjectProvider<OidcFederationEntityMetadataContributor> metadataContributors;
+
     public OidcWellKnownFederationEndpointController(final ObjectProvider<OidcServerDiscoverySettings> serverDiscoverySetting,
+                                                      final ObjectProvider<OidcFederationEntityMetadataContributor> metadataContributors,
                                                       final OidcIssuerService oidcIssuerService,
                                                       final OidcFederationEntityStatementService federationEntityStatementService,
                                                       final OidcProperties oidcProperties) {
         super(oidcIssuerService, federationEntityStatementService, oidcProperties);
         this.serverDiscoverySettings = serverDiscoverySetting;
+        this.metadataContributors = metadataContributors;
     }
 
     /**
-     * Gets well known discovery federation configuration.
+     * Gets well known discovery federation configuration. An OpenID provider also publishes the metadata of the other
+     * entity types it plays, as contributed by the modules present, such as {@code openid_credential_issuer}.
      *
      * @param request  the request
      * @param response the response
@@ -80,6 +93,7 @@ public class OidcWellKnownFederationEndpointController extends AbstractOidcFeder
 
             val json = JSONValue.parse(settings.toJson());
             metadata.put(EntityType.OPENID_PROVIDER.getValue(), json);
+            addContributedMetadata(issuer, metadata);
 
         } else if (role == OidcFederationRole.INTERMEDIATE) {
             if (authorityHints.isEmpty()) {
@@ -95,9 +109,23 @@ public class OidcWellKnownFederationEndpointController extends AbstractOidcFeder
             throw new IllegalArgumentException("Federation role [" + role + "] is not supported for Trust Anchor/Intermediate");
         }
 
-        val federationMetadata = buildMetadata(issuer);
-        metadata.put(EntityType.FEDERATION_ENTITY.getValue(), federationMetadata.toJSONObject());
+        val federationMetadata = buildMetadata(issuer).toJSONObject();
+        federationMetadata.put(FEDERATION_HISTORICAL_KEYS_ENDPOINT, issuer + OidcConstants.HISTORICAL_KEYS_FEDERATION_URL);
+        if (!oidcProperties.getFederation().getIssuedTrustMarks().isEmpty()) {
+            federationMetadata.put(FEDERATION_TRUST_MARK_ENDPOINT, issuer + OidcConstants.TRUST_MARK_FEDERATION_URL);
+            federationMetadata.put(FEDERATION_TRUST_MARK_STATUS_ENDPOINT, issuer + OidcConstants.TRUST_MARK_STATUS_FEDERATION_URL);
+            federationMetadata.put(FEDERATION_TRUST_MARK_LIST_ENDPOINT, issuer + OidcConstants.TRUST_MARK_LIST_FEDERATION_URL);
+        }
+        metadata.put(EntityType.FEDERATION_ENTITY.getValue(), federationMetadata);
 
         return buildEntityStatement(issuer, issuer, metadata, null, authorityHints);
+    }
+
+    private void addContributedMetadata(final String entityId, final JSONObject metadata) {
+        metadataContributors.orderedStream()
+            .map(contributor -> contributor.contribute(entityId))
+            .flatMap(contributed -> contributed.entrySet().stream())
+            .filter(entry -> !metadata.containsKey(entry.getKey()) && !EntityType.FEDERATION_ENTITY.getValue().equals(entry.getKey()))
+            .forEach(entry -> metadata.put(entry.getKey(), new JSONObject(entry.getValue())));
     }
 }
