@@ -7,6 +7,7 @@ import org.apereo.cas.oidc.OidcConfigurationContext;
 import org.apereo.cas.oidc.jwks.OidcJsonWebKeyCacheKey;
 import org.apereo.cas.oidc.jwks.OidcJsonWebKeyStoreUtils;
 import org.apereo.cas.oidc.jwks.OidcJsonWebKeyUsage;
+import org.apereo.cas.oidc.web.OidcRequestObjectDecrypter;
 import org.apereo.cas.vc.presentation.OidcVerifiableCredentialPresentationRequestEndpointController.OidcVerifiableCredentialPresentationClientMetadata;
 import org.apereo.cas.vc.presentation.OidcVerifiableCredentialPresentationRequestEndpointController.OidcVerifiableCredentialPresentationClientMetadata.VpFormat;
 import com.authlete.cose.constants.COSEAlgorithms;
@@ -33,7 +34,8 @@ import org.jspecify.annotations.Nullable;
  * Under that prefix, responses are encrypted to the encryption keys of the OpenID Connect keystore, published with
  * the JWE algorithm each is used with: {@code ECDH-ES} for an elliptic curve key, as HAIP requires, and
  * {@code RSA-OAEP-256} for an RSA key. Keys without a key id are never published, since wallets name the key they
- * encrypt to by its {@code kid}.
+ * encrypt to by its {@code kid}. Only current keys are published, but a response encrypted to an encryption key of the
+ * keystore in any rotation state is decrypted, since wallets may still hold metadata from before a rotation.
  *
  * @author Misagh Moayyed
  * @since 8.1.0
@@ -55,6 +57,8 @@ public class OidcVerifiableCredentialVerifierMetadataService {
     protected final OidcConfigurationContext configurationContext;
 
     protected final LoadingCache<OidcJsonWebKeyCacheKey, JsonWebKeySet> keystoreCache;
+
+    protected final OidcRequestObjectDecrypter requestObjectDecrypter;
 
     /**
      * Whether wallets authenticate CAS through OpenID Federation, with the {@code openid_federation} client identifier
@@ -134,7 +138,8 @@ public class OidcVerifiableCredentialVerifierMetadataService {
      * {@code openid_federation} client identifier prefix: the verifier description of {@code client_metadata}, the
      * response URI as the only trusted {@code response_uris}, and in {@code jwks} the keys request objects are signed
      * with and the keys responses are encrypted to. No {@code request_uris} are listed: CAS serves each request object
-     * at a URI of its own, and wallets refuse any request URI the list does not contain.
+     * at a URI of its own, which a list could not name in advance, and wallets only hold request URIs to the list when
+     * the metadata carries one.
      *
      * @return the metadata
      */
@@ -174,9 +179,17 @@ public class OidcVerifiableCredentialVerifierMetadataService {
      * @return the key, if it is one responses can be encrypted to
      */
     public Optional<PublicJsonWebKey> findResponseEncryptionKey(final @Nullable String keyId) {
-        return StringUtils.isBlank(keyId)
-            ? Optional.empty()
-            : getResponseEncryptionKeys().stream().filter(key -> keyId.equals(key.getKeyId())).findFirst();
+        if (StringUtils.isBlank(keyId)) {
+            return Optional.empty();
+        }
+        return getResponseEncryptionKeys()
+            .stream()
+            .filter(key -> keyId.equals(key.getKeyId()))
+            .findFirst()
+            .or(() -> requestObjectDecrypter.getDecryptionKeys()
+                .stream()
+                .filter(key -> keyId.equals(key.getKeyId()) && resolveKeyManagementAlgorithm(key) != null)
+                .findFirst());
     }
 
     /**

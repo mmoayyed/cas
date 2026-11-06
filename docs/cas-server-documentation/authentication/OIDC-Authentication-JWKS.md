@@ -28,12 +28,19 @@ signed by the client first, is encrypted to one of the encryption keys that CAS 
 `kid`. CAS decrypts it with that key, or tries each of its encryption keys when no `kid` is given, and then verifies
 the nested request object with the keys of the client like any signed request object. Every encryption key the JWKS
 publishes is accepted, whatever its rotation state, so clients that still hold the key set from before a rotation are
-not refused.
+not refused. A request object that was encrypted without being signed is refused, as any unsigned request object is,
+since anyone can encrypt to the keys CAS publishes.
 
 Only the key management and content encryption algorithms that discovery advertises are accepted: by default `RSA-OAEP`
 and `RSA-OAEP-256` for RSA keys and the `ECDH-ES` family for elliptic curve keys, with the AES-CBC-HMAC and AES-GCM
-content encryption algorithms. Symmetric key wrapping with keys derived from client secrets is not supported, and
-compressed request objects are refused. The advertised algorithms can be adjusted using CAS properties.
+content encryption algorithms. `RSA1_5` is never accepted nor advertised, even when listed, as
+[RFC 8725](https://www.rfc-editor.org/rfc/rfc8725#section-3.2) recommends. Symmetric key wrapping with keys derived from
+client secrets is not supported, and compressed request objects are refused. The advertised algorithms can be adjusted
+using CAS properties. The encryption keys are read from the keystore once per JWKS cache period rather than for every
+request object, and again as soon as the keystore file changes or keys are rotated or revoked: a revoked encryption
+key stops decrypting at once on the node that revokes it, and on other nodes once they see the keystore change or, at
+the latest, at the end of the JWKS cache period. Signing keys are never used to decrypt, and a keystore without encryption keys is read
+again after at most a minute.
 
 ## Keystore Storage
        

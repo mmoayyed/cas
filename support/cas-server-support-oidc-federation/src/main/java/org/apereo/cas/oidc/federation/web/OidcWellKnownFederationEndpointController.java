@@ -2,13 +2,16 @@ package org.apereo.cas.oidc.federation.web;
 
 import module java.base;
 import org.apereo.cas.configuration.model.support.oidc.OidcProperties;
+import org.apereo.cas.configuration.model.support.oidc.federation.OidcFederationEndpointAuthenticationModes;
 import org.apereo.cas.configuration.model.support.oidc.federation.OidcFederationRole;
 import org.apereo.cas.oidc.OidcConstants;
 import org.apereo.cas.oidc.discovery.OidcFederationEntityMetadataContributor;
 import org.apereo.cas.oidc.discovery.OidcServerDiscoverySettings;
 import org.apereo.cas.oidc.federation.signature.OidcFederationEntityStatementService;
+import org.apereo.cas.oidc.federation.subordinate.OidcFederationSubordinateClientAuthenticator;
 import org.apereo.cas.oidc.issuer.OidcIssuerService;
 import com.nimbusds.openid.connect.sdk.federation.entities.EntityID;
+import com.nimbusds.openid.connect.sdk.federation.entities.EntityStatement;
 import com.nimbusds.openid.connect.sdk.federation.entities.EntityType;
 import io.swagger.v3.oas.annotations.Operation;
 import lombok.extern.slf4j.Slf4j;
@@ -36,6 +39,16 @@ public class OidcWellKnownFederationEndpointController extends AbstractOidcFeder
     private static final String FEDERATION_TRUST_MARK_STATUS_ENDPOINT = "federation_trust_mark_status_endpoint";
 
     private static final String FEDERATION_TRUST_MARK_LIST_ENDPOINT = "federation_trust_mark_list_endpoint";
+
+    private static final String FEDERATION_TRUST_MARK_ENDPOINT_AUTH_METHODS = "federation_trust_mark_endpoint_auth_methods";
+
+    private static final String FEDERATION_RESOLVE_ENDPOINT_AUTH_METHODS = "federation_resolve_endpoint_auth_methods";
+
+    private static final String ENDPOINT_AUTH_SIGNING_ALG_VALUES_SUPPORTED = "endpoint_auth_signing_alg_values_supported";
+
+    private static final String PRIVATE_KEY_JWT = "private_key_jwt";
+
+    private static final String NO_CLIENT_AUTHENTICATION = "none";
 
     private final ObjectProvider<OidcServerDiscoverySettings> serverDiscoverySettings;
 
@@ -76,9 +89,19 @@ public class OidcWellKnownFederationEndpointController extends AbstractOidcFeder
             return error;
         }
 
+        return toResponse(buildEntityConfiguration());
+    }
+
+    /**
+     * Build and sign the entity configuration of CAS, as the well-known endpoint publishes it.
+     *
+     * @return the entity configuration
+     * @throws Exception the exception
+     */
+    public EntityStatement buildEntityConfiguration() throws Exception {
         val role = oidcProperties.getFederation().getRole();
         val settings = serverDiscoverySettings.getIfAvailable();
-        var issuer = oidcProperties.getCore().getIssuer();
+        var issuer = oidcIssuerService.determineIssuer(Optional.empty());
         val metadata = new JSONObject();
         val authorityHints = oidcProperties.getFederation().getAuthorityHints().stream().map(EntityID::new).toList();
         if (settings != null) {
@@ -115,10 +138,26 @@ public class OidcWellKnownFederationEndpointController extends AbstractOidcFeder
             federationMetadata.put(FEDERATION_TRUST_MARK_ENDPOINT, issuer + OidcConstants.TRUST_MARK_FEDERATION_URL);
             federationMetadata.put(FEDERATION_TRUST_MARK_STATUS_ENDPOINT, issuer + OidcConstants.TRUST_MARK_STATUS_FEDERATION_URL);
             federationMetadata.put(FEDERATION_TRUST_MARK_LIST_ENDPOINT, issuer + OidcConstants.TRUST_MARK_LIST_FEDERATION_URL);
+            addAuthenticationMethods(federationMetadata, FEDERATION_TRUST_MARK_ENDPOINT_AUTH_METHODS,
+                oidcProperties.getFederation().getTrustMarkEndpointAuthentication());
+        }
+        if (role.isTrustAnchorOrIntermediate()) {
+            addAuthenticationMethods(federationMetadata, FEDERATION_RESOLVE_ENDPOINT_AUTH_METHODS,
+                oidcProperties.getFederation().getResolveEndpointAuthentication());
         }
         metadata.put(EntityType.FEDERATION_ENTITY.getValue(), federationMetadata);
 
-        return buildEntityStatement(issuer, issuer, metadata, null, authorityHints);
+        return federationEntityStatementService.createAndSign(issuer, issuer, metadata, null, authorityHints, Map.of());
+    }
+
+    private static void addAuthenticationMethods(final JSONObject federationMetadata, final String parameter,
+                                                 final OidcFederationEndpointAuthenticationModes authentication) {
+        if (authentication != OidcFederationEndpointAuthenticationModes.NONE) {
+            federationMetadata.put(parameter, authentication == OidcFederationEndpointAuthenticationModes.REQUIRED
+                ? List.of(PRIVATE_KEY_JWT)
+                : List.of(NO_CLIENT_AUTHENTICATION, PRIVATE_KEY_JWT));
+            federationMetadata.put(ENDPOINT_AUTH_SIGNING_ALG_VALUES_SUPPORTED, OidcFederationSubordinateClientAuthenticator.getSigningAlgorithms());
+        }
     }
 
     private void addContributedMetadata(final String entityId, final JSONObject metadata) {

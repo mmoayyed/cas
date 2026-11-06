@@ -235,8 +235,10 @@ class OidcConfiguration {
             @Qualifier(JwtBuilder.ACCESS_TOKEN_JWT_BUILDER_BEAN_NAME)
             final JwtBuilder accessTokenJwtBuilder,
             @Qualifier(OidcRequestObjectDecrypter.BEAN_NAME)
-            final OidcRequestObjectDecrypter oidcRequestObjectDecrypter) {
-            return new OidcRequestParameterResolver(accessTokenJwtBuilder, oidcRequestObjectDecrypter);
+            final OidcRequestObjectDecrypter oidcRequestObjectDecrypter,
+            @Qualifier(OAuth20ClientSecretValidator.BEAN_NAME)
+            final OAuth20ClientSecretValidator oauth20ClientSecretValidator) {
+            return new OidcRequestParameterResolver(accessTokenJwtBuilder, oidcRequestObjectDecrypter, oauth20ClientSecretValidator);
         }
 
         @Bean
@@ -244,9 +246,9 @@ class OidcConfiguration {
         @ConditionalOnMissingBean(name = OidcRequestObjectDecrypter.BEAN_NAME)
         public OidcRequestObjectDecrypter oidcRequestObjectDecrypter(
             @Qualifier("oidcJsonWebKeystoreGeneratorService")
-            final OidcJsonWebKeystoreGeneratorService oidcJsonWebKeystoreGeneratorService,
+            final ObjectProvider<OidcJsonWebKeystoreGeneratorService> oidcJsonWebKeystoreGeneratorService,
             final CasConfigurationProperties casProperties) {
-            return new OidcRequestObjectDecrypter(oidcJsonWebKeystoreGeneratorService, casProperties);
+            return new OidcRequestObjectDecrypter(oidcJsonWebKeystoreGeneratorService::getObject, casProperties);
         }
 
         @Bean
@@ -1049,9 +1051,15 @@ class OidcConfiguration {
         @RefreshScope(proxyMode = ScopedProxyMode.DEFAULT)
         @ConditionalOnMissingBean(name = "oidcClientRegistrationRequestTranslator")
         public OidcClientRegistrationRequestTranslator oidcClientRegistrationRequestTranslator(
+            final CasConfigurationProperties casProperties,
+            @Qualifier(HttpClient.BEAN_NAME_HTTPCLIENT)
+            final HttpClient httpClient,
             @Qualifier(OidcConfigurationContext.BEAN_NAME)
             final ObjectProvider<OidcConfigurationContext> oidcConfigurationContext) {
-            return new OidcDefaultClientRegistrationRequestTranslator(oidcConfigurationContext);
+            val timeout = Beans.newDuration(casProperties.getAuthn().getOidc().getRegistration().getClientIdMetadataDocument().getTimeout());
+            return new OidcDefaultClientRegistrationRequestTranslator(oidcConfigurationContext,
+                new DefaultOidcClientIdMetadataDocumentFetcher(httpClient, timeout,
+                    OidcDefaultClientRegistrationRequestTranslator.MAXIMUM_SECTOR_IDENTIFIER_DOCUMENT_SIZE, false));
         }
 
         @Bean

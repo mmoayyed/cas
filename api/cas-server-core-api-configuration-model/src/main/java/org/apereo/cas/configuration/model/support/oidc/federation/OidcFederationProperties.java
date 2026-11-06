@@ -55,8 +55,9 @@ public class OidcFederationProperties implements Serializable {
 
     /**
      * The trust anchors whose trust chains an OpenID provider accepts when relying parties register
-     * automatically, with their keys obtained out of band. When none are defined, the authority hints
-     * are used as trust anchors and their keys are taken from their own entity configuration.
+     * automatically, and that an intermediate resolves entities to at its resolve endpoint, with their keys obtained
+     * out of band. When none are defined, the authority hints are used as trust anchors and their keys are taken from
+     * their own entity configuration.
      */
     private List<OidcFederationTrustAnchorProperties> trustAnchors = new ArrayList<>();
 
@@ -74,9 +75,33 @@ public class OidcFederationProperties implements Serializable {
     private int maxPathLength = 3;
 
     /**
+     * The maximum number of requests a single resolution may send: entity configurations, subordinate statements,
+     * historical keys and trust mark status requests, counted together across the trust chains of the entity and those
+     * of the issuers of its trust marks. Statements already fetched in the same resolution are reused and not counted
+     * again, and neither are the historical keys of trust anchors, which are kept for a while. A resolution that needs
+     * more fails, which bounds what a single client id or resolve request can cost.
+     */
+    private int maxRequestsPerResolution = 50;
+
+    /**
+     * The longest time a single resolution may take, all of its requests together; every response is also limited in
+     * size. A resolution that takes longer fails, so that slow or unresponsive entities cannot hold the resolutions
+     * that may run at the same time.
+     */
+    @DurationCapable
+    private String resolutionTimeout = "PT10S";
+
+    /**
+     * The maximum number of resolutions that run at the same time, for automatic registration and the resolve endpoint
+     * together. A resolution that cannot start within a second fails without being remembered as unresolved.
+     */
+    private int maxConcurrentResolutions = 10;
+
+    /**
      * How long an entity identifier whose trust chains could not be resolved is remembered.
      * Within that time, authorization requests that carry it as client id do not cause trust chains
-     * to be resolved again, and a registration whose refresh failed is kept as it is.
+     * to be resolved again, and a registration whose refresh failed is kept as it is. A trust anchor or intermediate
+     * also remembers the entities its resolve endpoint resolved, or could not resolve, for at most that time.
      */
     @DurationCapable
     private String unresolvedEntityRetention = "PT5M";
@@ -115,6 +140,22 @@ public class OidcFederationProperties implements Serializable {
      * endpoints.
      */
     private List<OidcFederationIssuedTrustMarkProperties> issuedTrustMarks = new ArrayList<>();
+
+    /**
+     * Client authentication at the trust mark endpoint of this entity as a trust mark issuer. Authenticated requests
+     * use {@code POST} and {@code private_key_jwt}, signed with the federation keys of a subordinate of this entity
+     * as its subordinate definition holds them, and may only ask for the trust marks issued to the requester itself.
+     * Accepted values are {@code NONE}, {@code OPTIONAL} and {@code REQUIRED}.
+     */
+    private OidcFederationEndpointAuthenticationModes trustMarkEndpointAuthentication = OidcFederationEndpointAuthenticationModes.NONE;
+
+    /**
+     * Client authentication at the resolve endpoint of this entity as a trust anchor or intermediate. Authenticated
+     * requests use {@code POST} and {@code private_key_jwt}, signed with the federation keys of a subordinate of this
+     * entity as its subordinate definition holds them, and their resolve responses are addressed to the requester.
+     * Accepted values are {@code NONE}, {@code OPTIONAL} and {@code REQUIRED}.
+     */
+    private OidcFederationEndpointAuthenticationModes resolveEndpointAuthentication = OidcFederationEndpointAuthenticationModes.NONE;
 
     /**
      * Rotation of the federation keys: the future key becomes current and starts signing, the current key

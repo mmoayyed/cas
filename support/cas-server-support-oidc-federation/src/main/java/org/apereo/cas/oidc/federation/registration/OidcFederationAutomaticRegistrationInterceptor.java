@@ -2,18 +2,22 @@ package org.apereo.cas.oidc.federation.registration;
 
 import module java.base;
 import org.apereo.cas.oidc.OidcConstants;
+import org.apereo.cas.oidc.federation.chain.OidcFederationResolutionUnavailableException;
 import org.apereo.cas.oidc.issuer.OidcIssuerService;
 import org.apereo.cas.oidc.jwks.OidcJsonWebKeyStoreUtils;
 import org.apereo.cas.oidc.jwks.OidcJsonWebKeyUsage;
+import org.apereo.cas.oidc.util.OidcRequestSupport;
 import org.apereo.cas.oidc.web.OidcRequestObjectDecrypter;
 import org.apereo.cas.services.OidcRegisteredService;
 import org.apereo.cas.support.oauth.OAuth20Constants;
 import org.apereo.cas.support.oauth.services.OAuthRegisteredService;
 import org.apereo.cas.support.oauth.util.OAuth20Utils;
+import org.apereo.cas.ticket.ExpirationPolicy;
 import org.apereo.cas.ticket.InvalidTicketException;
 import org.apereo.cas.ticket.TicketFactory;
 import org.apereo.cas.ticket.TransientSessionTicket;
 import org.apereo.cas.ticket.TransientSessionTicketFactory;
+import org.apereo.cas.ticket.expiration.HardTimeoutExpirationPolicy;
 import org.apereo.cas.ticket.registry.TicketRegistry;
 import org.apereo.cas.util.DigestUtils;
 import com.nimbusds.jwt.JWTParser;
@@ -46,18 +50,27 @@ import jakarta.servlet.http.HttpServletResponse;
  * party of the federation is registered automatically (OpenID Federation 1.0, section 12.1) before client
  * authentication and the authorization request validators look the client up.
  * <p>
+ * The client is the {@code client_id} parameter, or, for an authorization request without one, the {@code client_id}
+ * of its request object, which is where the authorization request validators take it from; a request object whose
+ * {@code client_id} differs from the parameter is refused by the request parameter resolver. The interceptor runs on
+ * the OpenID Connect endpoints and on the OAuth authorization endpoint.
+ * <p>
  * An authorization request of an automatically registered client must prove that the client controls its keys
  * (section 12.1.1): it carries a request object signed with a key of the relying party's resolved metadata, whose
  * {@code iss} and {@code client_id} are the Entity Identifier, whose {@code aud} is only the OP's Entity Identifier,
- * with {@code jti} and {@code exp} and without {@code sub}. A request object is used once: its {@code jti} is kept
- * in the ticket registry for the lifetime of transient session tickets, and only the very same request object may come
- * back in that time, which is what the authorization endpoint receives again after the login. A pushed authorization
+ * with {@code jti} and {@code exp} and without {@code sub}, valid for 10 minutes at most. A request object is used
+ * once: its {@code jti} is kept in the ticket registry for as long as the request object could be accepted, and at least
+ * for the lifetime of transient session tickets, and only the very same request object may come back in that time, which
+ * is what the authorization endpoint receives again after the login, even once the request object has expired. A pushed authorization
  * request proves the keys through client authentication instead, which the pushed authorization endpoint requires of an
  * automatically registered client since its registration only allows asymmetric methods, so the authorization request
- * that refers to it by {@code request_uri} carries no request object. A request object encrypted to CAS is decrypted
+ * that refers to it by {@code request_uri} carries no request object; a client assertion sent there must have the OP
+ * Entity Identifier as its only {@code aud} (section 12.1.1.2), or the request is refused with {@code invalid_client}. A request object encrypted to CAS is decrypted
  * first and its nested JWT checked as above, while replay is tracked on the request object as sent. Requests that fail
  * are refused with {@code invalid_request} and are never redirected to the client, since its trust could not be
- * established.
+ * established. A relying party that is not registered yet and cannot be registered now, because registrations are busy
+ * or what its registration depends on cannot be reached, is answered with {@code 503} and
+ * {@code temporarily_unavailable} rather than as an unknown client.
  * <p>
  * A relying party that rolls its keys over signs with keys its registration does not hold until the registration is
  * resolved again. A request object of an authorization request, or a {@code client_assertion} sent to any of the
@@ -77,7 +90,17 @@ public class OidcFederationAutomaticRegistrationInterceptor implements HandlerIn
 
     private static final int ALLOWED_CLOCK_SKEW_SECONDS = 30;
 
+    /**
+     * The longest a request object may be valid for, from now or from its {@code iat}: it must be kept as used for as
+     * long as it could be accepted, so its lifetime bounds what is remembered.
+     */
+    private static final long MAX_REQUEST_OBJECT_LIFETIME_SECONDS = Duration.ofMinutes(10).toSeconds();
+
     private static final String TRUST_CHAIN = "trust_chain";
+
+    private static final String INVALID_CLIENT = "invalid_client";
+
+    private static final String TEMPORARILY_UNAVAILABLE = "temporarily_unavailable";
 
     private final OidcFederationAutomaticClientRegistration clientRegistration;
 
@@ -96,8 +119,9 @@ public class OidcFederationAutomaticRegistrationInterceptor implements HandlerIn
                              final Object handler)
             throws Exception {
         val clientAssertion = resolveClientAssertion(request);
-        val clientId = StringUtils.defaultIfBlank(request.getParameter(OAuth20Constants.CLIENT_ID), resolveSubject(clientAssertion));
         val authorizationRequest = isAuthorizationRequest(request);
+        val clientId = StringUtils.firstNonBlank(request.getParameter(OAuth20Constants.CLIENT_ID),
+            authorizationRequest ? resolveRequestObjectClientId(request) : null, resolveSubject(clientAssertion));
         if ((!authorizationRequest && clientAssertion == null) || !OidcFederationAutomaticClientRegistration.isFederatedEntityId(clientId)) {
             return true;
         }
@@ -105,25 +129,65 @@ public class OidcFederationAutomaticRegistrationInterceptor implements HandlerIn
             .filter(Objects::nonNull)
             .toList();
         val trustChain = resolveTrustChain(signedObjects);
-        var registeredService = authorizationRequest ? clientRegistration.register(clientId, trustChain) : null;
-        if (!signedObjects.isEmpty()) {
-            registeredService = clientRegistration.reevaluate(clientId, service -> !isSignedWithKeysOf(service, signedObjects), trustChain);
+        var registeredService = Optional.<OAuthRegisteredService>empty();
+        if (authorizationRequest) {
+            try {
+                registeredService = Optional.ofNullable(clientRegistration.register(clientId, trustChain,
+                    service -> !signedObjects.isEmpty() && isSignedWithKeysOf(service, signedObjects)));
+            } catch (final OidcFederationResolutionUnavailableException e) {
+                LOGGER.warn("Relying party [{}] cannot be registered now: [{}]", clientId, e.getMessage());
+                return refuse(response, HttpStatus.SERVICE_UNAVAILABLE, TEMPORARILY_UNAVAILABLE, "Relying party cannot be registered now; try again later");
+            }
         }
-        if (authorizationRequest && registeredService instanceof final OidcRegisteredService oidcService
-            && OidcFederationAutomaticClientRegistration.isAutomaticallyRegistered(oidcService)
-            && !isPushedAuthorizationRequest(request)
-            && StringUtils.isBlank(request.getParameter(OidcConstants.REQUEST_URI))) {
+        if (!signedObjects.isEmpty()) {
+            registeredService = Optional.ofNullable(clientRegistration.reevaluate(clientId, service -> !isSignedWithKeysOf(service, signedObjects), trustChain));
+        }
+        if (!authorizationRequest || !(registeredService.orElse(null) instanceof final OidcRegisteredService oidcService)
+            || !OidcFederationAutomaticClientRegistration.isAutomaticallyRegistered(oidcService)) {
+            return true;
+        }
+        if (isPushedAuthorizationRequest(request)) {
+            if (clientAssertion != null && !isAddressedOnlyTo(clientAssertion, issuerService.determineIssuer(Optional.of(oidcService)))) {
+                LOGGER.warn("Refusing the pushed authorization request of [{}]: its client assertion is not addressed only to CAS", clientId);
+                return refuse(response, HttpStatus.UNAUTHORIZED, INVALID_CLIENT, "Client assertion aud must only be the OP Entity Identifier");
+            }
+            return true;
+        }
+        if (StringUtils.isBlank(request.getParameter(OidcConstants.REQUEST_URI))) {
             val error = verifyRequestObject(request, oidcService);
             if (error.isPresent()) {
                 LOGGER.warn("Refusing the authorization request of [{}]: [{}]", clientId, error.get());
-                response.setStatus(HttpStatus.BAD_REQUEST.value());
-                response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-                response.getWriter().write(OAuth20Utils.toJson(
-                    OAuth20Utils.getErrorResponseBody(OAuth20Constants.INVALID_REQUEST, error.get())));
-                return false;
+                return refuse(response, HttpStatus.BAD_REQUEST, OAuth20Constants.INVALID_REQUEST, error.get());
             }
         }
         return true;
+    }
+
+    private static boolean refuse(final HttpServletResponse response, final HttpStatus status, final String error,
+                                  final String description)
+            throws IOException {
+        response.setStatus(status.value());
+        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+        response.getWriter().write(OAuth20Utils.toJson(OAuth20Utils.getErrorResponseBody(error, description)));
+        return false;
+    }
+
+    /**
+     * Whether the client assertion is addressed only to the given entity: at the pushed authorization endpoint, the
+     * client assertion of an automatically registered relying party must have the OP Entity Identifier as its only
+     * audience (OpenID Federation 1.0, section 12.1.1.2), not its token endpoint nor any other value besides.
+     *
+     * @param clientAssertion the client assertion
+     * @param entityId        the entity identifier of CAS
+     * @return true or false
+     */
+    private static boolean isAddressedOnlyTo(final String clientAssertion, final String entityId) {
+        try {
+            return List.of(entityId).equals(JWTParser.parse(clientAssertion).getJWTClaimsSet().getAudience());
+        } catch (final ParseException e) {
+            LOGGER.trace("Client assertion cannot be parsed: [{}]", e.getMessage());
+            return false;
+        }
     }
 
     /**
@@ -160,6 +224,8 @@ public class OidcFederationAutomaticRegistrationInterceptor implements HandlerIn
                 val properties = new HashMap<String, Serializable>();
                 properties.put(OAuth20Constants.CLIENT_ID, clientId);
                 properties.put(REQUEST_OBJECT_DIGEST, digest);
+                properties.put(ExpirationPolicy.class.getName(), new HardTimeoutExpirationPolicy(
+                    usedRequestObjectLifetime(factory, JWTParser.parse(nestedRequestObject).getJWTClaimsSet().getExpirationTime())));
                 ticketRegistry.addTicket(factory.create(ticketId, properties));
             }
             return error;
@@ -200,7 +266,9 @@ public class OidcFederationAutomaticRegistrationInterceptor implements HandlerIn
 
     /**
      * The trust chain the relying party sent in the {@code trust_chain} header (OpenID Federation 1.0, section 4.3) of
-     * its request object, or else of its client assertion. It is only a candidate: it is verified before it is used.
+     * its request object, or else of its client assertion. It is only a candidate, read before the signature of the
+     * object is checked: the chain is verified, and used only when the objects the client sent are signed with the
+     * keys it resolves to.
      *
      * @param signedObjects the signed JWTs the client sent, the request object first
      * @return the serialized statements, or an empty list
@@ -236,6 +304,27 @@ public class OidcFederationAutomaticRegistrationInterceptor implements HandlerIn
         }
     }
 
+    /**
+     * The {@code client_id} of the request object, signed or not, when the request carries no {@code client_id}
+     * parameter: the authorization request validators then take the client from the request object, so the client
+     * whose keys must be proven is that one.
+     *
+     * @param request the request
+     * @return the client id of the request object, or null
+     */
+    private @Nullable String resolveRequestObjectClientId(final HttpServletRequest request) {
+        val requestObject = request.getParameter(OAuth20Constants.REQUEST);
+        if (StringUtils.isBlank(requestObject)) {
+            return null;
+        }
+        try {
+            return JWTParser.parse(decryptRequestObject(requestObject)).getJWTClaimsSet().getStringClaim(OAuth20Constants.CLIENT_ID);
+        } catch (final Exception e) {
+            LOGGER.trace("Request object has no client id: [{}]", e.getMessage());
+            return null;
+        }
+    }
+
     private static @Nullable String resolveSubject(@Nullable final String clientAssertion) {
         try {
             return clientAssertion == null ? null : JWTParser.parse(clientAssertion).getJWTClaimsSet().getSubject();
@@ -263,6 +352,17 @@ public class OidcFederationAutomaticRegistrationInterceptor implements HandlerIn
             throw new IllegalStateException("Encrypted request objects cannot be decrypted without OpenID Connect");
         }
         return decrypter.decrypt(requestObject);
+    }
+
+    /**
+     * How long a used request object is remembered: until it can no longer be accepted, its expiration plus the allowed
+     * clock skew, and at least for the lifetime of transient session tickets, during which the very same request object
+     * comes back after the login.
+     */
+    private static long usedRequestObjectLifetime(final TransientSessionTicketFactory factory, final Date expiration) {
+        val transientLifetime = Objects.requireNonNullElse(factory.getExpirationPolicyBuilder().buildTicketExpirationPolicy().getTimeToLive(), 0L);
+        val acceptedFor = Duration.between(Instant.now(Clock.systemUTC()), expiration.toInstant()).toSeconds() + ALLOWED_CLOCK_SKEW_SECONDS;
+        return Math.max(1, Math.max(transientLifetime, acceptedFor));
     }
 
     private Optional<String> verifyRequestObjectClaims(final String requestObject, final OidcRegisteredService registeredService) {
@@ -293,6 +393,12 @@ public class OidcFederationAutomaticRegistrationInterceptor implements HandlerIn
             if (claims.hasClaim("sub")) {
                 return Optional.of("Request object must not carry sub");
             }
+            val expiration = claims.getExpirationTime().getValue();
+            val now = Instant.now(Clock.systemUTC()).getEpochSecond();
+            if (expiration - now > MAX_REQUEST_OBJECT_LIFETIME_SECONDS + ALLOWED_CLOCK_SKEW_SECONDS
+                || (claims.getIssuedAt() != null && expiration - claims.getIssuedAt().getValue() > MAX_REQUEST_OBJECT_LIFETIME_SECONDS)) {
+                return Optional.of("Request object must not be valid for more than 10 minutes");
+            }
             return Optional.empty();
         } catch (final InvalidJwtException | MalformedClaimException e) {
             LOGGER.debug("Request object of [{}] failed verification: [{}]", clientId, e.getMessage());
@@ -310,17 +416,20 @@ public class OidcFederationAutomaticRegistrationInterceptor implements HandlerIn
         }
     }
 
+    /**
+     * Whether the request is an authorization or pushed authorization request, by its path as handler mappings see it:
+     * a path that reaches an authorization endpoint once decoded, such as one with an encoded letter, is one.
+     *
+     * @param request the request
+     * @return true or false
+     */
     private static boolean isAuthorizationRequest(final HttpServletRequest request) {
         return isPushedAuthorizationRequest(request)
-            || requestPathEndsWith(request, OidcConstants.AUTHORIZE_URL)
-            || requestPathEndsWith(request, OAuth20Constants.AUTHORIZE_URL);
+            || OidcRequestSupport.isRequestForEndpoint(request, OidcConstants.AUTHORIZE_URL)
+            || OidcRequestSupport.isRequestForEndpoint(request, OAuth20Constants.AUTHORIZE_URL);
     }
 
     private static boolean isPushedAuthorizationRequest(final HttpServletRequest request) {
-        return requestPathEndsWith(request, OidcConstants.PUSHED_AUTHORIZE_URL);
-    }
-
-    private static boolean requestPathEndsWith(final HttpServletRequest request, final String endpoint) {
-        return Strings.CS.endsWith(Strings.CS.removeEnd(request.getRequestURI(), "/"), '/' + endpoint);
+        return OidcRequestSupport.isRequestForEndpoint(request, OidcConstants.PUSHED_AUTHORIZE_URL);
     }
 }
