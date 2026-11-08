@@ -133,7 +133,7 @@ to build and verify Graal VM native images and we plan to extend the coverage to
 {: data-area="project"}
 
 The collection of end-to-end [browser tests based on Puppeteer](../../developer/Test-Process.html) continue to grow to cover more use cases
-and scenarios. At the moment, total number of jobs stands at approximately `627` distinct scenarios. The overall
+and scenarios. At the moment, total number of jobs stands at approximately `628` distinct scenarios. The overall
 test coverage of the CAS codebase is approximately `94%`.
 
 - {: .changed data-area="project"} MariaDB integration tests and functional test scenarios use port `3307`, so they can run
@@ -205,6 +205,19 @@ and the result downloads as a `cas-theme-custom.properties` file and a `custom.c
 opens on a server that already serves such a `custom.css`, it reads its own block back so the file can keep evolving.
 Nothing is saved on the server; the builder is turned on by default and is controlled by the `cas.theme-builder.enabled`
 theme property.
+
+### Palantir Search, User Lookup & Service History
+{: .new data-area="ui"}
+
+[Palantir](../installation/Admin-Dashboard.html) has a search box, opened from the navigation bar or with `Ctrl+K`
+(`⌘K` on macOS) or `/`, that goes to any page or section, finds a registered application by name, identifier or service id,
+and runs common actions without leaving the keyboard. A new *Users* page looks up one user and gathers in one place their
+single sign-on sessions, multifactor and trusted devices, consent decisions, resolved attributes, impersonation accounts,
+passwordless account, password history, throttled login attempts and recent audit events, each with its usual actions
+such as ending a session, removing a device or releasing a throttled attempt. Only sources with something recorded for
+the user are shown, and sources whose actuator endpoints are not enabled are left out. The change history of an application
+compares any recorded version side by side with the current definition or the version before it, and restores the
+selected version from the same dialog.
 
 ### Theme Properties
 {: .new data-area="ui"}
@@ -341,6 +354,8 @@ one-time codes can be added when `cas.authn.mfa.simple.mail.accepted-email-patte
   `cas.ticket.registry.jpa.properties`{: .cas-setting}.
 - {: .fixed data-area="tickets"} Looking up sessions by attribute in the [JPA ticket registry](../ticketing/JPA-Ticket-Registry.html)
   no longer fails on MySQL when the caller runs outside a transaction, as delegated OpenID Connect and SAML2 logout do.
+  The [single sign-on sessions endpoint](../authentication/Configuring-SSO.html#actuator-endpoints) reads sessions inside
+  a ticket transaction, so listing or removing sessions no longer fails with the JPA ticket registry on PostgreSQL.
   Updating a ticket encrypts it once instead of twice when ticket encryption is turned on.
 - {: .changed data-area="tickets"} The [JPA ticket registry](../ticketing/JPA-Ticket-Registry.html) updates a ticket with a
   single statement instead of reading the row back first, no longer deletes service tickets twice when a session ends,
@@ -692,6 +707,11 @@ one-time codes can be added when `cas.authn.mfa.simple.mail.accepted-email-patte
   the attribute is not released when none of its values match, as the inline Groovy transformation already did.
 - {: .fixed data-area="attributes"} The [return linked attribute release policy](../integration/Attribute-Release-Policy-ReturnLinked.html)
   releases the values of the first linked attribute that has a value, as documented; it used to release the last one.
+- {: .new data-area="saml"} [SAML2 attribute release policies](../installation/Configuring-SAML2-Attribute-Release.html) that
+  match metadata entity attributes, entity categories included (InCommon and REFEDS Research and Scholarship, anonymous,
+  pseudonymous and personalized access), accept entity id patterns: a service provider whose metadata does not carry the
+  entity attribute still receives the attributes when its entity id matches one of them. The Palantir service wizard
+  can edit these patterns.
 
 ### Authentication and Session Security
 {: .changed data-area="authentication"}
@@ -738,6 +758,9 @@ one-time codes can be added when `cas.authn.mfa.simple.mail.accepted-email-patte
   as the [CAS protocol](../protocol/CAS-Protocol-Specification.html) recommends, instead of returning to the application
   without a ticket. When renewed authentication is turned off with `cas.sso.renew-authn-enabled`{: .cas-setting}, the
   `gateway` parameter is honored as before.
+- {: .new data-area="authentication"} The `throttles` actuator endpoint of
+  [authentication throttling](../authentication/Configuring-Authentication-Throttling-Failure.html) can return only the
+  throttled records of one username, matched regardless of case, instead of every record.
 
 ### SAML2
 {: .changed data-area="saml"}
