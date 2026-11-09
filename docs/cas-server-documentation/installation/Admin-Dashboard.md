@@ -81,6 +81,9 @@ The authentication section lists, under *Interrupts*, which [interrupt](../webfl
 a user would see at login, optionally signing in to a given application: the message, links and data of the interrupt,
 whether it blocks the login, and what each interrupt source answered.
 
+*Import* accepts an application definition in JSON or YAML, or a zip of JSON definitions such as the one *Export*
+produces; an imported application replaces one with the same id.
+
 *Duplicate Application* opens a copy of an application in the wizard as a new application, named after the original,
 with its service id left empty and, where the application has them, a new client id and secret. When the wizard or the
 definition editor holds changes that are not saved, closing it asks whether to keep editing, keep a draft and close, or

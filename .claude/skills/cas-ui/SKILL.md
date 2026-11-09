@@ -131,6 +131,9 @@ description: "Change CAS views and presentation: Thymeleaf render path, theme re
   bring it back, and only the first non-empty card opens by default; a table is the standard `mdc-data-table__table` DataTable, rendered
   empty and filled in the source's `afterRender`); reads go through `PalantirUserLookup.get` (404 means no records; the audit log
   endpoint needs a form content type even on GET and matches its principal as a regex, so quote it).
+- Import posts the chosen file to `registeredServices/import` with the content type of its extension (JSON, YAML, or
+  octet-stream for a zip, which the endpoint reads as a zip of JSON files); the file input's `change` handler is bound
+  once in `initializeServiceButtons` (namespaced) and the input is cleared, so never bind it inside the button's click.
 - Service history (`palantir-services-history.js`) is a jQuery UI dialog over the `entityHistory` endpoint: versions in
   `#entityHistoryTable` (latest first, row data carries `serviceId`/`revisionId`/`index`), a side-by-side diff drawn with
   the jsdiff webjar (global `Diff`) over JSON with sorted keys, the right side always the selected version; restore goes

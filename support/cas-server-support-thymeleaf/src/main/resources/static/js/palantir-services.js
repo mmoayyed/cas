@@ -176,6 +176,79 @@ function getEditServiceDialogInstance() {
     return editServiceDialogInstance;
 }
 
+/**
+ * The content type the import endpoint expects for a file of application definitions, chosen by its extension.
+ *
+ * @param file the chosen file
+ * @returns {string} the content type
+ */
+function serviceImportContentType(file) {
+    const name = file.name.toLowerCase();
+    if (name.endsWith(".zip")) {
+        return "application/octet-stream";
+    }
+    if (name.endsWith(".yaml") || name.endsWith(".yml")) {
+        return "application/yaml";
+    }
+    return "application/json";
+}
+
+/**
+ * Import a JSON or YAML application definition, or a zip of JSON definitions as exported by Palantir, once the
+ * operator confirms it.
+ *
+ * @param file the chosen file
+ * @returns {Promise<void>} resolved once the import is sent or declined
+ */
+async function importServiceFile(file) {
+    const contentType = serviceImportContentType(file);
+    const archive = contentType === "application/octet-stream";
+    const result = await Swal.fire({
+        titleText: `Import ${file.name}?`,
+        text: archive
+            ? "Every JSON application definition in the archive takes effect immediately, replacing an application with the same id."
+            : "The application takes effect immediately, replacing an application with the same id.",
+        icon: "question",
+        showDenyButton: true,
+        confirmButtonText: "Import",
+        denyButtonText: "Cancel"
+    });
+    if (!result.isConfirmed) {
+        return;
+    }
+    $.ajax({
+        url: `${CasActuatorEndpoints.registeredServices()}/import`,
+        type: "POST",
+        contentType: contentType,
+        data: file,
+        processData: false,
+        dataType: "text",
+        success: (response, status, xhr) => {
+            fetchServices(() => updateNavigationSidebar());
+            const id = xhr.getResponseHeader("id");
+            Swal.fire({
+                title: "Imported",
+                text: archive
+                    ? `The applications in ${file.name} are imported.`
+                    : `${file.name} is imported${id ? ` as application ${id}` : ""}.`,
+                icon: "success"
+            });
+        },
+        error: xhr => {
+            if (xhr.status === 400) {
+                Swal.fire({
+                    title: "Nothing imported",
+                    text: `CAS could not read ${file.name} as an application definition.`,
+                    icon: "error"
+                });
+            } else {
+                console.error("Importing applications failed:", xhr.status, xhr.responseText);
+                displayBanner(xhr);
+            }
+        }
+    });
+}
+
 async function initializeServiceButtons() {
     PalantirServiceEditGuard.initialize();
     getEditServiceDialogInstance();
@@ -570,39 +643,20 @@ async function initializeFooterButtons() {
         }
     });
 
+    $("#serviceFileInput")
+        .attr("accept", ".json,.yaml,.yml,.zip")
+        .off("change.import")
+        .on("change.import", event => {
+            const file = event.target.files[0];
+            $(event.target).val("");
+            if (file) {
+                importServiceFile(file);
+            }
+        });
+
     $("button[name=importService]").off().on("click", () => {
         if (CasActuatorEndpoints.registeredServices()) {
-            $("#serviceFileInput").click();
-            $("#serviceFileInput").change(event =>
-                Swal.fire({
-                    title: "Are you sure you want to import this entry?",
-                    text: "Once imported, the entry should take immediate effect.",
-                    icon: "question",
-                    showConfirmButton: true,
-                    showDenyButton: true
-                })
-                    .then((result) => {
-                        if (result.isConfirmed) {
-                            const file = event.target.files[0];
-                            const reader = new FileReader();
-                            reader.readAsText(file);
-                            reader.onload = e => {
-                                const fileContent = e.target.result;
-
-                                $.ajax({
-                                    url: `${CasActuatorEndpoints.registeredServices()}`,
-                                    type: "PUT",
-                                    contentType: "application/json",
-                                    data: fileContent,
-                                    success: response => $("#reloadAll").click(),
-                                    error: (xhr, status, error) => {
-                                        console.error("File upload failed:", error);
-                                        displayBanner(xhr);
-                                    }
-                                });
-                            };
-                        }
-                    }));
+            $("#serviceFileInput").trigger("click");
         }
     });
 

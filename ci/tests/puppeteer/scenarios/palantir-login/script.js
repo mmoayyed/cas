@@ -3,6 +3,9 @@
    activateDashboardTab, ace, currentActiveTab, registeredServicesById, PalantirUserLookup,
    PalantirServiceHistory, Swal, applicationActionHandler, applicationRowContext */
 const assert = require("assert");
+const fs = require("fs");
+const os = require("os");
+const path = require("path");
 const cas = require("../../cas.js");
 
 const DASHBOARD_URL = "https://localhost:8443/cas/palantir/dashboard";
@@ -822,6 +825,57 @@ async function verifyServiceHistory(page) {
 }
 
 /**
+ * Import a YAML application definition through the Import button's file input, check that it is imported once
+ * and shows up in the applications table, and delete it afterwards.
+ *
+ * @param page the puppeteer page
+ */
+async function verifyServiceImport(page) {
+    await cas.separator();
+    const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "palantir-import-")), "ImportExample.yml");
+    fs.writeFileSync(file, [
+        "--- !<org.apereo.cas.services.CasRegisteredService>",
+        "serviceId: \"^https://import.example.org/.*\"",
+        "name: \"ImportExample\"",
+        "description: \"Imported from YAML\""
+    ].join("\n"));
+
+    const imports = [];
+    const onRequest = (request) => {
+        if (request.method() === "POST" && request.url().endsWith("/registeredServices/import")) {
+            imports.push(request.headers()["content-type"]);
+        }
+    };
+    page.on("request", onRequest);
+    const input = await page.$("#serviceFileInput");
+    await input.uploadFile(file);
+    await page.waitForSelector(".swal2-confirm", {visible: true});
+    await page.click(".swal2-confirm");
+    await page.waitForFunction(() => $(".swal2-title").text() === "Imported", {timeout: 30000});
+    const message = await page.evaluate(() => $(".swal2-html-container").text());
+    await cas.logg(message);
+    await page.evaluate(() => Swal.close());
+
+    const listed = await page.waitForFunction(() => [...registeredServicesById.values()]
+        .find((service) => service.name === "ImportExample")?.id, {timeout: 30000});
+    const serviceId = await listed.jsonValue();
+    page.off("request", onRequest);
+    await cas.log(`Import requests: ${imports.join(", ")}`);
+    assert(imports.length === 1 && imports[0].startsWith("application/yaml"));
+    assert(serviceId !== undefined);
+    await page.waitForFunction((id) => $(`#applicationsTable span[serviceId=${id}]`).length > 0, {timeout: 30000}, serviceId);
+    await cas.logg(`Imported application ${serviceId} is listed`);
+
+    await page.evaluate(async (id) => {
+        await fetch(`${CasActuatorEndpoints.registeredServices()}/${id}`, {
+            method: "DELETE",
+            headers: {"Content-Type": "application/json"}
+        });
+    }, serviceId);
+    fs.rmSync(path.dirname(file), {recursive: true, force: true});
+}
+
+/**
  * Ask the Interrupts section of the Authentication page which interrupt a user would see, and check that it
  * reports the resolved user and the answer of every interrupt source.
  *
@@ -908,6 +962,7 @@ async function verifyShortcutsOverlay(page) {
     await verifyCommandPalette(page);
     await verifyUserLookup(page, failures);
     await verifyServiceHistory(page);
+    await verifyServiceImport(page);
     await verifyInterruptInquiry(page);
     await verifyShortcutsOverlay(page);
 
