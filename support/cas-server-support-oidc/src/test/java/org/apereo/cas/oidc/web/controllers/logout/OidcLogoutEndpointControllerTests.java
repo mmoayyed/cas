@@ -113,7 +113,7 @@ class OidcLogoutEndpointControllerTests {
 
         @Test
         void verifyOidcLogoutIdTokenClientMismatch() throws Throwable {
-            val oidcRegisteredService = getOidcRegisteredService(UUID.randomUUID().toString(), randomServiceUrl(), true, false);
+            val oidcRegisteredService = getOidcRegisteredService(UUID.randomUUID().toString(), randomServiceUrl(), false);
             val claims = getClaims(oidcRegisteredService.getClientId());
             servicesManager.save(oidcRegisteredService);
 
@@ -128,7 +128,7 @@ class OidcLogoutEndpointControllerTests {
 
         @Test
         void verifyOidcLogoutWithForeignSignedIdToken() throws Throwable {
-            val registeredService = getOidcRegisteredService(UUID.randomUUID().toString(), randomServiceUrl(), true, false);
+            val registeredService = getOidcRegisteredService(UUID.randomUUID().toString(), randomServiceUrl(), false);
             servicesManager.save(registeredService);
             val claims = new JWTClaimsSet.Builder()
                 .issuer(casProperties.getAuthn().getOidc().getCore().getIssuer())
@@ -148,8 +148,17 @@ class OidcLogoutEndpointControllerTests {
         }
 
         @Test
+        void verifyOidcLogoutWithIdTokenHintThatIsNotJwt() throws Throwable {
+            mockMvc.perform(get("/cas/oidc/logout")
+                    .with(withHttpRequestProcessor())
+                    .queryParam(OidcConstants.ID_TOKEN_HINT, "not-a-jwt")
+                )
+                .andExpect(status().isBadRequest());
+        }
+
+        @Test
         void verifyPostLogoutRedirectToAnotherRegisteredApplication() throws Throwable {
-            val registeredService = getOidcRegisteredService(UUID.randomUUID().toString(), randomServiceUrl(), true, false);
+            val registeredService = getOidcRegisteredService(UUID.randomUUID().toString(), randomServiceUrl(), false);
             servicesManager.save(registeredService);
             val otherApplication = "https://%s.example.org".formatted(UUID.randomUUID());
             servicesManager.save(RegisteredServiceTestUtils.getRegisteredService("^%s/.*".formatted(otherApplication)));
@@ -171,7 +180,7 @@ class OidcLogoutEndpointControllerTests {
 
         @Test
         void verifyOidcLogoutWithIdTokenIssuerPerService() throws Throwable {
-            val registeredService = getOidcRegisteredService(UUID.randomUUID().toString(), randomServiceUrl(), true, false);
+            val registeredService = getOidcRegisteredService(UUID.randomUUID().toString(), randomServiceUrl(), false);
             registeredService.setIdTokenIssuer("https://sso.example.org/cas/oidc/something/else");
             val claims = getClaims(registeredService.getClientId(), registeredService.getIdTokenIssuer());
             servicesManager.save(registeredService);
@@ -189,7 +198,7 @@ class OidcLogoutEndpointControllerTests {
 
         @Test
         void verifyOidcLogoutWithIdTokenParam() throws Throwable {
-            val oidcRegisteredService = getOidcRegisteredService(UUID.randomUUID().toString(), randomServiceUrl(), true, false);
+            val oidcRegisteredService = getOidcRegisteredService(UUID.randomUUID().toString(), randomServiceUrl(), false);
             val claims = getClaims(oidcRegisteredService.getClientId());
             servicesManager.save(oidcRegisteredService);
 
@@ -209,7 +218,7 @@ class OidcLogoutEndpointControllerTests {
 
         @Test
         void verifyOidcLogoutWithIdTokenAndStateParams() throws Throwable {
-            val oidcRegisteredService = getOidcRegisteredService(UUID.randomUUID().toString(), randomServiceUrl(), true, false);
+            val oidcRegisteredService = getOidcRegisteredService(UUID.randomUUID().toString(), randomServiceUrl(), false);
             val claims = getClaims(oidcRegisteredService.getClientId());
             servicesManager.save(oidcRegisteredService);
             val idToken = oidcTokenSigningAndEncryptionService.encode(oidcRegisteredService, claims);
@@ -231,7 +240,7 @@ class OidcLogoutEndpointControllerTests {
         @Test
         void verifyOidcLogoutWithIdTokenAndValidPostLogoutRedirectUrlParams() throws Throwable {
 
-            val registeredService = getOidcRegisteredService(UUID.randomUUID().toString(), randomServiceUrl(), true, false);
+            val registeredService = getOidcRegisteredService(UUID.randomUUID().toString(), randomServiceUrl(), false);
             val claims = getClaims(registeredService.getClientId());
             servicesManager.save(registeredService);
             val idToken = oidcTokenSigningAndEncryptionService.encode(registeredService, claims);
@@ -253,7 +262,7 @@ class OidcLogoutEndpointControllerTests {
         @Test
         void verifyOidcLogoutWithIdTokenAndInvalidPostLogoutRedirectUrlParams() throws Throwable {
 
-            val registeredService = getOidcRegisteredService(UUID.randomUUID().toString(), randomServiceUrl(), true, false);
+            val registeredService = getOidcRegisteredService(UUID.randomUUID().toString(), randomServiceUrl(), false);
             val claims = getClaims(registeredService.getClientId());
             servicesManager.save(registeredService);
             val idToken = oidcTokenSigningAndEncryptionService.encode(registeredService, claims);
@@ -292,7 +301,7 @@ class OidcLogoutEndpointControllerTests {
         @Test
         void verifyOidcLogoutWithIdTokenAndValidRegExMatchingPostLogoutRedirectUrlParams() throws Throwable {
             val claims = getClaims();
-            val oidcRegisteredService = getOidcRegisteredService(true, false);
+            val oidcRegisteredService = getOidcRegisteredService(false);
             val idToken = oidcTokenSigningAndEncryptionService.encode(oidcRegisteredService, claims);
 
             var request = mockMvc.perform(get("/cas/oidc/logout")
