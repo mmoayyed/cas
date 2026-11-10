@@ -173,7 +173,7 @@ async function initializeSsoSessionOperations() {
         selector: "#springSessionsTable tbody tr",
         items: {
             view: {name: "View Spring Session Details", icon: contextMenuIcon("mdi-eye")},
-            remove: {name: "Remove Spring Session", icon: contextMenuIcon("mdi-delete")}
+            remove: {name: "Remove Spring Session", write: "sessions", icon: contextMenuIcon("mdi-delete")}
         },
         callback: (key, context) => {
             const id = context.rowData.sessionId;
@@ -247,7 +247,7 @@ async function initializeSsoSessionOperations() {
         items: {
             view: {name: "View SSO Session Details", icon: contextMenuIcon("mdi-account-eye")},
             copy: {name: "Copy Ticket Granting Ticket", icon: contextMenuIcon("mdi-content-copy")},
-            remove: {name: "Remove SSO Session", icon: contextMenuIcon("mdi-delete")}
+            remove: {name: "Remove SSO Session", write: "ssoSessions", icon: contextMenuIcon("mdi-delete")}
         },
         callback: (key, context) => {
             if (key === "view") {

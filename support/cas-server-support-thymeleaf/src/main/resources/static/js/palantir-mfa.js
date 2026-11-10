@@ -215,7 +215,7 @@ async function initializeMultifactorOperations() {
         table: mfaDevicesTable,
         selector: "#mfaDevicesTable tbody tr",
         items: {
-            remove: {name: "Remove MFA Device", icon: contextMenuIcon("mdi-delete")}
+            remove: {name: "Remove MFA Device", write: "mfaDevices", icon: contextMenuIcon("mdi-delete")}
         },
         callback: (key, context) => {
             if (key === "remove") {
@@ -319,7 +319,7 @@ async function initializeTrustedMultifactorOperations() {
         table: mfaTrustedDevicesTable,
         selector: "#mfaTrustedDevicesTable tbody tr",
         items: {
-            remove: {name: "Remove Trusted MFA Device", icon: contextMenuIcon("mdi-delete")}
+            remove: {name: "Remove Trusted MFA Device", write: "multifactorTrustedDevices", icon: contextMenuIcon("mdi-delete")}
         },
         callback: (key, context) => {
             if (key === "remove") {

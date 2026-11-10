@@ -3187,10 +3187,27 @@ function initializeDescriptionEditor(containerId) {
         }).on("tbwchange tbwblur", function () {
             generateServiceDefinition();
         });
-        $("#registeredServiceDescriptionEditor").attr("aria-label", "Description");
+        $("#registeredServiceDescriptionEditor").attr("aria-label", "Description").data("renderer", unwrapDescriptionParagraph);
         $("#registeredServiceDescriptionEditorContainer .trumbowyg-editor")
             .attr({"role": "textbox", "aria-multiline": "true", "aria-label": "Description"});
     }, 150);
+}
+
+/**
+ * The editor keeps every line in a paragraph; a description that is a single paragraph is kept without that wrapper,
+ * so a plain description stays plain text, while several paragraphs keep their markup.
+ *
+ * @param value the HTML of the editor
+ * @returns {string} the description
+ */
+function unwrapDescriptionParagraph(value) {
+    const body = new DOMParser().parseFromString(String(value ?? ""), "text/html").body;
+    const nodes = [...body.childNodes].filter(node => node.nodeType !== Node.TEXT_NODE || node.textContent.trim().length > 0);
+    if (nodes.length === 1 && nodes[0].nodeName === "P" && nodes[0].attributes.length === 0) {
+        const inner = nodes[0].innerHTML.trim();
+        return inner.length > 0 && inner !== "<br>" ? inner : String(value);
+    }
+    return String(value);
 }
 
 function setDescriptionEditorValue(value) {
@@ -3615,6 +3632,9 @@ function populateWizardFromServiceDefinition(serviceDefinition) {
         if (paramName === "clientSecrets" && $input.attr("id") === "registeredServiceClientSecrets") {
             return;
         }
+        if (paramName === "contacts") {
+            return;
+        }
 
         // Skip if this is part of a mapped field (handled separately)
         if ($input.closest("[id$='MapContainer']").length > 0) {
@@ -3638,6 +3658,8 @@ function populateWizardFromServiceDefinition(serviceDefinition) {
             }
         }
     });
+
+    populateRegisteredServiceContacts(serviceDefinition, floatMdcTextFieldLabel);
 
     // Populate select fields
     $("form#editServiceWizardForm select[data-param-name]").each(function () {
@@ -3824,6 +3846,31 @@ function populateWizardFromServiceDefinition(serviceDefinition) {
 }
 
 /**
+ * Fill the contact fields of the wizard from the contacts of a definition, which are a Java list of contact objects:
+ * the first three, one per contact tab.
+ *
+ * @param serviceDefinition the definition
+ * @param floatLabel floats the label of a filled text field
+ */
+function populateRegisteredServiceContacts(serviceDefinition, floatLabel) {
+    const contacts = serviceDefinition?.contacts;
+    let list = [];
+    if (Array.isArray(contacts)) {
+        list = contacts.length === 2 && typeof contacts[0] === "string" && Array.isArray(contacts[1]) ? contacts[1] : contacts;
+    }
+    list.slice(0, 3).forEach((contact, position) => {
+        ["name", "email", "phone", "department", "type"].forEach(detail => {
+            const $input = $(`#registeredServiceContact${capitalize(detail)}${position + 1}`);
+            const value = contact?.[detail];
+            if ($input.length > 0 && value !== undefined && value !== null && value !== "") {
+                $input.val(String(value));
+                floatLabel($input);
+            }
+        });
+    });
+}
+
+/**
  * Creates the wizard dialog, or hands back the one already created.
  *
  * A jQuery UI dialog rather than an MDC one, matching every other dialog in
@@ -3897,6 +3944,9 @@ async function openRegisteredServiceWizardDialog(existingService = null, options
     async function openWizardDialog(serviceClass, serviceData = null) {
         const isNewService = serviceData === null || options.duplicate === true;
         const draftKey = PalantirServiceEditGuard.key("wizard", isNewService ? null : serviceData.id, serviceClass);
+        if (!isNewService) {
+            PalantirServiceEditGuard.remember(draftKey, serviceData);
+        }
         const draft = await PalantirServiceEditGuard.offerDraft(draftKey,
             serviceData === null || isNewService ? null : JSON.stringify(serviceData));
         let draftDefinition = null;
@@ -4037,6 +4087,11 @@ async function openRegisteredServiceWizardDialog(existingService = null, options
             break;
         }
         RegisteredServiceSections.start();
+        if (className === "SamlRegisteredService") {
+            showElements($("#fillServiceWizardFromMetadata"));
+        } else {
+            hideElements($("#fillServiceWizardFromMetadata"));
+        }
         const protocol = applicationProtocolOf(serviceClass);
         let title = isNewService ? `New ${protocol.label}` : `Edit ${serviceData.name ?? protocol.label}`;
         if (options.duplicate === true) {

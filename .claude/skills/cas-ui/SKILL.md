@@ -87,6 +87,15 @@ description: "Change CAS views and presentation: Thymeleaf render path, theme re
 - The service wizard's fields are built on first open (`palantirWizardField` builders), after the Applications panel ran
   `initializePalantirWidgets`; `buildRegisteredServiceWizardFields` initializes the form's widgets afterwards, so dropdowns
   get the change callback that runs their `data-change-handler` functions. A bare `.selectmenu()` has no such callback.
+- A registered service description is HTML (the login page renders it with `th:utext`). Palantir shows it through
+  `renderPalantirDescription`, an allowlist of `p`, `br`, `b`/`strong`, `i`/`em` and `u` without attributes, and uses
+  `describePalantirDescription` for plain text (search, tooltips); never `escapePalantirMarkup`, which shows the markup.
+  The wizard's editor saves a single paragraph without its `<p>` wrapper (`unwrapDescriptionParagraph`, its `renderer`).
+  Server-side views write it with `th:utext="${#cas.sanitizeHtml(...)}"` (jsoup, same allowlist); never a bare `th:utext`.
+- After an application is added, changed or deleted, Palantir calls `fetchServices`: it alone refreshes the table, cards,
+  services chart, SAML2 metadata sources and the search's application index. Removing a table row alone leaves them stale.
+- Palantir file pickers are drop zones: an invisible file input covers a themed `<label>`, so click, keyboard and drop reach
+  the native input (`.palantir-saml-metadata-import__file`); don't leave a bare `type="file"` in a themed dialog.
 - The wizard's key/value fields (`createMappedInputField`) emit `java.util.TreeMap`, which sorts the keys; a map whose
   order matters (MFA provider selection mappings, first match wins) passes `mapType: "java.util.LinkedHashMap"`.
 - A wizard field that several policy types share lists each type's simple class name in `cssClasses`
@@ -131,6 +140,24 @@ description: "Change CAS views and presentation: Thymeleaf render path, theme re
   bring it back, and only the first non-empty card opens by default; a table is the standard `mdc-data-table__table` DataTable, rendered
   empty and filled in the source's `afterRender`); reads go through `PalantirUserLookup.get` (404 means no records; the audit log
   endpoint needs a form content type even on GET and matches its principal as a regex, so quote it).
+- Edit conflicts: `PalantirServiceEditGuard.remember(key, definition)` records the server definition an edit of an
+  existing application starts from (drafts keep it as `original`, and a resumed draft restores it);
+  `checkConflict(mode, text)` re-reads the application before a PUT and returns `save`, `overwrite` or `cancel`. The
+  check is client side: the registry has no version to lock on.
+- Endpoint access levels reach Palantir as `actuatorEndpointAccess` (endpoint id to `READ_ONLY`/`UNRESTRICTED`, resolved
+  with the `EndpointAccessResolver` the REST mappings use). A control that sends anything but a GET carries
+  `data-palantir-write="<endpoint id>"` (disabled by `applyPalantirEndpointAccess`, also when drawn later), a context
+  menu item carries `write: "<endpoint id>"`, and a `$.ajaxPrefilter` refuses what slips through (status text
+  `palantir-read-only`, which `displayBanner` ignores). Mark every new write control; several "read" actions are POSTs
+  (`casConfig/retrieve`, `releaseAttributes`, `casValidate`, `serviceAccess`).
+- SAML2 wizard "From Metadata" (`PalantirSamlMetadataImport` in `palantir-services-wizard-saml2.js`): URLs go through
+  `samlIdPRegisteredServiceMetadataCache/preview` (browsers cannot read most metadata URLs: no CORS), pasted/chosen XML
+  is parsed with `DOMParser`; the definition parts are merged over the wizard's JSON and filled with
+  `populateWizardFromServiceDefinition`, which fills contacts through `populateRegisteredServiceContacts` (the generic
+  input loop skips `contacts`). The endpoint id is `samlIdPRegisteredServiceMetadataCache` (capital P), which link keys
+  keep; the accessor must accept that spelling.
+- A SweetAlert opened over a modal jQuery UI dialog can only take focus because `allowAlertsOverModalDialogs` extends
+  `_allowInteraction`; without it the dialog pulls focus back and the alert's inputs cannot be typed into.
 - Import posts the chosen file to `registeredServices/import` with the content type of its extension (JSON, YAML, or
   octet-stream for a zip, which the endpoint reads as a zip of JSON files); the file input's `change` handler is bound
   once in `initializeServiceButtons` (namespaced) and the input is cleared, so never bind it inside the button's click.

@@ -40,6 +40,9 @@ description: "Run and write tests in the CAS Gradle monorepo: testcas.sh categor
 - The symptom to recognize: a test asserting on a service it saved itself gets the value that belongs to the "service was missing" code path. `OpenIdFederationAuthorizationCodeResponseTypeAuthorizationRequestValidatorTests` failed exactly that way, reporting `expected: <old-service> but was: <new-service>`, because another method's clear removed the saved service and the validator then resolved a fresh one.
 - Never add `@Execution(ExecutionMode.SAME_THREAD)` to a test class; rework the test to isolate its own state instead.
 - Isolate by identifier, not by emptying the registry: give each test a UUID-bearing client id and assert only on that id. `@Execution(ExecutionMode.SAME_THREAD)` fixes the within-class case but not another class sharing the context, so prefer removing the global mutation.
+- The same holds for the ticket registry: `ticketRegistry.deleteAll()` in a `@BeforeEach` removes tickets a concurrent
+  method just created. `CasSessionStorePac4jAdapterTests.verifySerializableValues` failed that way, a value it had set a
+  moment earlier coming back as `Optional.empty()`; each test already had its own session ticket, so the clear was dropped.
 - Write registry predicates as `expected.equals(service.getClientId())` rather than the reverse: once the registry is no longer cleared, entries from other tests flow through the same stream.
 - The mirror image of that symptom is a test asserting a *negative* that only holds while the registry
   happens to contain no match for its service id. `servicesManager.findServiceBy(<random id>)` returning

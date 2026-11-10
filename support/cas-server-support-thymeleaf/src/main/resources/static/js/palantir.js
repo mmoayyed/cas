@@ -13,6 +13,10 @@ class PalantirDashboardConfiguration {
         return this.all().actuatorEndpoints || {};
     }
 
+    static actuatorEndpointAccess() {
+        return this.all().actuatorEndpointAccess || {};
+    }
+
     static serviceDefinitions() {
         return this.all().serviceDefinitions || {};
     }
@@ -137,8 +141,10 @@ function resolveInitialDashboardTab() {
 async function initializePalantir() {
     try {
         installJQueryCompatibility();
+        allowAlertsOverModalDialogs();
         applySharedDialogStyle();
         initializeTableAndDialogAccessibility();
+        initializePalantirEndpointAccess();
         await initializeCasFeatures();
         showElements("#dashboard");
         const visibleCount = processNavigationTabs();

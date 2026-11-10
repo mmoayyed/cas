@@ -545,7 +545,7 @@ async function initializeOidcProtocolOperations() {
                 table: oidcClientJwksTable,
                 selector: "#oidcClientJwksTable tbody tr",
                 items: {
-                    delete: {name: "Delete", icon: contextMenuIcon("mdi-delete")}
+                    delete: {name: "Delete", write: "oidcJwks", icon: contextMenuIcon("mdi-delete")}
                 },
                 callback: (key, context) => {
                     if (key === "delete") {
@@ -827,8 +827,8 @@ async function initializeSAML2ProtocolOperations() {
                 items: {
                     view: {name: "View Metadata", icon: contextMenuIcon("mdi-eye")},
                     copyEntityId: {name: "Copy Entity ID", icon: contextMenuIcon("mdi-content-copy")},
-                    register: {name: "Register as SAML2 Service Provider", icon: contextMenuIcon("mdi-plus-circle")},
-                    delete: {name: "Delete Metadata", icon: contextMenuIcon("mdi-delete")}
+                    register: {name: "Register as SAML2 Service Provider", write: "registeredServices", icon: contextMenuIcon("mdi-plus-circle")},
+                    delete: {name: "Delete Metadata", write: "samlIdPRegisteredServiceMetadata", icon: contextMenuIcon("mdi-delete")}
                 },
                 callback: (key, context) => {
                     const {entryId, managerName, entityId, entryName} = context.rowData;

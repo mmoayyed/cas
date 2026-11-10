@@ -1,7 +1,8 @@
 /* global $, CAS_FEATURES, CasActuatorEndpoints, PalantirDashboardConfiguration,
    RegisteredServiceSections, openRegisteredServiceWizardDialog, isPopulatingWizard,
    activateDashboardTab, ace, currentActiveTab, registeredServicesById, PalantirUserLookup,
-   PalantirServiceHistory, Swal, applicationActionHandler, applicationRowContext */
+   PalantirServiceHistory, Swal, applicationActionHandler, applicationRowContext, fetchServices, notyf,
+   PalantirSamlMetadataImport */
 const assert = require("assert");
 const fs = require("fs");
 const os = require("os");
@@ -825,6 +826,161 @@ async function verifyServiceHistory(page) {
 }
 
 /**
+ * Open an application in the editor, change it behind the editor's back, and check that saving the edit shows what
+ * changed instead of overwriting it; keep editing, then discard the edit and delete the application.
+ *
+ * @param page the puppeteer page
+ */
+async function verifyEditConflict(page) {
+    await cas.separator();
+    const serviceId = await page.evaluate(async () => {
+        const response = await fetch(CasActuatorEndpoints.registeredServices(), {
+            method: "POST",
+            headers: {"Content-Type": "application/json", "Accept": "application/json"},
+            body: JSON.stringify({
+                "@class": "org.apereo.cas.services.CasRegisteredService",
+                serviceId: "^https://conflict.example.org/.*",
+                name: "ConflictExample",
+                description: "Original description"
+            })
+        });
+        const created = await response.json();
+        await fetchServices();
+        return created.id;
+    });
+    await page.waitForFunction(id => $(`#applicationsTable span[serviceId=${id}]`).length > 0, {timeout: 30000}, serviceId);
+    await page.evaluate(id => applicationActionHandler("editPlain", applicationRowContext(String(id))), serviceId);
+    await page.waitForFunction(() => $("#editServiceDialog").dialog("instance") !== undefined
+        && $("#editServiceDialog").dialog("isOpen"), {timeout: 30000});
+    await cas.sleep(1000);
+
+    await page.evaluate(async id => {
+        const response = await fetch(`${CasActuatorEndpoints.registeredServices()}/${id}`, {headers: {"Accept": "application/json"}});
+        const service = await response.json();
+        await fetch(CasActuatorEndpoints.registeredServices(), {
+            method: "PUT",
+            headers: {"Content-Type": "application/json", "Accept": "application/json"},
+            body: JSON.stringify({...service, description: "Changed elsewhere"})
+        });
+        const editor = ace.edit("serviceEditor");
+        const edited = JSON.parse(editor.getValue());
+        edited.name = "ConflictExampleEdited";
+        editor.setValue(JSON.stringify(edited, null, 4), -1);
+    }, serviceId);
+    await cas.sleep(1000);
+
+    await page.evaluate(() => $("#saveService").trigger("click"));
+    await page.waitForFunction(() => $(".swal2-title").text() === "This application has changed", {timeout: 30000});
+    const changed = await page.evaluate(() => $(".palantir-conflict__diff td.is-added").length);
+    await cas.logg(`Saving a stale edit shows ${changed} changed line(s) instead of overwriting`);
+    assert(changed > 0);
+    await page.click(".swal2-cancel");
+    await page.waitForFunction(() => !Swal.isVisible() && $("#editServiceDialog").dialog("isOpen"), {timeout: 10000});
+    const description = await page.evaluate(async id => {
+        const response = await fetch(`${CasActuatorEndpoints.registeredServices()}/${id}`, {headers: {"Accept": "application/json"}});
+        return (await response.json()).description;
+    }, serviceId);
+    assert(description === "Changed elsewhere");
+
+    await page.evaluate(() => $("#cancelService").trigger("click"));
+    await discardUnsavedChanges(page, "Edit conflict");
+    await page.waitForFunction(() => !$("#editServiceDialog").dialog("isOpen"), {timeout: 15000});
+    await page.evaluate(async id => {
+        await fetch(`${CasActuatorEndpoints.registeredServices()}/${id}`, {
+            method: "DELETE",
+            headers: {"Content-Type": "application/json"}
+        });
+    }, serviceId);
+}
+
+/**
+ * Fill the SAML2 wizard from the metadata of the SAML2 test service provider, read by the server from its URL, and
+ * check that the entity id and the metadata location come from it; then discard the wizard.
+ *
+ * @param page the puppeteer page
+ */
+async function verifySamlMetadataImport(page) {
+    await cas.separator();
+    const samlClass = "org.apereo.cas.support.saml.services.SamlRegisteredService";
+    const available = await page.evaluate(serviceClass => Object.hasOwn(PalantirDashboardConfiguration.supportedServiceTypes(), serviceClass)
+        && PalantirSamlMetadataImport.canReadUrls(), samlClass);
+    if (!available) {
+        await cas.logy("SAML2 metadata import is not available; skipping");
+        return;
+    }
+    const metadataLocation = "http://localhost:9443/simplesaml/module.php/saml/sp/metadata.php/default-sp";
+    await page.evaluate(serviceClass => openRegisteredServiceWizardDialog({"@class": serviceClass}, {duplicate: true}), samlClass);
+    await page.waitForFunction(() => $("#editServiceWizardDialog").dialog("isOpen") && !isPopulatingWizard
+        && $("#fillServiceWizardFromMetadata").is(":visible"), {timeout: 30000});
+    await cas.sleep(1000);
+    await page.evaluate(() => $("#fillServiceWizardFromMetadata").trigger("click"));
+    await page.waitForSelector("#samlMetadataImportUrl", {visible: true});
+    await page.evaluate(() => $("#samlMetadataImportUrl").val(""));
+    await page.type("#samlMetadataImportUrl", metadataLocation);
+    await page.click(".swal2-confirm");
+    await page.waitForFunction(() => $(".swal2-title").text() === "Filled from metadata"
+        || $(".swal2-title").text() === "The metadata could not be read", {timeout: 60000});
+    const outcome = await page.evaluate(() => {
+        const definition = JSON.parse(ace.edit("wizardServiceEditor").getValue());
+        return {
+            title: $(".swal2-title").text(),
+            message: $(".swal2-html-container").text(),
+            serviceId: definition.serviceId,
+            metadataLocation: definition.metadataLocation
+        };
+    });
+    await cas.log(`${outcome.title}: ${outcome.message}`);
+    assert(outcome.title === "Filled from metadata");
+    assert(outcome.serviceId && outcome.serviceId.length > 0);
+    assert(outcome.metadataLocation === metadataLocation);
+    await page.evaluate(() => Swal.close());
+    await page.evaluate(() => $("#cancelServiceWizard").trigger("click"));
+    await discardUnsavedChanges(page, "SAML2 metadata import");
+    await page.waitForFunction(() => !$("#editServiceWizardDialog").dialog("isOpen"), {timeout: 15000});
+}
+
+/**
+ * The ticket registry endpoint is read-only in this scenario: its write controls are disabled and a request that
+ * would change something through it is refused before it is sent, while other endpoints stay writable.
+ *
+ * @param page the puppeteer page
+ */
+async function verifyReadOnlyEndpoint(page) {
+    await cas.separator();
+    const deletes = [];
+    const onRequest = request => {
+        if (request.method() === "DELETE" && request.url().includes("/actuator/ticketRegistry")) {
+            deletes.push(request.url());
+        }
+    };
+    page.on("request", onRequest);
+    const outcome = await page.evaluate(async () => {
+        let refused = null;
+        try {
+            await $.ajax({url: `${CasActuatorEndpoints.ticketRegistry()}/clean`, type: "DELETE"});
+        } catch (xhr) {
+            refused = xhr.statusText;
+        }
+        return {
+            access: PalantirDashboardConfiguration.actuatorEndpointAccess().ticketRegistry,
+            writable: CasActuatorEndpoints.writable("ticketRegistry"),
+            servicesWritable: CasActuatorEndpoints.writable("registeredServices"),
+            cleanDisabled: $("#cleanTicketsButton").prop("disabled"),
+            newServiceDisabled: $("#newService").prop("disabled"),
+            refused: refused
+        };
+    });
+    page.off("request", onRequest);
+    await cas.log(`Ticket registry access: ${JSON.stringify(outcome)}`);
+    assert(outcome.access === "READ_ONLY");
+    assert(!outcome.writable && outcome.servicesWritable);
+    assert(outcome.cleanDisabled && !outcome.newServiceDisabled);
+    assert(outcome.refused === "palantir-read-only");
+    assert(deletes.length === 0);
+    await page.evaluate(() => notyf.dismissAll());
+}
+
+/**
  * Import a YAML application definition through the Import button's file input, check that it is imported once
  * and shows up in the applications table, and delete it afterwards.
  *
@@ -963,6 +1119,9 @@ async function verifyShortcutsOverlay(page) {
     await verifyUserLookup(page, failures);
     await verifyServiceHistory(page);
     await verifyServiceImport(page);
+    await verifyEditConflict(page);
+    await verifySamlMetadataImport(page);
+    await verifyReadOnlyEndpoint(page);
     await verifyInterruptInquiry(page);
     await verifyShortcutsOverlay(page);
 

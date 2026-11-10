@@ -589,3 +589,380 @@ function createSamlRegisteredServiceAttributeReleasePolicy() {
 
 
 }
+
+/**
+ * Fill the SAML2 wizard from the metadata of a service provider. The metadata comes from a URL, read by the server
+ * since browsers are not allowed to read most metadata URLs, or from XML the operator pastes or chooses. An aggregate
+ * asks which of its service providers to use. What the metadata says is merged over what the wizard holds:
+ * the entity id, the name, description, information and privacy URLs and logo the provider publishes, the metadata
+ * location, its NameID format when it declares one, assertion signing when it wants assertions signed, an
+ * attribute release policy for its research and scholarship category or the attributes it requests, and its
+ * contacts. Nothing is saved.
+ */
+class PalantirSamlMetadataImport {
+    static NAMESPACES = {
+        md: "urn:oasis:names:tc:SAML:2.0:metadata",
+        mdui: "urn:oasis:names:tc:SAML:metadata:ui",
+        mdattr: "urn:oasis:names:tc:SAML:metadata:attribute",
+        saml: "urn:oasis:names:tc:SAML:2.0:assertion",
+        xml: "http://www.w3.org/XML/1998/namespace"
+    };
+
+    static ENTITY_CATEGORY = "http://macedir.org/entity-category";
+
+    static CATEGORY_POLICIES = {
+        "http://refeds.org/category/research-and-scholarship": "org.apereo.cas.support.saml.services.RefedsRSAttributeReleasePolicy",
+        "http://id.incommon.org/category/research-and-scholarship": "org.apereo.cas.support.saml.services.InCommonRSAttributeReleasePolicy"
+    };
+
+    static REQUESTED_ATTRIBUTES_POLICY = "org.apereo.cas.support.saml.services.MetadataRequestedAttributesAttributeReleasePolicy";
+
+    /**
+     * Whether the server can read metadata from a URL for the wizard.
+     *
+     * @returns {boolean} true when the SAML2 metadata cache endpoint is available
+     */
+    static canReadUrls() {
+        return Boolean(CasActuatorEndpoints.samlIdpRegisteredServiceMetadataCache());
+    }
+
+    /**
+     * Ask for the metadata, read it and fill the wizard.
+     *
+     * @returns {Promise<void>} resolved once the wizard is filled or the operator gave up
+     */
+    static async open() {
+        const location = String($("#registeredServiceMetadataLocation").val() ?? "").trim();
+        const canReadUrls = PalantirSamlMetadataImport.canReadUrls();
+        const result = await Swal.fire({
+            title: "Fill from service provider metadata",
+            html: `
+                <form class="palantir-saml-metadata-import" onsubmit="return false;">
+                    <label for="samlMetadataImportUrl">Metadata URL</label>
+                    <input id="samlMetadataImportUrl" type="url" class="swal2-input" placeholder="https://sp.example.org/metadata"
+                           value="${/^https?:\/\//i.test(location) ? escapePalantirMarkup(location) : ""}" ${canReadUrls ? "" : "disabled"}>
+                    <p class="palantir-saml-metadata-import__hint">${canReadUrls
+        ? "CAS reads the metadata at this URL, which also becomes the application's metadata location."
+        : "Reading a URL needs the SAML2 metadata cache endpoint, which is not available; paste or choose the metadata instead."}</p>
+                    <label for="samlMetadataImportXml">Or paste the metadata XML</label>
+                    <textarea id="samlMetadataImportXml" class="swal2-textarea" rows="5" spellcheck="false"></textarea>
+                    <label for="samlMetadataImportFile">Or choose a metadata file</label>
+                    <label class="palantir-saml-metadata-import__file" for="samlMetadataImportFile">
+                        <input id="samlMetadataImportFile" type="file" class="palantir-saml-metadata-import__file-input"
+                               accept=".xml,application/xml,text/xml">
+                        <i class="mdi mdi-file-upload-outline" aria-hidden="true"></i>
+                        <span class="palantir-saml-metadata-import__file-text">
+                            <strong id="samlMetadataImportFileName">Choose an XML file</strong>
+                            <span id="samlMetadataImportFileHint">or drop it here</span>
+                        </span>
+                    </label>
+                </form>`,
+            width: Math.min(720, $(window).width() - 32),
+            showCancelButton: true,
+            confirmButtonText: "Read metadata",
+            focusConfirm: false,
+            didOpen: () => PalantirSamlMetadataImport.trackFileChoice(),
+            preConfirm: () => {
+                const url = String($("#samlMetadataImportUrl").val() ?? "").trim();
+                const xml = String($("#samlMetadataImportXml").val() ?? "").trim();
+                const file = $("#samlMetadataImportFile")[0]?.files?.[0] ?? null;
+                if (!url && !xml && !file) {
+                    Swal.showValidationMessage("Enter a metadata URL, or paste or choose the metadata XML.");
+                    return false;
+                }
+                return {url: url, xml: xml, file: file};
+            }
+        });
+        if (!result.isConfirmed) {
+            return;
+        }
+        try {
+            const source = await PalantirSamlMetadataImport.read(result.value);
+            if (source) {
+                await PalantirSamlMetadataImport.fill(source.entity, source.metadataLocation);
+            }
+        } catch (error) {
+            Swal.fire({icon: "error", title: "The metadata could not be read", text: error.message});
+        }
+    }
+
+    /**
+     * Show the chosen file's name in the file drop zone, and mark the zone while a file is dragged over it.
+     */
+    static trackFileChoice() {
+        const zone = $(".palantir-saml-metadata-import__file");
+        $("#samlMetadataImportFile")
+            .on("change", function () {
+                const file = this.files?.[0];
+                $("#samlMetadataImportFileName").text(file ? file.name : "Choose an XML file");
+                $("#samlMetadataImportFileHint").text(file ? "Choose or drop another file to replace it" : "or drop it here");
+                zone.toggleClass("has-file", Boolean(file)).removeClass("is-dragover");
+            })
+            .on("dragenter dragover", () => zone.addClass("is-dragover"))
+            .on("dragleave drop", () => zone.removeClass("is-dragover"));
+    }
+
+    /**
+     * Read the metadata and find the service provider to fill the wizard from.
+     *
+     * @param request the URL, pasted XML or chosen file
+     * @returns {Promise<{entity: Element, metadataLocation: string|null}|null>} the provider's EntityDescriptor and
+     * the metadata location to keep, or null when the operator chose none
+     */
+    static async read(request) {
+        if (request.xml || request.file) {
+            const text = request.xml || await request.file.text();
+            const providers = PalantirSamlMetadataImport.serviceProviders(PalantirSamlMetadataImport.parse(text));
+            if (providers.length === 0) {
+                throw new Error("The metadata holds no SAML2 service provider.");
+            }
+            let entity = providers[0];
+            if (providers.length > 1) {
+                const chosen = await PalantirSamlMetadataImport.choose(providers.map(provider => provider.getAttribute("entityID")));
+                entity = providers.find(provider => provider.getAttribute("entityID") === chosen);
+            }
+            return entity ? {entity: entity, metadataLocation: request.url || null} : null;
+        }
+        if (!PalantirSamlMetadataImport.canReadUrls()) {
+            throw new Error("Reading metadata from a URL needs the SAML2 metadata cache endpoint. Paste or choose the metadata instead.");
+        }
+        let preview = await PalantirSamlMetadataImport.preview(request.url);
+        if (!preview.metadata) {
+            const chosen = await PalantirSamlMetadataImport.choose(preview.entities ?? []);
+            if (!chosen) {
+                return null;
+            }
+            preview = await PalantirSamlMetadataImport.preview(request.url, chosen);
+        }
+        const entity = PalantirSamlMetadataImport.serviceProviders(PalantirSamlMetadataImport.parse(preview.metadata))[0];
+        if (!entity) {
+            throw new Error("The metadata holds no SAML2 service provider.");
+        }
+        return {entity: entity, metadataLocation: preview.metadataLocation};
+    }
+
+    /**
+     * Ask the server to read the metadata at a URL.
+     *
+     * @param url the metadata URL
+     * @param entityId the service provider to read from an aggregate, if any
+     * @returns {Promise<object>} the service providers the metadata holds and the metadata of the one read, if any
+     */
+    static async preview(url, entityId = null) {
+        Swal.fire({
+            title: "Reading metadata",
+            text: url,
+            allowOutsideClick: false,
+            showConfirmButton: false,
+            didOpen: () => Swal.showLoading()
+        });
+        try {
+            return await $.ajax({
+                url: `${CasActuatorEndpoints.samlIdpRegisteredServiceMetadataCache()}/preview`,
+                method: "GET",
+                data: entityId ? {metadataLocation: url, entityId: entityId} : {metadataLocation: url},
+                dataType: "json",
+                headers: {"Accept": "application/json"}
+            });
+        } catch (xhr) {
+            throw new Error(xhr?.responseJSON?.error ?? `CAS could not read the metadata at ${url}.`, {cause: xhr});
+        } finally {
+            Swal.close();
+        }
+    }
+
+    /**
+     * Ask which service provider of an aggregate to use.
+     *
+     * @param entityIds the entity ids of the service providers
+     * @returns {Promise<string|null>} the chosen entity id, or null
+     */
+    static async choose(entityIds) {
+        const listId = "samlMetadataImportEntities";
+        const result = await Swal.fire({
+            title: "Choose the service provider",
+            text: `The metadata holds ${entityIds.length} service providers.`,
+            input: "text",
+            inputLabel: "Entity ID",
+            inputPlaceholder: "Start typing an entity id",
+            showCancelButton: true,
+            confirmButtonText: "Use this service provider",
+            didOpen: () => {
+                const datalist = $("<datalist>", {id: listId});
+                entityIds.forEach(entityId => datalist.append($("<option>").attr("value", entityId)));
+                $(Swal.getPopup()).append(datalist);
+                $(Swal.getInput()).attr("list", listId);
+            },
+            inputValidator: value => entityIds.includes(String(value ?? "").trim())
+                ? null
+                : "Choose one of the entity ids the metadata holds."
+        });
+        return result.isConfirmed ? String(result.value).trim() : null;
+    }
+
+    /**
+     * Parse metadata XML.
+     *
+     * @param text the XML
+     * @returns {Document} the document
+     */
+    static parse(text) {
+        const document = new DOMParser().parseFromString(text, "application/xml");
+        if (document.getElementsByTagName("parsererror").length > 0) {
+            throw new Error("This is not well-formed XML.");
+        }
+        return document;
+    }
+
+    /**
+     * The entities of a metadata document that are SAML2 service providers.
+     *
+     * @param document the metadata document
+     * @returns {Element[]} their EntityDescriptor elements
+     */
+    static serviceProviders(document) {
+        const ns = PalantirSamlMetadataImport.NAMESPACES;
+        return Array.from(document.getElementsByTagNameNS(ns.md, "EntityDescriptor"))
+            .filter(entity => entity.getElementsByTagNameNS(ns.md, "SPSSODescriptor").length > 0);
+    }
+
+    /**
+     * The text of the element in the operator's language, else in English, else the first one.
+     *
+     * @param elements the elements, one per language
+     * @returns {string} the text, or an empty string
+     */
+    static localized(elements) {
+        const ns = PalantirSamlMetadataImport.NAMESPACES;
+        const languages = [String(navigator.language ?? "en").toLowerCase().split("-")[0], "en"];
+        const language = element => String(element.getAttributeNS(ns.xml, "lang") || element.getAttribute("xml:lang") || "").toLowerCase();
+        const chosen = languages.map(code => elements.find(element => language(element).split("-")[0] === code)).find(Boolean)
+            ?? elements[0];
+        return String(chosen?.textContent ?? "").trim();
+    }
+
+    /**
+     * Whether a value is a web address the wizard may link to.
+     *
+     * @param value the value
+     * @returns {boolean} true for an http or https URL
+     */
+    static isWebAddress(value) {
+        return /^https?:\/\/\S+$/i.test(String(value ?? ""));
+    }
+
+    /**
+     * Describe a service provider as the parts of an application definition its metadata settles.
+     *
+     * @param entity the provider's EntityDescriptor
+     * @param metadataLocation the metadata location to keep, if any
+     * @returns {{definition: object, filled: string[]}} the definition's parts and the names of the fields they fill
+     */
+    static describe(entity, metadataLocation) {
+        const ns = PalantirSamlMetadataImport.NAMESPACES;
+        const children = (parent, namespace, name) => Array.from(parent?.children ?? [])
+            .filter(child => child.namespaceURI === namespace && child.localName === name);
+        const provider = entity.getElementsByTagNameNS(ns.md, "SPSSODescriptor")[0];
+        const uiInfo = provider.getElementsByTagNameNS(ns.mdui, "UIInfo")[0] ?? null;
+        const ui = name => uiInfo ? Array.from(uiInfo.getElementsByTagNameNS(ns.mdui, name)) : [];
+        const definition = {};
+        const filled = [];
+        const set = (field, label, value) => {
+            if (value !== null && value !== undefined && value !== "") {
+                definition[field] = value;
+                filled.push(label);
+            }
+        };
+
+        const entityId = entity.getAttribute("entityID");
+        set("serviceId", "Entity ID", entityId);
+        const organization = children(entity, ns.md, "Organization")[0];
+        let host;
+        try {
+            host = new URL(entityId).hostname;
+        } catch (error) {
+            host = "";
+        }
+        set("name", "Name", PalantirSamlMetadataImport.localized(ui("DisplayName"))
+            || PalantirSamlMetadataImport.localized(children(organization, ns.md, "OrganizationDisplayName"))
+            || host || entityId);
+        const description = PalantirSamlMetadataImport.localized(ui("Description"));
+        set("description", "Description", description ? escapePalantirMarkup(description) : "");
+        const informationUrl = PalantirSamlMetadataImport.localized(ui("InformationURL"));
+        set("informationUrl", "Information URL", PalantirSamlMetadataImport.isWebAddress(informationUrl) ? informationUrl : "");
+        const privacyUrl = PalantirSamlMetadataImport.localized(ui("PrivacyStatementURL"));
+        set("privacyUrl", "Privacy URL", PalantirSamlMetadataImport.isWebAddress(privacyUrl) ? privacyUrl : "");
+        const logo = ui("Logo")
+            .filter(element => PalantirSamlMetadataImport.isWebAddress(element.textContent.trim()))
+            .sort((first, second) => (Number(second.getAttribute("width")) || 0) * (Number(second.getAttribute("height")) || 0)
+                - (Number(first.getAttribute("width")) || 0) * (Number(first.getAttribute("height")) || 0))[0];
+        set("logo", "Logo", logo ? logo.textContent.trim() : "");
+        set("metadataLocation", "Metadata Location", metadataLocation ?? "");
+
+        const formats = children(provider, ns.md, "NameIDFormat").map(element => element.textContent.trim()).filter(Boolean);
+        set("requiredNameIdFormat", "Required NameID Format", formats.length === 1 ? formats[0] : "");
+        set("signAssertions", "Sign Assertions", provider.getAttribute("WantAssertionsSigned") === "true" ? "TRUE" : "");
+
+        const categories = Array.from(entity.getElementsByTagNameNS(ns.mdattr, "EntityAttributes"))
+            .flatMap(attributes => Array.from(attributes.getElementsByTagNameNS(ns.saml, "Attribute")))
+            .filter(attribute => attribute.getAttribute("Name") === PalantirSamlMetadataImport.ENTITY_CATEGORY)
+            .flatMap(attribute => Array.from(attribute.getElementsByTagNameNS(ns.saml, "AttributeValue")))
+            .map(value => value.textContent.trim());
+        const categoryPolicy = categories.map(category => PalantirSamlMetadataImport.CATEGORY_POLICIES[category]).find(Boolean);
+        const requested = provider.getElementsByTagNameNS(ns.md, "RequestedAttribute").length > 0;
+        const policy = categoryPolicy ?? (requested ? PalantirSamlMetadataImport.REQUESTED_ATTRIBUTES_POLICY : null);
+        set("attributeReleasePolicy", "Attribute Release Policy", policy ? {"@class": policy} : null);
+
+        const contacts = [...children(entity, ns.md, "ContactPerson"), ...children(provider, ns.md, "ContactPerson")]
+            .slice(0, 3)
+            .map(person => {
+                const text = name => children(person, ns.md, name).map(element => element.textContent.trim()).find(Boolean) ?? "";
+                const contact = {"@class": "org.apereo.cas.services.DefaultRegisteredServiceContact"};
+                const name = [text("GivenName"), text("SurName")].filter(Boolean).join(" ");
+                const details = {
+                    name: name,
+                    email: text("EmailAddress").replace(/^mailto:/i, ""),
+                    phone: text("TelephoneNumber"),
+                    department: text("Company"),
+                    type: person.getAttribute("contactType") ?? ""
+                };
+                Object.entries(details).filter(([, value]) => value).forEach(([key, value]) => {
+                    contact[key] = value;
+                });
+                return contact;
+            })
+            .filter(contact => Object.keys(contact).length > 1);
+        set("contacts", "Contacts", contacts.length > 0 ? ["java.util.ArrayList", contacts] : null);
+        return {definition: definition, filled: filled};
+    }
+
+    /**
+     * Merge what the metadata settles over the definition the wizard holds, fill the wizard with the result and say
+     * what was filled.
+     *
+     * @param entity the provider's EntityDescriptor
+     * @param metadataLocation the metadata location to keep, if any
+     * @returns {Promise<void>} resolved once the wizard is filled
+     */
+    static async fill(entity, metadataLocation) {
+        const {definition, filled} = PalantirSamlMetadataImport.describe(entity, metadataLocation);
+        let current;
+        try {
+            current = JSON.parse(ace.edit("wizardServiceEditor").getValue() || "{}");
+        } catch (error) {
+            current = {};
+        }
+        const merged = {...current, ...definition};
+        merged["@class"] = current["@class"] ?? "org.apereo.cas.support.saml.services.SamlRegisteredService";
+        populateWizardFromServiceDefinition(merged);
+        for (let waited = 0; waited < 50 && (typeof isPopulatingWizard === "undefined" || isPopulatingWizard); waited++) {
+            await new Promise(resolve => setTimeout(resolve, 100));
+        }
+        const location = merged.metadataLocation ? "" : " Enter where CAS should read its metadata from as the metadata location.";
+        Swal.fire({
+            icon: "success",
+            title: "Filled from metadata",
+            text: `${definition.serviceId}: ${filled.join(", ")}. Review the fields before saving.${location}`
+        });
+    }
+}

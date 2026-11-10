@@ -750,6 +750,9 @@ ext.libraries = [
         classgraph                 : [
                 dependencies.create(libs.classgraph.get())
         ],
+        jsoup                      : [
+                dependencies.create(libs.jsoup.get())
+        ],
         hazelcast                  : [
                 dependencies.create(libs.hazelcast.sdk.get()) {
                 },

@@ -318,7 +318,113 @@ function closeAllDialogs() {
     $(".ui-dialog-content:visible").dialog("close");
 }
 
+const PALANTIR_READ_ONLY = "palantir-read-only";
+
+/**
+ * Let a SweetAlert opened over a modal jQuery UI dialog take focus. The dialog keeps focus inside itself and would
+ * otherwise pull it back from the alert's fields and buttons, which sit outside the dialog.
+ */
+function allowAlertsOverModalDialogs() {
+    if (!$.ui?.dialog || $.ui.dialog.prototype.palantirAllowsAlerts) {
+        return;
+    }
+    $.widget("ui.dialog", $.ui.dialog, {
+        palantirAllowsAlerts: true,
+        _allowInteraction(event) {
+            return $(event.target).closest(".swal2-container").length > 0 || this._super(event);
+        }
+    });
+}
+
+/**
+ * Explain why a change cannot be made from Palantir.
+ *
+ * @param name the endpoint id
+ * @returns {string} the explanation
+ */
+function palantirReadOnlyMessage(name) {
+    return `The ${name} endpoint is read-only on this CAS server, so this change cannot be made from Palantir.`;
+}
+
+/**
+ * Disable the controls that change something through a read-only endpoint, under the given element. Such a
+ * control names its endpoint in a data-palantir-write attribute.
+ *
+ * @param root the element to look under
+ */
+function applyPalantirEndpointAccess(root = document) {
+    $(root).find("[data-palantir-write]").addBack("[data-palantir-write]").each((index, element) => {
+        const name = element.dataset.palantirWrite;
+        if (CasActuatorEndpoints.writable(name)) {
+            return;
+        }
+        const message = palantirReadOnlyMessage(name);
+        if ("disabled" in element) {
+            element.disabled = true;
+        } else {
+            element.setAttribute("aria-disabled", "true");
+            element.setAttribute("tabindex", "-1");
+        }
+        element.classList.add("palantir-read-only");
+        element.title = message;
+    });
+}
+
+/**
+ * Hold back what a read-only endpoint refuses: disable the controls that would change something through it, also
+ * when they are drawn later, and refuse a request that would change something through it before it is sent.
+ */
+function initializePalantirEndpointAccess() {
+    if (!CasActuatorEndpoints.anyReadOnly()) {
+        return;
+    }
+    applyPalantirEndpointAccess();
+    new MutationObserver(mutations => {
+        for (const mutation of mutations) {
+            for (const node of mutation.addedNodes) {
+                if (node.nodeType === Node.ELEMENT_NODE) {
+                    applyPalantirEndpointAccess(node);
+                }
+            }
+        }
+    }).observe(document.body, {childList: true, subtree: true});
+    $.ajaxPrefilter((options, originalOptions, xhr) => {
+        const method = String(options.type ?? options.method ?? "GET").toUpperCase();
+        if (["GET", "HEAD", "OPTIONS"].includes(method)) {
+            return;
+        }
+        const name = CasActuatorEndpoints.endpointFor(options.url);
+        if (name && !CasActuatorEndpoints.writable(name)) {
+            xhr.abort(PALANTIR_READ_ONLY);
+            notyf.dismissAll();
+            notyf.error(palantirReadOnlyMessage(name));
+        }
+    });
+}
+
+/**
+ * A context menu item that changes something through a read-only endpoint is shown disabled. Such an item names
+ * its endpoint in its write property.
+ *
+ * @param item the menu item
+ * @returns {object} the item as the menu shows it
+ */
+function restrictContextMenuItem(item) {
+    if (item === null || typeof item !== "object" || !item.write) {
+        return item;
+    }
+    const menuItem = {...item};
+    delete menuItem.write;
+    if (!CasActuatorEndpoints.writable(item.write)) {
+        menuItem.disabled = true;
+    }
+    return menuItem;
+}
+
 function displayBanner(error) {
+    if (error?.statusText === PALANTIR_READ_ONLY) {
+        return;
+    }
     let message = "";
     if (error.hasOwnProperty("status")) {
         switch (error.status) {
@@ -820,7 +926,7 @@ function prepareContextMenuItems(items, context) {
             separator = null;
         }
 
-        const menuItem = {...item};
+        const menuItem = {...restrictContextMenuItem(item)};
         delete menuItem.visible;
         menuItems[key] = menuItem;
     }
@@ -871,7 +977,9 @@ function initializeContextMenu({selector, callback, items, build, trigger = "rig
                 clearContextMenuRow(options);
             }
         },
-        items: items
+        items: typeof items === "function" || !items
+            ? items
+            : Object.fromEntries(Object.entries(items).map(([key, item]) => [key, restrictContextMenuItem(item)]))
     };
 
     if (build) {

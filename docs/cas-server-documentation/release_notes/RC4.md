@@ -226,7 +226,13 @@ selected version from the same dialog. Under *Interrupts*, the authentication se
 [interrupt](../webflow/Webflow-Customization-Interrupt.html) a user would see at login and what each interrupt
 source answered.
 
-Importing applications accepts YAML definitions and exported zip files as well as JSON, and imports each chosen file
+Saving an application that someone else changed or deleted in the meantime shows what they changed and asks before
+overwriting it, and actions that would change something through a read-only endpoint are disabled with an explanation.
+The application wizard can fill a SAML2 service provider from its metadata, read from a URL, pasted, or chosen or
+dropped as a file, picking the provider out of an aggregate. Application descriptions show their paragraphs and bold,
+italic and underlined text in the application cards and table instead of their markup, and a description of a single
+paragraph is saved as plain text. The applications chart, cards and search follow deleted applications as they follow
+new ones. Importing applications accepts YAML definitions and exported zip files as well as JSON, and imports each chosen file
 once. Applications can be duplicated into the wizard as new applications, and the wizard and the definition editor ask before
 closing with unsaved changes, keeping a draft in the browser that can be resumed for up to thirty days. A keyboard shortcut overlay opens
 with `?`, and tables and dialogs are easier to use with a keyboard and a screen reader: tables are named, rows with actions
@@ -292,6 +298,10 @@ one-time codes can be added when `cas.authn.mfa.simple.mail.accepted-email-patte
 
 {% include imagegallery.html images=page.account_profile_images gallery_id="account-profile" %}
 
+- {: .fixed data-area="ui"} Descriptions of applications keep their paragraphs and bold, italic and underlined text, and any
+  other markup is reduced to its text, wherever end users see them: the account profile and the OAuth and OpenID Connect
+  consent pages used to show the markup itself, and the service box of the login page and the list of applications after
+  login, along with the display name and description from SAML2 metadata, used to render it unfiltered.
 - {: .fixed data-area="ui"} The account profile only ends single sign-on sessions, revokes OpenID Connect tokens and removes
   trusted devices that belong to the signed-in user; it used to act on any session, token or device whose identifier was submitted.
 - {: .fixed data-area="ui"} The account profile and account management pages follow the shared card, text and border colors of the

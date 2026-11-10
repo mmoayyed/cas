@@ -1701,6 +1701,11 @@ async function initializeSystemOperations() {
             hideElements($("#heapDumpAnalysisContainer"));
             return;
         }
+        if (!CasActuatorEndpoints.writable("heapDumpAnalysis")) {
+            notyf.dismissAll();
+            notyf.error(palantirReadOnlyMessage("heapDumpAnalysis"));
+            return;
+        }
         heapDumpClassesTable.clear();
         const refreshButton = $("#refreshHeapDumpAnalysisButton");
         refreshButton.prop("disabled", true);

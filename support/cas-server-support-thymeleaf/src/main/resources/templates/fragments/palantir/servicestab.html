@@ -23,7 +23,7 @@
                 <div class="palantir-applications-buttons">
                     <div class="mdc-touch-target-wrapper">
                         <span class="mdc-menu-surface--anchor">
-                            <button name="newService" id="newService"
+                            <button data-palantir-write="registeredServices" name="newService" id="newService"
                                     onclick="cas.openMenu();"
                                     title="Create New Application"
                                     class="mdc-button mdc-button--raised" aria-label="Create">
@@ -73,7 +73,7 @@
                             </div>
                         </span>
                         <input type="file" id="serviceFileInput" style="display: none;">
-                        <button name="importService" id="importService" class="mdc-button mdc-button--raised"
+                        <button data-palantir-write="registeredServices" name="importService" id="importService" class="mdc-button mdc-button--raised"
                                 title="Import applications and service definitions" aria-label="Import">
                              <span class="mdc-button__label"><i class="mdc-tab__icon mdi mdi-file-import"
                                                                 aria-hidden="true"></i>Import</span>
@@ -850,12 +850,18 @@
                                     <span>Next</span><i class="mdi mdi-chevron-right" aria-hidden="true"></i>
                                 </button>
                                 <span class="registered-service-wizard__spacer"></span>
+                                <button id="fillServiceWizardFromMetadata" name="fillServiceWizardFromMetadata" type="button"
+                                        class="mdc-button mdc-button--raised btn mdc-button--lg hide"
+                                        title="Fill the wizard from the metadata of the service provider">
+                                    <span class="mdc-button__label"><i class="mdc-tab__icon mdi mdi-file-download-outline"
+                                                                       aria-hidden="true"></i>From Metadata</span>
+                                </button>
                                 <button id="cancelServiceWizard" name="cancelServiceWizard" type="button"
                                         class="mdc-button mdc-button--raised btn mdc-button--lg">
                                     <span class="mdc-button__label"><i class="mdc-tab__icon mdi mdi-close"
                                                                        aria-hidden="true"></i>Cancel</span>
                                 </button>
-                                <button id="validateServiceWizard" name="validateServiceWizard" type="button"
+                                <button data-palantir-write="registeredServices" id="validateServiceWizard" name="validateServiceWizard" type="button"
                                         class="mdc-button mdc-button--raised btn mdc-button--lg">
                                     <span class="mdc-button__label"><i class="mdc-tab__icon mdi mdi-check-all"
                                                                        aria-hidden="true"></i>Validate</span>
@@ -866,7 +872,7 @@
                                     <span class="mdc-button__label"><i class="mdc-tab__icon mdi mdi-content-copy"
                                                                        aria-hidden="true"></i>Copy</span>
                                 </button>
-                                <button id="saveServiceWizard" name="saveServiceWizard" type="button"
+                                <button data-palantir-write="registeredServices" id="saveServiceWizard" name="saveServiceWizard" type="button"
                                         class="mdc-button mdc-button--raised btn mdc-button--lg">
                                     <span class="mdc-button__label"><i class="mdc-tab__icon mdi mdi-content-save"
                                                                        aria-hidden="true"></i>Save</span>
@@ -901,7 +907,7 @@
                             <span class="mdc-button__label"><i class="mdc-tab__icon mdi mdi-close"
                                                                aria-hidden="true"></i>Cancel</span>
                         </button>
-                        <button id="saveService" name="saveService" type="button"
+                        <button data-palantir-write="registeredServices" id="saveService" name="saveService" type="button"
                                 class="mdc-button mdc-button--raised btn mdc-button--lg">
                             <span class="mdc-button__label"><i class="mdc-tab__icon mdi mdi-content-save"
                                                                aria-hidden="true"></i>Save</span>

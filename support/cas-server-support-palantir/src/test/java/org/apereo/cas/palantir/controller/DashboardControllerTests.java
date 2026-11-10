@@ -71,6 +71,7 @@ class DashboardControllerTests {
         assertTrue(model.containsKey("httpRequestMethod"));
         assertTrue(model.containsKey("httpRequestSecure"));
         assertTrue(model.containsKey("actuatorEndpoints"));
+        assertTrue(model.containsKey("actuatorEndpointAccess"));
         assertTrue(model.containsKey("serviceDefinitions"));
 
         mvc.perform(get("/palantir/").with(authentication(authentication))).andExpect(status().isOk());
@@ -97,6 +98,29 @@ class DashboardControllerTests {
         SecurityContextHolder.clearContext();
         mvc.perform(get("/palantir/dashboard/session"))
             .andExpect(status().is3xxRedirection());
+    }
+
+    @Nested
+    @TestPropertySource(properties = {
+        "management.endpoints.web.exposure.include=health,info",
+        "management.endpoint.health.access=READ_ONLY",
+        "management.endpoint.info.access=UNRESTRICTED"
+    })
+    class EndpointAccessTests {
+        @Test
+        void verifyAccessLevelsReachTheDashboard() throws Throwable {
+            val authentication = new UsernamePasswordAuthenticationToken("casuser", "password",
+                List.of(new SimpleGrantedAuthority("ROLE_ADMIN")));
+            val model = mvc.perform(get("/palantir/dashboard").with(authentication(authentication)))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getModelAndView()
+                .getModel();
+            val access = (Map<?, ?>) model.get("actuatorEndpointAccess");
+            assertNotNull(access);
+            assertEquals("READ_ONLY", access.get("health"));
+            assertEquals("UNRESTRICTED", access.get("info"));
+        }
     }
 
     @Nested

@@ -1,6 +1,6 @@
 async function initializeServicesOperations() {
     const columnDefinitions = [
-        {visible: true, targets: 0},
+        {visible: true, targets: 0, width: "56px", className: "palantir-application-type"},
         {visible: true, targets: 1},
         {visible: true, targets: 2},
         {visible: true, targets: 3},
@@ -262,7 +262,7 @@ async function initializeServiceButtons() {
         table: $("#entityHistoryTable").DataTable(),
         selector: "#entityHistoryTable tbody tr",
         items: {
-            restore: {name: "Restore Version", icon: contextMenuIcon("mdi-history")}
+            restore: {name: "Restore Version", write: "entityHistory", icon: contextMenuIcon("mdi-history")}
         },
         callback: (key, context) => {
             if (key === "restore") {
@@ -301,9 +301,9 @@ async function initializeServiceButtons() {
                             url: `${CasActuatorEndpoints.registeredServices()}/${serviceId}`,
                             type: "DELETE",
                             headers: {"Content-Type": "application/json"},
-                            success: response => {
-                                let applicationsTable = $("#applicationsTable").DataTable();
-                                applicationsTable.row(context.$row).remove().draw();
+                            success: async () => {
+                                $("#applicationsTable").DataTable().row(context.$row).remove().draw();
+                                await fetchServices(() => updateNavigationSidebar());
                             },
                             error: (xhr, status, error) => {
                                 console.error("Error deleting resource:", error);
@@ -323,6 +323,7 @@ async function initializeServiceButtons() {
                     return;
                 }
                 const value = JSON.stringify(response, null, 4);
+                PalantirServiceEditGuard.remember(PalantirServiceEditGuard.key("editor", response.id), response);
                 serviceEditorInstance.setValue(value, -1);
                 serviceEditorInstance.gotoLine(1);
                 const editServiceDialogElement = document.getElementById("editServiceDialog");
@@ -335,7 +336,7 @@ async function initializeServiceButtons() {
         }
     }
 
-    $("button[name=saveService],button[name=saveServiceWizard]").off().on("click", function () {
+    $("button[name=saveService],button[name=saveServiceWizard]").off().on("click", async function () {
         if (CasActuatorEndpoints.registeredServices()) {
             let isNewService = false;
             let value = "";
@@ -358,13 +359,21 @@ async function initializeServiceButtons() {
                 break;
             }
 
-            Swal.fire({
-                title: `Are you sure you want to ${isNewService ? "create" : "update"} this entry?`,
-                text: "Once updated, you may not be able to revert this entry.",
-                icon: "question",
-                showConfirmButton: true,
-                showDenyButton: true
-            })
+            const mode = saveButton.attr("name") === "saveServiceWizard" ? "wizard" : "editor";
+            const conflict = isNewService ? "save" : await PalantirServiceEditGuard.checkConflict(mode, value);
+            if (conflict === "cancel") {
+                return;
+            }
+            const confirmation = conflict === "overwrite"
+                ? Promise.resolve({isConfirmed: true})
+                : Swal.fire({
+                    title: `Are you sure you want to ${isNewService ? "create" : "update"} this entry?`,
+                    text: "Once updated, you may not be able to revert this entry.",
+                    icon: "question",
+                    showConfirmButton: true,
+                    showDenyButton: true
+                });
+            confirmation
                 .then((result) => {
                     if (result.isConfirmed) {
                         $.ajax({
@@ -373,7 +382,7 @@ async function initializeServiceButtons() {
                             contentType: "application/json",
                             data: value,
                             success: async response => {
-                                PalantirServiceEditGuard.saved(saveButton.attr("name") === "saveServiceWizard" ? "wizard" : "editor");
+                                PalantirServiceEditGuard.saved(mode);
                                 dialogInstance["close"]();
                                 await fetchServices(() => {
                                     let newServiceId = response.id;
@@ -431,8 +440,8 @@ async function initializeServiceButtons() {
         items: {
             editPlain: {name: "Edit in Editor", icon: contextMenuIcon("mdi-pencil")},
             editWizard: {name: "Edit in Wizard", icon: contextMenuIcon("mdi-wizard-hat")},
-            duplicate: {name: "Duplicate Application", icon: contextMenuIcon("mdi-content-duplicate")},
-            delete: {name: "Delete Service Definition", icon: contextMenuIcon("mdi-delete")},
+            duplicate: {name: "Duplicate Application", write: "registeredServices", icon: contextMenuIcon("mdi-content-duplicate")},
+            delete: {name: "Delete Service Definition", write: "registeredServices", icon: contextMenuIcon("mdi-delete")},
             sep1: "---------",
             history: {
                 name: "View Change History",
@@ -499,25 +508,29 @@ async function fetchServices(callback) {
                     serviceCountByType[4]++;
                 }
 
-                let serviceDetails = `<span serviceId="${service.id}" title='${service.name}'>${service.name}</span>`;
-                serviceDetails += "<p>";
-                if (service.informationUrl) {
-                    serviceDetails += `<a target="_blank" rel="noopener" href='${service.informationUrl}'>Information URL</a>`;
-                }
-                if (service.privacyUrl) {
-                    serviceDetails += `&nbsp;<a target="_blank" rel="noopener" href='${service.privacyUrl}'>Privacy URL</a>`;
+                const name = escapePalantirMarkup(service.name ?? "");
+                const links = [
+                    applicationLink(service.informationUrl, "Information URL"),
+                    applicationLink(service.privacyUrl, "Privacy URL")
+                ].filter(Boolean);
+                let serviceDetails = `<span serviceId="${service.id}" title="${name}">${name}</span>`;
+                if (links.length > 0) {
+                    serviceDetails += `<div class="palantir-application-links">${links.join("")}</div>`;
                 }
 
-                let serviceIdDetails = `<span serviceId='${service.id}' class="text-wrap">${service.serviceId}</span>`;
-                if (serviceClass.includes("SamlRegisteredService")) {
-                    serviceIdDetails += `<br><p><a href='${service.metadataLocation}' target='_blank'>Metadata Location</a>`;
+                let serviceIdDetails = `<span serviceId="${service.id}" class="text-wrap">${escapePalantirMarkup(service.serviceId ?? "")}</span>`;
+                const metadataLink = serviceClass.includes("SamlRegisteredService")
+                    ? applicationLink(service.metadataLocation, "Metadata Location")
+                    : null;
+                if (metadataLink) {
+                    serviceIdDetails += `<div class="palantir-application-links">${metadataLink}</div>`;
                 }
 
                 applicationsTable.row.add({
                     0: `<i serviceId='${service.id}' title='${serviceClass}' class='mdi ${icon}'></i>`,
                     1: `${serviceDetails}`,
                     2: `${serviceIdDetails}`,
-                    3: `<span serviceId='${service.id}' class="text-wrap">${service.description ?? ""}</span>`,
+                    3: `<span serviceId='${service.id}' class="text-wrap palantir-application-description">${renderPalantirDescription(service.description)}</span>`,
                     4: `${service.id}`,
                     serviceId: service.id
                 });
@@ -575,6 +588,8 @@ async function initializeFooterButtons() {
             element.dialog("close");
         }
     });
+
+    $("button[name=fillServiceWizardFromMetadata]").off().on("click", () => PalantirSamlMetadataImport.open());
 
     $("button[name=copyServiceDefinitionWizard]").off().on("click", () => {
         const editor = initializeAceEditor("wizardServiceEditor");
@@ -734,10 +749,66 @@ function selectedApplicationRows() {
  * @param value the text to escape
  * @returns {string} the escaped text
  */
+/**
+ * A link from an application's row to one of its pages, for web addresses only.
+ *
+ * @param url the address
+ * @param label the link text
+ * @returns {string|null} the link, or null when there is no web address
+ */
+function applicationLink(url, label) {
+    if (typeof url !== "string" || !/^https?:\/\//i.test(url.trim())) {
+        return null;
+    }
+    return `<a target="_blank" rel="noopener noreferrer" href="${escapePalantirMarkup(url.trim())}">${escapePalantirMarkup(label)}</a>`;
+}
+
 function escapePalantirMarkup(value) {
     return String(value ?? "").replace(/[&<>"']/g, character => ({
         "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;"
     })[character]);
+}
+
+/**
+ * Render a registered service description, which the wizard's editor keeps as HTML, as safe markup: paragraphs, line
+ * breaks and bold, italic and underlined text are kept without attributes, scripts and styles are dropped, and every
+ * other element is replaced by its text, so a description from metadata or dynamic registration cannot inject markup.
+ *
+ * @param value the description
+ * @returns {string} the markup to show
+ */
+function renderPalantirDescription(value) {
+    const allowed = new Set(["P", "BR", "B", "STRONG", "I", "EM", "U"]);
+    const dropped = new Set(["SCRIPT", "STYLE", "TEMPLATE", "NOSCRIPT"]);
+    const copy = (from, to) => from.childNodes.forEach(node => {
+        if (node.nodeType === Node.TEXT_NODE) {
+            to.append(node.textContent);
+        } else if (node.nodeType === Node.ELEMENT_NODE && !dropped.has(node.tagName)) {
+            if (allowed.has(node.tagName)) {
+                const element = document.createElement(node.tagName.toLowerCase());
+                copy(node, element);
+                to.append(element);
+            } else {
+                copy(node, to);
+            }
+        }
+    });
+    const target = document.createElement("div");
+    copy(new DOMParser().parseFromString(String(value ?? ""), "text/html").body, target);
+    return target.innerHTML;
+}
+
+/**
+ * The text of a registered service description, without its markup, for search and tooltips.
+ *
+ * @param value the description
+ * @returns {string} the text
+ */
+function describePalantirDescription(value) {
+    const body = new DOMParser().parseFromString(String(value ?? ""), "text/html").body;
+    body.querySelectorAll("script, style, template, noscript").forEach(element => element.remove());
+    body.querySelectorAll("p, br").forEach(element => element.after(" "));
+    return body.textContent.replace(/\s+/g, " ").trim();
 }
 
 /**
@@ -871,7 +942,7 @@ function renderApplicationCards() {
                     </button>
                 </header>
                 <code class="palantir-application-card-pattern" title="${escapePalantirMarkup(service.serviceId)}">${escapePalantirMarkup(service.serviceId)}</code>
-                ${service.description ? `<p class="palantir-application-card-description">${escapePalantirMarkup(service.description)}</p>` : ""}
+                ${describePalantirDescription(service.description) ? `<div class="palantir-application-card-description">${renderPalantirDescription(service.description)}</div>` : ""}
                 ${tags.length > 0 || links.length > 0 ? `<div class="palantir-application-card-tags">${tags.join("")}${links.join("")}</div>` : ""}
                 <footer class="palantir-application-card-actions">
                     <button type="button" class="palantir-button is-primary" data-application-action="editWizard">

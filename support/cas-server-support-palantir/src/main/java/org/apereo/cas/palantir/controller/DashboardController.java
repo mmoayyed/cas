@@ -25,6 +25,8 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.apereo.inspektr.common.web.ClientInfoHolder;
 import org.jooq.lambda.Unchecked;
 import org.springframework.boot.actuate.autoconfigure.endpoint.web.WebEndpointProperties;
+import org.springframework.boot.actuate.endpoint.EndpointAccessResolver;
+import org.springframework.boot.actuate.endpoint.ExposableEndpoint;
 import org.springframework.boot.actuate.endpoint.web.EndpointLinksResolver;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
@@ -71,6 +73,8 @@ public class DashboardController extends AbstractController {
     private final EndpointLinksResolver endpointLinksResolver;
     private final WebEndpointProperties webEndpointProperties;
     private final ConfigurableApplicationContext applicationContext;
+    private final List<? extends ExposableEndpoint<?>> endpoints;
+    private final EndpointAccessResolver endpointAccessResolver;
 
     private final Supplier<Map<String, List<String>>> exampleServiceDefinitions =
         memoize(Unchecked.supplier(() -> loadExampleServiceDefinitions(SUPPORTED_SERVICE_DEFINITIONS.get().keySet())));
@@ -126,6 +130,7 @@ public class DashboardController extends AbstractController {
             .map(entry -> Pair.of(entry.getKey(), casProperties.getServer().getPrefix() + entry.getValue().getHref()))
             .collect(Collectors.toMap(Pair::getKey, Pair::getValue));
         mav.addObject("actuatorEndpoints", actuatorEndpoints);
+        mav.addObject("actuatorEndpointAccess", resolveEndpointAccess());
         mav.addObject("supportedServiceTypes", SUPPORTED_SERVICE_DEFINITIONS.get());
         mav.addObject("serviceDefinitions", exampleServiceDefinitions.get());
         mav.addObject("availableMultifactorProviders", MultifactorAuthenticationUtils.getAvailableMultifactorAuthenticationProviders(applicationContext).keySet());
@@ -136,6 +141,20 @@ public class DashboardController extends AbstractController {
         mav.addObject("mutablePropertySources", mutablePropertySources.stream().map(MutablePropertySource::getName).toList());
         mav.addObject("serviceProperties", SERVICE_PROPERTIES.get());
         return mav;
+    }
+
+    /**
+     * The access level of every discovered endpoint, resolved the way the endpoint's mappings are, so that the
+     * dashboard can hold back the requests a read-only endpoint refuses.
+     *
+     * @return the access level of each endpoint, by endpoint id
+     */
+    private Map<String, String> resolveEndpointAccess() {
+        return endpoints
+            .stream()
+            .collect(Collectors.toMap(endpoint -> endpoint.getEndpointId().toString(),
+                endpoint -> endpointAccessResolver.accessFor(endpoint.getEndpointId(), endpoint.getDefaultAccess()).name(),
+                (first, second) -> first, TreeMap::new));
     }
 
     private static boolean isRoleAdmin(final Authentication authentication) {

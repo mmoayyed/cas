@@ -860,8 +860,8 @@ function initializeGroovyScriptCacheManagerOperations() {
         selector: "#groovyScriptCacheTable tbody tr",
         items: {
             view: {name: "View Resource", icon: contextMenuIcon("mdi-eye")},
-            recompute: {name: "Recompute Resource", icon: contextMenuIcon("mdi-refresh")},
-            delete: {name: "Delete Key", icon: contextMenuIcon("mdi-delete")}
+            recompute: {name: "Recompute Resource", write: "groovyCache", icon: contextMenuIcon("mdi-refresh")},
+            delete: {name: "Delete Key", write: "groovyCache", icon: contextMenuIcon("mdi-delete")}
         },
         callback: (key, context) => {
             if (key === "view") {
@@ -975,16 +975,16 @@ async function initializeConfigurationOperations() {
     `;
     if (PalantirDashboardConfiguration.mutablePropertySourcesAvailable()) {
         toolbarEntries += `
-            <button type="button" title="Create a new configuration property" onclick="createNewConfigurationProperty(this);" id="newConfigPropertyButton" class="mdc-button mdc-button--raised">
+            <button type="button" data-palantir-write="casConfig" title="Create a new configuration property" onclick="createNewConfigurationProperty(this);" id="newConfigPropertyButton" class="mdc-button mdc-button--raised">
                 <span class="mdc-button__label"><i class="mdc-tab__icon mdi mdi-plus" aria-hidden="true"></i>New Property</span>
             </button>
-            <button type="button" title="Delete all configuration properties" onclick="deleteAllConfigurationProperties(this);" id="deleteAllConfigurationPropertiesButton" class="mdc-button mdc-button--raised">
+            <button type="button" data-palantir-write="casConfig" title="Delete all configuration properties" onclick="deleteAllConfigurationProperties(this);" id="deleteAllConfigurationPropertiesButton" class="mdc-button mdc-button--raised">
                 <span class="mdc-button__label"><i class="mdc-tab__icon mdi mdi-delete" aria-hidden="true"></i>Delete All</span>
             </button>
-            <button type="button" title="Import configuration from properties from files" onclick="importConfigurationProperties(this);" id="importConfigurationPropertiesButton" class="mdc-button mdc-button--raised">
+            <button type="button" data-palantir-write="casConfig" title="Import configuration from properties from files" onclick="importConfigurationProperties(this);" id="importConfigurationPropertiesButton" class="mdc-button mdc-button--raised">
                 <span class="mdc-button__label"><i class="mdc-tab__icon mdi mdi-file-import" aria-hidden="true"></i>Import</span>
             </button>
-            <button type="button" id="refreshConfigurationButton"
+            <button type="button" data-palantir-write="refresh" id="refreshConfigurationButton"
                     title="Refresh CAS Server Configuration"
                     onclick="refreshCasServerConfiguration('Context Refresh');"
                     class="mdc-button mdc-button--raised">
@@ -1029,8 +1029,8 @@ async function initializeConfigurationOperations() {
         selector: "#mutableConfigurationTable tbody tr",
         items: {
             effective: {name: "View Effective Value", icon: contextMenuIcon("mdi-eye")},
-            update: {name: "Update Configuration Property Value", icon: contextMenuIcon("mdi-content-save-edit")},
-            delete: {name: "Delete Configuration Property Value", icon: contextMenuIcon("mdi-delete")},
+            update: {name: "Update Configuration Property Value", write: "casConfig", icon: contextMenuIcon("mdi-content-save-edit")},
+            delete: {name: "Delete Configuration Property Value", write: "casConfig", icon: contextMenuIcon("mdi-delete")},
             help: {
                 name: "Configuration Property Help",
                 icon: contextMenuIcon("mdi-help"),

@@ -74,17 +74,17 @@
 
                     </section>
                     <div class="d-flex">
-                        <button type="button" name="casProtocolV1Button" id="casProtocolV1Button"
+                        <button data-palantir-write="casValidate" type="button" name="casProtocolV1Button" id="casProtocolV1Button"
                                 class="mdc-button mdc-button--raised mr-8">
                             <span class="mdc-button__label"><i class="mdc-tab__icon mdi mdi-check-all"
                                                                aria-hidden="true"></i>V1 Protocol</span>
                         </button>
-                        <button type="button" name="casProtocolV2Button" id="casProtocolV2Button"
+                        <button data-palantir-write="casValidate" type="button" name="casProtocolV2Button" id="casProtocolV2Button"
                                 class="mdc-button mdc-button--raised mr-8">
                             <span class="mdc-button__label"><i class="mdc-tab__icon mdi mdi-check-all"
                                                                aria-hidden="true"></i>V2 Protocol</span>
                         </button>
-                        <button type="submit" name="casProtocolV3Button" id="casProtocolV3Button"
+                        <button data-palantir-write="casValidate" type="submit" name="casProtocolV3Button" id="casProtocolV3Button"
                                 class="mdc-button mdc-button--raised mr-8">
                             <span class="mdc-button__label"><i class="mdc-tab__icon mdi mdi-check-all"
                                                                aria-hidden="true"></i>V3 Protocol</span>
@@ -182,14 +182,14 @@
 
                                 </section>
                                 <div class="d-flex">
-                                    <button type="submit" name="saml2ProtocolPostButton"
+                                    <button data-palantir-write="samlPostProfileResponse" type="submit" name="saml2ProtocolPostButton"
                                             title="Simulate a SAML2 POST Response"
                                             id="saml2ProtocolPostButton"
                                             class="mdc-button mdc-button--raised">
                                         <span class="mdc-button__label"><i class="mdc-tab__icon mdi mdi-check-all"
                                                                            aria-hidden="true"></i>POST Response</span>
                                     </button>
-                                    <button type="button" name="saml2ProtocolLogoutButton"
+                                    <button data-palantir-write="samlPostProfileResponse" type="button" name="saml2ProtocolLogoutButton"
                                             title="Simulate a SAML2 Logout Request"
                                             id="saml2ProtocolLogoutButton"
                                             class="mdc-button mdc-button--raised">
@@ -251,7 +251,7 @@
                                         <span class="mdc-button__label"><i class="mdc-tab__icon mdi mdi-download"
                                                                            aria-hidden="true"></i>Fetch</span>
                                     </button>
-                                    <button type="button" name="saml2MetadataCacheInvalidateButton"
+                                    <button data-palantir-write="samlIdPRegisteredServiceMetadataCache" type="button" name="saml2MetadataCacheInvalidateButton"
                                             title="Invalidate SAML2 Metadata Cache Entry"
                                             id="saml2MetadataCacheInvalidateButton"
                                             class="mdc-button mdc-button--raised">
@@ -273,7 +273,7 @@
                                     <select id="saml2MetadataManagersSelect" class="jqueryui-selectmenu">
                                     </select>
                                 </label>
-                                <button type="button" name="saml2MetadataUploadButton" id="saml2MetadataUploadButton"
+                                <button data-palantir-write="samlIdPRegisteredServiceMetadata" type="button" name="saml2MetadataUploadButton" id="saml2MetadataUploadButton"
                                         class="mdc-button mdc-button--raised ml-2">
                                     <span class="mdc-button__label"><i class="mdc-tab__icon mdi mdi-upload"
                                                                        aria-hidden="true"></i>Upload Metadata</span>
@@ -459,7 +459,7 @@
 
                         </section>
                         <div class="d-flex">
-                            <button type="submit" name="saml1ProtocolButton" id="saml1ProtocolButton"
+                            <button data-palantir-write="samlValidate" type="submit" name="saml1ProtocolButton" id="saml1ProtocolButton"
                                     class="mdc-button mdc-button--raised">
                                 <span class="mdc-button__label">
                                     <i class="mdc-tab__icon mdi mdi-check-all" aria-hidden="true"></i>Submit</span>
@@ -542,7 +542,7 @@
                                     </div>
                                 </section>
                                 <div class="d-flex">
-                                    <button type="submit" name="oidcClientSecretRotationButton"
+                                    <button data-palantir-write="oauthClientSecrets" type="submit" name="oidcClientSecretRotationButton"
                                             id="oidcClientSecretRotationButton"
                                             class="mdc-button mdc-button--raised">
                                         <span class="mdc-button__label">

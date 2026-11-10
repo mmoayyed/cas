@@ -84,6 +84,20 @@ whether it blocks the login, and what each interrupt source answered.
 *Import* accepts an application definition in JSON or YAML, or a zip of JSON definitions such as the one *Export*
 produces; an imported application replaces one with the same id.
 
+Before changes to an existing application are saved, the application is read again. When someone else saved or
+deleted it after the edit started, also when the edit was kept as a draft and resumed later, the dashboard shows what
+they changed and asks whether to keep editing or to save anyway.
+
+An endpoint whose access level is read-only only answers reads, so the dashboard disables what would change something
+through it, such as saving an application, ending a session or changing a logger, and explains why.
+
+When adding a SAML2 service provider, *From Metadata* fills the wizard from the provider's metadata: from a URL,
+which CAS reads on the dashboard's behalf without registering, caching or storing it, or from metadata XML pasted or
+chosen as a file. When the metadata is an aggregate, the dashboard asks which service provider to use. The entity id,
+name, description, information and privacy URLs, logo, metadata location, a single declared NameID format, assertion
+signing, an attribute release policy for a research and scholarship category or for the attributes the provider
+requests, and its contacts are filled in for review before saving.
+
 *Duplicate Application* opens a copy of an application in the wizard as a new application, named after the original,
 with its service id left empty and, where the application has them, a new client id and secret. When the wizard or the
 definition editor holds changes that are not saved, closing it asks whether to keep editing, keep a draft and close, or
