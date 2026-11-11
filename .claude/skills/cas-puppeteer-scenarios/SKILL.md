@@ -8,6 +8,13 @@ description: "Write, fix and review the end-to-end puppeteer scenarios under ci/
 
 ## run.sh, init scripts and writing scenarios
 
+- The `oidc-login-strapi` image must install Corepack explicitly before `corepack enable` on Node 26: Node stopped
+  bundling it in v25. Check the pinned Strapi creator's published `engines.node`, not only the latest documentation;
+  `create-strapi@5.43.0` excludes Node 26, while `5.61.1` accepts it and generates a SQLite app with `better-sqlite3@12.11.1`.
+- Strapi 5.61.1's CAS provider requires `email_verified` to be boolean `true`; seed it for the scenario's fixture user
+  and allow its release. CAS's OIDC profile mapper converts the stub's `true` string into a boolean. Strapi keeps upstream
+  tokens in its session and redirects to `/api/auth/cas/callback` without token query parameters; assert the callback's
+  successful JSON response (`jwt` and the CAS user's identity), not an `id_token` in the browser URL.
 - `ci/tests/puppeteer/run.sh` runs a scenario's `initScript` entries with `eval "source ${script}"`, so they execute in the runner's own shell. An `exit` on the success path therefore terminates the whole scenario run, which looks like the scenario dying silently right after the init script's last line of output. Let a successful init script fall off the end, and reserve `exit 1` for the failure path, which is what that exit is there for. `ci/tests/ldap/run-ad-server.sh` still carries an `exit 0` early return for the already-running case and has the same hazard.
 - Init scripts are sourced, so `set -e`, `set -u` or `pipefail` in one would stay on for the rest of `run.sh`; 17 scenarios source such a script, and a leaked `set -e` made a failing test exit `run.sh` at its first attempt with code 1 (whole-script retry) instead of 5 after its in-process attempts. `run.sh` turns those options off after each init script, so do not rely on them persisting.
 - Prefer polling the service's own port over a container health check, and dump `docker compose logs` on the failure path: an unhealthy container tells you nothing, while the service's logs say why it would not start.
