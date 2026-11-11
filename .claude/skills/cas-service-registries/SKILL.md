@@ -8,6 +8,10 @@ description: "Review and change service registries and the services manager: loo
 
 ## Services manager lookups and cache
 
+- The `servicesManager` bean is a `DefaultChainingServicesManager` over one manager per service type; a stream can be read
+  once, so it saves a stream one service at a time through the manager that supports it, never by handing the stream
+  to each manager. Aspects on `ServicesManager.save(..)`, such as the Javers version history, see every overload: the
+  bulk ones (stream, varargs, supplier) return nothing, so record their services from the arguments, not the result.
 - `ServicesManager.findServiceBy(Service)` matches against the services cache only while the background
   reload is enabled and the cache size is above zero; it consults the registry on a miss only when the
   scheduler is off or the cache is disabled. A test that writes straight to a `ServiceRegistry` and then

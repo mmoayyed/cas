@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.TestPropertySource;
 import static org.hamcrest.Matchers.greaterThan;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -49,6 +50,32 @@ class RegisteredServicesEndpointTests extends AbstractCasEndpointTests {
             .andExpect(status().isOk());
     }
     
+    @Test
+    void verifyUnreadableServiceIsRefused() throws Throwable {
+        val content = """
+            {
+              "@class": "org.apereo.cas.services.CasRegisteredService",
+              "serviceId": "^https://mfa.example.org/.*",
+              "name": "UnreadableService",
+              "id": 9191,
+              "multifactorPolicy": {
+                "principalAttributeNameTrigger": "gender",
+                "bypassPrincipalAttributeName": "gender"
+              }
+            }
+            """;
+        for (val request : List.of(
+            post("/actuator/registeredServices/validate"),
+            post("/actuator/registeredServices"),
+            put("/actuator/registeredServices"))) {
+            val body = mockMvc.perform(request.contentType(MediaType.APPLICATION_JSON).content(content))
+                .andExpect(status().isBadRequest())
+                .andReturn().getResponse().getContentAsString();
+            assertTrue(body.contains("multifactorPolicy"), body);
+        }
+        assertNull(servicesManager.findServiceBy(9191));
+    }
+
     @Test
     void verifyImportOperationAsJson() throws Throwable {
         val content = new RegisteredServiceJsonSerializer(applicationContext)

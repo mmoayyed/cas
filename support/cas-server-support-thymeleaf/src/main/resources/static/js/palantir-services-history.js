@@ -103,6 +103,7 @@ class PalantirServiceHistory {
                     {
                         text: "Restore this version",
                         "class": "palantir-history-restore",
+                        "data-palantir-write": "entityHistory",
                         click: () => {
                             const version = PalantirServiceHistory.versions[PalantirServiceHistory.selected];
                             if (version) {
@@ -258,7 +259,8 @@ class PalantirServiceHistory {
             : [previous ? {label: `Version ${previous.id} · ${previous.date}`, text: previous.text} : null, selected];
         const restore = $(".palantir-history-restore");
         if (restore.data("ui-button")) {
-            restore.button("option", "disabled", version.text === PalantirServiceHistory.current);
+            restore.button("option", "disabled", version.text === PalantirServiceHistory.current
+                || !CasActuatorEndpoints.writable("entityHistory"));
         }
 
         if (!left || left.text === null || right.text === null) {

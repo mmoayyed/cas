@@ -23,7 +23,7 @@
                 <div class="palantir-applications-buttons">
                     <div class="mdc-touch-target-wrapper">
                         <span class="mdc-menu-surface--anchor">
-                            <button name="newService" id="newService"
+                            <button data-palantir-write="registeredServices" name="newService" id="newService"
                                     onclick="cas.openMenu();"
                                     title="Create New Application"
                                     class="mdc-button mdc-button--raised" aria-label="Create">
@@ -73,7 +73,7 @@
                             </div>
                         </span>
                         <input type="file" id="serviceFileInput" style="display: none;">
-                        <button name="importService" id="importService" class="mdc-button mdc-button--raised"
+                        <button data-palantir-write="registeredServices" name="importService" id="importService" class="mdc-button mdc-button--raised"
                                 title="Import applications and service definitions" aria-label="Import">
                              <span class="mdc-button__label"><i class="mdc-tab__icon mdi mdi-file-import"
                                                                 aria-hidden="true"></i>Import</span>
@@ -90,15 +90,33 @@
                              <span class="mdc-button__label"><i class="mdc-tab__icon mdi mdi-refresh"
                                                                 aria-hidden="true"></i>Reload</span>
                         </button>
+                        <button data-palantir-write="registeredServices" name="deleteAllServices" id="deleteAllServices"
+                                class="mdc-button mdc-button--raised palantir-danger-button"
+                                title="Delete every application from the service registry" aria-label="Delete All">
+                             <span class="mdc-button__label"><i class="mdc-tab__icon mdi mdi-delete-sweep"
+                                                                aria-hidden="true"></i>Delete All</span>
+                        </button>
                     </div>
                 </div>
+            </div>
+            <div class="palantir-type-filter" id="applicationsTypeFilter" role="group"
+                 aria-label="Show applications of type" hidden></div>
+            <div class="palantir-selection-bar" id="applicationsSelectionBar" role="region" aria-label="Selected applications" hidden>
+                <i class="mdi mdi-checkbox-multiple-marked-outline" aria-hidden="true"></i>
+                <span class="palantir-selection-bar__count" aria-live="polite"></span>
+                <span class="palantir-selection-bar__spacer"></span>
+                <button type="button" class="palantir-button" name="clearServiceSelection">
+                    <i class="mdi mdi-close" aria-hidden="true"></i>Clear selection
+                </button>
+                <button type="button" data-palantir-write="registeredServices" class="palantir-button is-danger" name="deleteSelectedServices">
+                    <i class="mdi mdi-delete" aria-hidden="true"></i>Delete selected
+                </button>
             </div>
         </section>
 
         <div class="jqueryui-tabs" id="applications-tabs">
               <ul>
                 <li><a id="applications" href="#applications-tab">Applications</a></li>
-                <li><a id="saml2metadataproviders" href="#saml2metadataproviders-tab" class="hide">SAML2 Metadata Sources</a></li>
               </ul>
 
             <div id="applications-tab">
@@ -106,7 +124,7 @@
                 <table id="applicationsTable" class="mdc-data-table__table table table-striped noborder">
                     <thead>
                     <tr class="mdc-data-table__header-row">
-	                        <th class="mdc-data-table__header-cell" role="columnheader" scope="col"><span class="palantir-sr-only">Type</span></th>
+	                        <th class="mdc-data-table__header-cell" role="columnheader" scope="col"><input type="checkbox" id="applicationsSelectAll" class="palantir-application-select" aria-label="Select every application shown"><span class="palantir-sr-only">Type</span></th>
 	                        <th class="mdc-data-table__header-cell" role="columnheader" scope="col">Service</th>
 	                        <th class="mdc-data-table__header-cell" role="columnheader" scope="col">URL Pattern</th>
 	                        <th class="mdc-data-table__header-cell" role="columnheader" scope="col">Description</th>
@@ -850,12 +868,18 @@
                                     <span>Next</span><i class="mdi mdi-chevron-right" aria-hidden="true"></i>
                                 </button>
                                 <span class="registered-service-wizard__spacer"></span>
+                                <button id="fillServiceWizardFromMetadata" name="fillServiceWizardFromMetadata" type="button"
+                                        class="mdc-button mdc-button--raised btn mdc-button--lg hide"
+                                        title="Fill the wizard from the metadata of the service provider">
+                                    <span class="mdc-button__label"><i class="mdc-tab__icon mdi mdi-file-download-outline"
+                                                                       aria-hidden="true"></i>From Metadata</span>
+                                </button>
                                 <button id="cancelServiceWizard" name="cancelServiceWizard" type="button"
                                         class="mdc-button mdc-button--raised btn mdc-button--lg">
                                     <span class="mdc-button__label"><i class="mdc-tab__icon mdi mdi-close"
                                                                        aria-hidden="true"></i>Cancel</span>
                                 </button>
-                                <button id="validateServiceWizard" name="validateServiceWizard" type="button"
+                                <button data-palantir-write="registeredServices" id="validateServiceWizard" name="validateServiceWizard" type="button"
                                         class="mdc-button mdc-button--raised btn mdc-button--lg">
                                     <span class="mdc-button__label"><i class="mdc-tab__icon mdi mdi-check-all"
                                                                        aria-hidden="true"></i>Validate</span>
@@ -866,7 +890,7 @@
                                     <span class="mdc-button__label"><i class="mdc-tab__icon mdi mdi-content-copy"
                                                                        aria-hidden="true"></i>Copy</span>
                                 </button>
-                                <button id="saveServiceWizard" name="saveServiceWizard" type="button"
+                                <button data-palantir-write="registeredServices" id="saveServiceWizard" name="saveServiceWizard" type="button"
                                         class="mdc-button mdc-button--raised btn mdc-button--lg">
                                     <span class="mdc-button__label"><i class="mdc-tab__icon mdi mdi-content-save"
                                                                        aria-hidden="true"></i>Save</span>
@@ -901,7 +925,7 @@
                             <span class="mdc-button__label"><i class="mdc-tab__icon mdi mdi-close"
                                                                aria-hidden="true"></i>Cancel</span>
                         </button>
-                        <button id="saveService" name="saveService" type="button"
+                        <button data-palantir-write="registeredServices" id="saveService" name="saveService" type="button"
                                 class="mdc-button mdc-button--raised btn mdc-button--lg">
                             <span class="mdc-button__label"><i class="mdc-tab__icon mdi mdi-content-save"
                                                                aria-hidden="true"></i>Save</span>
@@ -957,6 +981,19 @@
                         </div>
                     </div>
                     <div class="mdc-dialog__scrim"></div>
+                </div>
+
+                <!--/*
+                    The metadata health of a SAML2 application, filled by PalantirSamlMetadataHealth in
+                    palantir-services-wizard-saml2.js: the overall status, each check, and the metadata it read.
+                */-->
+                <div id="samlMetadataHealthDialog" class="palantir-metadata-health hide" title="Metadata health">
+                    <p class="palantir-metadata-health__summary" id="samlMetadataHealthSummary" role="status" aria-live="polite"></p>
+                    <ul class="palantir-metadata-health__checks" id="samlMetadataHealthChecks"></ul>
+                    <details class="palantir-metadata-health__metadata" id="samlMetadataHealthMetadata" hidden>
+                        <summary>Metadata</summary>
+                        <pre class="ace-editor ace-relative w-100" id="samlMetadataHealthEditor"></pre>
+                    </details>
                 </div>
 
                 <div id="validatePatternDialog" class="hide">
@@ -1037,21 +1074,6 @@
                     <div id="providedPatternTestResult" class="p-2 banner hide"></div>
                 </div>
                 
-            </div>
-
-
-            <div id="saml2metadataproviders-tab">
-                <table id="saml2MetadataProvidersTable" class="mdc-data-table__table table table-striped noborder">
-                    <thead>
-                    <tr class="mdc-data-table__header-row">
-                        <th class="mdc-data-table__header-cell" role="columnheader" scope="col">ID</th>
-                        <th class="mdc-data-table__header-cell" role="columnheader" scope="col">Service</th>
-                        <th class="mdc-data-table__header-cell" role="columnheader" scope="col">URL</th>
-                    </tr>
-                    </thead>
-                    <tbody class="mdc-data-table__content">
-                    </tbody>
-                </table>
             </div>
         </div>
     </div>

@@ -251,11 +251,11 @@
                         </div>
                     </section>
                     <div class="d-flex">
-                        <button type="submit" id="encryptConfigButton" class="mdc-button mdc-button--raised">
+                        <button data-palantir-write="casConfig" type="submit" id="encryptConfigButton" class="mdc-button mdc-button--raised">
                             <span class="mdc-button__label"><i class="mdc-tab__icon mdi mdi-lock"
                                                                aria-hidden="true"></i>Encrypt</span>
                         </button>
-                        <button type="button" id="decryptConfigButton" class="mdc-button mdc-button--raised">
+                        <button data-palantir-write="casConfig" type="button" id="decryptConfigButton" class="mdc-button mdc-button--raised">
                             <span class="mdc-button__label"><i class="mdc-tab__icon mdi mdi-lock-open"
                                                                aria-hidden="true"></i>Decrypt</span>
                         </button>
@@ -400,7 +400,7 @@
                 </table>
 
                 <div class="d-flex mt-3">
-                    <button type="button" id="recomputeGroovyScriptCacheButton" class="mdc-button mdc-button--raised">
+                    <button data-palantir-write="groovyCache" type="button" id="recomputeGroovyScriptCacheButton" class="mdc-button mdc-button--raised">
                         <span class="mdc-button__label"><i class="mdc-tab__icon mdi mdi-refresh"
                                                            aria-hidden="true"></i>Recompute All</span>
                     </button>

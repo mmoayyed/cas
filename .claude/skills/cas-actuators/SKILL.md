@@ -106,3 +106,14 @@ description: "Review and change CAS actuator endpoints: the security filter chai
   `DateTimeUtils.zonedDateTimeOf(Instant)`; do not substitute the current time for a missing event timestamp.
 - `ThrottledSubmissionHandlerEndpoint` obtains entries from a raw `ThrottledSubmissionsStore`; declare the local
   `Stream<ThrottledSubmission>` explicitly so username-filter predicates receive submissions instead of `Object`.
+
+## Configuration encryption
+
+- `{cas-cipher}` values are decrypted while configuration files load (`BaseConfigurationPropertiesLoader`); dynamic
+  (`MutablePropertySource`) sources, also when wrapped in `BootstrapPropertySource`, are decrypted by
+  `CasConfigurationDecryptionInitializer` into the `casConfigurationDecryptedProperties` source, ahead of all others, at
+  startup (a bootstrap `ApplicationContextInitializer` ordered after Spring Cloud's property source bootstrap) and on every
+  `EnvironmentChangeEvent` before `ConfigurationPropertiesRebinder` rebinds. Decrypt nothing at bind time: a `BindHandler`
+  sees values after conversion, so a boolean would fail before it could be decrypted.
+- `casConfig` `/encrypt` and `/decrypt` answer 400 when the cipher fails; Palantir only offers encryption when the dashboard
+  model's `configurationEncryptionAvailable` is true.

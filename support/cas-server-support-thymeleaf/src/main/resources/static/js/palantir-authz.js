@@ -1188,7 +1188,7 @@ async function initializeHeimdallOperations() {
 
     const heimdallToolbar = document.createElement("div");
     heimdallToolbar.innerHTML = `
-        <button type="button" id="newHeimdallResourceButton" onclick="newHeimdallResource()"
+        <button type="button" data-palantir-write="heimdall" id="newHeimdallResourceButton" onclick="newHeimdallResource()"
                 title="Create Authorizable Resource" class="mdc-button mdc-button--raised">
             <span class="mdc-button__label"><i class="mdc-tab__icon mdi mdi-plus-thick" aria-hidden="true"></i>NEW</span>
         </button>`;
@@ -1226,7 +1226,7 @@ async function initializeHeimdallOperations() {
             selector: "#heimdallResourcesTable tbody tr",
             items: {
                 edit: {name: "Edit Resource", icon: contextMenuIcon("mdi-pencil")},
-                delete: {name: "Delete Resource", icon: contextMenuIcon("mdi-delete")}
+                delete: {name: "Delete Resource", write: "heimdall", icon: contextMenuIcon("mdi-delete")}
             },
             callback: (key, context) => {
                 if (key === "edit") {

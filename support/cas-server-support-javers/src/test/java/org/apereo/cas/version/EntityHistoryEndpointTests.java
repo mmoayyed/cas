@@ -97,6 +97,23 @@ class EntityHistoryEndpointTests extends BaseEntityHistoryTests {
             .andExpect(status().isOk());
     }
 
+    /**
+     * Bulk saves, such as importing a zip of applications, return nothing; each service they save is still recorded,
+     * rather than the save failing on a missing result.
+     */
+    @Test
+    void verifyBulkSavesKeepHistory() {
+        val streamed = RegisteredServiceTestUtils.getRegisteredService(UUID.randomUUID().toString());
+        val first = RegisteredServiceTestUtils.getRegisteredService(UUID.randomUUID().toString());
+        val second = RegisteredServiceTestUtils.getRegisteredService(UUID.randomUUID().toString());
+        assertDoesNotThrow(() -> servicesManager.save(Stream.of(streamed)));
+        assertDoesNotThrow(() -> servicesManager.save(first, second));
+        for (val service : List.of(streamed, first, second)) {
+            assertNotNull(servicesManager.findServiceBy(service.getId()));
+            assertFalse(objectVersionRepository.getHistory(service).isEmpty());
+        }
+    }
+
     @Test
     void verifyRestore() throws Throwable {
         val service = RegisteredServiceTestUtils.getRegisteredService(UUID.randomUUID().toString());

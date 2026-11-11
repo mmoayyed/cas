@@ -99,7 +99,7 @@ class PalantirCommandPalette {
                 label: name,
                 detail: [`#${service.id}`, service.serviceId].filter(Boolean).join(" · "),
                 icon: "mdi-application-outline",
-                keywords: [service.id, service.serviceId, service.clientId, service.description]
+                keywords: [service.id, service.serviceId, service.clientId, describePalantirDescription(service.description)]
                     .filter(value => value !== undefined && value !== null).join(" "),
                 run: () => PalantirCommandPalette.showApplication(name)
             };

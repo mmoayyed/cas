@@ -44,7 +44,7 @@ async function initializeThrottlesOperations() {
         table: throttlesTable,
         selector: "#throttlesTable tbody tr",
         items: {
-            remove: {name: "Remove Throttled Attempt", icon: contextMenuIcon("mdi-delete")}
+            remove: {name: "Remove Throttled Attempt", write: "throttles", icon: contextMenuIcon("mdi-delete")}
         },
         callback: (key, context) => {
             if (key === "remove") {

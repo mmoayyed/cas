@@ -13,6 +13,10 @@ class PalantirDashboardConfiguration {
         return this.all().actuatorEndpoints || {};
     }
 
+    static actuatorEndpointAccess() {
+        return this.all().actuatorEndpointAccess || {};
+    }
+
     static serviceDefinitions() {
         return this.all().serviceDefinitions || {};
     }
@@ -39,6 +43,15 @@ class PalantirDashboardConfiguration {
 
     static mutablePropertySourcesAvailable() {
         return this.all().mutablePropertySourcesAvailable || false;
+    }
+
+    /**
+     * Whether CAS can encrypt and decrypt configuration values, because configuration security is set up.
+     *
+     * @returns {boolean} true when configuration values can be encrypted
+     */
+    static configurationEncryptionAvailable() {
+        return this.all().configurationEncryptionAvailable === true;
     }
 
     static trumbowygIconsPath() {
@@ -137,10 +150,13 @@ function resolveInitialDashboardTab() {
 async function initializePalantir() {
     try {
         installJQueryCompatibility();
+        allowAlertsOverModalDialogs();
         applySharedDialogStyle();
         initializeTableAndDialogAccessibility();
+        initializePalantirEndpointAccess();
         await initializeCasFeatures();
         showElements("#dashboard");
+        performance.mark("palantir-dashboard-shown");
         const visibleCount = processNavigationTabs();
         updatePalantirNavigationGroups();
         const selectedTab = resolveInitialDashboardTab();

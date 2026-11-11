@@ -14,6 +14,14 @@ class PalantirUserLookup {
 
     static firstCardOpened = 0;
 
+    static ACTION_ENDPOINTS = {
+        "end-session": "ssoSessions",
+        "remove-mfa-device": "mfaDevices",
+        "remove-trusted-device": "multifactorTrustedDevices",
+        "remove-throttle": "throttles",
+        "revoke-consent": "attributeConsent"
+    };
+
     /**
      * The sources the page can draw, in the order their cards appear.
      *
@@ -413,7 +421,7 @@ class PalantirUserLookup {
                         ${secondary.length > 0 ? `<span class="palantir-user-card__secondary">${secondary.map(escapePalantirMarkup).join(" · ")}</span>` : ""}
                         ${row.code ? `<code class="palantir-user-card__code">${escapePalantirMarkup(row.code)}</code>` : ""}
                     </div>
-                    ${row.action ? `<button type="button" class="palantir-button" data-user-action="${row.action.name}" ${data}>${escapePalantirMarkup(row.action.label)}</button>` : ""}
+                    ${row.action ? `<button type="button" class="palantir-button" data-user-action="${row.action.name}" data-palantir-write="${PalantirUserLookup.ACTION_ENDPOINTS[row.action.name] ?? ""}" ${data}>${escapePalantirMarkup(row.action.label)}</button>` : ""}
                 </li>`;
         }).join("")}</ul>`;
     }

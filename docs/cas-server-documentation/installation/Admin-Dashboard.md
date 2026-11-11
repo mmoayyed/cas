@@ -81,6 +81,42 @@ The authentication section lists, under *Interrupts*, which [interrupt](../webfl
 a user would see at login, optionally signing in to a given application: the message, links and data of the interrupt,
 whether it blocks the login, and what each interrupt source answered.
 
+*Import* accepts an application definition in JSON or YAML, or a zip of JSON definitions such as the one *Export*
+produces; an imported application replaces one with the same id. While the file uploads and CAS imports it, the
+dashboard shows the progress of the upload and that the server is busy.
+
+Before changes to an existing application are saved, the application is read again. When someone else saved or
+deleted it after the edit started, also when the edit was kept as a draft and resumed later, the dashboard shows what
+they changed and asks whether to keep editing or to save anyway.
+
+An endpoint whose access level is read-only only answers reads, so the dashboard disables what would change something
+through it, such as saving an application, ending a session or changing a logger, and explains why.
+
+When adding a SAML2 service provider, *From Metadata* fills the wizard from the provider's metadata: from a URL,
+which CAS reads on the dashboard's behalf without registering, caching or storing it, or from metadata XML pasted or
+chosen as a file. When the metadata is an aggregate, the dashboard asks which service provider to use. The entity id,
+name, description, information and privacy URLs, logo, metadata location, a single declared NameID format, assertion
+signing, an attribute release policy for a research and scholarship category or for the attributes the provider
+requests, and its contacts are filled in for review before saving.
+
+The dynamic configuration sources, whose properties can be changed at runtime, list their properties with a menu
+to view, update or delete a value. When [configuration security](../configuration/Configuration-Properties-Security-CAS.html)
+is set up, the menu also encrypts a plain value or decrypts an encrypted one, stores the result in the same source and
+offers to refresh CAS so that the change takes effect.
+
+*Check Metadata Health*, in the menu of a SAML2 application, reports on the provider's metadata: whether CAS can
+download it from its location, on the dashboard's behalf, and finds the service provider in it, whether CAS resolves
+it the way it does at login, with its signature and validity checks, and when the metadata and the certificates the
+provider publishes expire, warning a month ahead. The metadata that was read is shown. Nothing is registered, stored
+or removed from the metadata cache.
+
+An application can be disabled from its context menu, and enabled again, after confirming; disabled applications are
+marked in the table and the cards. An access strategy that has no switch of its own is combined with a disabled
+default strategy while the application is disabled, and left as it was once it is enabled again. Applications can be
+selected with their checkboxes, all of those the search and type filter show at once, and the selection deleted
+together; *Delete All* removes every application from the service registry after the operator types a confirmation,
+offering to export them first.
+
 *Duplicate Application* opens a copy of an application in the wizard as a new application, named after the original,
 with its service id left empty and, where the application has them, a new client id and secret. When the wizard or the
 definition editor holds changes that are not saved, closing it asks whether to keep editing, keep a draft and close, or

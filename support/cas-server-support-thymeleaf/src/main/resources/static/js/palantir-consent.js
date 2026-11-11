@@ -67,7 +67,7 @@ async function initializeConsentOperations() {
             selector: "#consentTable tbody tr",
             items: {
                 view: {name: "View Attributes", icon: contextMenuIcon("mdi-eye")},
-                delete: {name: "Delete Consent", icon: contextMenuIcon("mdi-delete")}
+                delete: {name: "Delete Consent", write: "attributeConsent", icon: contextMenuIcon("mdi-delete")}
             },
             callback: (key, context) => {
                 if (key === "view") {

@@ -26,6 +26,19 @@ function palantirWizardField(builder) {
 }
 
 /**
+ * Build the wizard in the background once the browser is idle, so that opening the first application does not
+ * wait for it. Startup does not: this is asked for after the Applications page is set up.
+ */
+function prepareRegisteredServiceWizardWhenIdle() {
+    const prepare = () => buildRegisteredServiceWizardFields();
+    if ("requestIdleCallback" in window) {
+        requestIdleCallback(prepare, {timeout: 5000});
+    } else {
+        setTimeout(prepare, 2000);
+    }
+}
+
+/**
  * Build the wizard's fields, once.
  *
  * A builder that throws is logged and skipped: one section that cannot be built must not leave the
@@ -39,6 +52,7 @@ function palantirWizardField(builder) {
 function buildRegisteredServiceWizardFields() {
     if (!palantirWizardFieldsBuilt) {
         palantirWizardFieldsBuilt = (async () => {
+            await new Promise(resolve => CasDiscoveryProfile.fetchIfNeeded().always(resolve));
             for (const builder of palantirWizardFieldBuilders) {
                 try {
                     await builder();
@@ -47,6 +61,10 @@ function buildRegisteredServiceWizardFields() {
                 }
             }
             initializePalantirWidgets(document.getElementById("editServiceWizardForm"));
+            for (let attempt = 0; attempt < 20 && !$("#registeredServiceDescriptionEditor").data("trumbowyg"); attempt++) {
+                await new Promise(resolve => setTimeout(resolve, 50));
+            }
+            performance.mark("palantir-wizard-built");
         })();
     }
     return palantirWizardFieldsBuilt;
@@ -201,7 +219,7 @@ function createRegisteredServiceAttributeReleasePolicy() {
     });
 
     CasDiscoveryProfile.fetchIfNeeded()
-        .done(async () => {
+        .always(async () => {
             const options = CasDiscoveryProfile.availableAttributes().map(attr => ({
                 value: attr,
                 text: attr
@@ -1038,7 +1056,7 @@ function createRegisteredServiceMultifactorPolicy() {
             });
     } else {
         CasDiscoveryProfile.fetchIfNeeded()
-            .done(async () => {
+            .always(async () => {
                 const options = Object.entries(CasDiscoveryProfile.multifactorAuthenticationProviders()).map(([key, _value]) => ({
                     value: key,
                     text: _value
@@ -1050,7 +1068,7 @@ function createRegisteredServiceMultifactorPolicy() {
                     paramType: "org.apereo.cas.services.DefaultRegisteredServiceMultifactorPolicy",
                     title: "Define the multifactor authentication providers to be used, separated by comma.",
                     options: options,
-                    allowCreateOption: false,
+                    allowCreateOption: options.length === 0,
                     inclusion: "before"
                 }).data("renderer", function (value) {
                     return ["java.util.HashSet", value.split(",").filter(v => v != null && v !== "")];
@@ -1091,7 +1109,7 @@ function createRegisteredServiceMultifactorPolicy() {
     });
 
     CasDiscoveryProfile.fetchIfNeeded()
-        .done(async () => {
+        .always(async () => {
             const options = CasDiscoveryProfile.availableAttributes().map(attr => ({
                 value: attr,
                 text: attr
@@ -1103,6 +1121,7 @@ function createRegisteredServiceMultifactorPolicy() {
                 containerId: "registeredServiceMultifactorPolicyfailureModeSelectContainer",
                 labelTitle: "Principal Attribute Name Trigger:",
                 paramName: "multifactorPolicy.principalAttributeNameTrigger",
+                paramType: "org.apereo.cas.services.DefaultRegisteredServiceMultifactorPolicy",
                 title: "Specifies the principal attribute name that triggers multifactor authentication.",
                 options: options,
                 allowCreateOption: true,
@@ -1147,7 +1166,7 @@ function createRegisteredServiceMultifactorPolicy() {
     });
 
     CasDiscoveryProfile.fetchIfNeeded()
-        .done(async () => {
+        .always(async () => {
             const options = CasDiscoveryProfile.availableAttributes().map(attr => ({
                 value: attr,
                 text: attr
@@ -1159,6 +1178,7 @@ function createRegisteredServiceMultifactorPolicy() {
                 containerId: "registeredServiceMfaBypassPrincipalAttributeValueFieldContainer",
                 labelTitle: "Principal Attribute Name Bypass:",
                 paramName: "multifactorPolicy.bypassPrincipalAttributeName",
+                paramType: "org.apereo.cas.services.DefaultRegisteredServiceMultifactorPolicy",
                 title: "Specifies the principal attribute name that bypasses multifactor authentication.",
                 options: options,
                 allowCreateOption: true,
@@ -1472,7 +1492,7 @@ function createRegisteredServiceAccessStrategy() {
     });
 
     CasDiscoveryProfile.fetchIfNeeded()
-        .done(async () => {
+        .always(async () => {
             const options = CasDiscoveryProfile.availableAttributes().map(attr => ({
                 value: attr,
                 text: attr
@@ -1847,6 +1867,7 @@ function createRegisteredServiceAuthenticationPolicy() {
         labelTitle: "Required Authentication Handler(s)",
         name: "registeredServiceAuthenticationPolicyRequiredHandlers",
         paramName: "authenticationPolicy.requiredAuthenticationHandlers",
+        paramType: "org.apereo.cas.services.DefaultRegisteredServiceAuthenticationPolicy",
         required: false,
         containerId: "editServiceWizardMenuItemAuthenticationPolicy",
         title: "Required Authentication Handler(s)"
@@ -1860,6 +1881,7 @@ function createRegisteredServiceAuthenticationPolicy() {
         labelTitle: "Excluded Authentication Handler(s)",
         name: "registeredServiceAuthenticationPolicyExcludedHandlers",
         paramName: "authenticationPolicy.excludedAuthenticationHandlers",
+        paramType: "org.apereo.cas.services.DefaultRegisteredServiceAuthenticationPolicy",
         required: false,
         containerId: "editServiceWizardMenuItemAuthenticationPolicy",
         title: "Excluded Authentication Handler(s)"
@@ -2221,7 +2243,7 @@ function createRegisteredServiceUsernameAttributeProvider() {
     });
 
     CasDiscoveryProfile.fetchIfNeeded()
-        .done(async () => {
+        .always(async () => {
             const options = CasDiscoveryProfile.availableAttributes().map(attr => ({
                 value: attr,
                 text: attr
@@ -2519,12 +2541,19 @@ function isWizardContainerSwitchedOff(element) {
     return display === "none" || (element.classList.contains("hide") && display === "");
 }
 
+let generateServiceDefinitionTimer = null;
+
+/**
+ * Generate the definition from the wizard's fields, shortly after the fields change. Calls made before it runs are
+ * served by that one run, which reads the fields as they are then.
+ */
 function generateServiceDefinition() {
-    if (isPopulatingWizard) {
+    if (isPopulatingWizard || generateServiceDefinitionTimer !== null) {
         return;
     }
 
-    setTimeout(function () {
+    generateServiceDefinitionTimer = setTimeout(function () {
+        generateServiceDefinitionTimer = null;
         if (!document.getElementById("wizardServiceEditor")) {
             return;
         }
@@ -2769,6 +2798,18 @@ function generateMappedFieldValue(sectionId, config) {
     return {"@class": mapType, ...definition};
 }
 
+/**
+ * Attach the Material text fields under an element, such as a row just added to a mapped field. Attaching every text
+ * field of the page instead costs more as the wizard grows and adds another set of listeners to each field every time.
+ *
+ * @param scope the element to look under
+ */
+function attachPalantirTextFields(scope) {
+    $(scope).find(".mdc-text-field").addBack(".mdc-text-field").each((index, field) => {
+        mdc.textField.MDCTextField.attachTo(field);
+    });
+}
+
 function createMappedInputField(config) {
     const {
         header = "",
@@ -2956,7 +2997,7 @@ function createMappedInputField(config) {
         $(`#${sectionContainerId}ToAppend`).append(elementsToAdd);
         configureGroovyEditors(elementsToAdd);
         configureRemoveMapRowEventHandler();
-        cas.attachFields();
+        attachPalantirTextFields(elementsToAdd);
         configureInputEventHandler();
         configureInputRenderer();
     });
@@ -2964,7 +3005,6 @@ function createMappedInputField(config) {
         $(`#${sectionContainerId}ToAppend`).empty();
         $(`#${sectionContainerId} input`).val("");
         configureRemoveMapRowEventHandler();
-        cas.attachFields();
         configureInputEventHandler();
         configureInputRenderer();
         changeCallback();
@@ -2980,11 +3020,11 @@ function createMappedInputField(config) {
            delay: 0,
            source: autoComplete,
            open: function( event, ui ) {
-                cas.attachFields();
+                attachPalantirTextFields($(this).closest(".mdc-text-field"));
            },
            select: function (event, ui) {
                 $(this).val(ui.item.value);
-                cas.attachFields();
+                attachPalantirTextFields($(this).closest(".mdc-text-field"));
                 return false;
            }
        });
@@ -3187,18 +3227,56 @@ function initializeDescriptionEditor(containerId) {
         }).on("tbwchange tbwblur", function () {
             generateServiceDefinition();
         });
-        $("#registeredServiceDescriptionEditor").attr("aria-label", "Description");
+        $("#registeredServiceDescriptionEditor").attr("aria-label", "Description").data("renderer", unwrapDescriptionParagraph);
         $("#registeredServiceDescriptionEditorContainer .trumbowyg-editor")
             .attr({"role": "textbox", "aria-multiline": "true", "aria-label": "Description"});
     }, 150);
 }
 
+/**
+ * The editor keeps every line in a paragraph; a description that is a single paragraph is kept without that wrapper,
+ * so a plain description stays plain text, while several paragraphs keep their markup.
+ *
+ * @param value the HTML of the editor
+ * @returns {string} the description
+ */
+function unwrapDescriptionParagraph(value) {
+    const body = new DOMParser().parseFromString(String(value ?? ""), "text/html").body;
+    const nodes = [...body.childNodes].filter(node => node.nodeType !== Node.TEXT_NODE || node.textContent.trim().length > 0);
+    if (nodes.length === 1 && nodes[0].nodeName === "P" && nodes[0].attributes.length === 0) {
+        const inner = nodes[0].innerHTML.trim();
+        return inner.length > 0 && inner !== "<br>" ? inner : String(value);
+    }
+    return String(value);
+}
+
+let descriptionEditorValue = "";
+
+let descriptionEditorTimer = null;
+
+/**
+ * Put a description in the description editor. Until the editor is ready, only the latest description is kept and
+ * applied once it is, and the definition is generated again then, since it was generated without it.
+ *
+ * @param value the description
+ */
 function setDescriptionEditorValue(value) {
+    descriptionEditorValue = value || "";
     const $editor = $("#registeredServiceDescriptionEditor");
     if ($editor.length > 0 && $editor.data("trumbowyg")) {
-        $editor.trumbowyg("html", value || "");
-    } else {
-        setTimeout(() => setDescriptionEditorValue(value), 150);
+        clearTimeout(descriptionEditorTimer);
+        descriptionEditorTimer = null;
+        $editor.trumbowyg("html", descriptionEditorValue);
+        return;
+    }
+    if (descriptionEditorTimer === null) {
+        descriptionEditorTimer = setTimeout(() => {
+            descriptionEditorTimer = null;
+            setDescriptionEditorValue(descriptionEditorValue);
+            if (!isPopulatingWizard) {
+                generateServiceDefinition();
+            }
+        }, 150);
     }
 }
 
@@ -3312,21 +3390,8 @@ let isPopulatingWizard = false;
  * @param {Object} serviceDefinition - The service definition JSON object
  */
 function populateWizardFromServiceDefinition(serviceDefinition) {
-    // Show loading indicator while populating and generating
-    // Use scrollbarPadding: false and heightAuto: false to prevent page jumping
-    Swal.fire({
-        title: "Loading Service Definition",
-        text: "Preparing wizard fields and generating JSON...",
-        allowOutsideClick: false,
-        allowEscapeKey: false,
-        showConfirmButton: false,
-        scrollbarPadding: false,
-        heightAuto: false,
-        returnFocus: false,
-        didOpen: () => {
-            Swal.showLoading();
-        }
-    });
+    const $wizardDialog = $("#editServiceWizardDialog").closest(".ui-dialog");
+    $wizardDialog.addClass("is-populating").attr("aria-busy", "true");
 
     // Set flag to prevent generateServiceDefinition from running during population
     isPopulatingWizard = true;
@@ -3579,11 +3644,8 @@ function populateWizardFromServiceDefinition(serviceDefinition) {
                 $addButton.click();
             }
 
-            setTimeout(() => {
-                const $row = $container.find("[data-mapped-input-row='true']").eq(index);
-                if ($row.length === 0) {
-                    return;
-                }
+            const $row = $container.find("[data-mapped-input-row='true']").eq(index);
+            if ($row.length > 0) {
 
                 const $keyInput = $row.find(`input[data-param-name="${containerFieldName}"][data-mapped-field-role='key']`).first();
                 if ($keyInput.length > 0) {
@@ -3600,7 +3662,7 @@ function populateWizardFromServiceDefinition(serviceDefinition) {
                         $input.val(valueStr).trigger("input");
                         floatMdcTextFieldLabel($input);
                     });
-            }, index * 20);
+            }
         });
     }
 
@@ -3613,6 +3675,9 @@ function populateWizardFromServiceDefinition(serviceDefinition) {
             return;
         }
         if (paramName === "clientSecrets" && $input.attr("id") === "registeredServiceClientSecrets") {
+            return;
+        }
+        if (paramName === "contacts") {
             return;
         }
 
@@ -3638,6 +3703,8 @@ function populateWizardFromServiceDefinition(serviceDefinition) {
             }
         }
     });
+
+    populateRegisteredServiceContacts(serviceDefinition, floatMdcTextFieldLabel);
 
     // Populate select fields
     $("form#editServiceWizardForm select[data-param-name]").each(function () {
@@ -3694,8 +3761,6 @@ function populateWizardFromServiceDefinition(serviceDefinition) {
         }
     });
 
-    // Populate mapped fields (key-value pair containers)
-    // Use a delay to ensure select field change handlers have executed and shown/hidden the correct containers
     setTimeout(() => {
         const mappedFieldContainers = new Set();
 
@@ -3751,7 +3816,7 @@ function populateWizardFromServiceDefinition(serviceDefinition) {
                 }
             }
         });
-    }, 50);
+    }, 0);
 
     // Handle special cases for different service types
     const serviceClass = serviceDefinition["@class"];
@@ -3789,11 +3854,6 @@ function populateWizardFromServiceDefinition(serviceDefinition) {
         }
     }
 
-    // Reset the population flag and generate the service definition after all fields are populated
-    // Use a timeout to account for:
-    // - 50ms delay for mapped fields to start populating
-    // - Additional delay for each entry (index * 20ms)
-    // - Some buffer time for DOM updates
     setTimeout(() => {
         isPopulatingWizard = false;
 
@@ -3810,7 +3870,7 @@ function populateWizardFromServiceDefinition(serviceDefinition) {
         });
 
         generateServiceDefinition();
-        Swal.close();
+        $wizardDialog.removeClass("is-populating").removeAttr("aria-busy");
 
         // Focus on the first visible input field after dialog is fully ready
         // Use a longer timeout to ensure MDC dialog animation is complete
@@ -3820,7 +3880,32 @@ function populateWizardFromServiceDefinition(serviceDefinition) {
                 $firstInput.trigger("focus");
             }
         }, 300);
-    }, 600);
+    }, 0);
+}
+
+/**
+ * Fill the contact fields of the wizard from the contacts of a definition, which are a Java list of contact objects:
+ * the first three, one per contact tab.
+ *
+ * @param serviceDefinition the definition
+ * @param floatLabel floats the label of a filled text field
+ */
+function populateRegisteredServiceContacts(serviceDefinition, floatLabel) {
+    const contacts = serviceDefinition?.contacts;
+    let list = [];
+    if (Array.isArray(contacts)) {
+        list = contacts.length === 2 && typeof contacts[0] === "string" && Array.isArray(contacts[1]) ? contacts[1] : contacts;
+    }
+    list.slice(0, 3).forEach((contact, position) => {
+        ["name", "email", "phone", "department", "type"].forEach(detail => {
+            const $input = $(`#registeredServiceContact${capitalize(detail)}${position + 1}`);
+            const value = contact?.[detail];
+            if ($input.length > 0 && value !== undefined && value !== null && value !== "") {
+                $input.val(String(value));
+                floatLabel($input);
+            }
+        });
+    });
 }
 
 /**
@@ -3897,6 +3982,9 @@ async function openRegisteredServiceWizardDialog(existingService = null, options
     async function openWizardDialog(serviceClass, serviceData = null) {
         const isNewService = serviceData === null || options.duplicate === true;
         const draftKey = PalantirServiceEditGuard.key("wizard", isNewService ? null : serviceData.id, serviceClass);
+        if (!isNewService) {
+            PalantirServiceEditGuard.remember(draftKey, serviceData);
+        }
         const draft = await PalantirServiceEditGuard.offerDraft(draftKey,
             serviceData === null || isNewService ? null : JSON.stringify(serviceData));
         let draftDefinition = null;
@@ -3955,7 +4043,7 @@ async function openRegisteredServiceWizardDialog(existingService = null, options
                         $(`input#${id}`).data(key, value);
                     });
                 }
-                $(`button#${id}Button`).on("click", function (e) {
+                $(`button#${id}Button`).off("click.wizardGenerate").on("click.wizardGenerate", function (e) {
                     setTimeout(() => generateServiceDefinition(), 0);
                 });
             });
@@ -3982,7 +4070,7 @@ async function openRegisteredServiceWizardDialog(existingService = null, options
             isPopulatingWizard = true;
             setTimeout(() => {
                 populateWizardFromServiceDefinition(definition);
-            }, 300);
+            }, 0);
         } else {
             generateServiceDefinition();
         }
@@ -4037,6 +4125,11 @@ async function openRegisteredServiceWizardDialog(existingService = null, options
             break;
         }
         RegisteredServiceSections.start();
+        if (className === "SamlRegisteredService") {
+            showElements($("#fillServiceWizardFromMetadata"));
+        } else {
+            hideElements($("#fillServiceWizardFromMetadata"));
+        }
         const protocol = applicationProtocolOf(serviceClass);
         let title = isNewService ? `New ${protocol.label}` : `Edit ${serviceData.name ?? protocol.label}`;
         if (options.duplicate === true) {

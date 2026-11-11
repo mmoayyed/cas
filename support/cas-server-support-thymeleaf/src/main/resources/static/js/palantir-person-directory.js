@@ -12,13 +12,13 @@ async function initializePersonDirectoryOperations() {
     let attrDefToolbarEntries = "";
     if (CasActuatorEndpoints.attributeDefinitions()) {
         attrDefToolbarEntries += `
-            <button type="button" id="newAttributeDefinitionButton"
+            <button type="button" data-palantir-write="attributeDefinitions" id="newAttributeDefinitionButton"
                     onclick="newAttributeDefinition()"
                     title="Create a new attribute definition"
                     class="mdc-button mdc-button--raised">
                 <span class="mdc-button__label"><i class="mdc-tab__icon mdi mdi-plus-thick" aria-hidden="true"></i>New</span>
             </button>
-            <button type="button" id="deleteAllAttributeDefinitionsButton"
+            <button type="button" data-palantir-write="attributeDefinitions" id="deleteAllAttributeDefinitionsButton"
                     onclick="deleteAllAttributeDefinitions()"
                     title="Delete all attribute definitions"
                     class="mdc-button mdc-button--raised">
@@ -30,7 +30,7 @@ async function initializePersonDirectoryOperations() {
                     class="mdc-button mdc-button--raised">
                 <span class="mdc-button__label"><i class="mdc-tab__icon mdi mdi-export" aria-hidden="true"></i>Export</span>
             </button>
-            <button type="button" id="importAttributeDefinitionsButton"
+            <button type="button" data-palantir-write="attributeDefinitions" id="importAttributeDefinitionsButton"
                     onclick="document.getElementById('importAttrDefFileInput').click()"
                     title="Import attribute definitions from JSON"
                     class="mdc-button mdc-button--raised">
@@ -61,7 +61,7 @@ async function initializePersonDirectoryOperations() {
     const attributeRepositoriesToolbar = document.createElement("div");
     if (attributeRepositoryPropertiesMutable()) {
         attributeRepositoriesToolbar.innerHTML = `
-            <button type="button" id="newAttributeRepositoryButton"
+            <button type="button" data-palantir-write="casConfig" id="newAttributeRepositoryButton"
                     onclick="openNewAttributeRepositoryDialog()"
                     title="Create a new attribute repository"
                     class="mdc-button mdc-button--raised">
@@ -1041,7 +1041,7 @@ function bindAttrDefDeleteButtons() {
         items: {
             view: {name: "View Attribute Definition", icon: contextMenuIcon("mdi-eye")},
             edit: {name: "Edit Attribute Definition", icon: contextMenuIcon("mdi-pencil")},
-            delete: {name: "Delete Attribute Definition", icon: contextMenuIcon("mdi-delete")}
+            delete: {name: "Delete Attribute Definition", write: "attributeDefinitions", icon: contextMenuIcon("mdi-delete")}
         },
         callback: (key, context) => {
             const definitionKey = context.rowData.key;

@@ -63,6 +63,7 @@
             return Object.freeze({
                 casServerPrefix: /*[[${casServerPrefix}]]*/,
                 actuatorEndpoints: /*[[${actuatorEndpoints}]]*/,
+                actuatorEndpointAccess: /*[[${actuatorEndpointAccess}]]*/,
                 serviceDefinitions: /*[[${serviceDefinitions}]]*/,
                 supportedServiceTypes: /*[[${supportedServiceTypes}]]*/,
                 serviceProperties: /*[[${serviceProperties}]]*/,
@@ -70,6 +71,7 @@
                 scriptFactoryAvailable: /*[[${scriptFactoryAvailable}]]*/,
                 mutablePropertySources: mutablePropertySources,
                 mutablePropertySourcesAvailable: mutablePropertySources.length > 0,
+                configurationEncryptionAvailable: /*[[${configurationEncryptionAvailable}]]*/ false,
                 trumbowygIconsPath: /*[[@{#{webjars.trumbowyg.icons}}]]*/ "",
                 mermaidScriptPath: /*[[@{#{webjars.mermaid.js}}]]*/ ""
             });
@@ -108,6 +110,7 @@
     <script type="text/javascript" th:src="@{/js/palantir-command-palette.js}"></script>
     <script type="text/javascript" th:src="@{/js/palantir-hotkeys.js}"></script>
     <script type="text/javascript" th:src="@{/js/palantir-services.js}"></script>
+    <script type="text/javascript" th:src="@{/js/palantir-services-actions.js}"></script>
     <script type="text/javascript" th:src="@{/js/palantir-services-sections.js}"></script>
     <script type="text/javascript" th:src="@{/js/palantir-services-history.js}"></script>
     <script type="text/javascript" th:src="@{/js/palantir-services-guard.js}"></script>

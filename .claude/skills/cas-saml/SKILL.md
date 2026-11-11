@@ -68,6 +68,10 @@ description: "Review and change SAML2 SP and IdP metadata handling: resolvers, M
   left as a lazy view over a store a later resolution replaces. There is no puppeteer scenario
   for per-service IdP metadata — no scenario sets `idpMetadataLocation` — so this path is
   covered by `SamlIdPMetadataResolverTests` alone.
+- `samlIdPRegisteredServiceMetadataCache/preview` reads http(s) SP metadata for an unregistered application (Palantir's
+  wizard): it downloads with the metadata HTTP client and parses, and deliberately bypasses the resolution plan, the
+  cache and `UrlResourceMetadataResolver`, whose backup file is shared per location and would be written, or served
+  stale, for a preview. Nothing it returns is trusted: no signature or validity filters run.
 - CAS does not use OpenSAML's `HTTPMetadataResolver` / `FileBackedHTTPMetadataResolver`.
   `UrlResourceMetadataResolver` reimplements fetch-and-back-up by hand, which is why the usual
   guarantees are absent: no background refresh timer and no min/max refresh delay. Do not assume

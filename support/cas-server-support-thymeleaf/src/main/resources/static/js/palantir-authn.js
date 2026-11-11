@@ -1161,7 +1161,7 @@ async function initializeAuthenticationOperations() {
     let authnHandlersToolbarEntries = "";
     if (PalantirDashboardConfiguration.mutablePropertySourcesAvailable() && CasActuatorEndpoints.casConfig()) {
         authnHandlersToolbarEntries += `
-            <button type="button" id="newAuthenticationHandlerButton"
+            <button type="button" data-palantir-write="casConfig" id="newAuthenticationHandlerButton"
                     onclick="openNewAuthenticationHandlerDialog()"
                     title="Add a new authentication handler"
                     class="mdc-button mdc-button--raised">
@@ -1402,7 +1402,7 @@ async function initializeAuthenticationOperations() {
 
     if (PalantirDashboardConfiguration.mutablePropertySourcesAvailable() && CasActuatorEndpoints.casConfig()) {
         toolbarEntries += `
-            <button type="button" id="newExternalIdentityProvider"
+            <button type="button" data-palantir-write="casConfig" id="newExternalIdentityProvider"
                     onclick="newExternalIdentityProvider()"
                     title="Create a new external identity provider"
                     class="mdc-button mdc-button--raised">

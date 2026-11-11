@@ -71,7 +71,9 @@ class DashboardControllerTests {
         assertTrue(model.containsKey("httpRequestMethod"));
         assertTrue(model.containsKey("httpRequestSecure"));
         assertTrue(model.containsKey("actuatorEndpoints"));
+        assertTrue(model.containsKey("actuatorEndpointAccess"));
         assertTrue(model.containsKey("serviceDefinitions"));
+        assertEquals(Boolean.FALSE, model.get("configurationEncryptionAvailable"));
 
         mvc.perform(get("/palantir/").with(authentication(authentication))).andExpect(status().isOk());
         mvc.perform(get("/palantir").with(authentication(authentication))).andExpect(status().isOk());
@@ -97,6 +99,45 @@ class DashboardControllerTests {
         SecurityContextHolder.clearContext();
         mvc.perform(get("/palantir/dashboard/session"))
             .andExpect(status().is3xxRedirection());
+    }
+
+    @Nested
+    @TestPropertySource(properties = "cas.standalone.configuration-security.psw=Q7M9w4NjYnBxb2#mW")
+    class ConfigurationEncryptionTests {
+        @Test
+        void verifyEncryptionIsAvailable() throws Throwable {
+            val authentication = new UsernamePasswordAuthenticationToken("casuser", "password",
+                List.of(new SimpleGrantedAuthority("ROLE_ADMIN")));
+            val model = mvc.perform(get("/palantir/dashboard").with(authentication(authentication)))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getModelAndView()
+                .getModel();
+            assertEquals(Boolean.TRUE, model.get("configurationEncryptionAvailable"));
+        }
+    }
+
+    @Nested
+    @TestPropertySource(properties = {
+        "management.endpoints.web.exposure.include=health,info",
+        "management.endpoint.health.access=READ_ONLY",
+        "management.endpoint.info.access=UNRESTRICTED"
+    })
+    class EndpointAccessTests {
+        @Test
+        void verifyAccessLevelsReachTheDashboard() throws Throwable {
+            val authentication = new UsernamePasswordAuthenticationToken("casuser", "password",
+                List.of(new SimpleGrantedAuthority("ROLE_ADMIN")));
+            val model = mvc.perform(get("/palantir/dashboard").with(authentication(authentication)))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getModelAndView()
+                .getModel();
+            val access = (Map<?, ?>) model.get("actuatorEndpointAccess");
+            assertNotNull(access);
+            assertEquals("READ_ONLY", access.get("health"));
+            assertEquals("UNRESTRICTED", access.get("info"));
+        }
     }
 
     @Nested

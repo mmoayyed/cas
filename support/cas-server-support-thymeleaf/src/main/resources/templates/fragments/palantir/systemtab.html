@@ -137,11 +137,11 @@
                 </div>
                 
                 <div class="d-flex">
-                    <button type="button" name="shutdownServerButton" id="shutdownServerButton"
+                    <button data-palantir-write="shutdown" type="button" name="shutdownServerButton" id="shutdownServerButton"
                             class="mdc-button mdc-button--raised">
                         <span class="mdc-button__label"><i class="mdc-tab__icon mdi mdi-power" aria-hidden="true"></i>Shut Down</span>
                     </button>
-                        <button type="button" name="restartServerButton" id="restartServerButton"
+                        <button data-palantir-write="restart" type="button" name="restartServerButton" id="restartServerButton"
                                 class="mdc-button mdc-button--raised">
                             <span class="mdc-button__label"><i class="mdc-tab__icon mdi mdi-restart"
                                                                aria-hidden="true"></i>Restart</span>
@@ -404,7 +404,7 @@
                                 </table>
                             </div>
                             <div class="heap-dump-actions">
-                                <button id="refreshHeapDumpAnalysisButton"
+                                <button data-palantir-write="heapDumpAnalysis" id="refreshHeapDumpAnalysisButton"
                                         type="button"
                                         class="mdc-button mdc-button--raised">
                                     <span class="mdc-button__label">
