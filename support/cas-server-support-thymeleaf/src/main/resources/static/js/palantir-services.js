@@ -1,6 +1,6 @@
 async function initializeServicesOperations() {
     const columnDefinitions = [
-        {visible: true, targets: 0, width: "56px", className: "palantir-application-type"},
+        {visible: true, targets: 0, width: "84px", className: "palantir-application-type"},
         {visible: true, targets: 1},
         {visible: true, targets: 2},
         {visible: true, targets: 3},
@@ -12,12 +12,18 @@ async function initializeServicesOperations() {
         pageLength: 25,
         autoWidth: false,
         columnDefs: columnDefinitions,
+        rowCallback: (row, data) => {
+            row.classList.toggle("is-disabled", PalantirApplicationAccess.isServiceDisabled(data.serviceId));
+            row.classList.toggle("is-checked", PalantirApplicationSelection.has(data.serviceId));
+        },
         drawCallback: settings => {
             $("#applicationsTable tr").addClass("mdc-data-table__row");
             $("#applicationsTable td").addClass("mdc-data-table__cell");
+            PalantirApplicationSelection.refresh();
         }
     });
     applicationsTable.on("click", "tbody tr", e => e.currentTarget.classList.remove("selected"));
+    PalantirApplicationSelection.initialize();
 
     $("#entityHistoryTable").DataTable({
         pageLength: 10,
@@ -186,6 +192,25 @@ function serviceImportContentType(file) {
  * @param file the chosen file
  * @returns {Promise<void>} resolved once the import is sent or declined
  */
+/**
+ * Say why CAS refused an application definition when it said why, and fall back to the usual banner otherwise.
+ *
+ * @param xhr the failed request
+ * @param title what failed
+ */
+function showUnreadableDefinition(xhr, title) {
+    const reason = xhr?.status === 400 ? xhr.responseJSON?.error : null;
+    if (reason) {
+        Swal.fire({
+            icon: "error",
+            title: title,
+            text: `CAS cannot read this definition: ${reason}`
+        });
+    } else {
+        displayBanner(xhr);
+    }
+}
+
 async function importServiceFile(file) {
     const contentType = serviceImportContentType(file);
     const archive = contentType === "application/octet-stream";
@@ -411,7 +436,7 @@ async function initializeServiceButtons() {
                             },
                             error: (xhr, status, error) => {
                                 console.error("Update failed:", error);
-                                displayBanner(xhr);
+                                showUnreadableDefinition(xhr, "The application was not saved");
                             }
                         });
                     }
@@ -456,6 +481,18 @@ async function initializeServiceButtons() {
             editPlain: {name: "Edit in Editor", icon: contextMenuIcon("mdi-pencil")},
             editWizard: {name: "Edit in Wizard", icon: contextMenuIcon("mdi-wizard-hat")},
             duplicate: {name: "Duplicate Application", write: "registeredServices", icon: contextMenuIcon("mdi-content-duplicate")},
+            disable: {
+                name: "Disable Application",
+                write: "registeredServices",
+                icon: contextMenuIcon("mdi-cancel"),
+                visible: context => !PalantirApplicationAccess.isServiceDisabled(context.rowData.serviceId)
+            },
+            enable: {
+                name: "Enable Application",
+                write: "registeredServices",
+                icon: contextMenuIcon("mdi-check-circle-outline"),
+                visible: context => PalantirApplicationAccess.isServiceDisabled(context.rowData.serviceId)
+            },
             delete: {name: "Delete Service Definition", write: "registeredServices", icon: contextMenuIcon("mdi-delete")},
             sep1: "---------",
             samlMetadataHealth: {
@@ -485,6 +522,8 @@ async function initializeServiceButtons() {
             editService(serviceId, true);
         } else if (key === "duplicate") {
             duplicateService(serviceId);
+        } else if (key === "disable" || key === "enable") {
+            PalantirApplicationAccess.change(serviceId, key === "disable");
         } else if (key === "delete") {
             deleteService(context);
         } else if (key === "history") {
@@ -532,6 +571,9 @@ async function fetchServices(callback) {
                     applicationLink(service.privacyUrl, "Privacy URL")
                 ].filter(Boolean);
                 let serviceDetails = `<span serviceId="${service.id}" title="${name}">${name}</span>`;
+                if (PalantirApplicationAccess.isDisabled(service.accessStrategy)) {
+                    serviceDetails += " <span class=\"palantir-status-tag is-disabled\"><i class=\"mdi mdi-cancel\" aria-hidden=\"true\"></i>Disabled</span>";
+                }
                 if (links.length > 0) {
                     serviceDetails += `<div class="palantir-application-links">${links.join("")}</div>`;
                 }
@@ -545,7 +587,7 @@ async function fetchServices(callback) {
                 }
 
                 applicationsTable.row.add({
-                    0: `<i serviceId='${service.id}' title='${serviceClass}' class='mdi ${icon}'></i>`,
+                    0: `${PalantirApplicationSelection.checkbox(service.id, service.name ?? service.id)}<i serviceId='${service.id}' title='${serviceClass}' class='mdi ${icon}'></i>`,
                     1: `${serviceDetails}`,
                     2: `${serviceIdDetails}`,
                     3: `<span serviceId='${service.id}' class="text-wrap palantir-application-description">${renderPalantirDescription(service.description)}</span>`,
@@ -554,12 +596,13 @@ async function fetchServices(callback) {
                 });
             }
 
-            applicationsTable.on("draw", async () => {
+            applicationsTable.off("draw.palantirServiceButtons").on("draw.palantirServiceButtons", async () => {
                 await initializeServiceButtons();
             });
 
             updateApplicationTypeFilter();
-            applicationsTable.search("").draw();
+            applicationsTable.draw();
+            prepareRegisteredServiceWizardWhenIdle();
 
             if (servicesChart) {
                 servicesChart.data.datasets[0].data = serviceCountByType;
@@ -627,6 +670,10 @@ async function initializeFooterButtons() {
                     contentType: "application/json",
                     data: editor.getValue(),
                     success: response => {
+                        if (response === false || response === "false") {
+                            Swal.fire({icon: "error", title: "The application definition is not valid", text: "CAS cannot read this definition."});
+                            return;
+                        }
                         const message = `
                             The given application definition is valid and can be parsed by CAS. Please note that validity
                             does not imply behavioral correctness. It only indicates that the generated
@@ -637,7 +684,7 @@ async function initializeFooterButtons() {
                     },
                     error: (xhr, status, error) => {
                         console.error(`Error: ${status} / ${error} / ${xhr.responseText}`);
-                        displayBanner(xhr);
+                        showUnreadableDefinition(xhr, "The application definition is not valid");
                     }
                 });
             }
@@ -1020,9 +1067,15 @@ function renderApplicationCards() {
             tags.push(`<span class="palantir-tag">Client ${escapePalantirMarkup(service.clientId)}</span>`);
         }
         const selected = node && node.classList.contains("selected");
+        const disabled = PalantirApplicationAccess.isDisabled(service.accessStrategy);
+        if (disabled) {
+            tags.unshift("<span class=\"palantir-status-tag is-disabled\"><i class=\"mdi mdi-cancel\" aria-hidden=\"true\"></i>Disabled</span>");
+        }
+        const checked = PalantirApplicationSelection.has(rowData.serviceId);
         return `
-            <article class="palantir-application-card${selected ? " is-selected" : ""}" data-service-id="${escapePalantirMarkup(rowData.serviceId)}">
+            <article class="palantir-application-card${selected ? " is-selected" : ""}${disabled ? " is-disabled" : ""}${checked ? " is-checked" : ""}" data-service-id="${escapePalantirMarkup(rowData.serviceId)}">
                 <header class="palantir-application-card-header">
+                    ${PalantirApplicationSelection.checkbox(rowData.serviceId, name)}
                     <span class="palantir-protocol-badge is-${protocol.key}" title="${escapePalantirMarkup(service["@class"])}">${escapePalantirMarkup(protocol.short)}</span>
                     <div class="palantir-application-card-title">
                         <h4>${escapePalantirMarkup(name)}</h4>

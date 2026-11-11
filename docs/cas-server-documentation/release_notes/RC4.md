@@ -237,7 +237,10 @@ security is set up, with an offer to refresh CAS afterwards. Application descrip
 italic and underlined text in the application cards and table instead of their markup, and a description of a single
 paragraph is saved as plain text. The applications chart, cards and search follow deleted applications as they follow
 new ones, and the applications can be filtered by type, such as CAS, SAML2 or OpenID Connect, each listed with how many
-applications it has. Importing applications accepts YAML definitions and exported zip files as well as JSON, and imports each chosen file
+applications it has. Validating or saving an application definition that CAS cannot read is refused with the reason, rather than reported
+as valid, and the wizard keeps the principal attributes of a multifactor policy, with the policy's type, when it
+edits an application. Applications can be disabled and enabled from their context menu, selected and deleted in bulk, or all deleted at
+once after a typed confirmation. Importing applications accepts YAML definitions and exported zip files as well as JSON, and imports each chosen file
 once. Applications can be duplicated into the wizard as new applications, and the wizard and the definition editor ask before
 closing with unsaved changes, keeping a draft in the browser that can be resumed for up to thirty days. A keyboard shortcut overlay opens
 with `?`, and tables and dialogs are easier to use with a keyboard and a screen reader: tables are named, rows with actions

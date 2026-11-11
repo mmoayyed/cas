@@ -342,6 +342,9 @@ public class RegisteredServicesEndpoint extends BaseCasRestActuatorEndpoint {
         @RequestBody final String registeredServiceBody) {
         val registeredServiceSerializer = new RegisteredServiceJsonSerializer(applicationContext);
         val registeredService = registeredServiceSerializer.from(registeredServiceBody);
+        if (registeredService == null) {
+            return unreadableService(registeredServiceSerializer, registeredServiceBody);
+        }
         registeredService.setId(RandomUtils.nextInt());
         val result = servicesManager.getObject().save(registeredService);
         return ResponseEntity.ok(registeredServiceSerializer.toString(result));
@@ -382,7 +385,9 @@ public class RegisteredServicesEndpoint extends BaseCasRestActuatorEndpoint {
                 ? new RegisteredServiceYamlSerializer(applicationContext)
                 : new RegisteredServiceJsonSerializer(applicationContext);
             val registeredService = registeredServiceSerializer.from(registeredServiceBody);
-            return ResponseEntity.ok(registeredService != null);
+            return registeredService != null
+                ? ResponseEntity.ok(true)
+                : unreadableService(registeredServiceSerializer, registeredServiceBody);
         } catch (final Exception e) {
             LoggingUtils.error(LOGGER, e);
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", e.getMessage()));
@@ -416,8 +421,30 @@ public class RegisteredServicesEndpoint extends BaseCasRestActuatorEndpoint {
         @RequestBody final String registeredServiceBody) {
         val registeredServiceSerializer = new RegisteredServiceJsonSerializer(applicationContext);
         val registeredService = registeredServiceSerializer.from(registeredServiceBody);
+        if (registeredService == null) {
+            return unreadableService(registeredServiceSerializer, registeredServiceBody);
+        }
         val result = servicesManager.getObject().save(registeredService);
         return ResponseEntity.ok(registeredServiceSerializer.toString(result));
+    }
+
+    /**
+     * Refuse a definition that cannot be read as a registered service, saying why. The serializer only logs the
+     * reason, so the definition is read once more to report it.
+     *
+     * @param serializer the serializer that could not read the definition
+     * @param body       the definition
+     * @return a bad request carrying the reason
+     */
+    private static ResponseEntity<Map<String, String>> unreadableService(final RegisteredServiceJsonSerializer serializer,
+                                                                         final String body) {
+        var reason = "The definition cannot be read as a registered service";
+        try {
+            serializer.getObjectMapper().readValue(body, RegisteredService.class);
+        } catch (final Exception e) {
+            reason = StringUtils.defaultIfBlank(e.getMessage(), e.getClass().getSimpleName());
+        }
+        return ResponseEntity.badRequest().body(Map.of("error", reason));
     }
 
     private ResponseEntity<RegisteredService> importSingleService(final HttpServletRequest request) throws IOException {

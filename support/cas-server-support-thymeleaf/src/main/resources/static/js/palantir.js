@@ -156,6 +156,7 @@ async function initializePalantir() {
         initializePalantirEndpointAccess();
         await initializeCasFeatures();
         showElements("#dashboard");
+        performance.mark("palantir-dashboard-shown");
         const visibleCount = processNavigationTabs();
         updatePalantirNavigationGroups();
         const selectedTab = resolveInitialDashboardTab();

@@ -267,14 +267,12 @@
 
                         <div id="saml2metadatamgmt-tab">
                             <p>Manage SAML2 service provider metadata sources registered with CAS.</p>
-                            <div class="d-flex align-items-end">
-                                <label for="saml2MetadataManagersSelect">
-                                    Metadata Manager:
-                                    <select id="saml2MetadataManagersSelect" class="jqueryui-selectmenu">
-                                    </select>
-                                </label>
+                            <div class="palantir-control-row">
+                                <label for="saml2MetadataManagersSelect">Metadata Manager:</label>
+                                <select id="saml2MetadataManagersSelect" class="jqueryui-selectmenu">
+                                </select>
                                 <button data-palantir-write="samlIdPRegisteredServiceMetadata" type="button" name="saml2MetadataUploadButton" id="saml2MetadataUploadButton"
-                                        class="mdc-button mdc-button--raised ml-2">
+                                        class="mdc-button mdc-button--raised">
                                     <span class="mdc-button__label"><i class="mdc-tab__icon mdi mdi-upload"
                                                                        aria-hidden="true"></i>Upload Metadata</span>
                                 </button>
@@ -383,17 +381,8 @@
                     </div>
                 </section>
 
-                <div class="mdc-dialog modal" id="saml2MetadataDialog" role="alertdialog"
-                                     aria-modal="true" aria-label="SAML2 Identity Provider Metadata"
-                                     aria-describedby="saml2MetadataDialog-content">
-                    <div class="mdc-dialog__container w-100 modal-dialog">
-                        <div class="mdc-dialog__surface mw-100 w-75 modal-content min-height-60">
-                            <div class="mdc-dialog__content modal-body" id="saml2MetadataDialog-content">
-                                <div class="ace-editor ace-absolute" id="saml2MetadataDialogEditor"></div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="mdc-dialog__scrim"></div>
+                <div id="saml2MetadataDialog" class="palantir-code-dialog__body" title="SAML2 Identity Provider Metadata" style="display: none;">
+                    <div class="ace-editor palantir-code-dialog__editor" id="saml2MetadataDialogEditor"></div>
                 </div>
             </div>
 
@@ -682,17 +671,8 @@
                                 </button>
                             </div>
 
-                            <div class="mdc-dialog modal" id="oidcOpConfigurationDialog" role="alertdialog"
-                                 aria-modal="true" aria-label="OpenID Connect Configuration"
-                                 aria-describedby="oidcOpConfigurationDialog-content">
-                                <div class="mdc-dialog__container w-100 modal-dialog">
-                                    <div class="mdc-dialog__surface mw-100 w-75 modal-content min-height-60">
-                                        <div class="mdc-dialog__content modal-body" id="oidcOpConfigurationDialog-content">
-                                            <div class="ace-editor ace-absolute" id="oidcOpConfigurationDialogEditor"></div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="mdc-dialog__scrim"></div>
+                            <div id="oidcOpConfigurationDialog" class="palantir-code-dialog__body" title="OpenID Connect Configuration" style="display: none;">
+                                <div class="ace-editor palantir-code-dialog__editor" id="oidcOpConfigurationDialogEditor"></div>
                             </div>
                         </div>
 

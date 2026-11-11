@@ -310,10 +310,11 @@ class CasActuatorEndpoints {
         } catch (error) {
             return null;
         }
+        const accessIds = new Set(Object.keys(access).map(id => id.toLowerCase()));
         let match = null;
         let matchLength = -1;
         for (const [name, link] of Object.entries(links)) {
-            if (!Object.hasOwn(access, name)) {
+            if (!accessIds.has(name.toLowerCase())) {
                 continue;
             }
             let linkPath;

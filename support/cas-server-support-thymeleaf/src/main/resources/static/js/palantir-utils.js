@@ -947,8 +947,70 @@ function initializeDatePickers(root) {
     });
 }
 
+/**
+ * Close a tooltip whose element was removed from the page or hidden. Tooltips close when the pointer leaves their
+ * element or when jQuery removes it, but a part of the page redrawn by assigning its markup, or hidden with its
+ * dialog, takes its elements away without either, and their open tooltips would stay on the screen.
+ */
+function closeOrphanedTooltips() {
+    const targets = new Map();
+    $(document)
+        .off("tooltipopen.palantirOrphans tooltipclose.palantirOrphans")
+        .on("tooltipopen.palantirOrphans", (event, ui) => {
+            const id = ui.tooltip.attr("id");
+            const target = document.querySelector(`[aria-describedby~="${id}"]`);
+            if (target) {
+                targets.set(id, target);
+            }
+        })
+        .on("tooltipclose.palantirOrphans", (event, ui) => targets.delete(ui.tooltip.attr("id")));
+    new MutationObserver(() => {
+        for (const [id, target] of targets) {
+            if (!target.isConnected || target.getClientRects().length === 0) {
+                targets.delete(id);
+                $(document).tooltip("close", $.Event("mouseleave", {target: target, currentTarget: target}));
+                $(`#${id}`).remove();
+            }
+        }
+    }).observe(document.body, {childList: true, subtree: true, attributes: true, attributeFilter: ["style", "class", "hidden"]});
+}
+
+/**
+ * Show a document, such as metadata or a JSON response, read-only in a code editor inside a dialog sized to the window.
+ * The dialog is the element with the given id, holding an editor element whose id is the dialog's id followed by
+ * "Editor".
+ *
+ * @param dialogId the id of the dialog element
+ * @param title the dialog's title
+ * @param text the document
+ * @param mode the editor mode, such as json or xml
+ */
+function showPalantirCodeDialog(dialogId, title, text, mode = "json") {
+    const element = $(`#${dialogId}`);
+    if (!element.dialog("instance")) {
+        element.dialog({
+            autoOpen: false,
+            modal: true,
+            resizable: false,
+            classes: {"ui-dialog": "ui-corner-all palantir-code-dialog"}
+        });
+    }
+    element.dialog("option", {
+        title: title,
+        width: Math.min(1100, $(window).width() - 32),
+        height: Math.min(760, $(window).height() - 48),
+        position: {my: "center", at: "center", of: window}
+    });
+    element.dialog("open");
+    const editor = initializeAceEditor(`${dialogId}Editor`, mode, {useWorker: mode === "json"});
+    editor.setReadOnly(true);
+    editor.setValue(text, -1);
+    editor.resize(true);
+}
+
 function initializeTooltips() {
     $(function () {
+        closeOrphanedTooltips();
         $(document).tooltip({
             items: "[title]:not(a)",
             content: function () {

@@ -90,11 +90,28 @@
                              <span class="mdc-button__label"><i class="mdc-tab__icon mdi mdi-refresh"
                                                                 aria-hidden="true"></i>Reload</span>
                         </button>
+                        <button data-palantir-write="registeredServices" name="deleteAllServices" id="deleteAllServices"
+                                class="mdc-button mdc-button--raised palantir-danger-button"
+                                title="Delete every application from the service registry" aria-label="Delete All">
+                             <span class="mdc-button__label"><i class="mdc-tab__icon mdi mdi-delete-sweep"
+                                                                aria-hidden="true"></i>Delete All</span>
+                        </button>
                     </div>
                 </div>
             </div>
             <div class="palantir-type-filter" id="applicationsTypeFilter" role="group"
                  aria-label="Show applications of type" hidden></div>
+            <div class="palantir-selection-bar" id="applicationsSelectionBar" role="region" aria-label="Selected applications" hidden>
+                <i class="mdi mdi-checkbox-multiple-marked-outline" aria-hidden="true"></i>
+                <span class="palantir-selection-bar__count" aria-live="polite"></span>
+                <span class="palantir-selection-bar__spacer"></span>
+                <button type="button" class="palantir-button" name="clearServiceSelection">
+                    <i class="mdi mdi-close" aria-hidden="true"></i>Clear selection
+                </button>
+                <button type="button" data-palantir-write="registeredServices" class="palantir-button is-danger" name="deleteSelectedServices">
+                    <i class="mdi mdi-delete" aria-hidden="true"></i>Delete selected
+                </button>
+            </div>
         </section>
 
         <div class="jqueryui-tabs" id="applications-tabs">
@@ -107,7 +124,7 @@
                 <table id="applicationsTable" class="mdc-data-table__table table table-striped noborder">
                     <thead>
                     <tr class="mdc-data-table__header-row">
-	                        <th class="mdc-data-table__header-cell" role="columnheader" scope="col"><span class="palantir-sr-only">Type</span></th>
+	                        <th class="mdc-data-table__header-cell" role="columnheader" scope="col"><input type="checkbox" id="applicationsSelectAll" class="palantir-application-select" aria-label="Select every application shown"><span class="palantir-sr-only">Type</span></th>
 	                        <th class="mdc-data-table__header-cell" role="columnheader" scope="col">Service</th>
 	                        <th class="mdc-data-table__header-cell" role="columnheader" scope="col">URL Pattern</th>
 	                        <th class="mdc-data-table__header-cell" role="columnheader" scope="col">Description</th>

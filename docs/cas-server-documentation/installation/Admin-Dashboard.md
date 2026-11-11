@@ -110,6 +110,13 @@ it the way it does at login, with its signature and validity checks, and when th
 provider publishes expire, warning a month ahead. The metadata that was read is shown. Nothing is registered, stored
 or removed from the metadata cache.
 
+An application can be disabled from its context menu, and enabled again, after confirming; disabled applications are
+marked in the table and the cards. An access strategy that has no switch of its own is combined with a disabled
+default strategy while the application is disabled, and left as it was once it is enabled again. Applications can be
+selected with their checkboxes, all of those the search and type filter show at once, and the selection deleted
+together; *Delete All* removes every application from the service registry after the operator types a confirmation,
+offering to export them first.
+
 *Duplicate Application* opens a copy of an application in the wizard as a new application, named after the original,
 with its service id left empty and, where the application has them, a new client id and secret. When the wizard or the
 definition editor holds changes that are not saved, closing it asks whether to keep editing, keep a draft and close, or

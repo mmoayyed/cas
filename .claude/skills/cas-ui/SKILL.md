@@ -84,7 +84,9 @@ description: "Change CAS views and presentation: Thymeleaf render path, theme re
 - Palantir forms: Enter submits through the form's primary button, which is `type="submit"` while the form keeps
   `onsubmit="return false;"` (the button's click handler does the work); every dashboard form needs that attribute, since a
   form with one text field and no handler reloads the page on Enter. Don't add per-input Enter key handlers.
-- The service wizard's fields are built on first open (`palantirWizardField` builders), after the Applications panel ran
+- The service wizard's fields are built in the background once the applications are loaded and the browser is idle
+  (`prepareRegisteredServiceWizardWhenIdle`; palantir-login checks the `palantir-wizard-built` mark follows
+  `palantir-dashboard-shown`), or on first open if sooner (`palantirWizardField` builders), after the Applications panel ran
   `initializePalantirWidgets`; `buildRegisteredServiceWizardFields` initializes the form's widgets afterwards, so dropdowns
   get the change callback that runs their `data-change-handler` functions. A bare `.selectmenu()` has no such callback.
 - A registered service description is HTML (the login page renders it with `th:utext`). Palantir shows it through
@@ -157,7 +159,9 @@ description: "Change CAS views and presentation: Thymeleaf render path, theme re
   `data-palantir-write="<endpoint id>"` (disabled by `applyPalantirEndpointAccess`, also when drawn later), a context
   menu item carries `write: "<endpoint id>"`, and a `$.ajaxPrefilter` refuses what slips through (status text
   `palantir-read-only`, which `displayBanner` ignores). Mark every new write control; several "read" actions are POSTs
-  (`casConfig/retrieve`, `releaseAttributes`, `casValidate`, `serviceAccess`).
+  (`casConfig/retrieve`, `releaseAttributes`, `casValidate`, `serviceAccess`). Compare endpoint ids case-insensitively:
+  Boot keys the links of CAS REST endpoints in lowercase (`ticketregistry`) while the access map uses the id
+  (`ticketRegistry`); a case-sensitive match lets writes through.
 - SAML2 wizard "From Metadata" (`PalantirSamlMetadataImport` in `palantir-services-wizard-saml2.js`): URLs go through
   `samlIdPRegisteredServiceMetadataCache/preview` (browsers cannot read most metadata URLs: no CORS), pasted/chosen XML
   is parsed with `DOMParser`; the definition parts are merged over the wizard's JSON and filled with
@@ -170,6 +174,43 @@ description: "Change CAS views and presentation: Thymeleaf render path, theme re
   `update(message, percent)` with `null` for "busy" (an animated bar; the server reports no progress), `close()`.
   Import uses it: real upload percentages from `xhr.upload` progress events, busy while CAS imports, busy while the table
   refreshes. Start busy rather than at 0%: intercepting proxies (and Playwright routes) deliver no upload events.
+- Wizard fields nested under a policy (`multifactorPolicy.x`) must carry `paramType` unless a type selector of that
+  policy sets its `@class`; otherwise a definition that only sets those fields is generated without `@class` and CAS
+  cannot read it. Fields built from the discovery profile are created in `fetchIfNeeded().always(...)`, never `.done`:
+  without the profile they would not exist and their values would be dropped when an application is edited.
+- `registeredServices` `validate`, POST and PUT answer 400 `{"error": <Jackson message>}` for a definition CAS cannot
+  read (`RegisteredServiceJsonSerializer.from` only logs and returns null); Palantir shows it via `showUnreadableDefinition`.
+- jQuery UI tooltips (one `$(document).tooltip`) close on `mouseleave` or jQuery's `remove` event; markup replaced
+  with `innerHTML` (the wizard step bar, toolbars) fires neither, so `closeOrphanedTooltips` watches the targets of open
+  tooltips and closes those detached or hidden. Prefer `$(x).html(...)` for new redraws anyway.
+- MDC dialogs (`MDCDialog.attachTo`) whose only content is an Ace editor fail to open (MDC's focus trap throws
+  "Element must have at least one focusable child"); show documents with `showPalantirCodeDialog(dialogId, title, text,
+  mode)` (jQuery UI, editor id = dialog id + "Editor"). Ten MDC dialogs with buttons remain (consent, tenants, pac4j,
+  attribute definitions, SAML metadata entries, changelog, sessions, HTTP traces, thread dumps).
+- A row of a label, a jQuery UI selectmenu and buttons uses `.palantir-control-row` (centered, one height).
+- Filling the wizard (`populateWizardFromServiceDefinition`) is event-driven: it starts right after the wizard is set
+  up, mapped rows fill synchronously (the add button builds its row at once), and the definition is generated when
+  the rows are done; a light `.is-populating` overlay replaces the old "Loading Service Definition" alert. Do not
+  reintroduce fixed delays: `buildRegisteredServiceWizardFields` loads the discovery profile first and waits for the
+  description editor, and `setDescriptionEditorValue` applies only the latest value and regenerates when it lands late.
+- Wizard performance traps: never call `cas.attachFields()` (every text field of the page, plus another set of
+  listeners each time) from a per-row or per-open path; use `attachPalantirTextFields(scope)`. Bind handlers in code
+  that runs per open or per reload with a namespace and `.off(...)` first (switch buttons, the applications table's
+  `draw`). `generateServiceDefinition` coalesces calls into one run. Fields built from a remote document (discovery
+  profile, OIDC discovery) must still be created when it fails, with free entry, or their values are dropped on edit.
+  Profile with a realistic harness (features, 400 attributes, a rich OIDC application), not the bare mocks.
+- Disabling applications (`PalantirApplicationAccess`, palantir-services-actions.js): only
+  `DefaultRegisteredServiceAccessStrategy` has `enabled` (serialized only when false, `NON_DEFAULT`); any other strategy
+  is combined in an AND `ChainingRegisteredServiceAccessStrategy` with a bare disabled default strategy, which enabling
+  removes (a chain left with one strategy is unwrapped). Disabled = default off, AND chain holding one, OR chain of only
+  those. Selection (`PalantirApplicationSelection`) is a set of ids shown through checkboxes in the type column and the
+  cards; their `change` events are taken in the capture phase, because the table's Material data-table component
+  treats any checkbox change inside it as its own row checkbox and throws. Bulk delete goes one DELETE per id with
+  `PalantirProgress`; Delete All is `DELETE registeredServices` (it removes stored definitions, so palantir-login never
+  runs it).
+- `fetchServices` keeps the applications table's search when it reloads (it used to clear it, so disabling or deleting
+  while searching lost the search, and scenario steps that searched right after a reload raced the reset). Scenario
+  steps that rely on a row being drawn must search for it: palantir-login has more applications than one page shows.
 - Import posts the chosen file to `registeredServices/import` with the content type of its extension (JSON, YAML, or
   octet-stream for a zip, which the endpoint reads as a zip of JSON files); the file input's `change` handler is bound
   once in `initializeServiceButtons` (namespaced) and the input is cleared, so never bind it inside the button's click.

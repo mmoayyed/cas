@@ -162,12 +162,8 @@ async function initializeSAML1ProtocolOperations() {
 
 function showSaml2IdPMetadata() {
     $.get(`${PalantirDashboardConfiguration.casServerPrefix()}/idp/metadata`, response => {
-        let oidcOpConfigurationDialog = window.mdc.dialog.MDCDialog.attachTo(document.getElementById("saml2MetadataDialog"));
-        const editor = initializeAceEditor("saml2MetadataDialogEditor", "xml", {useWorker: false});
-        editor.setValue(new XMLSerializer().serializeToString(response));
-        editor.gotoLine(1);
-        editor.setReadOnly(true);
-        oidcOpConfigurationDialog["open"]();
+        showPalantirCodeDialog("saml2MetadataDialog", "SAML2 Identity Provider Metadata",
+            new XMLSerializer().serializeToString(response), "xml");
     }).fail((xhr, status, error) => {
         console.error("Error fetching data:", error);
         displayBanner(xhr);
@@ -176,12 +172,8 @@ function showSaml2IdPMetadata() {
 
 function showOidcJwks() {
     $.get(`${PalantirDashboardConfiguration.casServerPrefix()}/oidc/jwks`, response => {
-        let oidcOpConfigurationDialog = window.mdc.dialog.MDCDialog.attachTo(document.getElementById("oidcOpConfigurationDialog"));
-        const editor = initializeAceEditor("oidcOpConfigurationDialogEditor", "json");
-        editor.setValue(JSON.stringify(response, null, 2));
-        editor.gotoLine(1);
-        editor.setReadOnly(true);
-        oidcOpConfigurationDialog["open"]();
+        showPalantirCodeDialog("oidcOpConfigurationDialog", "OpenID Connect JSON Web Keystore",
+            JSON.stringify(response, null, 2), "json");
     }).fail((xhr, status, error) => {
         console.error("Error fetching data:", error);
         displayBanner(xhr);
@@ -304,12 +296,8 @@ async function initializeOidcProtocolOperations() {
         $("button[name=oidcOpConfigurationButton]").off().on("click", () => {
             hideBanner();
             fetchOidcDiscoveryDocument().then(response => {
-                let oidcOpConfigurationDialog = window.mdc.dialog.MDCDialog.attachTo(document.getElementById("oidcOpConfigurationDialog"));
-                const editor = initializeAceEditor("oidcOpConfigurationDialogEditor", "json");
-                editor.setValue(JSON.stringify(response, null, 2));
-                editor.gotoLine(1);
-                editor.setReadOnly(true);
-                oidcOpConfigurationDialog["open"]();
+                showPalantirCodeDialog("oidcOpConfigurationDialog", "OpenID Connect Configuration",
+                    JSON.stringify(response, null, 2), "json");
             }).catch(xhr => {
                 console.error("Error fetching data:", xhr);
                 displayBanner(xhr);

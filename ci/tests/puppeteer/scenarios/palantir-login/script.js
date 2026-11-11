@@ -2,7 +2,7 @@
    RegisteredServiceSections, openRegisteredServiceWizardDialog, isPopulatingWizard,
    activateDashboardTab, ace, currentActiveTab, registeredServicesById, PalantirUserLookup,
    PalantirServiceHistory, Swal, applicationActionHandler, applicationRowContext, fetchServices, notyf,
-   PalantirSamlMetadataImport */
+   PalantirSamlMetadataImport, PalantirApplicationAccess, Tabs */
 const assert = require("assert");
 const fs = require("fs");
 const os = require("os");
@@ -296,19 +296,28 @@ async function walkWizardSteps(page) {
 }
 
 /**
- * Assert the wizard's dynamically built fields do not exist until the dialog is opened.
- * The template already renders hidden values for switch buttons before the builders run.
+ * Assert that startup does not build the wizard: its fields are built in the background once the dashboard is shown
+ * and the browser is idle, so they either do not exist yet or were built after the dashboard appeared.
  *
  * @param page the puppeteer page
  */
 async function verifyWizardIsDeferred(page) {
-    const built = await page.evaluate(() => ({
-        nameField: document.querySelector("#registeredServiceName") !== null,
-        params: document.querySelectorAll("#editServiceWizardForm [data-param-name]:not(input[type='hidden'][data-switch-btn])").length
-    }));
-    await cas.logg(`Before opening the wizard: name field present=${built.nameField}, dynamic fields=${built.params}`);
-    assert(built.nameField === false);
-    assert(built.params === 0);
+    const built = await page.evaluate(() => {
+        const shown = performance.getEntriesByName("palantir-dashboard-shown")[0]?.startTime ?? null;
+        const wizard = performance.getEntriesByName("palantir-wizard-built")[0]?.startTime ?? null;
+        return {
+            shown: shown,
+            wizard: wizard,
+            params: document.querySelectorAll("#editServiceWizardForm [data-param-name]:not(input[type='hidden'][data-switch-btn])").length
+        };
+    });
+    await cas.logg(`Dashboard shown at ${built.shown} ms; wizard built at ${built.wizard ?? "not yet"} ms; dynamic fields=${built.params}`);
+    assert(built.shown !== null);
+    if (built.wizard === null) {
+        assert(built.params === 0);
+    } else {
+        assert(built.wizard > built.shown);
+    }
 }
 
 /**
@@ -886,13 +895,13 @@ async function verifyEditConflict(page) {
         await fetchServices();
         return created.id;
     });
-    await page.waitForFunction(id => $(`#applicationsTable span[serviceId=${id}]`).length > 0, {timeout: 30000}, serviceId);
-    await page.evaluate(id => applicationActionHandler("editPlain", applicationRowContext(String(id))), serviceId);
+    await page.waitForFunction((id) => $(`#applicationsTable span[serviceId=${id}]`).length > 0, {timeout: 30000}, serviceId);
+    await page.evaluate((id) => applicationActionHandler("editPlain", applicationRowContext(String(id))), serviceId);
     await page.waitForFunction(() => $("#editServiceDialog").dialog("instance") !== undefined
         && $("#editServiceDialog").dialog("isOpen"), {timeout: 30000});
     await cas.sleep(1000);
 
-    await page.evaluate(async id => {
+    await page.evaluate(async (id) => {
         const response = await fetch(`${CasActuatorEndpoints.registeredServices()}/${id}`, {headers: {"Accept": "application/json"}});
         const service = await response.json();
         await fetch(CasActuatorEndpoints.registeredServices(), {
@@ -914,7 +923,7 @@ async function verifyEditConflict(page) {
     assert(changed > 0);
     await page.click(".swal2-cancel");
     await page.waitForFunction(() => !Swal.isVisible() && $("#editServiceDialog").dialog("isOpen"), {timeout: 10000});
-    const description = await page.evaluate(async id => {
+    const description = await page.evaluate(async (id) => {
         const response = await fetch(`${CasActuatorEndpoints.registeredServices()}/${id}`, {headers: {"Accept": "application/json"}});
         return (await response.json()).description;
     }, serviceId);
@@ -923,7 +932,7 @@ async function verifyEditConflict(page) {
     await page.evaluate(() => $("#cancelService").trigger("click"));
     await discardUnsavedChanges(page, "Edit conflict");
     await page.waitForFunction(() => !$("#editServiceDialog").dialog("isOpen"), {timeout: 15000});
-    await page.evaluate(async id => {
+    await page.evaluate(async (id) => {
         await fetch(`${CasActuatorEndpoints.registeredServices()}/${id}`, {
             method: "DELETE",
             headers: {"Content-Type": "application/json"}
@@ -940,14 +949,14 @@ async function verifyEditConflict(page) {
 async function verifySamlMetadataImport(page) {
     await cas.separator();
     const samlClass = "org.apereo.cas.support.saml.services.SamlRegisteredService";
-    const available = await page.evaluate(serviceClass => Object.hasOwn(PalantirDashboardConfiguration.supportedServiceTypes(), serviceClass)
+    const available = await page.evaluate((serviceClass) => Object.hasOwn(PalantirDashboardConfiguration.supportedServiceTypes(), serviceClass)
         && PalantirSamlMetadataImport.canReadUrls(), samlClass);
     if (!available) {
         await cas.logy("SAML2 metadata import is not available; skipping");
         return;
     }
     const metadataLocation = "http://localhost:9443/simplesaml/module.php/saml/sp/metadata.php/default-sp";
-    await page.evaluate(serviceClass => openRegisteredServiceWizardDialog({"@class": serviceClass}, {duplicate: true}), samlClass);
+    await page.evaluate((serviceClass) => openRegisteredServiceWizardDialog({"@class": serviceClass}, {duplicate: true}), samlClass);
     await page.waitForFunction(() => $("#editServiceWizardDialog").dialog("isOpen") && !isPopulatingWizard
         && $("#fillServiceWizardFromMetadata").is(":visible"), {timeout: 30000});
     await cas.sleep(1000);
@@ -1051,6 +1060,144 @@ async function verifySamlMetadataHealth(page) {
 }
 
 /**
+ * Open an application whose multifactor policy only names principal attributes in the wizard, and check that the
+ * definition the wizard generates keeps them with the policy's type, so that CAS accepts it.
+ *
+ * @param page the puppeteer page
+ */
+async function verifyMultifactorPolicyRoundTrip(page) {
+    await cas.separator();
+    await page.evaluate(() => openRegisteredServiceWizardDialog({
+        "@class": "org.apereo.cas.services.CasRegisteredService",
+        id: 654321,
+        name: "MultifactorPolicyRoundTrip",
+        serviceId: "https://mfa-round-trip.example.org/.*",
+        multifactorPolicy: {
+            "@class": "org.apereo.cas.services.DefaultRegisteredServiceMultifactorPolicy",
+            principalAttributeNameTrigger: "gender",
+            bypassPrincipalAttributeName: "gender"
+        }
+    }));
+    await page.waitForFunction(() => $("#editServiceWizardDialog").dialog("isOpen") && !isPopulatingWizard
+        && $("#registeredServiceName").val() === "MultifactorPolicyRoundTrip", {timeout: 30000});
+    await cas.sleep(2000);
+    const outcome = await page.evaluate(async () => {
+        const text = ace.edit("wizardServiceEditor").getValue();
+        const response = await fetch(`${CasActuatorEndpoints.registeredServices()}/validate`, {
+            method: "POST",
+            headers: {"Content-Type": "application/json", "Accept": "application/json"},
+            body: text
+        });
+        return {policy: JSON.parse(text).multifactorPolicy, status: response.status, body: await response.text()};
+    });
+    await cas.log(`Generated multifactor policy: ${JSON.stringify(outcome.policy)}; validation answered ${outcome.status} ${outcome.body}`);
+    assert(outcome.policy["@class"] === "org.apereo.cas.services.DefaultRegisteredServiceMultifactorPolicy");
+    assert(outcome.policy.principalAttributeNameTrigger === "gender" && outcome.policy.bypassPrincipalAttributeName === "gender");
+    assert(outcome.status === 200);
+    await page.evaluate(() => $("#cancelServiceWizard").trigger("click"));
+    await discardUnsavedChanges(page, "Multifactor policy round trip");
+    await page.waitForFunction(() => !$("#editServiceWizardDialog").dialog("isOpen"), {timeout: 15000});
+}
+
+/**
+ * Create three applications, disable one from its context menu action and enable it again, then select two of them
+ * with their checkboxes and delete them together; the third is removed afterwards. The Applications page is opened
+ * first, since an earlier step may have left another page showing.
+ *
+ * @param page the puppeteer page
+ */
+async function verifyApplicationBulkActions(page) {
+    await cas.separator();
+    const ids = await page.evaluate(async () => {
+        const created = [];
+        for (const suffix of ["One", "Two", "Three"]) {
+            const response = await fetch(CasActuatorEndpoints.registeredServices(), {
+                method: "POST",
+                headers: {"Content-Type": "application/json", "Accept": "application/json"},
+                body: JSON.stringify({
+                    "@class": "org.apereo.cas.services.CasRegisteredService",
+                    serviceId: `^https://bulk-${suffix.toLowerCase()}.example.org/.*`,
+                    name: `BulkExample${suffix}`
+                })
+            });
+            created.push((await response.json()).id);
+        }
+        return created;
+    });
+    await page.evaluate(() => $(`nav.sidebar-navigation ul li[data-tab-index=${Tabs.APPLICATIONS.index}]`).trigger("click"));
+    await page.waitForFunction(() => currentActiveTab === Tabs.APPLICATIONS.index, {timeout: 30000});
+    await page.evaluate(() => fetchServices());
+    await page.waitForFunction((created) => created.every((id) => registeredServicesById.has(String(id))), {timeout: 30000}, ids);
+    await page.evaluate(() => {
+        $("#applicationsTableView").trigger("click");
+        $("#applicationsTable").DataTable().search("BulkExample").draw();
+    });
+    await page.waitForFunction(() => $("#applicationsTable").is(":visible"), {timeout: 30000});
+    const strategy = async (id) => page.evaluate(async (serviceId) => {
+        const response = await fetch(`${CasActuatorEndpoints.registeredServices()}/${serviceId}`, {headers: {"Accept": "application/json"}});
+        return (await response.json()).accessStrategy ?? null;
+    }, id);
+
+    for (const disable of [true, false]) {
+        await page.evaluate(([id, key]) => applicationActionHandler(key, applicationRowContext(String(id))), [ids[0], disable ? "disable" : "enable"]);
+        await page.waitForSelector(".swal2-confirm", {visible: true});
+        await page.click(".swal2-confirm");
+        await page.waitForFunction(([id, expected]) => PalantirApplicationAccess.isServiceDisabled(id) === expected
+            && $(`#applicationsTable tbody tr:has([data-select-service="${id}"])`).hasClass("is-disabled") === expected,
+        {timeout: 30000}, [ids[0], disable]);
+        const saved = await strategy(ids[0]);
+        await cas.log(`${disable ? "Disabled" : "Enabled"} application ${ids[0]}: ${JSON.stringify(saved)}`);
+        assert(isDisabledAccessStrategy(saved) === disable);
+    }
+
+    await page.evaluate(() => {
+        $("#applicationsTableView").trigger("click");
+        $("#applicationsTable").DataTable().search("BulkExample").draw();
+    });
+    await page.waitForSelector(`[data-select-service="${ids[0]}"]`, {visible: true});
+    await page.click(`[data-select-service="${ids[0]}"]`);
+    await page.click(`[data-select-service="${ids[1]}"]`);
+    await page.waitForFunction(() => !$("#applicationsSelectionBar").prop("hidden")
+        && $(".palantir-selection-bar__count").text().startsWith("2 "), {timeout: 10000});
+    await page.click("button[name=deleteSelectedServices]");
+    await page.waitForSelector(".swal2-confirm", {visible: true});
+    await page.click(".swal2-confirm");
+    await page.waitForFunction(() => $(".swal2-title").text() === "2 applications deleted", {timeout: 60000});
+    const remaining = await page.evaluate(async (created) => {
+        const response = await fetch(CasActuatorEndpoints.registeredServices(), {headers: {"Accept": "application/json"}});
+        const registered = new Set((await response.json())[1].map((service) => String(service.id)));
+        return created.map((id) => registered.has(String(id)));
+    }, ids);
+    await cas.logg(`After deleting the selection, the applications still registered: ${remaining.join(", ")}`);
+    assert(!remaining[0] && !remaining[1] && remaining[2]);
+
+    await page.evaluate(async (id) => {
+        Swal.close();
+        $("#applicationsTable").DataTable().search("").draw();
+        await fetch(`${CasActuatorEndpoints.registeredServices()}/${id}`, {method: "DELETE", headers: {"Content-Type": "application/json"}});
+        fetchServices();
+    }, ids[2]);
+}
+
+/**
+ * Whether a saved access strategy turns the application off, as Palantir decides it.
+ *
+ * @param strategy the access strategy
+ * @returns {boolean} true when the application is disabled
+ */
+function isDisabledAccessStrategy(strategy) {
+    if (!strategy) {
+        return false;
+    }
+    if (strategy["@class"] === "org.apereo.cas.services.DefaultRegisteredServiceAccessStrategy") {
+        return strategy.enabled === false;
+    }
+    const strategies = Array.isArray(strategy.strategies?.[1]) ? strategy.strategies[1] : strategy.strategies ?? [];
+    return strategy["@class"] === "org.apereo.cas.services.ChainingRegisteredServiceAccessStrategy"
+        && strategies.some(isDisabledAccessStrategy);
+}
+
+/**
  * The ticket registry endpoint is read-only in this scenario: its write controls are disabled and a request that
  * would change something through it is refused before it is sent, while other endpoints stay writable.
  *
@@ -1059,7 +1206,7 @@ async function verifySamlMetadataHealth(page) {
 async function verifyReadOnlyEndpoint(page) {
     await cas.separator();
     const deletes = [];
-    const onRequest = request => {
+    const onRequest = (request) => {
         if (request.method() === "DELETE" && request.url().includes("/actuator/ticketRegistry")) {
             deletes.push(request.url());
         }
@@ -1232,6 +1379,8 @@ async function verifyShortcutsOverlay(page) {
     await verifyServiceImport(page);
     await verifyEditConflict(page);
     await verifySamlMetadataImport(page);
+    await verifyMultifactorPolicyRoundTrip(page);
+    await verifyApplicationBulkActions(page);
     await verifySamlMetadataHealth(page);
     await verifyReadOnlyEndpoint(page);
     await verifyInterruptInquiry(page);
