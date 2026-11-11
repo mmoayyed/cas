@@ -321,6 +321,117 @@ function closeAllDialogs() {
 const PALANTIR_READ_ONLY = "palantir-read-only";
 
 /**
+ * A modal progress dialog for work the operator has to wait for: a message saying what is happening, a bar that
+ * shows how far along it is or, when the server does not say, that it is busy, and how long it has taken so far.
+ */
+class PalantirProgress {
+    static timer = null;
+
+    static started = 0;
+
+    static detail = "";
+
+    /**
+     * Open the dialog.
+     *
+     * @param title what the work is
+     * @param message what is happening first
+     * @param detail what the work is about, such as a file name and size
+     * @param percent how far along the work starts, or null to show it busy until progress is reported
+     */
+    static open(title, message, detail = "", percent = null) {
+        PalantirProgress.stop();
+        PalantirProgress.started = Date.now();
+        PalantirProgress.detail = detail;
+        Swal.fire({
+            titleText: title,
+            html: `
+                <div class="palantir-progress">
+                    <p class="palantir-progress__message" aria-live="polite"></p>
+                    <div class="palantir-progress__track" role="progressbar" aria-valuemin="0" aria-valuemax="100">
+                        <span class="palantir-progress__bar"></span>
+                    </div>
+                    <p class="palantir-progress__detail"></p>
+                </div>`,
+            allowOutsideClick: false,
+            allowEscapeKey: false,
+            showConfirmButton: false,
+            didOpen: popup => {
+                $(popup).find(".palantir-progress__track").attr("aria-label", title);
+                PalantirProgress.update(message, percent);
+            }
+        });
+        PalantirProgress.timer = setInterval(() => PalantirProgress.tick(), 1000);
+    }
+
+    /**
+     * Say what is happening and how far along it is.
+     *
+     * @param message what is happening
+     * @param percent how far along it is, from 0 to 100, or null when only the server knows and it is busy
+     */
+    static update(message, percent = null) {
+        const progress = $(Swal.getHtmlContainer()).find(".palantir-progress");
+        if (progress.length === 0) {
+            return;
+        }
+        progress.find(".palantir-progress__message").text(message);
+        const track = progress.find(".palantir-progress__track");
+        if (percent === null) {
+            track.addClass("is-busy").removeAttr("aria-valuenow").attr("aria-valuetext", message);
+            track.find(".palantir-progress__bar").css("width", "");
+        } else {
+            const value = Math.max(0, Math.min(100, Math.round(percent)));
+            track.removeClass("is-busy").attr("aria-valuenow", value).attr("aria-valuetext", `${value}%`);
+            track.find(".palantir-progress__bar").css("width", `${value}%`);
+        }
+        PalantirProgress.tick();
+    }
+
+    /**
+     * Show how long the work has taken so far.
+     */
+    static tick() {
+        const seconds = Math.floor((Date.now() - PalantirProgress.started) / 1000);
+        const elapsed = `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
+        $(Swal.getHtmlContainer()).find(".palantir-progress__detail")
+            .text([PalantirProgress.detail, `Elapsed ${elapsed}`].filter(Boolean).join(" · "));
+    }
+
+    static stop() {
+        clearInterval(PalantirProgress.timer);
+        PalantirProgress.timer = null;
+    }
+
+    /**
+     * Close the dialog, if it is still the one open.
+     */
+    static close() {
+        PalantirProgress.stop();
+        if ($(Swal.getHtmlContainer()).find(".palantir-progress").length > 0) {
+            Swal.close();
+        }
+    }
+
+    /**
+     * Write a size in bytes the way people read it.
+     *
+     * @param bytes the size
+     * @returns {string} the size
+     */
+    static size(bytes) {
+        const units = ["bytes", "KB", "MB", "GB"];
+        let value = Number(bytes) || 0;
+        let unit = 0;
+        while (value >= 1024 && unit < units.length - 1) {
+            value /= 1024;
+            unit++;
+        }
+        return unit === 0 ? `${value} ${units[0]}` : `${value.toFixed(1)} ${units[unit]}`;
+    }
+}
+
+/**
  * Let a SweetAlert opened over a modal jQuery UI dialog take focus. The dialog keeps focus inside itself and would
  * otherwise pull it back from the alert's fields and buttons, which sit outside the dialog.
  */
@@ -1137,7 +1248,7 @@ function nameIconOnlyControls(root = document) {
  */
 function initializeTableAndDialogAccessibility() {
     $(document).off("init.dt.palantirA11y").on("init.dt.palantirA11y", (event, settings) => {
-        const table = event.target?.tagName === "TABLE" ? event.target : settings?.nTable;
+        const table = event.target?.tagName === "TABLE" ? event.target : settings && new $.fn.dataTable.Api(settings).table().node();
         if (!table) {
             return;
         }

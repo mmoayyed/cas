@@ -229,10 +229,15 @@ source answered.
 Saving an application that someone else changed or deleted in the meantime shows what they changed and asks before
 overwriting it, and actions that would change something through a read-only endpoint are disabled with an explanation.
 The application wizard can fill a SAML2 service provider from its metadata, read from a URL, pasted, or chosen or
-dropped as a file, picking the provider out of an aggregate. Application descriptions show their paragraphs and bold,
+dropped as a file, picking the provider out of an aggregate. The menu of a SAML2 application checks the health of its metadata:
+whether it can be downloaded and holds the service provider, whether CAS resolves it, and when the metadata and the
+provider's certificates expire, showing the metadata it read; the separate list of SAML2 metadata sources is removed.
+Values held by dynamic configuration sources can be encrypted or decrypted in place from their menu when configuration
+security is set up, with an offer to refresh CAS afterwards. Application descriptions show their paragraphs and bold,
 italic and underlined text in the application cards and table instead of their markup, and a description of a single
 paragraph is saved as plain text. The applications chart, cards and search follow deleted applications as they follow
-new ones. Importing applications accepts YAML definitions and exported zip files as well as JSON, and imports each chosen file
+new ones, and the applications can be filtered by type, such as CAS, SAML2 or OpenID Connect, each listed with how many
+applications it has. Importing applications accepts YAML definitions and exported zip files as well as JSON, and imports each chosen file
 once. Applications can be duplicated into the wizard as new applications, and the wizard and the definition editor ask before
 closing with unsaved changes, keeping a draft in the browser that can be resumed for up to thirty days. A keyboard shortcut overlay opens
 with `?`, and tables and dialogs are easier to use with a keyboard and a screen reader: tables are named, rows with actions
@@ -326,6 +331,10 @@ one-time codes can be added when `cas.authn.mfa.simple.mail.accepted-email-patte
   and [attribute release policies](../integration/Attribute-Release-Policy-Activation.html) match required values against
   the entire attribute value, like required and rejected attributes; `admin` no longer activates a policy for `sysadmin`.
   Use `.*admin.*` to match part of a value.
+- {: .fixed data-area="services"} Importing several applications at once, such as a zip of definitions, no longer fails
+  when [service version history](../services/Configuring-Service-Version-History.html) is turned on, and records the
+  history of each imported application; it also no longer fails when more than one kind of application, such as CAS
+  and SAML2, is registered.
 - {: .fixed data-area="services"} [Service replication](../services/Configuring-Service-Replication.html) no longer broadcasts
   every service definition from every node on each reload: a loaded definition is sent only when it differs from the
   replicated copy, and the replicated copies are kept across reloads instead of being cleared, so nodes started later still
@@ -947,6 +956,11 @@ one-time codes can be added when `cas.authn.mfa.simple.mail.accepted-email-patte
 
 ## Other Stuff
 
+- {: .fixed data-area="operations"} [Encrypted settings](../configuration/Configuration-Properties-Security-CAS.html) kept
+  in dynamic configuration sources, such as MongoDb, JDBC or REST, are decrypted when CAS applies its configuration, at
+  startup and after a refresh; they used to be applied as they were stored, still encrypted. The `casConfig` endpoint
+  answers a bad request when a value cannot be encrypted or decrypted, where it used to answer with an empty value, and
+  a value that cannot be encrypted is no longer written to the logs in plain text.
 - {: .fixed data-area="project"} The vulnerability report of the [dependencies endpoint](../installation/Dependency-Management-Versions.html#actuator-endpoints)
   follows OSV pagination for each dependency, so vulnerabilities past the first page of a result are no longer left out,
   and vulnerability details that cannot be read are reported as errors instead of being dropped silently.

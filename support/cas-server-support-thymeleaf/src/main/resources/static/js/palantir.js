@@ -45,6 +45,15 @@ class PalantirDashboardConfiguration {
         return this.all().mutablePropertySourcesAvailable || false;
     }
 
+    /**
+     * Whether CAS can encrypt and decrypt configuration values, because configuration security is set up.
+     *
+     * @returns {boolean} true when configuration values can be encrypted
+     */
+    static configurationEncryptionAvailable() {
+        return this.all().configurationEncryptionAvailable === true;
+    }
+
     static trumbowygIconsPath() {
         return this.all().trumbowygIconsPath;
     }

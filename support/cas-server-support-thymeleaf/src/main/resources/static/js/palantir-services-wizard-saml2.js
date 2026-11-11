@@ -757,6 +757,21 @@ class PalantirSamlMetadataImport {
             didOpen: () => Swal.showLoading()
         });
         try {
+            return await PalantirSamlMetadataImport.request(url, entityId);
+        } finally {
+            Swal.close();
+        }
+    }
+
+    /**
+     * Ask the server to read the metadata at a URL, without showing anything.
+     *
+     * @param url the metadata URL
+     * @param entityId the service provider to read from an aggregate, if any
+     * @returns {Promise<object>} the service providers the metadata holds and the metadata of the one read, if any
+     */
+    static async request(url, entityId = null) {
+        try {
             return await $.ajax({
                 url: `${CasActuatorEndpoints.samlIdpRegisteredServiceMetadataCache()}/preview`,
                 method: "GET",
@@ -766,8 +781,6 @@ class PalantirSamlMetadataImport {
             });
         } catch (xhr) {
             throw new Error(xhr?.responseJSON?.error ?? `CAS could not read the metadata at ${url}.`, {cause: xhr});
-        } finally {
-            Swal.close();
         }
     }
 
@@ -964,5 +977,441 @@ class PalantirSamlMetadataImport {
             title: "Filled from metadata",
             text: `${definition.serviceId}: ${filled.join(", ")}. Review the fields before saving.${location}`
         });
+    }
+}
+
+/**
+ * The health of the metadata of a registered SAML2 service provider, checked on demand from the applications' menu.
+ *
+ * The metadata is downloaded through the server, as the wizard reads it, when its location is a web address or a
+ * metadata query location and the service id names one entity: the download, whether the service provider is in it,
+ * and the expiry of the certificates it publishes are reported, and the downloaded metadata is shown. The metadata
+ * is also resolved the way CAS resolves it at login, through the SAML2 metadata cache with its signature and validity
+ * checks, whatever the location is; that resolution and the expiry of the metadata are reported too. Nothing is
+ * registered, stored or removed from the cache.
+ */
+class PalantirSamlMetadataHealth {
+    static WARNING_DAYS = 30;
+
+    static STATUS = {
+        ok: {icon: "mdi-check-circle", label: "Passed"},
+        info: {icon: "mdi-information", label: "Note"},
+        skip: {icon: "mdi-minus-circle-outline", label: "Skipped"},
+        warn: {icon: "mdi-alert", label: "Warning"},
+        fail: {icon: "mdi-close-circle", label: "Failed"}
+    };
+
+    static serviceId = null;
+
+    /**
+     * Whether the metadata health of an application can be checked: it is a SAML2 service provider and the SAML2
+     * metadata cache endpoint is available.
+     *
+     * @param service the registered service
+     * @returns {boolean} true when the check applies
+     */
+    static applies(service) {
+        return String(service?.["@class"] ?? "").includes("SamlRegisteredService")
+            && Boolean(CasActuatorEndpoints.samlIdpRegisteredServiceMetadataCache());
+    }
+
+    /**
+     * Whether a service id is a pattern rather than one entity id. Dots are allowed in an entity id, so only the other
+     * characters that make a regular expression count.
+     *
+     * @param serviceId the service id
+     * @returns {boolean} true for a pattern
+     */
+    static isPattern(serviceId) {
+        return /[\^$*+?()[\]{}|\\]/.test(String(serviceId ?? ""));
+    }
+
+    /**
+     * The service id as a test of entity ids: the whole entity id must match, as CAS matches it.
+     *
+     * @param serviceId the service id
+     * @returns {{test: function(string): boolean}} the test
+     */
+    static entityMatcher(serviceId) {
+        const value = String(serviceId ?? "");
+        try {
+            const pattern = new RegExp(`^(?:${value})$`);
+            return {test: entityId => pattern.test(entityId)};
+        } catch (error) {
+            return {test: entityId => entityId === value};
+        }
+    }
+
+    /**
+     * The web address to download the metadata from: the metadata location itself when it is one, or, for a metadata
+     * query location, the address of the one entity the service id names.
+     *
+     * @param service the registered service
+     * @returns {string|null} the address, or null when the metadata cannot be downloaded from here
+     */
+    static downloadLocation(service) {
+        const location = String(service.metadataLocation ?? "").trim();
+        if (/\/entities\/\{0\}$/.test(location)) {
+            return PalantirSamlMetadataHealth.isPattern(service.serviceId)
+                ? null
+                : location.replace("{0}", encodeURIComponent(String(service.serviceId ?? "")));
+        }
+        return /^https?:\/\//i.test(location) ? location : null;
+    }
+
+    /**
+     * Read a date the server sent as text, as seconds or milliseconds since the epoch, or as an array of its fields.
+     *
+     * @param value the date
+     * @returns {Date|null} the date, or null when there is none
+     */
+    static date(value) {
+        if (value === undefined || value === null || value === "") {
+            return null;
+        }
+        if (Array.isArray(value)) {
+            const [year, month = 1, day = 1, hour = 0, minute = 0, second = 0] = value;
+            return new Date(Date.UTC(year, month - 1, day, hour, minute, second));
+        }
+        const number = Number(value);
+        const date = Number.isFinite(number) ? new Date(number < 1e11 ? number * 1000 : number) : new Date(String(value));
+        return Number.isNaN(date.getTime()) ? null : date;
+    }
+
+    /**
+     * The end of the validity of a base64 X.509 certificate, read from its DER encoding: the certificate holds the
+     * signed part, which holds an optional version, the serial number, the signature algorithm, the issuer and then
+     * the validity, whose second date is the end. UTC times carry two digits of the year, before 2050 from 1950 on.
+     * Anything else, such as a value that is not a certificate, reads as no date.
+     *
+     * @param base64 the certificate
+     * @returns {Date|null} the end of its validity, or null when it cannot be read
+     */
+    static certificateExpiry(base64) {
+        try {
+            const bytes = Uint8Array.from(atob(String(base64).replace(/\s+/g, "")), character => character.charCodeAt(0));
+            const read = offset => {
+                let length = bytes[offset + 1];
+                let start = offset + 2;
+                if (length & 0x80) {
+                    const count = length & 0x7f;
+                    length = 0;
+                    for (let index = 0; index < count; index++) {
+                        length = length * 256 + bytes[start + index];
+                    }
+                    start += count;
+                }
+                return {tag: bytes[offset], start: start, end: start + length};
+            };
+            const signed = read(read(0).start);
+            const first = read(signed.start);
+            const serial = first.tag === 0xa0 ? read(first.end) : first;
+            const issuer = read(read(serial.end).end);
+            const validity = read(issuer.end);
+            const end = read(read(validity.start).end);
+            const text = new TextDecoder().decode(bytes.slice(end.start, end.end));
+            const digits = end.tag === 0x17 ? `${Number(text.slice(0, 2)) < 50 ? "20" : "19"}${text}` : text;
+            if (bytes[0] !== 0x30 || (end.tag !== 0x17 && end.tag !== 0x18) || !/^\d{12}/.test(digits)) {
+                return null;
+            }
+            const date = new Date(Date.UTC(Number(digits.slice(0, 4)), Number(digits.slice(4, 6)) - 1, Number(digits.slice(6, 8)),
+                Number(digits.slice(8, 10)), Number(digits.slice(10, 12)), Number(digits.slice(12, 14)) || 0));
+            return Number.isNaN(date.getTime()) ? null : date;
+        } catch (error) {
+            return null;
+        }
+    }
+
+    /**
+     * The certificates a service provider publishes, with what they are used for.
+     *
+     * @param entity the provider's EntityDescriptor
+     * @returns {{use: string, expiry: Date|null}[]} the certificates
+     */
+    static certificates(entity) {
+        const ns = PalantirSamlMetadataImport.NAMESPACES;
+        return Array.from(entity.getElementsByTagNameNS(ns.md, "KeyDescriptor")).flatMap(descriptor =>
+            Array.from(descriptor.getElementsByTagNameNS("http://www.w3.org/2000/09/xmldsig#", "X509Certificate"))
+                .map(certificate => ({
+                    use: descriptor.getAttribute("use") || "signing and encryption",
+                    expiry: PalantirSamlMetadataHealth.certificateExpiry(certificate.textContent)
+                })));
+    }
+
+    /**
+     * Judge a date by which something stops being valid: failed once it passed, a warning within the warning period.
+     *
+     * @param title the title of the check
+     * @param expiry the date
+     * @param what what expires, to start the sentence
+     * @returns {{status: string, title: string, detail: string}} the check
+     */
+    static expiry(title, expiry, what) {
+        const days = (expiry.getTime() - Date.now()) / 86400000;
+        const when = expiry.toLocaleString();
+        if (days < 0) {
+            return {status: "fail", title: title, detail: `${what} expired on ${when}.`};
+        }
+        if (days < PalantirSamlMetadataHealth.WARNING_DAYS) {
+            return {status: "warn", title: title, detail: `${what} expires on ${when}, in ${Math.ceil(days)} day(s).`};
+        }
+        return {status: "ok", title: title, detail: `${what} is valid until ${when}.`};
+    }
+
+    /**
+     * Ask CAS to resolve the metadata of an application through its metadata cache.
+     *
+     * @param service the registered service
+     * @param includeMetadata whether to return the metadata of each entity as well
+     * @returns {Promise<object>} the resolved entities by entity id, with when they were cached and whether they are valid
+     */
+    static async resolve(service, includeMetadata) {
+        const data = {serviceId: String(service.id), includeMetadata: includeMetadata};
+        if (!PalantirSamlMetadataHealth.isPattern(service.serviceId)) {
+            data.entityId = service.serviceId;
+        }
+        try {
+            return await $.ajax({
+                url: CasActuatorEndpoints.samlIdpRegisteredServiceMetadataCache(),
+                method: "GET",
+                data: data,
+                dataType: "json",
+                headers: {"Accept": "application/json"}
+            });
+        } catch (xhr) {
+            throw new Error(xhr?.responseJSON?.error ?? `CAS could not resolve the metadata (HTTP ${xhr?.status}).`, {cause: xhr});
+        }
+    }
+
+    /**
+     * Check the metadata of an application: its location, its download, the service provider in it, the resolution
+     * by CAS, the expiry of the metadata and of the certificates the service provider publishes. When the metadata
+     * cannot be downloaded from here, the metadata CAS resolved is read for the certificates and shown instead.
+     *
+     * @param service the registered service
+     * @returns {Promise<{checks: object[], metadata: string|null}>} the checks and the downloaded metadata, if any
+     */
+    static async check(service) {
+        const checks = [];
+        const location = String(service.metadataLocation ?? "").trim();
+        const matcher = PalantirSamlMetadataHealth.entityMatcher(service.serviceId);
+        checks.push(location
+            ? {status: "ok", title: "Metadata location", detail: location}
+            : {status: "fail", title: "Metadata location", detail: "The application has no metadata location."});
+
+        let entity = null;
+        let metadata = null;
+        const url = PalantirSamlMetadataHealth.downloadLocation(service);
+        if (url) {
+            try {
+                const started = performance.now();
+                let preview = await PalantirSamlMetadataImport.request(url);
+                const entities = preview.entities ?? [];
+                checks.push({
+                    status: "ok",
+                    title: "Download",
+                    detail: `Read ${url} in ${Math.round(performance.now() - started)} ms; it holds ${entities.length} service provider(s).`
+                });
+                const matching = entities.filter(entityId => matcher.test(entityId));
+                if (matching.length === 0) {
+                    checks.push({status: "fail", title: "Service provider", detail: `No service provider in the metadata matches ${service.serviceId}.`});
+                } else {
+                    checks.push({
+                        status: "ok",
+                        title: "Service provider",
+                        detail: matching.length === 1
+                            ? `${matching[0]} is in the metadata.`
+                            : `${matching.length} service providers in the metadata match ${service.serviceId}; ${matching[0]} is checked.`
+                    });
+                    if (preview.entityId !== matching[0]) {
+                        preview = await PalantirSamlMetadataImport.request(url, matching[0]);
+                    }
+                    metadata = preview.metadata ?? null;
+                    entity = metadata ? PalantirSamlMetadataImport.serviceProviders(PalantirSamlMetadataImport.parse(metadata))[0] ?? null : null;
+                }
+            } catch (error) {
+                checks.push({status: "fail", title: "Download", detail: error.message});
+            }
+        } else if (location) {
+            checks.push({
+                status: "skip",
+                title: "Download",
+                detail: /\/entities\/\{0\}$/.test(location)
+                    ? "A metadata query location is read one entity at a time, and the service id is a pattern rather than one entity id."
+                    : "The metadata location is not a web address; CAS reads it itself, as the resolution below shows."
+            });
+        }
+
+        let resolved = [];
+        try {
+            const response = await PalantirSamlMetadataHealth.resolve(service, !entity);
+            resolved = Object.entries(response ?? {}).filter(([key, value]) => value !== null && typeof value === "object" && matcher.test(key));
+            const invalid = resolved.filter(([, details]) => details.valid === false);
+            const cached = PalantirSamlMetadataHealth.date(resolved[0]?.[1]?.cachedInstant);
+            checks.push(resolved.length === 0
+                ? {status: "fail", title: "Resolution by CAS", detail: `CAS resolved the metadata but found no service provider matching ${service.serviceId}.`}
+                : {
+                    status: invalid.length > 0 ? "fail" : "ok",
+                    title: "Resolution by CAS",
+                    detail: invalid.length > 0
+                        ? `CAS resolved the metadata, but holds ${invalid.map(([entityId]) => entityId).join(", ")} as no longer valid.`
+                        : `CAS resolved ${resolved.length === 1 ? resolved[0][0] : `${resolved.length} matching service providers`}`
+                            + `${cached ? `, cached on ${cached.toLocaleString()}` : ""}.`
+                });
+            if (!entity && resolved[0]?.[1]?.metadata) {
+                metadata = resolved[0][1].metadata;
+                entity = PalantirSamlMetadataImport.serviceProviders(PalantirSamlMetadataImport.parse(metadata))[0] ?? null;
+            }
+        } catch (error) {
+            checks.push({status: "fail", title: "Resolution by CAS", detail: error.message});
+        }
+
+        const validUntil = PalantirSamlMetadataHealth.date(resolved[0]?.[1]?.validUntil ?? entity?.getAttribute("validUntil"));
+        if (validUntil) {
+            checks.push(PalantirSamlMetadataHealth.expiry("Metadata validity", validUntil, "The metadata"));
+        } else if (resolved.length > 0 || entity) {
+            checks.push({status: "info", title: "Metadata validity", detail: "The metadata declares no end to its validity."});
+        }
+
+        if (entity) {
+            const certificates = PalantirSamlMetadataHealth.certificates(entity);
+            if (certificates.length === 0) {
+                checks.push({status: "info", title: "Certificates", detail: "The service provider publishes no certificates."});
+            }
+            certificates.forEach(certificate => checks.push(certificate.expiry
+                ? PalantirSamlMetadataHealth.expiry(`Certificate for ${certificate.use}`, certificate.expiry, "The certificate")
+                : {status: "warn", title: `Certificate for ${certificate.use}`, detail: "The certificate could not be read."}));
+        } else {
+            checks.push({status: "skip", title: "Certificates", detail: "Certificates are read from the metadata, which could not be read."});
+        }
+        return {checks: checks, metadata: metadata};
+    }
+
+    /**
+     * The overall status of a set of checks: failing when one failed, needing attention when one warns, else healthy.
+     *
+     * @param checks the checks
+     * @returns {{status: string, label: string}} the status and how it reads
+     */
+    static overall(checks) {
+        if (checks.some(check => check.status === "fail")) {
+            return {status: "fail", label: "Failing"};
+        }
+        if (checks.some(check => check.status === "warn")) {
+            return {status: "warn", label: "Needs attention"};
+        }
+        return {status: "ok", label: "Healthy"};
+    }
+
+    /**
+     * Build the dialog once, with Check again and Close in its footer.
+     *
+     * @returns {jQuery} the dialog element
+     */
+    static dialog() {
+        const element = $("#samlMetadataHealthDialog");
+        if (!element.hasClass("ui-dialog-content")) {
+            element.removeClass("hide").dialog({
+                autoOpen: false,
+                modal: true,
+                closeOnEscape: true,
+                draggable: false,
+                resizable: false,
+                width: Math.min(880, $(window).width() - 48),
+                maxHeight: Math.max(320, $(window).height() - 48),
+                classes: {"ui-dialog": "ui-corner-all palantir-metadata-health-dialog"},
+                buttons: [
+                    {
+                        text: "Check again",
+                        "class": "palantir-metadata-health-again",
+                        click: () => {
+                            const service = registeredServicesById.get(String(PalantirSamlMetadataHealth.serviceId));
+                            if (service) {
+                                PalantirSamlMetadataHealth.run(service);
+                            }
+                        }
+                    },
+                    {
+                        text: "Close",
+                        click: () => element.dialog("close")
+                    }
+                ],
+                close: () => {
+                    PalantirSamlMetadataHealth.serviceId = null;
+                }
+            });
+        }
+        return element;
+    }
+
+    /**
+     * Open the metadata health of an application and check it.
+     *
+     * @param serviceId the numeric id of the registered service
+     * @returns {Promise<void>} resolved once the checks are shown
+     */
+    static async open(serviceId) {
+        const service = registeredServicesById.get(String(serviceId));
+        if (!service) {
+            return;
+        }
+        const element = PalantirSamlMetadataHealth.dialog();
+        element.dialog("option", "title", `Metadata health of ${service.name ?? serviceId}`);
+        element.dialog("open");
+        await PalantirSamlMetadataHealth.run(service);
+    }
+
+    /**
+     * Check an application and show the result, unless the dialog moved on to another application meanwhile.
+     *
+     * @param service the registered service
+     * @returns {Promise<void>} resolved once the checks are shown
+     */
+    static async run(service) {
+        const serviceId = String(service.id);
+        PalantirSamlMetadataHealth.serviceId = serviceId;
+        $(".palantir-metadata-health-again").button("option", "disabled", true);
+        $("#samlMetadataHealthSummary").attr("data-status", "pending")
+            .html(`<span class="palantir-metadata-health__status">Checking</span> ${escapePalantirMarkup(service.serviceId)}`);
+        $("#samlMetadataHealthChecks").empty();
+        $("#samlMetadataHealthMetadata").prop("hidden", true);
+        const report = await PalantirSamlMetadataHealth.check(service);
+        if (PalantirSamlMetadataHealth.serviceId !== serviceId) {
+            return;
+        }
+        PalantirSamlMetadataHealth.render(service, report);
+        $(".palantir-metadata-health-again").button("option", "disabled", false);
+    }
+
+    /**
+     * Show the overall status, each check and the downloaded metadata, and center the dialog on its new height.
+     *
+     * @param service the registered service
+     * @param report the checks and the downloaded metadata
+     */
+    static render(service, report) {
+        const overall = PalantirSamlMetadataHealth.overall(report.checks);
+        $("#samlMetadataHealthSummary").attr("data-status", overall.status)
+            .html(`<span class="palantir-metadata-health__status">${overall.label}</span> ${escapePalantirMarkup(service.serviceId)}`);
+        $("#samlMetadataHealthChecks").html(report.checks.map(check => {
+            const status = PalantirSamlMetadataHealth.STATUS[check.status];
+            return `
+                <li class="palantir-metadata-health__check is-${check.status}" data-check-status="${check.status}"
+                    data-check-title="${escapePalantirMarkup(check.title)}">
+                    <i class="mdi ${status.icon}" aria-hidden="true"></i>
+                    <div>
+                        <strong>${escapePalantirMarkup(check.title)}<span class="palantir-sr-only">: ${status.label}</span></strong>
+                        <span>${escapePalantirMarkup(check.detail)}</span>
+                    </div>
+                </li>`;
+        }).join(""));
+        $("#samlMetadataHealthMetadata").prop("hidden", !report.metadata);
+        if (report.metadata) {
+            const editor = initializeAceEditor("samlMetadataHealthEditor", "xml", {useWorker: false});
+            editor.setValue(report.metadata);
+            editor.setReadOnly(true);
+            editor.gotoLine(1);
+        }
+        $("#samlMetadataHealthDialog").dialog("option", "position", {my: "center", at: "center", of: window});
     }
 }

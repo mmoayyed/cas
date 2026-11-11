@@ -1030,6 +1030,98 @@ html.palantir-page div#dashboard {
     font-size: 17px;
 }
 
+/* The type filter: one pill per type of registered application, with how many there are, on its own line. */
+.palantir-type-filter {
+    display: flex;
+    flex: 1 0 100%;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.palantir-type-filter[hidden] {
+    display: none;
+}
+
+#dashboard .palantir-type-filter button {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    height: 34px;
+    padding: 0 6px 0 14px;
+    border: 1px solid var(--palantir-border-strong);
+    border-radius: 999px;
+    background: var(--palantir-surface);
+    color: var(--palantir-text-2);
+    font-family: var(--mdc-typography-font-family);
+    font-size: 13px;
+    line-height: 1.3;
+    cursor: pointer;
+}
+
+#dashboard .palantir-type-filter button:hover {
+    border-color: var(--palantir-accent);
+    background: var(--palantir-hover);
+}
+
+#dashboard .palantir-type-filter button:focus-visible {
+    outline: 2px solid var(--palantir-focus);
+    outline-offset: 2px;
+}
+
+#dashboard .palantir-type-filter button[aria-pressed="true"] {
+    border-color: var(--palantir-brand-fill);
+    background: var(--palantir-brand-fill);
+    color: var(--palantir-on-brand);
+    font-weight: 500;
+}
+
+.palantir-type-filter__dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--palantir-proto-wsfed);
+}
+
+.palantir-type-filter__dot.is-cas {
+    background: var(--palantir-proto-cas);
+}
+
+.palantir-type-filter__dot.is-saml {
+    background: var(--palantir-proto-saml);
+}
+
+.palantir-type-filter__dot.is-oidc {
+    background: var(--palantir-proto-oidc);
+}
+
+.palantir-type-filter__dot.is-oauth {
+    background: var(--palantir-proto-oauth);
+}
+
+.palantir-type-filter__dot.is-other {
+    background: var(--palantir-text-muted);
+}
+
+.palantir-type-filter__count {
+    min-width: 24px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: var(--palantir-surface-2);
+    color: var(--palantir-text-2);
+    font-size: 12px;
+    font-weight: 600;
+    text-align: center;
+}
+
+#dashboard .palantir-type-filter button[aria-pressed="true"] .palantir-type-filter__dot {
+    box-shadow: 0 0 0 2px var(--palantir-on-brand);
+}
+
+#dashboard .palantir-type-filter button[aria-pressed="true"] .palantir-type-filter__count {
+    background: color-mix(in srgb, var(--palantir-on-brand) 20%, transparent);
+    color: var(--palantir-on-brand);
+}
+
 /* The New menu: two described choices. */
 #dashboard .palantir-applications-buttons .mdc-menu.mdc-menu-surface {
     min-width: 0 !important;
@@ -3711,4 +3803,192 @@ html.palantir-page .palantir-command-palette__menu .ui-menu-item .palantir-comma
     margin: 0;
     color: var(--palantir-text-muted);
     font-size: 12px;
+}
+
+/* ==========================================================================
+   Metadata health of a SAML2 application: an overall status, then one line per check
+   ========================================================================== */
+.palantir-metadata-health-dialog .ui-dialog-content.palantir-metadata-health {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 16px 20px !important;
+}
+
+.palantir-metadata-health__summary {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    margin: 0;
+    color: var(--palantir-text-2);
+    font-size: 14px;
+    overflow-wrap: anywhere;
+}
+
+.palantir-metadata-health__status {
+    padding: 3px 12px;
+    border: 1px solid var(--palantir-border-strong);
+    border-radius: 999px;
+    background: var(--palantir-surface-2);
+    color: var(--palantir-text);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.palantir-metadata-health__summary[data-status="ok"] .palantir-metadata-health__status {
+    border-color: var(--palantir-success-line);
+    background: var(--palantir-success-bg);
+    color: var(--palantir-success-text);
+}
+
+.palantir-metadata-health__summary[data-status="warn"] .palantir-metadata-health__status {
+    border-color: var(--palantir-warn);
+    background: var(--palantir-warn-bg);
+    color: var(--palantir-warn);
+}
+
+.palantir-metadata-health__summary[data-status="fail"] .palantir-metadata-health__status {
+    border-color: var(--palantir-danger-line);
+    background: var(--palantir-danger-bg);
+    color: var(--palantir-danger);
+}
+
+.palantir-metadata-health__checks {
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+    padding: 0;
+    border: 1px solid var(--palantir-border);
+    border-radius: 12px;
+    list-style: none;
+}
+
+.palantir-metadata-health__checks:empty {
+    display: none;
+}
+
+.palantir-metadata-health__check {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 10px 14px;
+    border-top: 1px solid var(--palantir-divider);
+}
+
+.palantir-metadata-health__check:first-child {
+    border-top: 0;
+}
+
+.palantir-metadata-health__check > div {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.palantir-metadata-health__check strong {
+    color: var(--palantir-text);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.palantir-metadata-health__check span {
+    color: var(--palantir-text-2);
+    font-size: 13px;
+}
+
+.palantir-metadata-health__check > .mdi {
+    font-size: 20px;
+    line-height: 1;
+    color: var(--palantir-text-muted);
+}
+
+.palantir-metadata-health__check.is-ok > .mdi {
+    color: var(--palantir-success);
+}
+
+.palantir-metadata-health__check.is-warn > .mdi {
+    color: var(--palantir-warn);
+}
+
+.palantir-metadata-health__check.is-fail > .mdi {
+    color: var(--palantir-danger);
+}
+
+.palantir-metadata-health__metadata summary {
+    color: var(--palantir-brand);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.palantir-metadata-health__metadata pre.ace-editor {
+    height: 360px;
+    margin: 8px 0 0;
+    border-radius: 8px;
+}
+
+.palantir-progress {
+    display: grid;
+    gap: 10px;
+    margin-top: 4px;
+    text-align: left;
+}
+
+.palantir-progress__message {
+    margin: 0;
+    color: var(--palantir-text);
+    font-size: 14px;
+    overflow-wrap: anywhere;
+}
+
+.palantir-progress__track {
+    position: relative;
+    height: 8px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--palantir-brand) 12%, transparent);
+}
+
+.palantir-progress__bar {
+    display: block;
+    width: 0;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--palantir-brand-fill);
+    transition: width .2s ease;
+}
+
+.palantir-progress__track.is-busy .palantir-progress__bar {
+    position: absolute;
+    width: 35%;
+    animation: palantir-progress-busy 1.4s ease-in-out infinite;
+}
+
+.palantir-progress__detail {
+    margin: 0;
+    color: var(--palantir-text-muted);
+    font-size: 12px;
+    overflow-wrap: anywhere;
+}
+
+@keyframes palantir-progress-busy {
+    from {
+        left: -35%;
+    }
+
+    to {
+        left: 100%;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .palantir-progress__track.is-busy .palantir-progress__bar {
+        left: 0;
+        width: 100%;
+        opacity: .55;
+        animation: none;
+    }
 }

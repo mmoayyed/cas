@@ -6,6 +6,7 @@ import org.apereo.cas.authentication.MultifactorAuthenticationUtils;
 import org.apereo.cas.configuration.CasConfigurationProperties;
 import org.apereo.cas.configuration.CasCoreConfigurationUtils;
 import org.apereo.cas.configuration.api.MutablePropertySource;
+import org.apereo.cas.configuration.support.CasConfigurationJasyptCipherExecutor;
 import org.apereo.cas.palantir.PalantirConstants;
 import org.apereo.cas.services.BaseRegisteredService;
 import org.apereo.cas.services.RegisteredService;
@@ -139,6 +140,8 @@ public class DashboardController extends AbstractController {
 
         val mutablePropertySources = CasCoreConfigurationUtils.getMutablePropertySources(applicationContext);
         mav.addObject("mutablePropertySources", mutablePropertySources.stream().map(MutablePropertySource::getName).toList());
+        mav.addObject("configurationEncryptionAvailable", StringUtils.isNotBlank(applicationContext.getEnvironment()
+            .getProperty(CasConfigurationJasyptCipherExecutor.JasyptEncryptionParameters.PASSWORD.getPropertyName())));
         mav.addObject("serviceProperties", SERVICE_PROPERTIES.get());
         return mav;
     }

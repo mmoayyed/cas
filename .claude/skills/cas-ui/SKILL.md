@@ -92,6 +92,14 @@ description: "Change CAS views and presentation: Thymeleaf render path, theme re
   `describePalantirDescription` for plain text (search, tooltips); never `escapePalantirMarkup`, which shows the markup.
   The wizard's editor saves a single paragraph without its `<p>` wrapper (`unwrapDescriptionParagraph`, its `renderer`).
   Server-side views write it with `th:utext="${#cas.sanitizeHtml(...)}"` (jsoup, same allowlist); never a bare `th:utext`.
+- The applications type filter is a `$.fn.dataTable.ext.search` function limited to `#applicationsTable`, so the cards,
+  paging and summary follow it; `updateApplicationTypeFilter` rebuilds its choices in `fetchServices`. Filter the cards
+  through the table, never on their own.
+- Palantir SAML2 metadata health (`PalantirSamlMetadataHealth`, palantir-services-wizard-saml2.js) is an applications menu
+  item for SAML2 applications: it downloads through the cache endpoint's `/preview`, resolves through the cache endpoint
+  itself, and reads certificate expiry in the browser; it never writes. There is no separate SAML2 metadata sources tab.
+- DataTables 3 renamed the settings fields (`nTable` is now `table`, `sTableId` is `tableId`): in `ext.search` functions and
+  events, find the table through the API, `new $.fn.dataTable.Api(settings).table().node()`, never a settings field.
 - After an application is added, changed or deleted, Palantir calls `fetchServices`: it alone refreshes the table, cards,
   services chart, SAML2 metadata sources and the search's application index. Removing a table row alone leaves them stale.
 - Palantir file pickers are drop zones: an invisible file input covers a themed `<label>`, so click, keyboard and drop reach
@@ -158,6 +166,10 @@ description: "Change CAS views and presentation: Thymeleaf render path, theme re
   keep; the accessor must accept that spelling.
 - A SweetAlert opened over a modal jQuery UI dialog can only take focus because `allowAlertsOverModalDialogs` extends
   `_allowInteraction`; without it the dialog pulls focus back and the alert's inputs cannot be typed into.
+- `PalantirProgress` (palantir-utils.js) is the modal progress dialog for waits: `open(title, message, detail)`,
+  `update(message, percent)` with `null` for "busy" (an animated bar; the server reports no progress), `close()`.
+  Import uses it: real upload percentages from `xhr.upload` progress events, busy while CAS imports, busy while the table
+  refreshes. Start busy rather than at 0%: intercepting proxies (and Playwright routes) deliver no upload events.
 - Import posts the chosen file to `registeredServices/import` with the content type of its extension (JSON, YAML, or
   octet-stream for a zip, which the endpoint reads as a zip of JSON files); the file input's `change` handler is bound
   once in `initializeServiceButtons` (namespaced) and the input is cleared, so never bind it inside the button's click.

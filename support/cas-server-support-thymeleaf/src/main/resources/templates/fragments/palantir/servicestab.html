@@ -93,12 +93,13 @@
                     </div>
                 </div>
             </div>
+            <div class="palantir-type-filter" id="applicationsTypeFilter" role="group"
+                 aria-label="Show applications of type" hidden></div>
         </section>
 
         <div class="jqueryui-tabs" id="applications-tabs">
               <ul>
                 <li><a id="applications" href="#applications-tab">Applications</a></li>
-                <li><a id="saml2metadataproviders" href="#saml2metadataproviders-tab" class="hide">SAML2 Metadata Sources</a></li>
               </ul>
 
             <div id="applications-tab">
@@ -965,6 +966,19 @@
                     <div class="mdc-dialog__scrim"></div>
                 </div>
 
+                <!--/*
+                    The metadata health of a SAML2 application, filled by PalantirSamlMetadataHealth in
+                    palantir-services-wizard-saml2.js: the overall status, each check, and the metadata it read.
+                */-->
+                <div id="samlMetadataHealthDialog" class="palantir-metadata-health hide" title="Metadata health">
+                    <p class="palantir-metadata-health__summary" id="samlMetadataHealthSummary" role="status" aria-live="polite"></p>
+                    <ul class="palantir-metadata-health__checks" id="samlMetadataHealthChecks"></ul>
+                    <details class="palantir-metadata-health__metadata" id="samlMetadataHealthMetadata" hidden>
+                        <summary>Metadata</summary>
+                        <pre class="ace-editor ace-relative w-100" id="samlMetadataHealthEditor"></pre>
+                    </details>
+                </div>
+
                 <div id="validatePatternDialog" class="hide">
                     <section class="cas-field form-group my-3 mdc-input-group d-flex">
                         <div id="validateServiceIdPanel"
@@ -1043,21 +1057,6 @@
                     <div id="providedPatternTestResult" class="p-2 banner hide"></div>
                 </div>
                 
-            </div>
-
-
-            <div id="saml2metadataproviders-tab">
-                <table id="saml2MetadataProvidersTable" class="mdc-data-table__table table table-striped noborder">
-                    <thead>
-                    <tr class="mdc-data-table__header-row">
-                        <th class="mdc-data-table__header-cell" role="columnheader" scope="col">ID</th>
-                        <th class="mdc-data-table__header-cell" role="columnheader" scope="col">Service</th>
-                        <th class="mdc-data-table__header-cell" role="columnheader" scope="col">URL</th>
-                    </tr>
-                    </thead>
-                    <tbody class="mdc-data-table__content">
-                    </tbody>
-                </table>
             </div>
         </div>
     </div>

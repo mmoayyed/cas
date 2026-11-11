@@ -209,11 +209,49 @@ async function verifyRegisteredServices(page) {
     }));
     await cas.logg(`Card view shows ${views.cards} cards for ${views.rows} rows on the table's page`);
     assert(views.cards === views.rows);
+    await verifyApplicationTypeFilter(page);
 
     await cas.click(page, "#newService");
     await page.waitForFunction(() => $("#newServicePlain").is(":visible")
         && $("#newServiceWizard").is(":visible"), {timeout: 15000});
     await cas.logg("New application menu offers both the editor and the wizard");
+}
+
+/**
+ * Choose a type in the applications type filter and check that the table and the cards keep only applications of
+ * that type, as many as the filter counts, then show all of them again. The filter is hidden while the registry
+ * holds a single type, which is only reported.
+ *
+ * @param page the puppeteer page
+ */
+async function verifyApplicationTypeFilter(page) {
+    const filter = await page.evaluate(() => ({
+        visible: $("#applicationsTypeFilter").is(":visible"),
+        types: $("#applicationsTypeFilter button[data-application-type]").map(function () {
+            return {type: String($(this).data("application-type")), count: Number($(this).find(".palantir-type-filter__count").text())};
+        }).get()
+    }));
+    if (!filter.visible) {
+        await cas.logg(`Type filter is hidden for ${filter.types.length - 1} application type(s)`);
+        return;
+    }
+    const chosen = filter.types.find((entry) => entry.type !== "all");
+    await cas.click(page, `#applicationsTypeFilter button[data-application-type="${chosen.type}"]`);
+    await page.waitForFunction((type) => $(`#applicationsTypeFilter button[data-application-type="${type}"]`).attr("aria-pressed") === "true",
+        {timeout: 10000}, chosen.type);
+    const shown = await page.evaluate(() => ({
+        rows: $("#applicationsTable").DataTable().rows({search: "applied"}).count(),
+        badges: $("#applicationsCards .palantir-application-card .palantir-protocol-badge").map(function () {
+            return [...this.classList].find((name) => name.startsWith("is-"));
+        }).get()
+    }));
+    await cas.logg(`Type ${chosen.type} shows ${shown.rows} applications and ${shown.badges.length} cards`);
+    assert(shown.rows === chosen.count);
+    assert(shown.badges.every((badge) => badge === `is-${chosen.type}`));
+    await cas.click(page, "#applicationsTypeFilter button[data-application-type=\"all\"]");
+    await page.waitForFunction((total) => $("#applicationsTable").DataTable().rows({search: "applied"}).count() === total,
+        {timeout: 10000}, filter.types.find((entry) => entry.type === "all").count);
+    await cas.logg("Type filter shows all applications again");
 }
 
 /**
@@ -940,6 +978,79 @@ async function verifySamlMetadataImport(page) {
 }
 
 /**
+ * Register the SAML2 test service provider with its metadata URL, check the health of its metadata from the menu of
+ * its card, and check that the metadata is downloaded, holds the service provider and is resolved by CAS, and that the
+ * metadata is shown; then delete the application.
+ *
+ * @param page the puppeteer page
+ */
+async function verifySamlMetadataHealth(page) {
+    await cas.separator();
+    const available = await page.evaluate(() => Boolean(CasActuatorEndpoints.registeredServices()
+        && CasActuatorEndpoints.samlIdpRegisteredServiceMetadataCache()));
+    if (!available) {
+        await cas.logy("SAML2 metadata health is not available; skipping");
+        return;
+    }
+    const metadataLocation = "http://localhost:9443/simplesaml/module.php/saml/sp/metadata.php/default-sp";
+    const serviceId = await page.evaluate(async (location) => {
+        const preview = await PalantirSamlMetadataImport.request(location);
+        const response = await fetch(CasActuatorEndpoints.registeredServices(), {
+            method: "POST",
+            headers: {"Content-Type": "application/json", "Accept": "application/json"},
+            body: JSON.stringify({
+                "@class": "org.apereo.cas.support.saml.services.SamlRegisteredService",
+                serviceId: preview.entityId,
+                name: "MetadataHealthExample",
+                metadataLocation: location
+            })
+        });
+        return (await response.json()).id;
+    }, metadataLocation);
+    await cas.log(`Registered SAML2 application ${serviceId} for ${metadataLocation}`);
+
+    await page.evaluate(() => fetchServices());
+    await cas.click(page, "#applicationsCardsView");
+    await page.evaluate(() => $("#applicationsTable").DataTable().search("MetadataHealthExample").draw());
+    const menu = `#applicationsCards .palantir-application-card[data-service-id="${serviceId}"] [data-application-action="menu"]`;
+    await page.waitForSelector(menu, {visible: true, timeout: 30000});
+    await page.click(menu);
+    await page.locator(".context-menu-list ::-p-text(Check Metadata Health)").click();
+    await page.waitForFunction(() => $("#samlMetadataHealthDialog").dialog("instance") !== undefined
+        && $("#samlMetadataHealthDialog").dialog("isOpen")
+        && ["ok", "warn", "fail"].includes($("#samlMetadataHealthSummary").attr("data-status")), {timeout: 60000});
+    const health = await page.evaluate(() => ({
+        status: $("#samlMetadataHealthSummary").attr("data-status"),
+        checks: Object.fromEntries($("#samlMetadataHealthChecks li").map(function () {
+            return [[$(this).attr("data-check-title"), $(this).attr("data-check-status")]];
+        }).get()),
+        details: $("#samlMetadataHealthChecks li").map(function () {
+            return $(this).text().replace(/\s+/g, " ").trim();
+        }).get(),
+        metadata: !$("#samlMetadataHealthMetadata").prop("hidden")
+    }));
+    for (const detail of health.details) {
+        await cas.log(detail);
+    }
+    await cas.logg(`Metadata health of application ${serviceId}: ${health.status}`);
+    await cas.screenshot(page);
+    assert(health.checks["Download"] === "ok");
+    assert(health.checks["Service provider"] === "ok");
+    assert(health.checks["Resolution by CAS"] === "ok");
+    assert(health.metadata);
+
+    await page.evaluate(async (id) => {
+        $("#samlMetadataHealthDialog").dialog("close");
+        $("#applicationsTable").DataTable().search("").draw();
+        await fetch(`${CasActuatorEndpoints.registeredServices()}/${id}`, {
+            method: "DELETE",
+            headers: {"Content-Type": "application/json"}
+        });
+        fetchServices();
+    }, serviceId);
+}
+
+/**
  * The ticket registry endpoint is read-only in this scenario: its write controls are disabled and a request that
  * would change something through it is refused before it is sent, while other endpoints stay writable.
  *
@@ -1121,6 +1232,7 @@ async function verifyShortcutsOverlay(page) {
     await verifyServiceImport(page);
     await verifyEditConflict(page);
     await verifySamlMetadataImport(page);
+    await verifySamlMetadataHealth(page);
     await verifyReadOnlyEndpoint(page);
     await verifyInterruptInquiry(page);
     await verifyShortcutsOverlay(page);

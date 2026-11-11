@@ -19,21 +19,6 @@ async function initializeServicesOperations() {
     });
     applicationsTable.on("click", "tbody tr", e => e.currentTarget.classList.remove("selected"));
 
-    const saml2MetadataProvidersTable = $("#saml2MetadataProvidersTable").DataTable({
-        pageLength: 25,
-        autoWidth: false,
-        columnDefs: [
-            {width: "15%", targets: 0},
-            {width: "35%", targets: 1},
-            {width: "50%", targets: 2}
-        ],
-        drawCallback: settings => {
-            $("#saml2MetadataProvidersTable tr").addClass("mdc-data-table__row");
-            $("#saml2MetadataProvidersTable td").addClass("mdc-data-table__cell");
-        }
-    });
-    saml2MetadataProvidersTable.on("click", "tbody tr", e => e.currentTarget.classList.remove("selected"));
-
     $("#entityHistoryTable").DataTable({
         pageLength: 10,
         autoWidth: false,
@@ -49,6 +34,7 @@ async function initializeServicesOperations() {
     });
 
     initializeApplicationCards();
+    initializeApplicationTypeFilter();
     await fetchServices();
     await initializeFooterButtons();
 
@@ -216,37 +202,66 @@ async function importServiceFile(file) {
     if (!result.isConfirmed) {
         return;
     }
-    $.ajax({
-        url: `${CasActuatorEndpoints.registeredServices()}/import`,
-        type: "POST",
-        contentType: contentType,
-        data: file,
-        processData: false,
-        dataType: "text",
-        success: (response, status, xhr) => {
-            fetchServices(() => updateNavigationSidebar());
-            const id = xhr.getResponseHeader("id");
-            Swal.fire({
-                title: "Imported",
-                text: archive
-                    ? `The applications in ${file.name} are imported.`
-                    : `${file.name} is imported${id ? ` as application ${id}` : ""}.`,
-                icon: "success"
-            });
-        },
-        error: xhr => {
-            if (xhr.status === 400) {
-                Swal.fire({
-                    title: "Nothing imported",
-                    text: `CAS could not read ${file.name} as an application definition.`,
-                    icon: "error"
+    const button = $("button[name=importService]");
+    const wasDisabled = button.prop("disabled");
+    button.prop("disabled", true);
+    const processing = archive ? "CAS is reading and saving the applications in the archive..." : "CAS is reading and saving the application...";
+    PalantirProgress.open(archive ? "Importing applications" : "Importing an application",
+        `Uploading ${file.name}...`, `${file.name} · ${PalantirProgress.size(file.size)}`);
+    try {
+        const request = $.ajax({
+            url: `${CasActuatorEndpoints.registeredServices()}/import`,
+            type: "POST",
+            contentType: contentType,
+            data: file,
+            processData: false,
+            dataType: "text",
+            xhr: () => {
+                const xhr = $.ajaxSettings.xhr();
+                xhr.upload?.addEventListener("progress", event => {
+                    if (event.lengthComputable && event.loaded < event.total) {
+                        PalantirProgress.update(`Uploading ${file.name}...`, event.loaded / event.total * 100);
+                    } else {
+                        PalantirProgress.update(processing);
+                    }
                 });
-            } else {
-                console.error("Importing applications failed:", xhr.status, xhr.responseText);
-                displayBanner(xhr);
+                xhr.upload?.addEventListener("load", () => PalantirProgress.update(processing));
+                return xhr;
             }
+        });
+        await request;
+        PalantirProgress.update("Refreshing the applications...");
+        await Promise.race([
+            new Promise(resolve => fetchServices(() => {
+                updateNavigationSidebar();
+                resolve();
+            })),
+            new Promise(resolve => setTimeout(resolve, 20000))
+        ]);
+        PalantirProgress.close();
+        const id = request.getResponseHeader("id");
+        Swal.fire({
+            title: "Imported",
+            text: archive
+                ? `The applications in ${file.name} are imported.`
+                : `${file.name} is imported${id ? ` as application ${id}` : ""}.`,
+            icon: "success"
+        });
+    } catch (xhr) {
+        PalantirProgress.close();
+        if (xhr?.status === 400) {
+            Swal.fire({
+                title: "Nothing imported",
+                text: `CAS could not read ${file.name} as an application definition.`,
+                icon: "error"
+            });
+        } else if (xhr?.statusText !== PALANTIR_READ_ONLY) {
+            console.error("Importing applications failed:", xhr?.status, xhr?.responseText);
+            displayBanner(xhr);
         }
-    });
+    } finally {
+        button.prop("disabled", wasDisabled);
+    }
 }
 
 async function initializeServiceButtons() {
@@ -443,6 +458,11 @@ async function initializeServiceButtons() {
             duplicate: {name: "Duplicate Application", write: "registeredServices", icon: contextMenuIcon("mdi-content-duplicate")},
             delete: {name: "Delete Service Definition", write: "registeredServices", icon: contextMenuIcon("mdi-delete")},
             sep1: "---------",
+            samlMetadataHealth: {
+                name: "Check Metadata Health",
+                icon: contextMenuIcon("mdi-heart-pulse"),
+                visible: context => PalantirSamlMetadataHealth.applies(registeredServicesById.get(String(context.rowData.serviceId)))
+            },
             history: {
                 name: "View Change History",
                 icon: contextMenuIcon("mdi-history"),
@@ -471,6 +491,8 @@ async function initializeServiceButtons() {
             viewEntityHistory(serviceId);
         } else if (key === "changelog") {
             viewEntityChangelog(serviceId);
+        } else if (key === "samlMetadataHealth") {
+            PalantirSamlMetadataHealth.open(serviceId);
         }
     };
 }
@@ -482,10 +504,6 @@ async function fetchServices(callback) {
             let applicationsTable = $("#applicationsTable").DataTable();
             applicationsTable.clear();
             registeredServicesById.clear();
-            let metadataSourcesCount = 0;
-
-            let saml2MetadataProvidersTable = $("#saml2MetadataProvidersTable").DataTable();
-            saml2MetadataProvidersTable.clear();
 
             for (const service of response[1]) {
                 registeredServicesById.set(String(service.id), service);
@@ -534,30 +552,14 @@ async function fetchServices(callback) {
                     4: `${service.id}`,
                     serviceId: service.id
                 });
-
-                if (serviceClass.includes("SamlRegisteredService")) {
-                    const metadataLocation = service.metadataLocation;
-                    saml2MetadataProvidersTable.row.add({
-                        0: `<span serviceId='${service.id}' class="text-wrap">${service.id ?? ""}</span>`,
-                        1: `<span serviceId='${service.id}' class="text-wrap">${service.name ?? ""}</span>`,
-                        2: metadataLocation
-                    });
-                    metadataSourcesCount++;
-                }
-            }
-            const metadataSourcesTab = $("#saml2metadataproviders").parent().add("#saml2metadataproviders");
-            if (metadataSourcesCount > 0) {
-                showElements(metadataSourcesTab);
-            } else {
-                hideElements(metadataSourcesTab);
             }
 
             applicationsTable.on("draw", async () => {
                 await initializeServiceButtons();
             });
 
+            updateApplicationTypeFilter();
             applicationsTable.search("").draw();
-            saml2MetadataProvidersTable.search("").draw();
 
             if (servicesChart) {
                 servicesChart.data.datasets[0].data = serviceCountByType;
@@ -725,6 +727,19 @@ const registeredServicesById = new Map();
 
 const APPLICATIONS_VIEW_STORAGE_KEY = "PalantirApplicationsView";
 
+const APPLICATIONS_TYPE_STORAGE_KEY = "PalantirApplicationsType";
+
+const APPLICATION_TYPES = [
+    {key: "cas", label: "CAS"},
+    {key: "saml", label: "SAML2"},
+    {key: "oauth", label: "OAuth"},
+    {key: "oidc", label: "OpenID Connect"},
+    {key: "wsfed", label: "WS-Federation"},
+    {key: "other", label: "Other"}
+];
+
+let applicationTypeFilter = storedApplicationTypeFilter();
+
 let applicationCardsSelection = "";
 
 /**
@@ -891,6 +906,83 @@ function updateApplicationsSummary() {
 }
 
 /**
+ * The type of applications the operator last chose to show, or all.
+ *
+ * @returns {string} a type key, or all
+ */
+function storedApplicationTypeFilter() {
+    try {
+        return window.localStorage.getItem(APPLICATIONS_TYPE_STORAGE_KEY) || "all";
+    } catch (error) {
+        return "all";
+    }
+}
+
+/**
+ * Show only the applications of one type, or all of them, and remember the choice.
+ *
+ * The table filters its rows, so its paging and the card view drawn from it follow.
+ *
+ * @param type a type key, or all
+ */
+function setApplicationTypeFilter(type) {
+    applicationTypeFilter = type;
+    try {
+        window.localStorage.setItem(APPLICATIONS_TYPE_STORAGE_KEY, type);
+    } catch (error) {
+        console.debug("Palantir could not persist the applications type filter", error);
+    }
+    $("#applicationsTypeFilter button[data-application-type]").each(function () {
+        $(this).attr("aria-pressed", String($(this).data("application-type") === type));
+    });
+    if ($.fn.dataTable.isDataTable("#applicationsTable")) {
+        $("#applicationsTable").DataTable().draw();
+    }
+}
+
+/**
+ * List the types of the registered applications, with how many of each, as the choices of the type filter.
+ *
+ * The filter is hidden while the registry holds a single type, and a chosen type that no application has any more
+ * falls back to all.
+ */
+function updateApplicationTypeFilter() {
+    const counts = new Map();
+    for (const service of registeredServicesById.values()) {
+        const key = applicationProtocolOf(service["@class"]).key;
+        counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+    if (applicationTypeFilter !== "all" && !counts.has(applicationTypeFilter)) {
+        applicationTypeFilter = "all";
+    }
+    const choices = [{key: "all", label: "All", count: registeredServicesById.size}]
+        .concat(APPLICATION_TYPES.filter(type => counts.has(type.key)).map(type => ({...type, count: counts.get(type.key)})));
+    $("#applicationsTypeFilter")
+        .html(choices.map(choice => `
+            <button type="button" data-application-type="${choice.key}" aria-pressed="${choice.key === applicationTypeFilter}">
+                ${choice.key === "all" ? "" : `<span class="palantir-type-filter__dot is-${choice.key}" aria-hidden="true"></span>`}
+                ${escapePalantirMarkup(choice.label)}<span class="palantir-type-filter__count">${choice.count}</span>
+            </button>`).join(""))
+        .prop("hidden", counts.size < 2);
+}
+
+/**
+ * Wire the type filter: a search function that keeps the applications table to the chosen type, and its buttons.
+ */
+function initializeApplicationTypeFilter() {
+    if (!$.fn.dataTable.ext.search.some(search => search.palantirApplicationType)) {
+        const search = (settings, data, index, rowData) => applicationTypeFilter === "all"
+            || new $.fn.dataTable.Api(settings).table().node().id !== "applicationsTable"
+            || applicationProtocolOf(registeredServicesById.get(String(rowData?.serviceId))?.["@class"]).key === applicationTypeFilter;
+        search.palantirApplicationType = true;
+        $.fn.dataTable.ext.search.push(search);
+    }
+    $("#applicationsTypeFilter").off("click").on("click", "button[data-application-type]", event => {
+        setApplicationTypeFilter(String($(event.currentTarget).data("application-type")));
+    });
+}
+
+/**
  * Draw the card view from the rows the applications table currently shows.
  *
  * The table stays the source: its search, paging and the selected row decide which cards appear
@@ -956,7 +1048,11 @@ function renderApplicationCards() {
     });
     if (cards.length === 0) {
         const searching = table.search() !== "";
-        container.html(`<p class="palantir-empty-state">${searching ? "No application matches that search." : "No applications are registered yet."}</p>`);
+        const filtered = applicationTypeFilter !== "all";
+        const message = searching || filtered
+            ? `No application matches ${searching && filtered ? "that search and type" : searching ? "that search" : "that type"}.`
+            : "No applications are registered yet.";
+        container.html(`<p class="palantir-empty-state">${message}</p>`);
     } else {
         container.html(cards.join(""));
     }
@@ -991,10 +1087,6 @@ function initializeApplicationCards() {
     }
     $("#applicationsCardsView, #applicationsTableView").off("click").on("click", event => {
         showApplicationsView($(event.currentTarget).data("applications-view"));
-    });
-
-    $("#applications-tabs").off("tabsactivate.palantirCards").on("tabsactivate.palantirCards", (event, ui) => {
-        $(".palantir-view-switch").toggleClass("d-none", !ui.newPanel.is("#applications-tab"));
     });
 
     $("#applicationsCards").off("click").on("click", "[data-application-action]", event => {

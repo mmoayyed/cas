@@ -73,6 +73,7 @@ class DashboardControllerTests {
         assertTrue(model.containsKey("actuatorEndpoints"));
         assertTrue(model.containsKey("actuatorEndpointAccess"));
         assertTrue(model.containsKey("serviceDefinitions"));
+        assertEquals(Boolean.FALSE, model.get("configurationEncryptionAvailable"));
 
         mvc.perform(get("/palantir/").with(authentication(authentication))).andExpect(status().isOk());
         mvc.perform(get("/palantir").with(authentication(authentication))).andExpect(status().isOk());
@@ -98,6 +99,22 @@ class DashboardControllerTests {
         SecurityContextHolder.clearContext();
         mvc.perform(get("/palantir/dashboard/session"))
             .andExpect(status().is3xxRedirection());
+    }
+
+    @Nested
+    @TestPropertySource(properties = "cas.standalone.configuration-security.psw=Q7M9w4NjYnBxb2#mW")
+    class ConfigurationEncryptionTests {
+        @Test
+        void verifyEncryptionIsAvailable() throws Throwable {
+            val authentication = new UsernamePasswordAuthenticationToken("casuser", "password",
+                List.of(new SimpleGrantedAuthority("ROLE_ADMIN")));
+            val model = mvc.perform(get("/palantir/dashboard").with(authentication(authentication)))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getModelAndView()
+                .getModel();
+            assertEquals(Boolean.TRUE, model.get("configurationEncryptionAvailable"));
+        }
     }
 
     @Nested
