@@ -19,6 +19,44 @@ class PalantirCommandPalette {
         return $element.hasClass("hide") || $element.hasClass("d-none") || $element.css("display") === "none";
     }
 
+    /**
+     * Whether what a tab or section declares it needs is available: <code>data-palantir-requires</code> lists
+     * endpoints, by the name of their <code>CasActuatorEndpoints</code> accessor, and features, as
+     * <code>feature:Name</code>, all of which must be present.
+     *
+     * @param element the tab or section
+     * @returns {boolean|null} whether it is available, or null when it declares nothing
+     */
+    static requirementsMet(element) {
+        const requires = String($(element).data("palantir-requires") ?? "").trim();
+        if (requires === "") {
+            return null;
+        }
+        return requires.split(/\s+/).every(requirement => requirement.startsWith("feature:")
+            ? CAS_FEATURES.includes(requirement.substring("feature:".length))
+            : typeof CasActuatorEndpoints[requirement] === "function" && Boolean(CasActuatorEndpoints[requirement]()));
+    }
+
+    /**
+     * Whether a tab or section is left out of the search. A page shows some of its tabs only once it opens, after
+     * checking what they need; until the page has been opened, such a tab is offered when what it declares it
+     * needs is available.
+     *
+     * @param element the tab or section
+     * @param pageIndex the page it belongs to
+     * @returns {boolean} true to leave it out
+     */
+    static isUnavailable(element, pageIndex) {
+        const requirements = PalantirCommandPalette.requirementsMet(element);
+        if (requirements === false) {
+            return true;
+        }
+        if (requirements === true && !isDashboardTabInitialized(pageIndex)) {
+            return false;
+        }
+        return PalantirCommandPalette.isHidden(element);
+    }
+
     static navigationItems() {
         return $("nav.sidebar-navigation ul li[data-tab-index]")
             .toArray()
@@ -55,36 +93,107 @@ class PalantirCommandPalette {
         }));
     }
 
+    /**
+     * The tabs that sit directly in a container: tab widgets inside it that are not themselves inside another tab
+     * widget of the same container.
+     *
+     * @param container the page panel or a tab panel
+     * @returns {jQuery} the tab widgets
+     */
+    static tabsIn(container) {
+        return $(container).find(".jqueryui-tabs").filter((index, tabs) => $(tabs).parentsUntil(container, ".jqueryui-tabs").length === 0);
+    }
+
+    /**
+     * The sections of every page, found from the page's markup rather than listed by hand: each tab of a tab
+     * widget, at any depth, is a section reached by opening the page and every tab on the way to it, and any
+     * element marked with <code>data-palantir-search-section</code> is a section reached the same way and scrolled
+     * into view. A tab or section is left out while it is hidden, and so is everything under a tab or element
+     * marked <code>data-palantir-search="false"</code> or kept in a dialog; <code>data-palantir-search-label</code>
+     * renames an entry and
+     * <code>data-palantir-search-keywords</code> adds words it is found by. A tab its page reveals only when it opens
+     * declares what it needs with <code>data-palantir-requires</code>, so it can be found before the page is opened.
+     *
+     * @param navigation the pages
+     * @returns {Array<object>} the section entries
+     */
     static sectionEntries(navigation) {
         const entries = [];
-        for (const item of navigation) {
-            const panel = $(`#attribute-tab-${item.index}`);
-            const outer = panel.find(".jqueryui-tabs").filter((index, tabs) => $(tabs).parentsUntil(panel, ".jqueryui-tabs").length === 0).first();
-            if (outer.length === 0) {
-                continue;
-            }
-            outer.find("> ul > li").each((position, tab) => {
-                const anchor = $(tab).find("a").first();
-                const label = anchor.text().trim();
-                if (!label || PalantirCommandPalette.isHidden(tab) || PalantirCommandPalette.isHidden(anchor)) {
+        const excluded = element => $(element).closest("[data-palantir-search=false], .ui-dialog-content, .mdc-dialog, .modal, [role=dialog], [role=alertdialog], .hide").length > 0;
+        const nameOf = (element, fallback) => String($(element).data("palantir-search-label") ?? fallback ?? "").replace(/\s+/g, " ").trim();
+        const keywordsOf = element => String($(element).data("palantir-search-keywords") ?? "");
+        const add = (item, trail, path, target, keywords) => entries.push({
+            category: "Sections",
+            label: [item.label, ...trail].join(" › "),
+            detail: item.group,
+            icon: item.icon,
+            keywords: `${trail.join(" ")} ${keywords}`,
+            run: () => PalantirCommandPalette.openSection(item.index, path, target)
+        });
+        const walk = (item, container, trail, path) => {
+            $(container).find("[data-palantir-search-section]")
+                .filter((index, element) => $(element).parentsUntil(container, ".jqueryui-tabs").length === 0)
+                .each((index, element) => {
+                    const label = nameOf(element, $(element).data("palantir-search-section"));
+                    if (label && !excluded(element) && !PalantirCommandPalette.isUnavailable(element, item.index)) {
+                        add(item, [...trail, label], path, element, keywordsOf(element));
+                    }
+                });
+            PalantirCommandPalette.tabsIn(container).each((index, tabs) => {
+                if (excluded(tabs) || PalantirCommandPalette.isHidden(tabs)) {
                     return;
                 }
-                entries.push({
-                    category: "Sections",
-                    label: `${item.label} › ${label}`,
-                    detail: item.group,
-                    icon: item.icon,
-                    keywords: label,
-                    run: async () => {
-                        await PalantirCommandPalette.goTo(item.index);
-                        if (outer.data("ui-tabs")) {
-                            outer.tabs("option", "active", position);
-                        }
+                $(tabs).find("> ul > li").each((position, tab) => {
+                    const anchor = $(tab).find("a").first();
+                    const label = nameOf(tab, nameOf(anchor, anchor.text()));
+                    if (!label || excluded(tab) || PalantirCommandPalette.isUnavailable(tab, item.index) || PalantirCommandPalette.isHidden(anchor)) {
+                        return;
+                    }
+                    const step = {tabs: tabs, tab: tab};
+                    add(item, [...trail, label], [...path, step], null, `${keywordsOf(tab)} ${keywordsOf(anchor)}`);
+                    const href = String(anchor.attr("href") ?? "");
+                    const panel = href.startsWith("#") ? document.getElementById(href.slice(1)) : null;
+                    if (panel && tabs.contains(panel)) {
+                        walk(item, panel, [...trail, label], [...path, step]);
                     }
                 });
             });
+        };
+        for (const item of navigation) {
+            const panel = document.getElementById(`attribute-tab-${item.index}`);
+            if (panel && !excluded(panel)) {
+                walk(item, panel, [], []);
+            }
         }
         return entries;
+    }
+
+    /**
+     * Open a page, then each tab on the way to a section, waiting for tab widgets the page builds when it opens,
+     * and bring the section into view.
+     *
+     * @param index the page index
+     * @param path the tab widgets and the tab to choose in each, outermost first
+     * @param target an element to scroll to once its tabs are open, or null to show the last tab
+     */
+    static async openSection(index, path, target) {
+        await PalantirCommandPalette.goTo(index);
+        for (const step of path) {
+            for (let attempt = 0; attempt < 40 && !$(step.tabs).data("ui-tabs"); attempt++) {
+                await new Promise(resolve => setTimeout(resolve, 50));
+            }
+            if (!$(step.tabs).data("ui-tabs")) {
+                return;
+            }
+            const position = $(step.tabs).find("> ul > li").index(step.tab);
+            if (position >= 0) {
+                $(step.tabs).tabs("option", "active", position);
+            }
+        }
+        const destination = target ?? path.at(-1)?.tab ?? null;
+        if (destination) {
+            destination.scrollIntoView({block: target ? "start" : "nearest", behavior: "smooth"});
+        }
     }
 
     static applicationEntries(navigation) {

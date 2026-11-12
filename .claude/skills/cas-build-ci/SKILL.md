@@ -1,7 +1,8 @@
 ---
 name: cas-build-ci
-description: "Gradle build settings (configuration cache, Isolated Projects, build cache, test-category discovery) and the GitHub Actions workflows (tests.yml coverage job, setup-gradle caching, daemon reuse, CodeQL). Use when changing build logic under buildSrc or gradle/, the root Gradle settings, or anything under .github/workflows or ci/."
+description: "Gradle build settings (configuration cache, Isolated Projects, build cache, test-category discovery), the GitHub Actions workflows (tests.yml coverage job, Sonar and Codecov, setup-gradle caching, daemon reuse, CodeQL) and GraalVM native images. Use when changing build logic under buildSrc or gradle/, the root Gradle settings, native image hints, or anything under .github/workflows or ci/."
 ---
+
 
 
 # CAS build and CI workflows

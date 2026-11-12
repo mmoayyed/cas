@@ -2,7 +2,8 @@
    RegisteredServiceSections, openRegisteredServiceWizardDialog, isPopulatingWizard,
    activateDashboardTab, ace, currentActiveTab, registeredServicesById, PalantirUserLookup,
    PalantirServiceHistory, Swal, applicationActionHandler, applicationRowContext, fetchServices, notyf,
-   PalantirSamlMetadataImport, PalantirApplicationAccess, Tabs */
+   PalantirSamlMetadataImport, PalantirApplicationAccess, Tabs, PalantirServiceEditor, PalantirServiceTemplates,
+   PalantirCommandPalette */
 const assert = require("assert");
 const fs = require("fs");
 const os = require("os");
@@ -617,6 +618,12 @@ async function verifyServiceWizard(page) {
         await cas.logg(`${name} steps: ${steps.join(" > ")}`);
         assert(steps[0] === "basics" && steps.at(-1) === "review" && new Set(steps).size === steps.length);
 
+        await page.evaluate(() => $("#registeredServiceName").val("").trigger("input").trigger("change"));
+        await page.waitForFunction(() => $("#saveServiceWizard").prop("disabled")
+            && $("#saveServiceWizardHint").text().includes("Name"), {timeout: 10000});
+        const required = await page.evaluate(() => $("#saveServiceWizardHint").text().trim());
+        await cas.logg(`${name}: without a name, Save is disabled and the wizard says ${required}`);
+
         await cas.logg(`Wizard verified for ${name}`);
         await page.evaluate(() => $("#cancelServiceWizard").trigger("click"));
         await discardUnsavedChanges(page, name);
@@ -627,11 +634,9 @@ async function verifyServiceWizard(page) {
 }
 
 /**
- * Open and dismiss the plain definition editor, through the New menu left open by the caller.
- *
- * It is a jQuery UI dialog now rather than hand-written MDC markup, so this checks the widget is
- * created, the Ace editor inside it is attached, and Cancel closes it. Choosing the menu entry is
- * also what dismisses the menu, which is why nothing clicks elsewhere to close it.
+ * The JSON editor opens on a start screen of templates for a new definition: the templates that ship with CAS are
+ * offered for every protocol of the deployment, a search narrows them, and choosing one moves to the editor with a
+ * definition CAS can read. A syntax error is reported on its line, and Cancel asks before discarding the edits.
  *
  * @param page the puppeteer page
  */
@@ -640,15 +645,45 @@ async function verifyPlainEditorDialog(page) {
     await cas.click(page, "#newServicePlain");
     await page.waitForFunction(() => $("#editServiceDialog").hasClass("ui-dialog-content")
         && $("#editServiceDialog").dialog("isOpen")
-        && document.querySelector("#serviceEditor").classList.contains("ace_editor"), {timeout: 30000});
-    await cas.logg("Plain definition editor opened as a jQuery UI dialog");
-    await cas.assertVisibility(page, "#saveService");
-    await cas.assertVisibility(page, "#cancelService");
+        && PalantirServiceEditor.view === "start"
+        && $("#serviceTemplateCards [data-template-key]").length > 1, {timeout: 30000});
+    const start = await page.evaluate(() => ({
+        templates: PalantirServiceTemplates.all().length,
+        protocols: [...new Set(PalantirServiceTemplates.all().map((template) => template.protocol.key))],
+        continueDisabled: $("#continueServiceTemplate").prop("disabled")
+    }));
+    await cas.logg(`JSON editor offers ${start.templates} template(s) for ${start.protocols.join(", ")}`);
+    assert(start.templates >= 20);
+    assert(start.protocols.includes("cas") && start.protocols.includes("saml") && start.protocols.includes("oidc"));
+    assert(start.continueDisabled === true);
+
+    await page.type("#serviceTemplateSearch", "proxy tickets");
+    await page.waitForFunction(() => $("#serviceTemplateCards [data-template-key]").length === 2, {timeout: 10000});
+    await page.click("#serviceTemplateCards [data-template-key]:not([data-template-key=blank])");
+    await page.click("#continueServiceTemplate");
+    await page.waitForFunction(() => PalantirServiceEditor.view === "editor"
+        && $("#serviceEditorCheck").attr("data-state") === "ok", {timeout: 10000});
+    const definition = await page.evaluate(() => JSON.parse(ace.edit("serviceEditor").getValue()));
+    await cas.log(`Started from the template ${definition.name}`);
+    assert(definition.proxyPolicy !== undefined);
+    assert(definition.id === undefined);
+
+    await cas.click(page, "#validateService");
+    await page.waitForFunction(() => !$("#serviceEditorProblem").prop("hidden"), {timeout: 15000});
+    const validation = await page.evaluate(() => $("#serviceEditorProblem").attr("data-state"));
+    await cas.logg(`Validating the template answers ${validation}`);
+    assert(validation === "ok");
+
+    await page.evaluate(() => ace.edit("serviceEditor").session.insert({row: 2, column: 0}, "    \"broken\"\n"));
+    await page.waitForFunction(() => $("#serviceEditorCheck").attr("data-state") === "error", {timeout: 10000});
+    const syntax = await page.evaluate(() => $("#serviceEditorCheck").text());
+    await cas.logg(`A syntax error is reported as: ${syntax}`);
+    assert(syntax.startsWith("Line "));
 
     await page.evaluate(() => $("#cancelService").trigger("click"));
-    await page.waitForFunction(() => $("#editServiceDialog").hasClass("ui-dialog-content")
-        && $("#editServiceDialog").dialog("isOpen") === false, {timeout: 15000});
-    await cas.logg("Plain definition editor dismissed through Cancel");
+    await discardUnsavedChanges(page, "JSON editor");
+    await page.waitForFunction(() => $("#editServiceDialog").dialog("isOpen") === false, {timeout: 15000});
+    await cas.logg("JSON editor dismissed through Cancel");
 }
 
 /**
@@ -664,6 +699,16 @@ async function verifySettingsDialog(page) {
         && $("#palantirActuatorsTable").DataTable().data().count() > 0, {timeout: 30000});
     const endpoints = await page.evaluate(() => $("#palantirActuatorsTable").DataTable().data().count());
     await cas.logg(`Settings dialog lists ${endpoints} actuator endpoints`);
+
+    await page.evaluate(() => sessionStorage.setItem("PalantirResetProbe", "kept"));
+    await cas.click(page, "#resetPalantirPreferences");
+    await page.waitForFunction(() => $(".swal2-title").text() === "Reset all preferences?", {timeout: 10000});
+    await page.click(".swal2-cancel");
+    await page.waitForFunction(() => !Swal.isVisible(), {timeout: 10000});
+    const kept = await page.evaluate(() => sessionStorage.getItem("PalantirResetProbe"));
+    await cas.logg(`Declining to reset the preferences keeps them: ${kept}`);
+    assert(kept === "kept");
+    await page.evaluate(() => sessionStorage.removeItem("PalantirResetProbe"));
     await page.evaluate(() => $("#palantirSettingsDialog").dialog("close"));
 }
 
@@ -737,6 +782,23 @@ async function verifyCommandPalette(page) {
             $("#applicationsTable").DataTable().search("").draw();
             $("#applications-tab .dt-search input").val("");
         });
+    }
+
+    const nested = await page.evaluate(() => PalantirCommandPalette.sectionEntries(PalantirCommandPalette.navigationItems())
+        .map((entry) => entry.label)
+        .find((label) => label.split(" › ").length > 2));
+    if (nested) {
+        await cas.sleep(1000);
+        await page.evaluate(() => document.activeElement?.blur());
+        await page.keyboard.press("/");
+        const match = await searchCommandPalette(page, nested.split(" › ").at(-1));
+        await cas.log(`Command palette offers ${match} for a section inside a section`);
+        await page.evaluate((label) => PalantirCommandPalette.search(label).find((entry) => entry.label === label).run(), nested);
+        await page.evaluate(() => $("#palantirCommandPalette").dialog("close"));
+        const tab = nested.split(" › ").at(-1);
+        await page.waitForFunction((name) => $(".jqueryui-tabs > ul > li.ui-tabs-active:visible").toArray()
+            .some((element) => $(element).find("a").first().text().replace(/\s+/g, " ").trim() === name), {timeout: 15000}, tab);
+        await cas.logg(`Command palette opened the nested section ${nested}`);
     }
     await cas.screenshot(page);
 }
@@ -1154,11 +1216,29 @@ async function verifyApplicationBulkActions(page) {
         $("#applicationsTableView").trigger("click");
         $("#applicationsTable").DataTable().search("BulkExample").draw();
     });
-    await page.waitForSelector(`[data-select-service="${ids[0]}"]`, {visible: true});
-    await page.click(`[data-select-service="${ids[0]}"]`);
-    await page.click(`[data-select-service="${ids[1]}"]`);
+    const cell = async (id) => (await page.waitForFunction((serviceId) => $(`#applicationsTable tbody tr:has([data-select-service="${serviceId}"]) > td:visible`)
+        .not(".palantir-application-type").get(0), {timeout: 30000}, id)).asElement();
+    await (await cell(ids[0])).click();
+    await (await cell(ids[1])).click();
     await page.waitForFunction(() => !$("#applicationsSelectionBar").prop("hidden")
         && $(".palantir-selection-bar__count").text().startsWith("2 "), {timeout: 10000});
+    await page.evaluate(() => notyf.dismissAll());
+    const [exported] = await Promise.all([
+        page.waitForResponse((response) => response.url().includes("/registeredServices/export?"), {timeout: 30000}),
+        page.click("button[name=exportSelectedServices]")
+    ]);
+    const requested = new URL(exported.url()).searchParams.getAll("ids").sort();
+    await cas.logg(`Exporting the selection asks for ${requested.join(", ")} and answers ${exported.status()} with ${exported.headers()["filename"]}`);
+    assert(exported.status() === 200);
+    assert(exported.headers()["filename"] === "services.zip");
+    assert(JSON.stringify(requested) === JSON.stringify([String(ids[0]), String(ids[1])].sort()));
+    const archive = await page.evaluate(async (url) => {
+        const bytes = new Uint8Array(await (await fetch(url, {credentials: "include"})).arrayBuffer());
+        return {size: bytes.length, signature: bytes.length >= 4 ? new DataView(bytes.buffer).getUint32(0, true) : 0};
+    }, exported.url());
+    await cas.log(`The exported archive holds ${archive.size} bytes`);
+    assert(archive.size > 0 && archive.signature === 0x04034b50);
+
     await page.click("button[name=deleteSelectedServices]");
     await page.waitForSelector(".swal2-confirm", {visible: true});
     await page.click(".swal2-confirm");

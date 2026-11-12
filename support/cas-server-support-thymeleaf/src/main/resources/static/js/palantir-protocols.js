@@ -86,6 +86,58 @@ async function switchToConfigurationDynamicSourcesTabFromProtocol() {
     await initializeDashboardTab(Tabs.CONFIGURATION);
 }
 
+let pendingSamlMetadataManager = null;
+
+/**
+ * Open the SAML2 service provider metadata management section under Protocols, with the metadata manager whose
+ * source, such as <code>mongodb://</code>, is given selected once the managers are known.
+ *
+ * @param sourceId the source of the metadata manager
+ */
+async function showSamlMetadataManager(sourceId) {
+    pendingSamlMetadataManager = sourceId;
+    activateDashboardTab(Tabs.PROTOCOLS.index);
+    selectSidebarMenuTab(Tabs.PROTOCOLS.index);
+    await initializeDashboardTab(Tabs.PROTOCOLS);
+    const outer = $("#protocols-tabs");
+    const protocol = outer.find("> ul > li").index($("#saml2protocol").closest("li"));
+    if (outer.data("ui-tabs") && protocol >= 0) {
+        outer.tabs("option", "active", protocol);
+    }
+    const inner = $("#saml2-inner-tabs");
+    const section = inner.find("> ul > li").index($("#saml2metadatamgmt-li"));
+    if (inner.data("ui-tabs") && section >= 0 && !$("#saml2metadatamgmt-li").hasClass("d-none")) {
+        inner.tabs("option", "active", section);
+    }
+    $("#saml2metadatamgmt-tab")[0]?.scrollIntoView({block: "start", behavior: "smooth"});
+    selectPendingSamlMetadataManager();
+}
+
+/**
+ * Select the metadata manager asked for by <code>showSamlMetadataManager</code> once its option exists.
+ *
+ * @returns {boolean} whether a manager was selected
+ */
+function selectPendingSamlMetadataManager() {
+    const sourceId = pendingSamlMetadataManager;
+    const select = $("#saml2MetadataManagersSelect");
+    if (sourceId === null || select.find("option").length === 0) {
+        return false;
+    }
+    pendingSamlMetadataManager = null;
+    const option = select.find("option").filter((index, element) => String(element.value).toLowerCase() === String(sourceId).toLowerCase());
+    if (option.length === 0) {
+        notyf.error(`No SAML2 metadata manager handles ${sourceId} locations.`);
+        return false;
+    }
+    select.val(option.val());
+    if (select.selectmenu("instance")) {
+        select.selectmenu("refresh");
+    }
+    select.trigger("palantir:managerselected");
+    return true;
+}
+
 async function showProtocolConfigurationPropertyHelp(propertyName) {
     if (CasActuatorEndpoints.configurationMetadata()) {
         await switchToConfigurationDynamicSourcesTabFromProtocol();
@@ -980,6 +1032,9 @@ async function initializeSAML2ProtocolOperations() {
                     fetchMetadataManagerEntries(ui.item.label);
                 }
             });
+            $("#saml2MetadataManagersSelect")
+                .off("palantir:managerselected")
+                .on("palantir:managerselected", () => fetchMetadataManagerEntries($("#saml2MetadataManagersSelect option:selected").text()));
             $.get(`${CasActuatorEndpoints.samlIdpRegisteredServiceMetadata()}/managers`, response => {
                 response.forEach((manager, idx) => {
                     $("#saml2MetadataManagersSelect").append(
@@ -991,7 +1046,7 @@ async function initializeSAML2ProtocolOperations() {
                     );
                 });
                 $("#saml2MetadataManagersSelect").selectmenu("refresh");
-                if (response.length > 0) {
+                if (!selectPendingSamlMetadataManager() && response.length > 0) {
                     fetchMetadataManagerEntries(response[0].name);
                 }
             }).fail((xhr, status, error) => {

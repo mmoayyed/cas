@@ -1,7 +1,8 @@
 ---
 name: cas-actuators
-description: "Review and change CAS actuator endpoints: the security filter chain, access levels and IP access, REST actuator endpoints, exposure vs access, unmasked responses, request-path regexes, auditing and the actuator scenarios. Use when touching actuator endpoints or management security."
+description: "Review and change CAS actuator endpoints: the security filter chain, access levels and IP access, REST actuator endpoints, exposure vs access, unmasked responses, request-path regexes, auditing, configuration encryption ({cas-cipher}, casConfig encrypt/decrypt) and the actuator scenarios. Use when touching actuator endpoints, management security or encrypted configuration."
 ---
+
 
 # Actuator endpoints
 

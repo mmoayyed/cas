@@ -127,6 +127,64 @@ class RegisteredServicesEndpointTests extends AbstractCasEndpointTests {
     }
 
     @Test
+    void verifyExportSelectedServices() throws Throwable {
+        val first = RegisteredServiceTestUtils.getRegisteredService(UUID.randomUUID().toString());
+        servicesManager.save(first);
+        val second = RegisteredServiceTestUtils.getRegisteredService(UUID.randomUUID().toString());
+        servicesManager.save(second);
+        val others = RegisteredServiceTestUtils.getRegisteredService(UUID.randomUUID().toString());
+        servicesManager.save(others);
+
+        val content = mockMvc.perform(get("/actuator/registeredServices/export")
+                .param("ids", String.valueOf(first.getId()), String.valueOf(second.getId()), String.valueOf(Long.MAX_VALUE))
+                .accept(MediaType.APPLICATION_OCTET_STREAM_VALUE))
+            .andExpect(status().isOk())
+            .andExpect(header().string("Filename", "services.zip"))
+            .andReturn()
+            .getResponse()
+            .getContentAsByteArray();
+        val names = new ArrayList<String>();
+        try (val zip = new ZipInputStream(new ByteArrayInputStream(content))) {
+            for (var entry = zip.getNextEntry(); entry != null; entry = zip.getNextEntry()) {
+                names.add(entry.getName());
+            }
+        }
+        assertEquals(2, names.size(), names::toString);
+        assertTrue(names.stream().anyMatch(name -> name.contains(first.getName())));
+        assertTrue(names.stream().anyMatch(name -> name.contains(second.getName())));
+        assertTrue(names.stream().noneMatch(name -> name.contains(others.getName())));
+
+        mockMvc.perform(get("/actuator/registeredServices/export")
+                .param("ids", String.valueOf(Long.MAX_VALUE))
+                .accept(MediaType.APPLICATION_OCTET_STREAM_VALUE))
+            .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void verifyIncompleteServiceIsRefused() throws Throwable {
+        val incomplete = """
+            {
+              "@class": "org.apereo.cas.services.CasRegisteredService",
+              "description": "No name and no service id"
+            }
+            """;
+        mockMvc.perform(post("/actuator/registeredServices")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(incomplete))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.error").value("The definition has no name and no serviceId"));
+        mockMvc.perform(put("/actuator/registeredServices")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(incomplete))
+            .andExpect(status().isBadRequest());
+        mockMvc.perform(post("/actuator/registeredServices/validate")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(incomplete.replace("\"description\"", "\"name\": \"Named\", \"description\"")))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.error").value("The definition has no serviceId"));
+    }
+
+    @Test
     void verifyExportUnknownService() throws Throwable {
         mockMvc.perform(get("/actuator/registeredServices/export/{id}", Long.MAX_VALUE)
                 .accept(MediaType.APPLICATION_OCTET_STREAM_VALUE))

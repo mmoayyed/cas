@@ -108,6 +108,9 @@
                 <button type="button" class="palantir-button" name="clearServiceSelection">
                     <i class="mdi mdi-close" aria-hidden="true"></i>Clear selection
                 </button>
+                <button type="button" class="palantir-button" name="exportSelectedServices">
+                    <i class="mdi mdi-export" aria-hidden="true"></i>Export selected
+                </button>
                 <button type="button" data-palantir-write="registeredServices" class="palantir-button is-danger" name="deleteSelectedServices">
                     <i class="mdi mdi-delete" aria-hidden="true"></i>Delete selected
                 </button>
@@ -145,7 +148,7 @@
                     Right-click a row (or press Shift+F10 on it), or use a card's menu, for more actions.
                 </p>
 
-                <section class="palantir-chart-card" aria-labelledby="servicesChartTitle">
+                <section class="palantir-chart-card" aria-labelledby="servicesChartTitle" hidden>
                     <h3 id="servicesChartTitle">Applications by type</h3>
                     <div class="palantir-chart-frame">
                         <canvas id="servicesChart" role="img" aria-label="Registered services by type"></canvas>
@@ -868,6 +871,8 @@
                                     <span>Next</span><i class="mdi mdi-chevron-right" aria-hidden="true"></i>
                                 </button>
                                 <span class="registered-service-wizard__spacer"></span>
+                                <button type="button" class="registered-service-wizard__hint" id="saveServiceWizardHint" hidden
+                                        title="Show the first field that needs a value"></button>
                                 <button id="fillServiceWizardFromMetadata" name="fillServiceWizardFromMetadata" type="button"
                                         class="mdc-button mdc-button--raised btn mdc-button--lg hide"
                                         title="Fill the wizard from the metadata of the service provider">
@@ -907,26 +912,99 @@
 
                     palantir-services.js sizes it to the window and keeps it sized as the window
                     changes, the same way it does for the wizard.
+
+                    Two views, switched by palantir-services-editor.js: a start screen of templates
+                    for a new definition, and the editor itself. Footer buttons carry
+                    data-editor-view to say which view they belong to.
                 */-->
-                <div id="editServiceDialog" class="hide" title="Application definition">
-                    <div id="edit-service-dialog-content">
-                        <section class="palantir-service-editor-layout h-750px" id="serviceEditorContainer">
-                            <div id="serviceTemplatesContainer"
-                                 class="palantir-service-template-sidebar py-3 jqueryui-accordion">
+                <div id="editServiceDialog" class="palantir-json-editor hide" title="Application definition">
+                    <section class="palantir-json-editor__start" id="serviceEditorStart" aria-label="Choose a starting point">
+                        <header class="palantir-json-editor__start-head">
+                            <p>Start from a template or a blank definition. You can change everything in the next step.</p>
+                            <label class="registered-service-sections__search" for="serviceTemplateSearch">
+                                <i class="mdi mdi-magnify" aria-hidden="true"></i>
+                                <span class="palantir-sr-only">Find a template</span>
+                                <input type="search" id="serviceTemplateSearch" autocomplete="off" placeholder="Find a template">
+                            </label>
+                            <div class="palantir-type-filter" id="serviceTemplateProtocols" role="group"
+                                 aria-label="Show templates of type" hidden></div>
+                        </header>
+                        <div class="palantir-json-editor__templates" id="serviceTemplateCards" role="listbox"
+                             aria-label="Templates"></div>
+                    </section>
+
+                    <section class="palantir-json-editor__work" id="serviceEditorWork" aria-label="Application definition" hidden>
+                        <div class="palantir-json-editor__toolbar" role="toolbar" aria-label="Editor">
+                            <span class="palantir-protocol-badge" id="serviceEditorBadge" aria-hidden="true"></span>
+                            <span class="palantir-json-editor__name" id="serviceEditorName"></span>
+                            <span class="palantir-json-editor__id" id="serviceEditorId" hidden></span>
+                            <span class="palantir-json-editor__divider" aria-hidden="true"></span>
+                            <button type="button" class="palantir-json-editor__tool" id="formatServiceDefinition" title="Format the definition">
+                                <i class="mdi mdi-code-braces" aria-hidden="true"></i><span>Format</span>
+                            </button>
+                            <button type="button" class="palantir-json-editor__tool" id="foldServiceDefinition" title="Fold every block">
+                                <i class="mdi mdi-unfold-less-horizontal" aria-hidden="true"></i><span>Fold all</span>
+                            </button>
+                            <button type="button" class="palantir-json-editor__tool" id="findInServiceDefinition" title="Find and replace">
+                                <i class="mdi mdi-magnify" aria-hidden="true"></i><span>Find</span>
+                            </button>
+                            <button type="button" class="palantir-json-editor__tool" id="chooseServiceTemplate" title="Start again from a template">
+                                <i class="mdi mdi-view-grid-plus-outline" aria-hidden="true"></i><span>Templates</span>
+                            </button>
+                            <span class="palantir-json-editor__spacer"></span>
+                            <div class="palantir-json-editor__modes" id="serviceEditorModes" role="group" aria-label="Edit with">
+                                <button type="button" data-editor-mode="json" aria-pressed="true">JSON</button>
+                                <button type="button" data-editor-mode="wizard" aria-pressed="false">Wizard</button>
                             </div>
-                            <pre class="ace-editor ace-relative palantir-service-definition-editor h-100"
-                                 id="serviceEditor"></pre>
-                        </section>
-                    </div>
+                        </div>
+                        <pre class="ace-editor ace-relative palantir-json-editor__code" id="serviceEditor"></pre>
+                        <div class="palantir-json-editor__problem" id="serviceEditorProblem" role="status" aria-live="polite" hidden>
+                            <i class="mdi mdi-alert-circle-outline palantir-json-editor__problem-icon" aria-hidden="true"></i>
+                            <strong class="palantir-json-editor__problem-title"></strong>
+                            <span class="palantir-json-editor__problem-text"></span>
+                            <button type="button" class="palantir-button palantir-json-editor__problem-show" id="serviceEditorProblemShow">Show</button>
+                        </div>
+                        <div class="palantir-json-editor__status">
+                            <span id="serviceEditorPosition"></span>
+                            <span class="palantir-json-editor__check" id="serviceEditorCheck" data-state="note"></span>
+                            <span class="palantir-json-editor__spacer"></span>
+                            <span id="serviceEditorLines"></span>
+                            <span class="palantir-json-editor__dirty" id="serviceEditorDirty" hidden>Unsaved changes</span>
+                        </div>
+                    </section>
 
                     <footer class="registered-service-wizard__actions" role="group" aria-label="Application definition actions">
+                        <button id="openServiceDefinitionFile" type="button" data-editor-view="start"
+                                class="palantir-button palantir-json-editor__secondary">
+                            <i class="mdi mdi-file-upload-outline" aria-hidden="true"></i><span>Open a file</span>
+                        </button>
+                        <button id="pasteServiceDefinition" type="button" data-editor-view="start"
+                                class="palantir-button palantir-json-editor__secondary">
+                            <i class="mdi mdi-content-paste" aria-hidden="true"></i><span>Paste JSON</span>
+                        </button>
+                        <input type="file" id="serviceDefinitionFileInput" accept=".json,application/json" hidden>
+                        <span class="registered-service-wizard__spacer"></span>
                         <button id="cancelService" name="cancelService" type="button"
                                 class="mdc-button mdc-button--raised btn mdc-button--lg">
                             <span class="mdc-button__label"><i class="mdc-tab__icon mdi mdi-close"
                                                                aria-hidden="true"></i>Cancel</span>
                         </button>
+                        <button id="continueServiceTemplate" type="button" data-editor-view="start" disabled
+                                class="palantir-button is-primary registered-service-wizard__next">
+                            <span>Continue</span><i class="mdi mdi-chevron-right" aria-hidden="true"></i>
+                        </button>
+                        <button data-palantir-write="registeredServices" id="validateService" name="validateService" type="button"
+                                data-editor-view="editor" class="mdc-button mdc-button--raised btn mdc-button--lg">
+                            <span class="mdc-button__label"><i class="mdc-tab__icon mdi mdi-check-all"
+                                                               aria-hidden="true"></i>Validate</span>
+                        </button>
+                        <button id="copyServiceDefinition" name="copyServiceDefinition" type="button"
+                                data-editor-view="editor" class="mdc-button mdc-button--raised btn mdc-button--lg">
+                            <span class="mdc-button__label"><i class="mdc-tab__icon mdi mdi-content-copy"
+                                                               aria-hidden="true"></i>Copy</span>
+                        </button>
                         <button data-palantir-write="registeredServices" id="saveService" name="saveService" type="button"
-                                class="mdc-button mdc-button--raised btn mdc-button--lg">
+                                data-editor-view="editor" class="mdc-button mdc-button--raised btn mdc-button--lg">
                             <span class="mdc-button__label"><i class="mdc-tab__icon mdi mdi-content-save"
                                                                aria-hidden="true"></i>Save</span>
                         </button>

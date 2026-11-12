@@ -207,7 +207,7 @@ class PalantirApplicationSelection {
      * @returns {string} the markup
      */
     static checkbox(serviceId, name) {
-        return `<input type="checkbox" class="palantir-application-select" data-select-service="${escapePalantirMarkup(serviceId)}"
+        return `<input type="checkbox" class="palantir-application-select palantir-sr-only" data-select-service="${escapePalantirMarkup(serviceId)}"
                        aria-label="Select ${escapePalantirMarkup(name)}"${PalantirApplicationSelection.has(serviceId) ? " checked" : ""}>`;
     }
 
@@ -218,6 +218,40 @@ class PalantirApplicationSelection {
             PalantirApplicationSelection.selected.delete(String(serviceId));
         }
         PalantirApplicationSelection.refresh();
+    }
+
+    static last = null;
+
+    /**
+     * Select or deselect the application of a card or a row that was clicked. A click on a control inside it, such
+     * as a button, link or menu, or one that ends a text selection, is left alone; Shift extends the selection from
+     * the application clicked last to this one, in the order the applications are shown.
+     *
+     * @param event the click
+     */
+    static toggleFromClick(event) {
+        if ($(event.target).closest("a, button, input, select, textarea, label, [data-application-action]").length > 0
+            || (!event.shiftKey && String(window.getSelection?.() ?? "").length > 0)) {
+            return;
+        }
+        const checkbox = $(event.currentTarget).find("[data-select-service]").first();
+        if (checkbox.length === 0) {
+            return;
+        }
+        const id = String(checkbox[0].dataset.selectService);
+        const shown = PalantirApplicationSelection.shown();
+        const from = shown.indexOf(PalantirApplicationSelection.last ?? "");
+        const to = shown.indexOf(id);
+        if (event.shiftKey && from >= 0 && to >= 0) {
+            const select = !PalantirApplicationSelection.has(id);
+            shown.slice(Math.min(from, to), Math.max(from, to) + 1)
+                .forEach(entry => select ? PalantirApplicationSelection.selected.add(entry) : PalantirApplicationSelection.selected.delete(entry));
+            window.getSelection?.()?.removeAllRanges();
+            PalantirApplicationSelection.refresh();
+        } else {
+            PalantirApplicationSelection.set(id, !PalantirApplicationSelection.has(id));
+        }
+        PalantirApplicationSelection.last = id;
     }
 
     static clear() {
@@ -271,7 +305,19 @@ class PalantirApplicationSelection {
         }
         const total = PalantirApplicationSelection.selected.size;
         const bar = $("#applicationsSelectionBar");
-        bar.prop("hidden", total === 0);
+        const page = document.getElementById(`attribute-tab-${Tabs.APPLICATIONS.index}`);
+        const pageShown = page !== null && page.offsetParent !== null;
+        bar.prop("hidden", total === 0 || !pageShown);
+        document.body.classList.toggle("palantir-has-selection-bar", !bar.prop("hidden"));
+        if (!bar.prop("hidden")) {
+            const covered = Math.max(0, ...[...document.querySelectorAll("footer")]
+                .filter(element => element.offsetParent !== null)
+                .map(element => element.getBoundingClientRect())
+                .filter(bounds => bounds.top < window.innerHeight && bounds.bottom >= window.innerHeight - 1)
+                .map(bounds => window.innerHeight - bounds.top));
+            bar[0].style.setProperty("--palantir-selection-bar-offset", `${Math.round(covered) + 16}px`);
+            document.body.style.setProperty("--palantir-selection-bar-space", `${Math.round(covered) + 16 + bar.outerHeight() + 12}px`);
+        }
         bar.find(".palantir-selection-bar__count").text(`${total} application${total === 1 ? "" : "s"} selected`);
     }
 
@@ -289,6 +335,42 @@ class PalantirApplicationSelection {
             new Promise(resolve => setTimeout(resolve, 20000))
         ]);
         PalantirApplicationSelection.refresh();
+    }
+
+    /**
+     * Download the selected applications: the definition itself when one is selected, otherwise a zip of their
+     * definitions that Import accepts as it is.
+     *
+     * @returns {Promise<void>} resolved once the download is handed to the browser
+     */
+    static async exportSelected() {
+        const ids = [...PalantirApplicationSelection.selected];
+        if (ids.length === 0 || !CasActuatorEndpoints.registeredServices()) {
+            return;
+        }
+        const url = ids.length === 1
+            ? `${CasActuatorEndpoints.registeredServices()}/export/${encodeURIComponent(ids[0])}`
+            : `${CasActuatorEndpoints.registeredServices()}/export?${ids.map(id => `ids=${encodeURIComponent(id)}`).join("&")}`;
+        const button = $("button[name=exportSelectedServices]").prop("disabled", true);
+        try {
+            const response = await fetch(url, {credentials: "include"});
+            if (!response.ok) {
+                throw new Error(`CAS answered ${response.status} ${response.statusText}`.trim());
+            }
+            const blob = await response.blob();
+            const link = document.createElement("a");
+            link.href = window.URL.createObjectURL(blob);
+            link.download = response.headers.get("filename") || (ids.length === 1 ? `${ids[0]}.json` : "services.zip");
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            setTimeout(() => window.URL.revokeObjectURL(link.href), 1000);
+            notyf.success(`Exported ${ids.length} application${ids.length === 1 ? "" : "s"}.`);
+        } catch (error) {
+            Swal.fire({icon: "error", titleText: "The selected applications were not exported", text: String(error?.message ?? error)});
+        } finally {
+            button.prop("disabled", false);
+        }
     }
 
     /**
@@ -343,8 +425,7 @@ class PalantirApplicationSelection {
     }
 
     /**
-     * Delete every application from the service registry once the operator types the confirmation, offering to
-     * export them first.
+     * Delete every application from the service registry once the operator confirms.
      *
      * @returns {Promise<void>} resolved once they are deleted or the operator declined
      */
@@ -354,26 +435,16 @@ class PalantirApplicationSelection {
             Swal.fire({icon: "info", titleText: "No applications are registered"});
             return;
         }
-        const phrase = "DELETE ALL";
         const result = await Swal.fire({
             titleText: `Delete all ${count} application${count === 1 ? "" : "s"}?`,
-            html: `<p>Every application is removed from the service registry, including its stored definition, and
-                   nobody can sign in to any of them. This cannot be undone; export them first if you may need them.</p>
-                   <p>Type <strong>${phrase}</strong> to confirm.</p>`,
+            text: "Every application is removed from the service registry, including its stored definition, and nobody can "
+                + "sign in to any of them. This cannot be undone; export them first if you may need them.",
             icon: "warning",
-            input: "text",
-            inputAttributes: {"aria-label": `Type ${phrase} to confirm`, autocomplete: "off"},
             showCancelButton: true,
-            showDenyButton: true,
-            confirmButtonText: "Delete all",
-            denyButtonText: "Export first",
-            focusCancel: true,
-            inputValidator: value => String(value ?? "").trim() === phrase ? null : `Type ${phrase} to confirm.`
+            confirmButtonText: "Yes",
+            cancelButtonText: "Cancel",
+            focusCancel: true
         });
-        if (result.isDenied) {
-            $("button[name=exportAll]").trigger("click");
-            return;
-        }
         if (!result.isConfirmed) {
             return;
         }
@@ -419,8 +490,21 @@ class PalantirApplicationSelection {
                 }
             }, true);
         }
+        const bar = document.getElementById("applicationsSelectionBar");
+        if (bar && bar.parentElement !== document.body) {
+            document.body.appendChild(bar);
+        }
+        $(document)
+            .off("click.palantirSelectionPage")
+            .on("click.palantirSelectionPage", "nav.sidebar-navigation [data-tab-index]",
+                () => setTimeout(() => PalantirApplicationSelection.refresh(), 0));
+        $(document)
+            .off("click.palantirSelection")
+            .on("click.palantirSelection", "#applicationsCards .palantir-application-card, #applicationsTable tbody tr",
+                event => PalantirApplicationSelection.toggleFromClick(event));
         $("#applicationsSelectAll").off("click.palantirSort keydown.palantirSort")
             .on("click.palantirSort keydown.palantirSort", event => event.stopPropagation());
+        $("button[name=exportSelectedServices]").off("click").on("click", () => PalantirApplicationSelection.exportSelected());
         $("button[name=deleteSelectedServices]").off("click").on("click", () => PalantirApplicationSelection.deleteSelected());
         $("button[name=clearServiceSelection]").off("click").on("click", () => PalantirApplicationSelection.clear());
         $("button[name=deleteAllServices]").off("click").on("click", () => PalantirApplicationSelection.deleteAll());

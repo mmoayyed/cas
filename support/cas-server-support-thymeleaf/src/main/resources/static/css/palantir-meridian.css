@@ -64,6 +64,17 @@ html.palantir-page {
     --palantir-proto-oauth: #11589e;
     --palantir-proto-wsfed-bg: #eceff3;
     --palantir-proto-wsfed: #3f4b57;
+    --palantir-code-bg: #fbfcfe;
+    --palantir-code-gutter: #f1f4f9;
+    --palantir-code-gutter-text: #7b8794;
+    --palantir-code-active: #edf3fa;
+    --palantir-code-selection: #cfe0f3;
+    --palantir-code-text: #3d4a57;
+    --palantir-code-key: #114377;
+    --palantir-code-string: #01635c;
+    --palantir-code-number: #a3330f;
+    --palantir-code-literal: #7a2e91;
+    --palantir-code-guide: #e3e8ee;
     color-scheme: light;
 }
 
@@ -122,6 +133,17 @@ html.palantir-page[data-theme="dark"] {
     --palantir-proto-oauth: #9fd0ff;
     --palantir-proto-wsfed-bg: #28323d;
     --palantir-proto-wsfed: #cdd6df;
+    --palantir-code-bg: #0c1825;
+    --palantir-code-gutter: #0f1d2c;
+    --palantir-code-gutter-text: #6c8299;
+    --palantir-code-active: #13243a;
+    --palantir-code-selection: #1f3b5c;
+    --palantir-code-text: #c4d2e0;
+    --palantir-code-key: #9cc6f2;
+    --palantir-code-string: #7fd9cd;
+    --palantir-code-number: #f2a983;
+    --palantir-code-literal: #d4a6f0;
+    --palantir-code-guide: #1c2e43;
     color-scheme: dark;
 }
 
@@ -1298,6 +1320,10 @@ html.palantir-page div#dashboard {
     font-size: 13px;
 }
 
+.palantir-chart-card[hidden] {
+    display: none;
+}
+
 .palantir-chart-card {
     margin: 24px 0 0;
     padding: 20px;
@@ -2430,14 +2456,14 @@ html.palantir-page .swal2-container.swal2-backdrop-show {
 
 /* Font sizes for the controls above. jQuery UI's .ui-widget button rule and the shared button rules
    would otherwise outrank the single-class rules and enlarge them inside dialogs and cards. */
-:is(#dashboard, .ui-dialog, .swal2-container) :is(.palantir-button, .palantir-view-switch button,
+:is(#dashboard, .ui-dialog, .swal2-container, .palantir-selection-bar) :is(.palantir-button, .palantir-view-switch button,
     .registered-service-steps__button, .registered-service-sections__link, .registered-service-review__edit,
     .registered-service-review__link, .palantir-type-card, .palantir-icon-button) {
     font-family: var(--mdc-typography-font-family);
     line-height: 1.3;
 }
 
-:is(#dashboard, .ui-dialog) .palantir-button {
+:is(#dashboard, .ui-dialog, .palantir-selection-bar) .palantir-button {
     font-size: 14px;
     white-space: nowrap;
 }
@@ -4105,32 +4131,113 @@ html.palantir-page .palantir-command-palette__menu .ui-menu-item .palantir-comma
     opacity: .55;
 }
 
+#applicationsCards .palantir-application-card,
+#applicationsTable tbody tr:has(.palantir-application-select) {
+    cursor: pointer;
+}
+
+.palantir-application-card {
+    position: relative;
+}
+
 .palantir-application-card.is-checked {
     border-color: var(--palantir-brand-fill);
     box-shadow: 0 0 0 1px var(--palantir-brand-fill);
+    background: color-mix(in srgb, var(--palantir-selected) 55%, var(--palantir-surface));
 }
 
-.palantir-application-card-header .palantir-application-select {
-    align-self: center;
+.palantir-application-card.is-checked::after {
+    content: "\2713";
+    position: absolute;
+    top: -9px;
+    left: -9px;
+    display: grid;
+    width: 22px;
+    height: 22px;
+    place-items: center;
+    border: 2px solid var(--palantir-surface);
+    border-radius: 50%;
+    background: var(--palantir-brand-fill);
+    color: var(--palantir-on-brand);
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1;
 }
 
+#applicationsTable tbody tr.is-checked > td:first-child {
+    box-shadow: inset 3px 0 0 var(--palantir-brand-fill);
+}
+
+.palantir-application-card:has(.palantir-application-select:focus-visible),
+#applicationsTable tbody tr:has(.palantir-application-select:focus-visible) {
+    outline: 2px solid var(--palantir-focus);
+    outline-offset: 2px;
+}
+
+/* The selection bar floats at the bottom of the window while applications are selected, so it neither pushes the
+   page down when it appears nor scrolls out of reach. It is moved to the body, so that no transformed ancestor
+   turns its fixed position into one that scrolls with the page, and the applications page leaves room for it at
+   its end. */
 .palantir-selection-bar {
+    position: fixed;
+    bottom: calc(var(--palantir-selection-bar-offset, 24px) + env(safe-area-inset-bottom, 0px));
+    left: 50%;
+    z-index: 90;
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     gap: 8px 12px;
-    margin: 12px 0 0;
+    width: max-content;
+    max-width: calc(100vw - 32px);
+    margin: 0;
     padding: 8px 8px 8px 16px;
-    border: 1px solid var(--palantir-border);
-    border-radius: 14px;
-    background: var(--palantir-tint);
+    border: 1px solid var(--palantir-border-strong);
+    border-radius: 16px;
+    background: var(--palantir-surface);
+    box-shadow: var(--palantir-shadow);
     color: var(--palantir-text);
     font-size: 14px;
     font-weight: 500;
+    transform: translateX(-50%);
+    animation: palantir-selection-bar-in .18s ease-out;
 }
 
 .palantir-selection-bar[hidden] {
     display: none;
+}
+
+/* Notices appear at the bottom center too; while the bar is shown they appear above it rather than over it. */
+body.palantir-has-selection-bar .notyf {
+    padding-bottom: var(--palantir-selection-bar-space, 96px);
+}
+
+body.palantir-has-selection-bar #attribute-tab-0 {
+    padding-bottom: 96px;
+}
+
+@keyframes palantir-selection-bar-in {
+    from {
+        opacity: 0;
+        transform: translate(-50%, 16px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(-50%);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .palantir-selection-bar {
+        animation: none;
+    }
+}
+
+@media (max-width: 640px) {
+    .palantir-selection-bar {
+        justify-content: center;
+        border-radius: 14px;
+    }
 }
 
 .palantir-selection-bar > .mdi {
@@ -4165,4 +4272,649 @@ html.palantir-page .palantir-command-palette__menu .ui-menu-item .palantir-comma
 
 .palantir-application-card-tags .palantir-status-tag {
     margin-left: 0;
+}
+
+/* JSON editor: a start screen of templates, then a focused editor. */
+.palantir-json-editor [hidden] {
+    display: none !important;
+}
+
+.palantir-json-editor__start,
+.palantir-json-editor__work {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.palantir-json-editor__start {
+    gap: 16px;
+    padding: 20px 24px;
+    background: var(--palantir-bg);
+}
+
+.palantir-json-editor__start-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px 16px;
+}
+
+.palantir-json-editor__start-head p {
+    flex: 1 1 320px;
+    margin: 0;
+    color: var(--palantir-text-2);
+    font-size: 14px;
+}
+
+.palantir-json-editor .palantir-type-filter button {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    height: 34px;
+    padding: 0 6px 0 14px;
+    border: 1px solid var(--palantir-border-strong);
+    border-radius: 999px;
+    background: var(--palantir-surface);
+    color: var(--palantir-text-2);
+    font-family: var(--mdc-typography-font-family);
+    font-size: 13px;
+    line-height: 1.3;
+    cursor: pointer;
+}
+
+.palantir-json-editor .palantir-type-filter button:hover {
+    border-color: var(--palantir-accent);
+    background: var(--palantir-hover);
+}
+
+.palantir-json-editor .palantir-type-filter button:focus-visible {
+    outline: 2px solid var(--palantir-focus);
+    outline-offset: 2px;
+}
+
+.palantir-json-editor .palantir-type-filter button[aria-pressed="true"] {
+    border-color: var(--palantir-brand-fill);
+    background: var(--palantir-brand-fill);
+    color: var(--palantir-on-brand);
+    font-weight: 500;
+}
+
+.palantir-json-editor__templates {
+    display: grid;
+    flex: 1 1 auto;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    grid-auto-rows: min-content;
+    align-content: start;
+    gap: 12px;
+    min-height: 0;
+    margin: -4px;
+    padding: 4px;
+    overflow-y: auto;
+}
+
+.palantir-template-card {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 0;
+    padding: 14px 16px 16px;
+    border: 1px solid var(--palantir-border);
+    border-radius: 14px;
+    background: var(--palantir-surface);
+    color: var(--palantir-text);
+    cursor: pointer;
+}
+
+.palantir-template-card:hover {
+    border-color: var(--palantir-brand);
+}
+
+.palantir-template-card:focus-visible {
+    outline: 2px solid var(--palantir-focus);
+    outline-offset: 2px;
+}
+
+.palantir-template-card[aria-selected="true"] {
+    border-color: var(--palantir-accent-line);
+    box-shadow: 0 0 0 1px var(--palantir-accent-line), 0 0 0 5px var(--palantir-accent-ring);
+}
+
+.palantir-template-card.is-blank {
+    align-items: center;
+    justify-content: center;
+    min-height: 150px;
+    border-style: dashed;
+    border-color: var(--palantir-border-strong);
+    background: transparent;
+    text-align: center;
+}
+
+.palantir-template-card.is-blank .mdi {
+    color: var(--palantir-accent-text);
+    font-size: 28px;
+    line-height: 1;
+}
+
+.palantir-template-card__tags {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 28px;
+}
+
+.palantir-template-card__tags .palantir-protocol-badge {
+    width: auto;
+    min-width: 44px;
+    height: 24px;
+    padding: 0 8px;
+    border-radius: 999px;
+    font-size: 11px;
+}
+
+.palantir-template-card__source {
+    padding: 2px 10px;
+    border-radius: 999px;
+    background: var(--palantir-tint);
+    color: var(--palantir-text-2);
+    font-size: 12px;
+}
+
+.palantir-template-card__title {
+    font-size: 15px;
+    font-weight: 500;
+    line-height: 1.35;
+}
+
+.palantir-template-card__summary {
+    color: var(--palantir-text-2);
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.palantir-template-card__peek {
+    display: block;
+    overflow: hidden;
+    margin-top: auto;
+    padding: 6px 8px;
+    border: 1px solid var(--palantir-divider);
+    border-radius: 8px;
+    background: var(--palantir-code-bg);
+    color: var(--palantir-code-text);
+    font-size: 12px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.palantir-template-cards__empty {
+    grid-column: 1 / -1;
+    margin: 0;
+    padding: 24px;
+    color: var(--palantir-text-muted);
+    text-align: center;
+}
+
+.palantir-json-editor__toolbar {
+    display: flex;
+    flex: none;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--palantir-divider);
+    background: var(--palantir-surface);
+}
+
+.palantir-json-editor__toolbar .palantir-protocol-badge {
+    width: 34px;
+    height: 34px;
+    border-radius: 9px;
+    font-size: 11px;
+}
+
+.palantir-json-editor__name {
+    overflow: hidden;
+    max-width: 320px;
+    margin-left: 4px;
+    font-size: 16px;
+    font-weight: 500;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.palantir-json-editor__id {
+    color: var(--palantir-text-muted);
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+}
+
+.palantir-json-editor__divider {
+    width: 1px;
+    height: 22px;
+    margin: 0 6px;
+    background: var(--palantir-border);
+}
+
+.palantir-json-editor__spacer {
+    flex: 1 1 auto;
+}
+
+.ui-dialog .palantir-json-editor__tool {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 32px;
+    padding: 0 10px;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--palantir-text-2);
+    font-family: var(--mdc-typography-font-family);
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.ui-dialog .palantir-json-editor__tool:hover {
+    background: var(--palantir-tint);
+    color: var(--palantir-text);
+}
+
+.palantir-json-editor__tool:focus-visible,
+.palantir-json-editor__modes button:focus-visible {
+    outline: 2px solid var(--palantir-focus);
+    outline-offset: 2px;
+}
+
+.palantir-json-editor__tool .mdi {
+    font-size: 17px;
+}
+
+.palantir-json-editor__modes {
+    display: inline-flex;
+    overflow: hidden;
+    border: 1px solid var(--palantir-border-strong);
+    border-radius: 999px;
+}
+
+.ui-dialog .palantir-json-editor__modes button {
+    height: 30px;
+    padding: 0 14px;
+    border: 0;
+    background: var(--palantir-surface);
+    color: var(--palantir-text-2);
+    font-family: var(--mdc-typography-font-family);
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.palantir-json-editor__modes button + button {
+    border-left: 1px solid var(--palantir-border);
+}
+
+.palantir-json-editor__modes button[aria-pressed="true"] {
+    background: var(--palantir-selected);
+    color: var(--palantir-brand);
+    font-weight: 500;
+    cursor: default;
+}
+
+.palantir-json-editor__modes button[aria-pressed="false"]:hover {
+    background: var(--palantir-hover);
+}
+
+.ui-dialog-content pre.palantir-json-editor__code {
+    flex: 1 1 auto;
+    width: 100%;
+    min-height: 0;
+    height: auto;
+    margin: 0;
+    border-radius: 0;
+}
+
+.palantir-json-editor__problem {
+    display: flex;
+    flex: none;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 10px;
+    padding: 8px 16px;
+    border-top: 1px solid var(--palantir-divider);
+    background: var(--palantir-danger-bg);
+    color: var(--palantir-danger);
+    font-size: 13px;
+}
+
+.palantir-json-editor__problem[data-state="ok"] {
+    background: var(--palantir-success-bg);
+    color: var(--palantir-success);
+}
+
+.palantir-json-editor__problem-icon {
+    font-size: 17px;
+}
+
+.palantir-json-editor__problem-text {
+    flex: 1 1 240px;
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.palantir-json-editor .palantir-json-editor__problem-show {
+    min-height: 28px;
+    padding: 0 12px;
+    font-size: 12px;
+}
+
+.palantir-json-editor__status {
+    display: flex;
+    flex: none;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 16px;
+    padding: 6px 16px;
+    border-top: 1px solid var(--palantir-divider);
+    background: var(--palantir-surface);
+    color: var(--palantir-text-muted);
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+}
+
+.palantir-json-editor__check[data-state="ok"] {
+    color: var(--palantir-success-text);
+}
+
+.palantir-json-editor__check[data-state="ok"]::before {
+    content: "\2713  ";
+}
+
+.palantir-json-editor__check[data-state="error"] {
+    color: var(--palantir-danger);
+}
+
+.palantir-json-editor__dirty {
+    color: var(--palantir-warn);
+}
+
+.palantir-json-editor__secondary {
+    border-color: transparent;
+    background: transparent;
+}
+
+.palantir-json-editor__note {
+    margin: 0 0 12px;
+    color: var(--palantir-text-2);
+    font-size: 14px;
+}
+
+.ace-palantir {
+    background: var(--palantir-code-bg);
+    color: var(--palantir-code-text);
+}
+
+.ace-palantir .ace_gutter {
+    background: var(--palantir-code-gutter);
+    color: var(--palantir-code-gutter-text);
+}
+
+.ace-palantir .ace_gutter-active-line,
+.ace-palantir .ace_marker-layer .ace_active-line {
+    background: var(--palantir-code-active);
+}
+
+.ace-palantir .ace_cursor {
+    color: var(--palantir-text);
+}
+
+.ace-palantir .ace_marker-layer .ace_selection {
+    background: var(--palantir-code-selection);
+}
+
+.ace-palantir .ace_marker-layer .ace_selected-word {
+    border: 1px solid var(--palantir-code-selection);
+}
+
+.ace-palantir .ace_marker-layer .ace_bracket {
+    border: 1px solid var(--palantir-border-strong);
+}
+
+.ace-palantir .ace_indent-guide {
+    background: linear-gradient(to right, var(--palantir-code-guide) 1px, transparent 1px);
+}
+
+.ace-palantir .ace_variable {
+    color: var(--palantir-code-key);
+}
+
+.ace-palantir .ace_string {
+    color: var(--palantir-code-string);
+}
+
+.ace-palantir .ace_constant.ace_numeric {
+    color: var(--palantir-code-number);
+}
+
+.ace-palantir .ace_constant.ace_language,
+.ace-palantir .ace_constant.ace_language.ace_boolean {
+    color: var(--palantir-code-literal);
+}
+
+.ace-palantir .ace_paren,
+.ace-palantir .ace_punctuation,
+.ace-palantir .ace_text {
+    color: var(--palantir-code-text);
+}
+
+.ace-palantir .ace_invalid {
+    background: var(--palantir-danger-bg);
+    color: var(--palantir-danger);
+}
+
+.ace-palantir .ace_fold {
+    border-color: var(--palantir-code-gutter-text);
+    background: var(--palantir-tint);
+}
+
+.ace-palantir .ace_gutter-cell.ace_error {
+    background: none;
+    color: var(--palantir-danger-line);
+}
+
+.ace-palantir .ace_gutter-cell.ace_error::before {
+    content: "\25CF";
+    position: absolute;
+    left: 6px;
+}
+
+.ace-palantir .palantir-json-editor__problem-line {
+    position: absolute;
+    background: var(--palantir-danger-bg);
+}
+
+@media (max-width: 720px) {
+    .palantir-json-editor__start {
+        padding: 16px;
+    }
+
+    .palantir-json-editor__tool span {
+        display: none;
+    }
+
+    .palantir-json-editor__name {
+        max-width: 160px;
+    }
+}
+
+.swal2-popup .palantir-json-editor__dropped {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 6px;
+    margin: 0 0 8px;
+    padding: 0;
+    list-style: none;
+}
+
+.swal2-popup .palantir-json-editor__dropped code {
+    padding: 2px 8px;
+    border-radius: 6px;
+    background: var(--palantir-tint);
+    color: var(--palantir-text);
+    font-size: 12px;
+}
+
+.palantir-application-links {
+    align-items: center;
+}
+
+.palantir-application-links .palantir-metadata-source {
+    gap: 4px;
+    padding: 1px 8px;
+    background: var(--palantir-proto-saml-bg);
+    color: var(--palantir-proto-saml);
+    font-size: 11px;
+    font-weight: 500;
+}
+
+.palantir-application-links .palantir-metadata-source .mdi {
+    font-size: 13px;
+}
+
+.palantir-settings-reset {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px 24px;
+    margin-top: 24px;
+    padding: 16px;
+    border: 1px solid var(--palantir-border);
+    border-radius: 12px;
+}
+
+.palantir-settings-reset h4 {
+    margin: 0 0 4px;
+    color: var(--palantir-text);
+    font-size: 15px;
+    font-weight: 500;
+}
+
+.palantir-settings-reset p {
+    max-width: 52ch;
+    margin: 0;
+    line-height: 1.5;
+    color: var(--palantir-text-2);
+    font-size: 13px;
+}
+
+.palantir-feature-card.is-off,
+.palantir-feature-card__modules .palantir-tag.is-off {
+    opacity: .7;
+}
+
+.palantir-feature-card__modules .palantir-tag.is-off {
+    background: var(--palantir-surface-2);
+    color: var(--palantir-text-muted);
+    text-decoration: line-through;
+}
+
+.palantir-feature-card__modules .palantir-tag {
+    gap: 6px;
+}
+
+.palantir-feature-state {
+    flex: 0 0 auto;
+    padding: 1px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 500;
+    text-decoration: none;
+    display: inline-block;
+}
+
+.palantir-feature-state.is-off {
+    background: var(--palantir-surface-2);
+    color: var(--palantir-text-muted);
+}
+
+.palantir-feature-state.is-turning-off {
+    background: var(--palantir-warn-bg);
+    color: var(--palantir-warn);
+}
+
+.palantir-feature-state.is-turning-on {
+    background: var(--palantir-success-bg);
+    color: var(--palantir-success);
+}
+
+.palantir-feature-toggle__note {
+    margin: 0 0 10px;
+    color: var(--palantir-text-2);
+    font-size: 14px;
+}
+
+.palantir-feature-toggle__flags {
+    max-height: 180px;
+    margin: 0 0 12px;
+    padding: 10px 12px;
+    overflow: auto;
+    border-radius: 8px;
+    background: var(--palantir-code-bg);
+    color: var(--palantir-code-text);
+    font-size: 12px;
+    text-align: start;
+}
+
+/* A dialog never grows taller than the window, on screens with little height: its content scrolls instead, while
+   the title bar and buttons stay in view. */
+.ui-dialog.palantir-dialog {
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100vh - 32px);
+    max-height: calc(100dvh - 32px);
+}
+
+.ui-dialog.palantir-dialog > .ui-dialog-titlebar,
+.ui-dialog.palantir-dialog > .ui-dialog-buttonpane {
+    flex: none;
+}
+
+.ui-dialog.palantir-dialog > :where(.ui-dialog-content) {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
+}
+
+/* Beside Save in the wizard: the required fields still missing; Save stays disabled until they are filled in. */
+.ui-dialog .registered-service-wizard__hint {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    max-width: 320px;
+    padding: 6px 10px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--palantir-danger);
+    font-family: var(--mdc-typography-font-family);
+    font-size: 13px;
+    text-align: start;
+    cursor: pointer;
+}
+
+.ui-dialog .registered-service-wizard__hint[hidden] {
+    display: none;
+}
+
+.ui-dialog .registered-service-wizard__hint span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.ui-dialog .registered-service-wizard__hint:hover {
+    background: var(--palantir-danger-bg);
+}
+
+.ui-dialog .registered-service-wizard__hint .mdi {
+    font-size: 16px;
 }

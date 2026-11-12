@@ -16,6 +16,50 @@ function palantirSettings() {
     }
 }
 
+/**
+ * Remove every preference Palantir keeps in this browser, after the operator confirms, and load the dashboard again.
+ * Local and session storage of this site are cleared and its IndexedDB databases deleted; the sign-in session is a
+ * cookie and is left alone.
+ *
+ * @returns {Promise<void>} resolved once the operator declined or the page is reloading
+ */
+async function resetPalantirPreferences() {
+    const result = await Swal.fire({
+        titleText: "Reset all preferences?",
+        text: "Everything Palantir keeps in this browser is removed: the theme, refresh interval, last pages and tabs, "
+            + "views and filters, editor and wizard options, and drafts of unsaved edits. You stay signed in, and "
+            + "Palantir reloads with its defaults.",
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonText: "Yes",
+        cancelButtonText: "Cancel",
+        focusCancel: true
+    });
+    if (!result.isConfirmed) {
+        return;
+    }
+    for (const storage of [window.localStorage, window.sessionStorage]) {
+        try {
+            storage.clear();
+        } catch (error) {
+            console.warn("Palantir could not clear the browser storage", error);
+        }
+    }
+    try {
+        const databases = typeof indexedDB?.databases === "function" ? await indexedDB.databases() : [];
+        databases.filter(database => database.name).forEach(database => indexedDB.deleteDatabase(database.name));
+    } catch (error) {
+        console.warn("Palantir could not remove the browser databases", error);
+    }
+    location.reload();
+}
+
+document.addEventListener("click", event => {
+    if (event.target instanceof Element && event.target.closest("#resetPalantirPreferences")) {
+        resetPalantirPreferences();
+    }
+});
+
 let palantirActuatorsTableBuilt = false;
 
 /**
