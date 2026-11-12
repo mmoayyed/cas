@@ -1,28 +1,25 @@
 /**
- * The application templates the JSON editor offers: those that ship with CAS, those an administrator keeps in the
- * shared templates folder, and the operator's own, which are kept in this browser.
+ * The application templates the JSON editor offers: those that ship with CAS and those an administrator keeps in the
+ * shared templates folder.
  */
 class PalantirServiceTemplates {
-    static STORAGE_KEY = "palantir.serviceTemplates";
-
     static PLACEHOLDER = "...";
 
     static SOURCES = {
         builtin: "Built in",
-        shared: "Shared",
-        mine: "Mine"
+        shared: "Shared"
     };
 
 
     static BASICS = new Set(["@class", "id", "name", "description", "serviceId", "evaluationOrder", "clientId", "clientSecret"]);
 
     /**
-     * Every template, ordered by protocol, then built in before shared before mine, then by title.
+     * Every template, ordered by protocol, then built in before shared, then by title.
      *
      * @returns {Array<{key: string, source: string, type: string, protocol: object, title: string, summary: string, definition: object, highlight: string}>} the templates
      */
     static all() {
-        const fromServer = PalantirDashboardConfiguration.serviceTemplates()
+        const templates = PalantirDashboardConfiguration.serviceTemplates()
             .map((entry, index) => {
                 try {
                     return PalantirServiceTemplates.describe(`${entry.source}-${index}`, entry.source, JSON.parse(entry.definition));
@@ -32,10 +29,8 @@ class PalantirServiceTemplates {
                 }
             })
             .filter(Boolean);
-        const mine = PalantirServiceTemplates.mine()
-            .map(entry => PalantirServiceTemplates.describe(entry.key, "mine", entry.definition, entry.title, entry.summary));
         const sourceOrder = Object.keys(PalantirServiceTemplates.SOURCES);
-        return fromServer.concat(mine).sort((first, second) =>
+        return templates.sort((first, second) =>
             APPLICATION_TYPES.findIndex(type => type.key === first.protocol.key) - APPLICATION_TYPES.findIndex(type => type.key === second.protocol.key)
             || sourceOrder.indexOf(first.source) - sourceOrder.indexOf(second.source)
             || first.title.localeCompare(second.title));
@@ -55,21 +50,19 @@ class PalantirServiceTemplates {
      * Describe a template for a card.
      *
      * @param key the template key
-     * @param source where it came from: builtin, shared or mine
+     * @param source where it came from: builtin or shared
      * @param definition the application definition
-     * @param title a title to use instead of the definition's name
-     * @param summary a summary to use instead of the definition's description
      * @returns {object} the template
      */
-    static describe(key, source, definition, title = null, summary = null) {
+    static describe(key, source, definition) {
         const type = String(definition?.["@class"] ?? "");
         return {
             key: key,
             source: source,
             type: type,
             protocol: applicationProtocolOf(type),
-            title: String(title || definition?.name || "Untitled template"),
-            summary: String(summary ?? definition?.description ?? ""),
+            title: String(definition?.name || "Untitled template"),
+            summary: String(definition?.description ?? ""),
             definition: definition,
             highlight: PalantirServiceTemplates.highlight(definition)
         };
@@ -110,57 +103,6 @@ class PalantirServiceTemplates {
             return `{ "${key}": ${PalantirServiceTemplates.shorten(nested)}${entries.length > 1 ? ", …" : ""} }`;
         }
         return JSON.stringify(value);
-    }
-
-    /**
-     * The operator's own templates, kept in this browser.
-     *
-     * @returns {Array<{key: string, title: string, summary: string, definition: object, savedAt: number}>} the templates
-     */
-    static mine() {
-        try {
-            const stored = JSON.parse(window.localStorage.getItem(PalantirServiceTemplates.STORAGE_KEY) ?? "[]");
-            return Array.isArray(stored) ? stored.filter(entry => entry && entry.key && entry.definition) : [];
-        } catch (error) {
-            console.debug("Palantir could not read the templates kept in this browser", error);
-            return [];
-        }
-    }
-
-    /**
-     * Keep a definition as one of the operator's templates.
-     *
-     * @param definition the application definition
-     * @param title the template title
-     * @param summary the template summary
-     * @returns {boolean} whether the browser kept it
-     */
-    static keep(definition, title, summary) {
-        const stored = PalantirServiceTemplates.mine();
-        const template = structuredClone(definition);
-        delete template.id;
-        stored.push({key: `mine-${Date.now().toString(36)}`, title: title, summary: summary, definition: template, savedAt: Date.now()});
-        return PalantirServiceTemplates.store(stored);
-    }
-
-    /**
-     * Remove one of the operator's templates.
-     *
-     * @param key the template key
-     * @returns {boolean} whether the browser kept the change
-     */
-    static forget(key) {
-        return PalantirServiceTemplates.store(PalantirServiceTemplates.mine().filter(entry => entry.key !== key));
-    }
-
-    static store(templates) {
-        try {
-            window.localStorage.setItem(PalantirServiceTemplates.STORAGE_KEY, JSON.stringify(templates));
-            return true;
-        } catch (error) {
-            console.warn("Palantir could not keep the templates in this browser", error);
-            return false;
-        }
     }
 
     /**
@@ -223,19 +165,13 @@ class PalantirServiceEditor {
 
         $("#serviceTemplateCards")
             .on("click", "[data-template-key]", event => {
-                if ($(event.target).closest("[data-forget-template]").length === 0) {
-                    PalantirServiceEditor.select(String($(event.currentTarget).data("template-key")));
-                }
+                PalantirServiceEditor.select(String($(event.currentTarget).data("template-key")));
             })
             .on("dblclick", "[data-template-key]", event => {
                 PalantirServiceEditor.select(String($(event.currentTarget).data("template-key")));
                 PalantirServiceEditor.proceed();
             })
-            .on("keydown", "[data-template-key]", event => PalantirServiceEditor.moveSelection(event))
-            .on("click", "[data-forget-template]", event => {
-                event.stopPropagation();
-                PalantirServiceEditor.forget(String($(event.currentTarget).data("forget-template")));
-            });
+            .on("keydown", "[data-template-key]", event => PalantirServiceEditor.moveSelection(event));
         $("#serviceTemplateProtocols").on("click", "button[data-application-type]", event => {
             PalantirServiceEditor.protocolFilter = String($(event.currentTarget).data("application-type"));
             PalantirServiceEditor.renderTemplates();
@@ -254,7 +190,6 @@ class PalantirServiceEditor {
         $("#foldServiceDefinition").on("click", () => PalantirServiceEditor.editor().getSession().foldAll(1));
         $("#findInServiceDefinition").on("click", () => PalantirServiceEditor.editor().execCommand("find"));
         $("#chooseServiceTemplate").on("click", () => PalantirServiceEditor.backToTemplates());
-        $("#keepServiceTemplate").on("click", () => PalantirServiceEditor.keepAsTemplate());
         $("#serviceEditorModes").on("click", "button[data-editor-mode]", event => {
             if ($(event.currentTarget).data("editor-mode") === "wizard") {
                 PalantirServiceEditor.openInWizard();
@@ -408,8 +343,6 @@ class PalantirServiceEditor {
                 <span class="palantir-template-card__tags">
                     <span class="palantir-protocol-badge is-${template.protocol.key}">${escapePalantirMarkup(template.protocol.short)}</span>
                     ${template.source === "builtin" ? "" : `<span class="palantir-template-card__source is-${template.source}">${PalantirServiceTemplates.SOURCES[template.source]}</span>`}
-                    ${template.source === "mine" ? `<button type="button" class="palantir-icon-button palantir-template-card__forget" data-forget-template="${escapePalantirMarkup(template.key)}"
-                        title="Delete this template" aria-label="Delete the template ${escapePalantirMarkup(template.title)}"><i class="mdi mdi-delete-outline" aria-hidden="true"></i></button>` : ""}
                 </span>
                 <span class="palantir-template-card__title">${escapePalantirMarkup(template.title)}</span>
                 <span class="palantir-template-card__summary">${escapePalantirMarkup(template.summary)}</span>
@@ -766,81 +699,6 @@ class PalantirServiceEditor {
     }
 
     /**
-     * Keep the definition as one of the operator's templates in this browser.
-     */
-    static async keepAsTemplate() {
-        let definition;
-        try {
-            definition = JSON.parse(PalantirServiceEditor.editor().getValue());
-        } catch (error) {
-            PalantirServiceEditor.check();
-            PalantirServiceEditor.revealProblem();
-            return;
-        }
-        const result = await Swal.fire({
-            title: "Save as template",
-            html: `
-                <p class="palantir-template-keep__note">The template is kept in this browser and offered when you start a new definition.</p>
-                <label class="palantir-template-keep__label" for="serviceTemplateTitle">Title</label>
-                <input id="serviceTemplateTitle" class="swal2-input palantir-template-keep__input" maxlength="80" autocomplete="off">
-                <label class="palantir-template-keep__label" for="serviceTemplateSummary">Summary</label>
-                <textarea id="serviceTemplateSummary" class="swal2-textarea palantir-template-keep__input" maxlength="300" rows="3"></textarea>`,
-            showDenyButton: true,
-            confirmButtonText: "Save template",
-            denyButtonText: "Cancel",
-            focusConfirm: false,
-            didOpen: () => {
-                $("#serviceTemplateTitle").val(definition.name ?? "").trigger("focus");
-                $("#serviceTemplateSummary").val(definition.description ?? "");
-            },
-            preConfirm: () => {
-                const title = String($("#serviceTemplateTitle").val() ?? "").trim();
-                if (title === "") {
-                    Swal.showValidationMessage("Give the template a title.");
-                    return false;
-                }
-                return {title: title, summary: String($("#serviceTemplateSummary").val() ?? "").trim()};
-            }
-        });
-        if (!result.isConfirmed) {
-            return;
-        }
-        if (PalantirServiceTemplates.keep(definition, result.value.title, result.value.summary)) {
-            notyf.success(`Saved the template ${result.value.title}.`);
-        } else {
-            Swal.fire({icon: "error", title: "The template was not saved", text: "This browser does not allow Palantir to keep data."});
-        }
-    }
-
-    /**
-     * Delete one of the operator's templates, after asking.
-     *
-     * @param key the template key
-     */
-    static async forget(key) {
-        const template = PalantirServiceTemplates.find(key);
-        if (!template) {
-            return;
-        }
-        const result = await Swal.fire({
-            title: `Delete the template ${template.title}?`,
-            text: "It is removed from this browser. Applications made from it are not affected.",
-            icon: "warning",
-            showDenyButton: true,
-            confirmButtonText: "Delete",
-            denyButtonText: "Cancel"
-        });
-        if (result.isConfirmed) {
-            PalantirServiceTemplates.forget(key);
-            if (PalantirServiceEditor.selected === key) {
-                PalantirServiceEditor.selected = null;
-            }
-            PalantirServiceEditor.renderProtocols();
-            PalantirServiceEditor.renderTemplates();
-        }
-    }
-
-    /**
      * Continue in the wizard with what the editor holds. The wizard does not have a field for every setting, so
      * once it has filled itself in, any setting it left out is listed, with a way back to the JSON editor.
      */
@@ -876,9 +734,9 @@ class PalantirServiceEditor {
             icon: "warning",
             title: "The wizard does not cover every setting",
             html: `
-                <p class="palantir-template-keep__note">These settings from the JSON editor have no place in the wizard, and saving from the wizard leaves them out:</p>
+                <p class="palantir-json-editor__note">These settings from the JSON editor have no place in the wizard, and saving from the wizard leaves them out:</p>
                 <ul class="palantir-json-editor__dropped">${shown.map(path => `<li><code>${escapePalantirMarkup(path)}</code></li>`).join("")}</ul>
-                ${dropped.length > shown.length ? `<p class="palantir-template-keep__note">And ${dropped.length - shown.length} more.</p>` : ""}`,
+                ${dropped.length > shown.length ? `<p class="palantir-json-editor__note">And ${dropped.length - shown.length} more.</p>` : ""}`,
             showDenyButton: true,
             confirmButtonText: "Back to the JSON editor",
             denyButtonText: "Continue in the wizard"

@@ -2,7 +2,8 @@
    RegisteredServiceSections, openRegisteredServiceWizardDialog, isPopulatingWizard,
    activateDashboardTab, ace, currentActiveTab, registeredServicesById, PalantirUserLookup,
    PalantirServiceHistory, Swal, applicationActionHandler, applicationRowContext, fetchServices, notyf,
-   PalantirSamlMetadataImport, PalantirApplicationAccess, Tabs, PalantirServiceEditor, PalantirServiceTemplates */
+   PalantirSamlMetadataImport, PalantirApplicationAccess, Tabs, PalantirServiceEditor, PalantirServiceTemplates,
+   PalantirCommandPalette */
 const assert = require("assert");
 const fs = require("fs");
 const os = require("os");
@@ -617,6 +618,12 @@ async function verifyServiceWizard(page) {
         await cas.logg(`${name} steps: ${steps.join(" > ")}`);
         assert(steps[0] === "basics" && steps.at(-1) === "review" && new Set(steps).size === steps.length);
 
+        await page.evaluate(() => $("#registeredServiceName").val("").trigger("input").trigger("change"));
+        await page.waitForFunction(() => $("#saveServiceWizard").prop("disabled")
+            && $("#saveServiceWizardHint").text().includes("Name"), {timeout: 10000});
+        const required = await page.evaluate(() => $("#saveServiceWizardHint").text().trim());
+        await cas.logg(`${name}: without a name, Save is disabled and the wizard says ${required}`);
+
         await cas.logg(`Wizard verified for ${name}`);
         await page.evaluate(() => $("#cancelServiceWizard").trigger("click"));
         await discardUnsavedChanges(page, name);
@@ -692,6 +699,16 @@ async function verifySettingsDialog(page) {
         && $("#palantirActuatorsTable").DataTable().data().count() > 0, {timeout: 30000});
     const endpoints = await page.evaluate(() => $("#palantirActuatorsTable").DataTable().data().count());
     await cas.logg(`Settings dialog lists ${endpoints} actuator endpoints`);
+
+    await page.evaluate(() => sessionStorage.setItem("PalantirResetProbe", "kept"));
+    await cas.click(page, "#resetPalantirPreferences");
+    await page.waitForFunction(() => $(".swal2-title").text() === "Reset all preferences?", {timeout: 10000});
+    await page.click(".swal2-cancel");
+    await page.waitForFunction(() => !Swal.isVisible(), {timeout: 10000});
+    const kept = await page.evaluate(() => sessionStorage.getItem("PalantirResetProbe"));
+    await cas.logg(`Declining to reset the preferences keeps them: ${kept}`);
+    assert(kept === "kept");
+    await page.evaluate(() => sessionStorage.removeItem("PalantirResetProbe"));
     await page.evaluate(() => $("#palantirSettingsDialog").dialog("close"));
 }
 
@@ -765,6 +782,23 @@ async function verifyCommandPalette(page) {
             $("#applicationsTable").DataTable().search("").draw();
             $("#applications-tab .dt-search input").val("");
         });
+    }
+
+    const nested = await page.evaluate(() => PalantirCommandPalette.sectionEntries(PalantirCommandPalette.navigationItems())
+        .map((entry) => entry.label)
+        .find((label) => label.split(" › ").length > 2));
+    if (nested) {
+        await cas.sleep(1000);
+        await page.evaluate(() => document.activeElement?.blur());
+        await page.keyboard.press("/");
+        const match = await searchCommandPalette(page, nested.split(" › ").at(-1));
+        await cas.log(`Command palette offers ${match} for a section inside a section`);
+        await page.evaluate((label) => PalantirCommandPalette.search(label).find((entry) => entry.label === label).run(), nested);
+        await page.evaluate(() => $("#palantirCommandPalette").dialog("close"));
+        const tab = nested.split(" › ").at(-1);
+        await page.waitForFunction((name) => $(".jqueryui-tabs > ul > li.ui-tabs-active:visible").toArray()
+            .some((element) => $(element).find("a").first().text().replace(/\s+/g, " ").trim() === name), {timeout: 15000}, tab);
+        await cas.logg(`Command palette opened the nested section ${nested}`);
     }
     await cas.screenshot(page);
 }
@@ -1182,11 +1216,29 @@ async function verifyApplicationBulkActions(page) {
         $("#applicationsTableView").trigger("click");
         $("#applicationsTable").DataTable().search("BulkExample").draw();
     });
-    await page.waitForSelector(`[data-select-service="${ids[0]}"]`, {visible: true});
-    await page.click(`[data-select-service="${ids[0]}"]`);
-    await page.click(`[data-select-service="${ids[1]}"]`);
+    const cell = async (id) => (await page.waitForFunction((serviceId) => $(`#applicationsTable tbody tr:has([data-select-service="${serviceId}"]) > td:visible`)
+        .not(".palantir-application-type").get(0), {timeout: 30000}, id)).asElement();
+    await (await cell(ids[0])).click();
+    await (await cell(ids[1])).click();
     await page.waitForFunction(() => !$("#applicationsSelectionBar").prop("hidden")
         && $(".palantir-selection-bar__count").text().startsWith("2 "), {timeout: 10000});
+    await page.evaluate(() => notyf.dismissAll());
+    const [exported] = await Promise.all([
+        page.waitForResponse((response) => response.url().includes("/registeredServices/export?"), {timeout: 30000}),
+        page.click("button[name=exportSelectedServices]")
+    ]);
+    const requested = new URL(exported.url()).searchParams.getAll("ids").sort();
+    await cas.logg(`Exporting the selection asks for ${requested.join(", ")} and answers ${exported.status()} with ${exported.headers()["filename"]}`);
+    assert(exported.status() === 200);
+    assert(exported.headers()["filename"] === "services.zip");
+    assert(JSON.stringify(requested) === JSON.stringify([String(ids[0]), String(ids[1])].sort()));
+    const archive = await page.evaluate(async (url) => {
+        const bytes = new Uint8Array(await (await fetch(url, {credentials: "include"})).arrayBuffer());
+        return {size: bytes.length, signature: bytes.length >= 4 ? new DataView(bytes.buffer).getUint32(0, true) : 0};
+    }, exported.url());
+    await cas.log(`The exported archive holds ${archive.size} bytes`);
+    assert(archive.size > 0 && archive.signature === 0x04034b50);
+
     await page.click("button[name=deleteSelectedServices]");
     await page.waitForSelector(".swal2-confirm", {visible: true});
     await page.click(".swal2-confirm");

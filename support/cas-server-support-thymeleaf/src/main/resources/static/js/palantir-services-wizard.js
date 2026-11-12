@@ -2742,7 +2742,98 @@ function generateServiceDefinition() {
             editor.setValue("");
         }
         editor.gotoLine(1);
+        PalantirWizardValidity.refresh();
     }, 10);
+}
+
+/**
+ * The required and otherwise constrained fields of the wizard, as they apply to the application type being edited:
+ * Save stays disabled, with the missing fields named beside it, until every one of them holds a valid value, so an
+ * incomplete definition never reaches the server.
+ */
+class PalantirWizardValidity {
+    /**
+     * The fields that apply: those in the sections this type offers, outside parts hidden because they belong to
+     * other types or choices. Fields of the other sections count even though only one section shows at a time.
+     *
+     * @returns {HTMLElement[]} the fields
+     */
+    static fields() {
+        return RegisteredServiceSections.sections()
+            .filter(RegisteredServiceSections.isAvailable)
+            .flatMap(section => $(section.panel).find("input, select, textarea").toArray()
+                .filter(field => field.willValidate && !PalantirWizardValidity.hiddenWithin(field, section.panel))
+                .map(field => ({field, section})));
+    }
+
+    static hiddenWithin(field, panel) {
+        return [field, ...$(field).parentsUntil(panel).toArray()]
+            .some(node => node.classList.contains("hide") || node.classList.contains("d-none") || node.style.display === "none");
+    }
+
+    /**
+     * The fields that hold no valid value yet, with the section each is in.
+     *
+     * @returns {Array<{field: HTMLElement, section: object}>} the invalid fields
+     */
+    static invalid() {
+        return PalantirWizardValidity.fields().filter(entry => !entry.field.validity.valid);
+    }
+
+    /**
+     * How a field is named on screen: its label, or failing that its placeholder or name.
+     *
+     * @param field the field
+     * @returns {string} the name
+     */
+    static labelOf(field) {
+        const label = field.id ? document.querySelector(`label[for="${CSS.escape(field.id)}"]`) : null;
+        const text = (label?.querySelector(".mdc-floating-label")?.textContent ?? label?.textContent ?? field.getAttribute("placeholder") ?? field.name ?? "")
+            .replace(/\*/g, "").replace(/\s+/g, " ").trim();
+        return text || "A field";
+    }
+
+    /**
+     * Enable Save only when every field that applies is valid, and name the fields still missing.
+     */
+    static refresh() {
+        const dialog = $("#editServiceWizardDialog");
+        if (!dialog.hasClass("ui-dialog-content") || !dialog.dialog("isOpen")) {
+            return;
+        }
+        const invalid = PalantirWizardValidity.invalid();
+        const names = [...new Set(invalid.map(entry => PalantirWizardValidity.labelOf(entry.field)))];
+        const writable = typeof CasActuatorEndpoints.writable !== "function" || CasActuatorEndpoints.writable("registeredServices");
+        $("#saveServiceWizard").prop("disabled", invalid.length > 0 || !writable);
+        const hint = $("#saveServiceWizardHint");
+        if (names.length === 0) {
+            hint.prop("hidden", true).empty();
+        } else {
+            const shown = names.slice(0, 3).join(", ");
+            hint.prop("hidden", false)
+                .attr("title", names.join(", "))
+                .html(`<i class="mdi mdi-alert-circle-outline" aria-hidden="true"></i><span>Required: ${escapePalantirMarkup(shown)}${names.length > 3 ? ` and ${names.length - 3} more` : ""}</span>`);
+        }
+    }
+
+    /**
+     * Open the section of the first invalid field and show what is wrong with it.
+     *
+     * @returns {boolean} true when every field is valid
+     */
+    static report() {
+        const first = PalantirWizardValidity.invalid()[0];
+        if (!first) {
+            return true;
+        }
+        RegisteredServiceSections.activate(first.section.key);
+        RegisteredServiceSections.render?.();
+        setTimeout(() => {
+            first.field.scrollIntoView({block: "center", behavior: "smooth"});
+            first.field.reportValidity();
+        }, 0);
+        return false;
+    }
 }
 
 function generateMappedFieldValue(sectionId, config) {

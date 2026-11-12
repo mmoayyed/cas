@@ -229,8 +229,10 @@ source answered.
 The JSON editor for application definitions is redesigned: a new definition starts from a gallery of templates, with
 many more templates for CAS, SAML2, OpenID Connect, OAuth and WS-Federation applications, filtered by protocol and
 searchable, and the editor checks the JSON as it is typed, shows problems on their line, follows the light or dark
-theme and can switch to the wizard. Templates can be shared through a folder the dashboard reads, or kept per operator
-in the browser.
+theme and can switch to the wizard. Templates of your own can be offered through a folder the dashboard reads. SAML2 applications whose metadata is held by a metadata
+manager, such as MongoDB, show that source and link to its management under protocols, and the settings dialog can
+reset every preference Palantir keeps in the browser. Features and their modules can be turned off or on from the feature catalog,
+which stores their feature flags in a chosen dynamic configuration source for the next start.
 
 Saving an application that someone else changed or deleted in the meantime shows what they changed and asks before
 overwriting it, and actions that would change something through a read-only endpoint are disabled with an explanation.
@@ -243,9 +245,9 @@ security is set up, with an offer to refresh CAS afterwards. Application descrip
 italic and underlined text in the application cards and table instead of their markup, and a description of a single
 paragraph is saved as plain text. The applications chart, cards and search follow deleted applications as they follow
 new ones, and the applications can be filtered by type, such as CAS, SAML2 or OpenID Connect, each listed with how many
-applications it has. Validating or saving an application definition that CAS cannot read is refused with the reason, rather than reported
+applications it has. The wizard keeps Save disabled, naming the required fields still missing, until they are filled in, and a definition without a name or service id is refused with the reason instead of failing on the server. Validating or saving an application definition that CAS cannot read is refused with the reason, rather than reported
 as valid, and the wizard keeps the principal attributes of a multifactor policy, with the policy's type, when it
-edits an application. Applications can be disabled and enabled from their context menu, selected and deleted in bulk, or all deleted at
+edits an application. Applications can be disabled and enabled from their context menu, selected and exported or deleted in bulk, or all deleted at
 once after a confirmation. Importing applications accepts YAML definitions and exported zip files as well as JSON, and imports each chosen file
 once. Applications can be duplicated into the wizard as new applications, and the wizard and the definition editor ask before
 closing with unsaved changes, keeping a draft in the browser that can be resumed for up to thirty days. A keyboard shortcut overlay opens

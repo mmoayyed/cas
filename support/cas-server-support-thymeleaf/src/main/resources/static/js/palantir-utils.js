@@ -1132,6 +1132,77 @@ function applySharedDialogStyle() {
     $(document).on("dialogcreate", event => $(event.target).closest(".ui-dialog").addClass("cas-ui palantir-dialog"));
 }
 
+/**
+ * Keep dialogs and select menus inside the window on screens with little height. A dialog never grows taller than
+ * the window: its content scrolls instead, and once it is open it is moved back into view whenever it grows or the
+ * window shrinks. Select menus open above their field when there is no room below, in the window or in the dialog
+ * that holds them, which clips what falls outside it, and scroll when they are long.
+ */
+function keepPalantirPopupsInView() {
+    const margin = 16;
+    if ($.ui?.selectmenu) {
+        $.ui.selectmenu.prototype.options.position = {my: "left top", at: "left bottom", collision: "flip fit"};
+    }
+    const fit = content => {
+        const element = $(content);
+        if (!element.hasClass("ui-dialog-content") || !element.dialog("isOpen")) {
+            return;
+        }
+        const widget = element.dialog("widget");
+        const bounds = widget[0].getBoundingClientRect();
+        if (bounds.top < margin || bounds.bottom > window.innerHeight - margin
+            || bounds.left < 0 || bounds.right > window.innerWidth) {
+            element.dialog("option", "position", {my: "center", at: "center", of: window, collision: "fit"});
+        }
+    };
+    const pending = new Set();
+    const observer = typeof ResizeObserver === "function"
+        ? new ResizeObserver(entries => {
+            entries.forEach(entry => pending.add(entry.target));
+            requestAnimationFrame(() => {
+                pending.forEach(widget => fit($(widget).find("> .ui-dialog-content")));
+                pending.clear();
+            });
+        })
+        : null;
+    $(document)
+        .off("dialogopen.palantirInView")
+        .on("dialogopen.palantirInView", event => {
+            const widget = $(event.target).closest(".ui-dialog");
+            fit(event.target);
+            observer?.observe(widget[0]);
+        })
+        .off("dialogclose.palantirInView")
+        .on("dialogclose.palantirInView", event => observer?.unobserve($(event.target).closest(".ui-dialog")[0]));
+    $(document)
+        .off("selectmenuopen.palantirInView")
+        .on("selectmenuopen.palantirInView", event => {
+            const menu = $(event.target).selectmenu("instance");
+            if (!menu) {
+                return;
+            }
+            const dialog = menu.menuWrap.closest(".ui-dialog");
+            const bounds = dialog.length > 0
+                ? dialog[0].getBoundingClientRect()
+                : {top: 0, bottom: window.innerHeight};
+            const button = menu.button[0].getBoundingClientRect();
+            const height = menu.menuWrap.outerHeight();
+            const below = Math.min(bounds.bottom, window.innerHeight) - button.bottom;
+            const above = button.top - Math.max(bounds.top, 0);
+            const upward = height > below && above > below;
+            menu.menuWrap.position({
+                my: upward ? "left bottom" : "left top",
+                at: upward ? "left top" : "left bottom",
+                of: menu.button,
+                collision: "fit",
+                within: dialog.length > 0 ? dialog : window
+            });
+        });
+    $(window)
+        .off("resize.palantirInView")
+        .on("resize.palantirInView", () => $(".ui-dialog-content").each((index, content) => fit(content)));
+}
+
 function initializeContextMenu({selector, callback, items, build, trigger = "right"}) {
     installJQueryCompatibility();
     $.contextMenu("destroy", selector);

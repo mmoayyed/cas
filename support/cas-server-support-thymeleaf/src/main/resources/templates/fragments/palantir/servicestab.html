@@ -108,6 +108,9 @@
                 <button type="button" class="palantir-button" name="clearServiceSelection">
                     <i class="mdi mdi-close" aria-hidden="true"></i>Clear selection
                 </button>
+                <button type="button" class="palantir-button" name="exportSelectedServices">
+                    <i class="mdi mdi-export" aria-hidden="true"></i>Export selected
+                </button>
                 <button type="button" data-palantir-write="registeredServices" class="palantir-button is-danger" name="deleteSelectedServices">
                     <i class="mdi mdi-delete" aria-hidden="true"></i>Delete selected
                 </button>
@@ -145,7 +148,7 @@
                     Right-click a row (or press Shift+F10 on it), or use a card's menu, for more actions.
                 </p>
 
-                <section class="palantir-chart-card" aria-labelledby="servicesChartTitle">
+                <section class="palantir-chart-card" aria-labelledby="servicesChartTitle" hidden>
                     <h3 id="servicesChartTitle">Applications by type</h3>
                     <div class="palantir-chart-frame">
                         <canvas id="servicesChart" role="img" aria-label="Registered services by type"></canvas>
@@ -868,6 +871,8 @@
                                     <span>Next</span><i class="mdi mdi-chevron-right" aria-hidden="true"></i>
                                 </button>
                                 <span class="registered-service-wizard__spacer"></span>
+                                <button type="button" class="registered-service-wizard__hint" id="saveServiceWizardHint" hidden
+                                        title="Show the first field that needs a value"></button>
                                 <button id="fillServiceWizardFromMetadata" name="fillServiceWizardFromMetadata" type="button"
                                         class="mdc-button mdc-button--raised btn mdc-button--lg hide"
                                         title="Fill the wizard from the metadata of the service provider">
@@ -945,9 +950,6 @@
                             </button>
                             <button type="button" class="palantir-json-editor__tool" id="chooseServiceTemplate" title="Start again from a template">
                                 <i class="mdi mdi-view-grid-plus-outline" aria-hidden="true"></i><span>Templates</span>
-                            </button>
-                            <button type="button" class="palantir-json-editor__tool" id="keepServiceTemplate" title="Keep this definition as a template in this browser">
-                                <i class="mdi mdi-bookmark-plus-outline" aria-hidden="true"></i><span>Save as template</span>
                             </button>
                             <span class="palantir-json-editor__spacer"></span>
                             <div class="palantir-json-editor__modes" id="serviceEditorModes" role="group" aria-label="Edit with">

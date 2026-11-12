@@ -345,6 +345,9 @@ async function initializeServiceButtons() {
             const saveButton = $(this);
             switch (saveButton.attr("name")) {
             case "saveServiceWizard":
+                if (!PalantirWizardValidity.report()) {
+                    return;
+                }
                 const editServiceWizardDialogElement = document.getElementById("editServiceWizardDialog");
                 isNewService = $(editServiceWizardDialogElement).attr("newService") === "true";
                 const wizardEditor = initializeAceEditor("wizardServiceEditor");
@@ -545,7 +548,7 @@ async function fetchServices(callback) {
 
                 let serviceIdDetails = `<span serviceId="${service.id}" class="text-wrap">${escapePalantirMarkup(service.serviceId ?? "")}</span>`;
                 const metadataLink = serviceClass.includes("SamlRegisteredService")
-                    ? applicationLink(service.metadataLocation, "Metadata Location")
+                    ? samlMetadataLocationMarkup(service.metadataLocation)
                     : null;
                 if (metadataLink) {
                     serviceIdDetails += `<div class="palantir-application-links">${metadataLink}</div>`;
@@ -569,6 +572,7 @@ async function fetchServices(callback) {
             applicationsTable.draw();
             prepareRegisteredServiceWizardWhenIdle();
 
+            $("#servicesChartTitle").closest(".palantir-chart-card").prop("hidden", registeredServicesById.size === 0);
             if (servicesChart) {
                 servicesChart.data.datasets[0].data = serviceCountByType;
                 servicesChart.update();
@@ -579,8 +583,11 @@ async function fetchServices(callback) {
             }
         }).fail((xhr, status, error) => {
             console.error("Error fetching data:", error);
+            $("#servicesChartTitle").closest(".palantir-chart-card").prop("hidden", registeredServicesById.size === 0);
             displayBanner(xhr);
         });
+    } else {
+        $("#servicesChartTitle").closest(".palantir-chart-card").prop("hidden", true);
     }
 }
 
@@ -601,6 +608,13 @@ async function initializeFooterButtons() {
 
     $("button[name=fillServiceWizardFromMetadata]").off().on("click", () => PalantirSamlMetadataImport.open());
 
+    $("#saveServiceWizardHint").off("click").on("click", () => PalantirWizardValidity.report());
+    let wizardValidityTimer = null;
+    $("#editServiceWizardDialog").off("input.palantirValidity change.palantirValidity")
+        .on("input.palantirValidity change.palantirValidity", "input, select, textarea", () => {
+            clearTimeout(wizardValidityTimer);
+            wizardValidityTimer = setTimeout(() => PalantirWizardValidity.refresh(), 150);
+        });
     $("button[name=copyServiceDefinitionWizard]").off().on("click", () => {
         const editor = initializeAceEditor("wizardServiceEditor");
         copyToClipboard(editor.getValue());
@@ -788,6 +802,47 @@ function applicationLink(url, label) {
         return null;
     }
     return `<a target="_blank" rel="noopener noreferrer" href="${escapePalantirMarkup(url.trim())}">${escapePalantirMarkup(label)}</a>`;
+}
+
+const SAML_METADATA_SOURCES = {
+    mongodb: "MongoDB",
+    jdbc: "JDBC",
+    git: "Git",
+    redis: "Redis",
+    dynamodb: "DynamoDB",
+    awss3: "Amazon S3",
+    rest: "REST",
+    json: "JSON",
+    file: "File",
+    classpath: "Classpath"
+};
+
+/**
+ * Show where a SAML2 application reads its metadata from. A web address is a link to the metadata; a metadata
+ * manager source such as <code>mongodb://</code> is tagged with its kind and links to the metadata management
+ * section under Protocols; a file or classpath location is tagged with its kind.
+ *
+ * @param location the metadata location
+ * @returns {string|null} the markup, or null when there is no location
+ */
+function samlMetadataLocationMarkup(location) {
+    const value = typeof location === "string" ? location.trim() : "";
+    if (value === "") {
+        return null;
+    }
+    const link = applicationLink(value, "Metadata Location");
+    if (link) {
+        return link;
+    }
+    const scheme = (value.match(/^([a-z][a-z0-9+.-]*):/i)?.[1] ?? "").toLowerCase();
+    const kind = SAML_METADATA_SOURCES[scheme] ?? (scheme === "" ? "Location" : scheme.toUpperCase());
+    const tag = `<span class="palantir-tag palantir-metadata-source" title="${escapePalantirMarkup(value)}">`
+        + `<i class="mdi mdi-database-outline" aria-hidden="true"></i>${escapePalantirMarkup(kind)}</span>`;
+    if (!value.startsWith(`${scheme}://`) || !CasActuatorEndpoints.samlIdpRegisteredServiceMetadata() || $("#saml2protocol").length === 0) {
+        return tag;
+    }
+    return `${tag}<a href="#" data-saml-metadata-manager="${escapePalantirMarkup(`${scheme}://`)}"
+        title="Open the ${escapePalantirMarkup(kind)} metadata manager under Protocols">Metadata Location</a>`;
 }
 
 function escapePalantirMarkup(value) {
@@ -1021,8 +1076,9 @@ function renderApplicationCards() {
         if (service.privacyUrl) {
             links.push(`<a href="${escapePalantirMarkup(service.privacyUrl)}" target="_blank" rel="noopener">Privacy URL</a>`);
         }
-        if (service.metadataLocation) {
-            links.push(`<a href="${escapePalantirMarkup(service.metadataLocation)}" target="_blank" rel="noopener">Metadata Location</a>`);
+        const metadataLocation = samlMetadataLocationMarkup(service.metadataLocation);
+        if (metadataLocation) {
+            links.push(metadataLocation);
         }
         const tags = [];
         if (service.evaluationOrder !== undefined && service.evaluationOrder !== null) {
@@ -1103,6 +1159,12 @@ function initializeApplicationCards() {
     if (tableRow.length > 0) {
         $("#applicationsCards").insertAfter(tableRow);
     }
+    $(document)
+        .off("click.palantirSamlMetadataManager")
+        .on("click.palantirSamlMetadataManager", "[data-saml-metadata-manager]", event => {
+            event.preventDefault();
+            showSamlMetadataManager(String($(event.currentTarget).data("saml-metadata-manager")));
+        });
     $("#applicationsCardsView, #applicationsTableView").off("click").on("click", event => {
         showApplicationsView($(event.currentTarget).data("applications-view"));
     });

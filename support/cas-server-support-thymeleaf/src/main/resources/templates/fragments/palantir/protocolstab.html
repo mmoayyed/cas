@@ -122,7 +122,7 @@
                         <ul>
                             <li><a id="saml2requests" href="#saml2requests-tab">SAML2 Requests/Responses</a></li>
                             <li><a id="saml2metadata" href="#saml2metadata-tab">Service Provider Metadata Cache</a></li>
-                            <li class="d-none" id="saml2metadatamgmt-li"><a id="saml2metadatamgmt" href="#saml2metadatamgmt-tab">Service Provider Metadata Management</a></li>
+                            <li class="d-none" id="saml2metadatamgmt-li" data-palantir-requires="samlIdpRegisteredServiceMetadata"><a id="saml2metadatamgmt" href="#saml2metadatamgmt-tab">Service Provider Metadata Management</a></li>
                             <li><a id="saml2configprops" href="#saml2configprops-tab">Configuration</a></li>
                         </ul>
 
@@ -475,8 +475,8 @@
                         <ul>
                             <li><a id="oidctokenexchange" href="#oidctokenexchange-tab">Token Exchange</a></li>
                             <li><a id="oidckeyrotation" href="#oidckeyrotation-tab">Key Rotation</a></li>
-                            <li class="d-none" id="oidcclientsecretrotation-li"><a id="oidcclientsecretrotation" href="#oidcclientsecretrotation-tab">Client Secret Rotation</a></li>
-                            <li class="d-none" id="oidcclientjwks-li"><a id="oidcclientjwks" href="#oidcclientjwks-tab">Relying Party JWKS Management</a></li>
+                            <li class="d-none" id="oidcclientsecretrotation-li" data-palantir-requires="oauthClientSecrets"><a id="oidcclientsecretrotation" href="#oidcclientsecretrotation-tab">Client Secret Rotation</a></li>
+                            <li class="d-none" id="oidcclientjwks-li" data-palantir-requires="oidcJwks feature:OpenIDConnect.client-jwks-registration"><a id="oidcclientjwks" href="#oidcclientjwks-tab">Relying Party JWKS Management</a></li>
                             <li><a id="oidcdiscovery" href="#oidcdiscovery-tab">Discovery Profile</a></li>
                             <li><a id="oidcconfigprops" href="#oidcconfigprops-tab">Configuration</a></li>
                         </ul>

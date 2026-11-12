@@ -39,10 +39,10 @@
     font-size: 11pt !important;
 }
 
-.ui-selectmenu-menu {
-    overflow-y: "auto";
+.ui-selectmenu-menu .ui-menu {
+    max-height: min(400px, calc(50vh - 24px));
     overflow-x: hidden;
-    max-height: 400px;
+    overflow-y: auto;
 }
 
 .ui-widget-overlay {

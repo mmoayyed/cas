@@ -152,6 +152,7 @@ async function initializePalantir() {
         installJQueryCompatibility();
         allowAlertsOverModalDialogs();
         applySharedDialogStyle();
+        keepPalantirPopupsInView();
         initializeTableAndDialogAccessibility();
         initializePalantirEndpointAccess();
         await initializeCasFeatures();

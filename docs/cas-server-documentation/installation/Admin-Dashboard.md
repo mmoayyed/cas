@@ -58,10 +58,12 @@ Once enabled, Palantir is available at `/cas/palantir`.
 
 Palantir follows the light or dark appearance of the operating system. The theme button in its navigation
 bar switches between light and dark, and the settings dialog can return Palantir to the operating system's choice;
-the choice is remembered by the browser.
+the choice is remembered by the browser. *Reset preferences*, in the settings dialog, removes everything Palantir keeps
+in the browser, such as the theme, views, filters, editor options and drafts of unsaved edits, and reloads Palantir
+with its defaults; the sign-in session is kept.
 
 The search button in the navigation bar, also opened with `Ctrl+K` (`⌘K` on macOS) or `/`, finds any page or
-section of Palantir, a registered application by its name, identifier or service id, and common actions such as
+section of Palantir, including the sections inside a section such as the key rotation of OpenID Connect, a registered application by its name, identifier or service id, and common actions such as
 creating an application, switching the theme, opening the settings or signing out. Arrow keys move through the matches and
 `Enter` opens one. Typing a username also offers to look that user up.
 
@@ -86,9 +88,8 @@ deployment supports, such as releasing selected attributes, requiring multifacto
 NameIDs, public OpenID Connect clients with PKCE or pairwise subject identifiers, which can be filtered by protocol and
 searched, or the definition can start blank, be pasted or be read from a file. The editor then checks the JSON as it is
 typed, marks the line of a problem CAS reports when validating or saving, and can switch to the wizard, listing any
-setting the wizard does not cover with a way back. Templates can also be shared by placing application definitions as
-JSON files in a folder that the dashboard reads every time it is shown, and each operator can keep their own templates
-in the browser with *Save as template*.
+setting the wizard does not cover with a way back. Templates of your own can be offered by placing application
+definitions as JSON files in a folder that the dashboard reads every time it is shown.
 
 {% include_cached casproperties.html properties="cas.palantir.templates-directory" %}
 
@@ -110,10 +111,19 @@ name, description, information and privacy URLs, logo, metadata location, a sing
 signing, an attribute release policy for a research and scholarship category or for the attributes the provider
 requests, and its contacts are filled in for review before saving.
 
+The feature catalog lists the CAS features present in the deployment and their modules. When dynamic configuration
+sources are available, the menu of a feature or module turns it off or on by storing its feature flag in the
+configuration source the operator chooses; CAS decides which features run when it starts, so the catalog marks what
+changes after a restart, and a feature turned off stays listed so it can be turned on again.
+
 The dynamic configuration sources, whose properties can be changed at runtime, list their properties with a menu
 to view, update or delete a value. When [configuration security](../configuration/Configuration-Properties-Security-CAS.html)
 is set up, the menu also encrypts a plain value or decrypts an encrypted one, stores the result in the same source and
 offers to refresh CAS so that the change takes effect.
+
+A SAML2 application whose metadata comes from a web address links to it; one whose metadata is held by a metadata
+manager, such as MongoDB, a relational database or Git, is tagged with that source and links to the service provider
+metadata management under protocols with that manager selected, and a file or classpath location is tagged as such.
 
 *Check Metadata Health*, in the menu of a SAML2 application, reports on the provider's metadata: whether CAS can
 download it from its location, on the dashboard's behalf, and finds the service provider in it, whether CAS resolves
@@ -124,8 +134,9 @@ or removed from the metadata cache.
 An application can be disabled from its context menu, and enabled again, after confirming; disabled applications are
 marked in the table and the cards. An access strategy that has no switch of its own is combined with a disabled
 default strategy while the application is disabled, and left as it was once it is enabled again. Applications can be
-selected with their checkboxes, all of those the search and type filter show at once, and the selection deleted
-together; *Delete All* removes every application from the service registry after the operator confirms.
+selected by clicking their card or row, and clicked again to deselect them, with Shift to select a range, or all of
+those the search and type filter show at once, and the selection exported,
+as a zip of their definitions that *Import* accepts, or deleted together; *Delete All* removes every application from the service registry after the operator confirms.
 
 *Duplicate Application* opens a copy of an application in the wizard as a new application, named after the original,
 with its service id left empty and, where the application has them, a new client id and secret. When the wizard or the

@@ -44,6 +44,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import jakarta.servlet.http.HttpServletRequest;
 
@@ -263,16 +264,25 @@ public class RegisteredServicesEndpoint extends BaseCasRestActuatorEndpoint {
     }
 
     /**
-     * Export.
+     * Export registered services as a zip file: all of them, or only those whose ids are given.
      *
+     * @param ids the ids of the registered services to export, or none to export every one of them
      * @return the response entity
      */
     @GetMapping(path = "/export", produces = MediaType.APPLICATION_OCTET_STREAM_VALUE)
     @ResponseBody
-    @Operation(summary = "Export registered services as a zip file")
-    public ResponseEntity<Resource> export() {
+    @Operation(summary = "Export registered services as a zip file",
+        parameters = @Parameter(name = "ids", description = "The ids of the registered services to export; all of them when left out",
+            in = ParameterIn.QUERY))
+    public ResponseEntity<Resource> export(@RequestParam(name = "ids", required = false) final Set<Long> ids) {
+        val selected = ids == null || ids.isEmpty()
+            ? null
+            : ids.stream().map(id -> servicesManager.getObject().findServiceBy(id)).filter(Objects::nonNull).toList();
+        if (selected != null && selected.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
         val serializer = new RegisteredServiceJsonSerializer(applicationContext);
-        val resource = CompressionUtils.toZipFile(servicesManager.getObject().stream(),
+        val resource = CompressionUtils.toZipFile(selected == null ? servicesManager.getObject().stream() : selected.stream(),
             Unchecked.function(entry -> {
                 val service = (RegisteredService) entry;
                 val fileName = String.format("%s-%s", service.getName(), service.getId());
@@ -345,6 +355,10 @@ public class RegisteredServicesEndpoint extends BaseCasRestActuatorEndpoint {
         if (registeredService == null) {
             return unreadableService(registeredServiceSerializer, registeredServiceBody);
         }
+        val incomplete = incompleteService(registeredService);
+        if (incomplete != null) {
+            return incomplete;
+        }
         registeredService.setId(RandomUtils.nextInt());
         val result = servicesManager.getObject().save(registeredService);
         return ResponseEntity.ok(registeredServiceSerializer.toString(result));
@@ -385,9 +399,11 @@ public class RegisteredServicesEndpoint extends BaseCasRestActuatorEndpoint {
                 ? new RegisteredServiceYamlSerializer(applicationContext)
                 : new RegisteredServiceJsonSerializer(applicationContext);
             val registeredService = registeredServiceSerializer.from(registeredServiceBody);
-            return registeredService != null
-                ? ResponseEntity.ok(true)
-                : unreadableService(registeredServiceSerializer, registeredServiceBody);
+            if (registeredService == null) {
+                return unreadableService(registeredServiceSerializer, registeredServiceBody);
+            }
+            val incomplete = incompleteService(registeredService);
+            return incomplete != null ? incomplete : ResponseEntity.ok(true);
         } catch (final Exception e) {
             LoggingUtils.error(LOGGER, e);
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", e.getMessage()));
@@ -424,8 +440,34 @@ public class RegisteredServicesEndpoint extends BaseCasRestActuatorEndpoint {
         if (registeredService == null) {
             return unreadableService(registeredServiceSerializer, registeredServiceBody);
         }
+        val incomplete = incompleteService(registeredService);
+        if (incomplete != null) {
+            return incomplete;
+        }
         val result = servicesManager.getObject().save(registeredService);
         return ResponseEntity.ok(registeredServiceSerializer.toString(result));
+    }
+
+    /**
+     * Refuse a definition that lacks what every registered service needs, a name and a service id, saying which is
+     * missing, rather than failing while it is saved.
+     *
+     * @param registeredService the definition
+     * @return a bad request naming what is missing, or null when nothing is
+     */
+    private static ResponseEntity<Map<String, String>> incompleteService(final RegisteredService registeredService) {
+        val missing = new ArrayList<String>();
+        if (StringUtils.isBlank(registeredService.getName())) {
+            missing.add("name");
+        }
+        if (StringUtils.isBlank(registeredService.getServiceId())) {
+            missing.add("serviceId");
+        }
+        if (missing.isEmpty()) {
+            return null;
+        }
+        return ResponseEntity.badRequest().body(Map.of("error",
+            "The definition has no %s".formatted(String.join(" and no ", missing))));
     }
 
     /**
