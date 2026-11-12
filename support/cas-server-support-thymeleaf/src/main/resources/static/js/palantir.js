@@ -17,8 +17,8 @@ class PalantirDashboardConfiguration {
         return this.all().actuatorEndpointAccess || {};
     }
 
-    static serviceDefinitions() {
-        return this.all().serviceDefinitions || {};
+    static serviceTemplates() {
+        return this.all().serviceTemplates || [];
     }
 
     static supportedServiceTypes() {

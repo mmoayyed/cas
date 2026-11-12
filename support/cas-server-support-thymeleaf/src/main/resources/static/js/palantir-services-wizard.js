@@ -3980,7 +3980,7 @@ async function openRegisteredServiceWizardDialog(existingService = null, options
     await buildRegisteredServiceWizardFields();
 
     async function openWizardDialog(serviceClass, serviceData = null) {
-        const isNewService = serviceData === null || options.duplicate === true;
+        const isNewService = serviceData === null || options.duplicate === true || options.asNew === true;
         const draftKey = PalantirServiceEditGuard.key("wizard", isNewService ? null : serviceData.id, serviceClass);
         if (!isNewService) {
             PalantirServiceEditGuard.remember(draftKey, serviceData);

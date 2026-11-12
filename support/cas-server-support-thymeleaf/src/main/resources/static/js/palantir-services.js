@@ -43,47 +43,6 @@ async function initializeServicesOperations() {
     initializeApplicationTypeFilter();
     await fetchServices();
     await initializeFooterButtons();
-
-    let serviceDefinitionsEntries = "";
-    for (let type in PalantirDashboardConfiguration.serviceDefinitions()) {
-        serviceDefinitionsEntries += `<h3>${type} Templates</h3>`;
-        const entries = PalantirDashboardConfiguration.serviceDefinitions()[type];
-        serviceDefinitionsEntries += "<div>";
-        for (const entry of entries) {
-            const definition = JSON.parse(entry);
-            serviceDefinitionsEntries += `<a class="mr-4" name="serviceDefinitionEntry" title="${definition.description}" data-type="${type}" data-id="${definition.id}" href="#">${definition.name}-${definition.id}</a>`;
-        }
-        serviceDefinitionsEntries += "</div>";
-    }
-    $("#serviceTemplatesContainer")
-        .html(serviceDefinitionsEntries)
-        .accordion({
-            collapsible: true,
-            heightStyle: "content"
-        })
-        .tooltip();
-
-    $("a[name=serviceDefinitionEntry]").off().on("click", function () {
-        let type = $(this).data("type");
-        let id = $(this).data("id");
-
-        const entries = PalantirDashboardConfiguration.serviceDefinitions()[type];
-        for (const entry of entries) {
-            const definition = JSON.parse(entry);
-            if (definition.id === id) {
-                const serviceEditor = initializeAceEditor("serviceEditor", "json");
-                serviceEditor.setReadOnly(false);
-                serviceEditor.setValue(JSON.stringify(definition, null, 2));
-                serviceEditor.gotoLine(1);
-            }
-        }
-    });
-
-    if (Object.entries(serviceDefinitionsEntries).length > 0) {
-        $("#serviceTemplatesContainer").show();
-    } else {
-        $("#serviceTemplatesContainer").hide();
-    }
 }
 
 let serviceEditorInstance = null;
@@ -160,6 +119,7 @@ function getEditServiceDialogInstance() {
                         serviceEditorInstance.setValue(draft, -1);
                     }
                     PalantirServiceEditGuard.watch("editor", key, draft !== null);
+                    PalantirServiceEditor.opened(element.attr("newService") === "true", draft !== null);
                 });
             },
             close: () => element.dialog("close")
@@ -292,7 +252,7 @@ async function importServiceFile(file) {
 async function initializeServiceButtons() {
     PalantirServiceEditGuard.initialize();
     getEditServiceDialogInstance();
-    serviceEditorInstance = initializeAceEditor("serviceEditor");
+    serviceEditorInstance = PalantirServiceEditor.editor();
 
     function viewEntityHistory(serviceId) {
         PalantirServiceHistory.open(serviceId);
@@ -436,7 +396,12 @@ async function initializeServiceButtons() {
                             },
                             error: (xhr, status, error) => {
                                 console.error("Update failed:", error);
-                                showUnreadableDefinition(xhr, "The application was not saved");
+                                const reason = xhr?.status === 400 ? xhr.responseJSON?.error : null;
+                                if (mode === "editor" && reason) {
+                                    PalantirServiceEditor.showProblem("Not saved", `CAS cannot read this definition: ${reason}`, PalantirServiceEditor.rowOf(reason));
+                                } else {
+                                    showUnreadableDefinition(xhr, "The application was not saved");
+                                }
                             }
                         });
                     }
@@ -698,7 +663,7 @@ async function initializeFooterButtons() {
     $("button[name=newServicePlain]").off().on("click", () => {
         if (CasActuatorEndpoints.registeredServices()) {
             const editServiceDialogElement = document.getElementById("editServiceDialog");
-            const editor = initializeAceEditor("serviceEditor", "json");
+            const editor = PalantirServiceEditor.editor();
             editor.setValue("");
             editor.gotoLine(1);
 

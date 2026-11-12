@@ -2,7 +2,7 @@
    RegisteredServiceSections, openRegisteredServiceWizardDialog, isPopulatingWizard,
    activateDashboardTab, ace, currentActiveTab, registeredServicesById, PalantirUserLookup,
    PalantirServiceHistory, Swal, applicationActionHandler, applicationRowContext, fetchServices, notyf,
-   PalantirSamlMetadataImport, PalantirApplicationAccess, Tabs */
+   PalantirSamlMetadataImport, PalantirApplicationAccess, Tabs, PalantirServiceEditor, PalantirServiceTemplates */
 const assert = require("assert");
 const fs = require("fs");
 const os = require("os");
@@ -627,11 +627,9 @@ async function verifyServiceWizard(page) {
 }
 
 /**
- * Open and dismiss the plain definition editor, through the New menu left open by the caller.
- *
- * It is a jQuery UI dialog now rather than hand-written MDC markup, so this checks the widget is
- * created, the Ace editor inside it is attached, and Cancel closes it. Choosing the menu entry is
- * also what dismisses the menu, which is why nothing clicks elsewhere to close it.
+ * The JSON editor opens on a start screen of templates for a new definition: the templates that ship with CAS are
+ * offered for every protocol of the deployment, a search narrows them, and choosing one moves to the editor with a
+ * definition CAS can read. A syntax error is reported on its line, and Cancel asks before discarding the edits.
  *
  * @param page the puppeteer page
  */
@@ -640,15 +638,45 @@ async function verifyPlainEditorDialog(page) {
     await cas.click(page, "#newServicePlain");
     await page.waitForFunction(() => $("#editServiceDialog").hasClass("ui-dialog-content")
         && $("#editServiceDialog").dialog("isOpen")
-        && document.querySelector("#serviceEditor").classList.contains("ace_editor"), {timeout: 30000});
-    await cas.logg("Plain definition editor opened as a jQuery UI dialog");
-    await cas.assertVisibility(page, "#saveService");
-    await cas.assertVisibility(page, "#cancelService");
+        && PalantirServiceEditor.view === "start"
+        && $("#serviceTemplateCards [data-template-key]").length > 1, {timeout: 30000});
+    const start = await page.evaluate(() => ({
+        templates: PalantirServiceTemplates.all().length,
+        protocols: [...new Set(PalantirServiceTemplates.all().map((template) => template.protocol.key))],
+        continueDisabled: $("#continueServiceTemplate").prop("disabled")
+    }));
+    await cas.logg(`JSON editor offers ${start.templates} template(s) for ${start.protocols.join(", ")}`);
+    assert(start.templates >= 20);
+    assert(start.protocols.includes("cas") && start.protocols.includes("saml") && start.protocols.includes("oidc"));
+    assert(start.continueDisabled === true);
+
+    await page.type("#serviceTemplateSearch", "proxy tickets");
+    await page.waitForFunction(() => $("#serviceTemplateCards [data-template-key]").length === 2, {timeout: 10000});
+    await page.click("#serviceTemplateCards [data-template-key]:not([data-template-key=blank])");
+    await page.click("#continueServiceTemplate");
+    await page.waitForFunction(() => PalantirServiceEditor.view === "editor"
+        && $("#serviceEditorCheck").attr("data-state") === "ok", {timeout: 10000});
+    const definition = await page.evaluate(() => JSON.parse(ace.edit("serviceEditor").getValue()));
+    await cas.log(`Started from the template ${definition.name}`);
+    assert(definition.proxyPolicy !== undefined);
+    assert(definition.id === undefined);
+
+    await cas.click(page, "#validateService");
+    await page.waitForFunction(() => !$("#serviceEditorProblem").prop("hidden"), {timeout: 15000});
+    const validation = await page.evaluate(() => $("#serviceEditorProblem").attr("data-state"));
+    await cas.logg(`Validating the template answers ${validation}`);
+    assert(validation === "ok");
+
+    await page.evaluate(() => ace.edit("serviceEditor").session.insert({row: 2, column: 0}, "    \"broken\"\n"));
+    await page.waitForFunction(() => $("#serviceEditorCheck").attr("data-state") === "error", {timeout: 10000});
+    const syntax = await page.evaluate(() => $("#serviceEditorCheck").text());
+    await cas.logg(`A syntax error is reported as: ${syntax}`);
+    assert(syntax.startsWith("Line "));
 
     await page.evaluate(() => $("#cancelService").trigger("click"));
-    await page.waitForFunction(() => $("#editServiceDialog").hasClass("ui-dialog-content")
-        && $("#editServiceDialog").dialog("isOpen") === false, {timeout: 15000});
-    await cas.logg("Plain definition editor dismissed through Cancel");
+    await discardUnsavedChanges(page, "JSON editor");
+    await page.waitForFunction(() => $("#editServiceDialog").dialog("isOpen") === false, {timeout: 15000});
+    await cas.logg("JSON editor dismissed through Cancel");
 }
 
 /**

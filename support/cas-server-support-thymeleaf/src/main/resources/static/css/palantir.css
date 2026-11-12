@@ -854,28 +854,6 @@ select + span[role="combobox"] {
     }
 }
 
-.palantir-service-editor-layout {
-    display: flex;
-    direction: ltr;
-    flex-flow: row nowrap;
-    gap: .5rem;
-    min-width: 0;
-}
-
-.palantir-service-template-sidebar {
-    order: 0;
-    flex: 0 0 25%;
-    min-width: 0;
-    overflow-y: auto;
-}
-
-.palantir-service-definition-editor {
-    order: 1;
-    flex: 1 1 auto;
-    width: auto;
-    min-width: 0;
-}
-
 .registered-service-client-secret-row {
     gap: .5rem;
     flex-wrap: wrap;
@@ -3773,7 +3751,7 @@ select + span[role="combobox"] {
 }
 
 /* The plain definition editor is the same kind of dialog as the wizard above and needs the same
-   unbroken flex chain: dialog -> content -> editor pane, every box min-height:0, so the Ace pane
+   unbroken flex chain: dialog -> view -> editor pane, every box min-height:0, so the Ace pane
    takes its height from the window rather than the dialog growing a scrollbar of its own.
 
    Qualified with .ui-dialog-content for the same reason as the wizard: until jQuery UI creates the
@@ -3783,28 +3761,7 @@ select + span[role="combobox"] {
     display: flex;
     flex-direction: column;
     min-height: 0;
-}
-
-.ui-dialog-content #edit-service-dialog-content {
-    display: flex;
-    flex-direction: column;
-    flex: 1 1 auto;
-    min-height: 0;
-    padding: 12px 16px 0;
-}
-
-.ui-dialog-content #serviceEditorContainer {
-    flex: 1 1 auto;
-    min-height: 0;
-    height: auto;
-}
-
-/* Beats the h-100 utility the markup carries, which would otherwise pin the editor to the height
-   of a parent that is itself sizing to content. The width split is left to
-   .palantir-service-definition-editor, which already states its own flex. */
-.ui-dialog-content #serviceEditorContainer > pre.ace-editor {
-    min-height: 0;
-    height: auto;
+    padding: 0;
 }
 
 .registered-service-wizard__actions {

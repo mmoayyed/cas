@@ -343,8 +343,7 @@ class PalantirApplicationSelection {
     }
 
     /**
-     * Delete every application from the service registry once the operator types the confirmation, offering to
-     * export them first.
+     * Delete every application from the service registry once the operator confirms.
      *
      * @returns {Promise<void>} resolved once they are deleted or the operator declined
      */
@@ -354,26 +353,16 @@ class PalantirApplicationSelection {
             Swal.fire({icon: "info", titleText: "No applications are registered"});
             return;
         }
-        const phrase = "DELETE ALL";
         const result = await Swal.fire({
             titleText: `Delete all ${count} application${count === 1 ? "" : "s"}?`,
-            html: `<p>Every application is removed from the service registry, including its stored definition, and
-                   nobody can sign in to any of them. This cannot be undone; export them first if you may need them.</p>
-                   <p>Type <strong>${phrase}</strong> to confirm.</p>`,
+            text: "Every application is removed from the service registry, including its stored definition, and nobody can "
+                + "sign in to any of them. This cannot be undone; export them first if you may need them.",
             icon: "warning",
-            input: "text",
-            inputAttributes: {"aria-label": `Type ${phrase} to confirm`, autocomplete: "off"},
             showCancelButton: true,
-            showDenyButton: true,
-            confirmButtonText: "Delete all",
-            denyButtonText: "Export first",
-            focusCancel: true,
-            inputValidator: value => String(value ?? "").trim() === phrase ? null : `Type ${phrase} to confirm.`
+            confirmButtonText: "Yes",
+            cancelButtonText: "Cancel",
+            focusCancel: true
         });
-        if (result.isDenied) {
-            $("button[name=exportAll]").trigger("click");
-            return;
-        }
         if (!result.isConfirmed) {
             return;
         }

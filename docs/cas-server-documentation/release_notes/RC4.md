@@ -226,6 +226,12 @@ selected version from the same dialog. Under *Interrupts*, the authentication se
 [interrupt](../webflow/Webflow-Customization-Interrupt.html) a user would see at login and what each interrupt
 source answered.
 
+The JSON editor for application definitions is redesigned: a new definition starts from a gallery of templates, with
+many more templates for CAS, SAML2, OpenID Connect, OAuth and WS-Federation applications, filtered by protocol and
+searchable, and the editor checks the JSON as it is typed, shows problems on their line, follows the light or dark
+theme and can switch to the wizard. Templates can be shared through a folder the dashboard reads, or kept per operator
+in the browser.
+
 Saving an application that someone else changed or deleted in the meantime shows what they changed and asks before
 overwriting it, and actions that would change something through a read-only endpoint are disabled with an explanation.
 The application wizard can fill a SAML2 service provider from its metadata, read from a URL, pasted, or chosen or
@@ -240,7 +246,7 @@ new ones, and the applications can be filtered by type, such as CAS, SAML2 or Op
 applications it has. Validating or saving an application definition that CAS cannot read is refused with the reason, rather than reported
 as valid, and the wizard keeps the principal attributes of a multifactor policy, with the policy's type, when it
 edits an application. Applications can be disabled and enabled from their context menu, selected and deleted in bulk, or all deleted at
-once after a typed confirmation. Importing applications accepts YAML definitions and exported zip files as well as JSON, and imports each chosen file
+once after a confirmation. Importing applications accepts YAML definitions and exported zip files as well as JSON, and imports each chosen file
 once. Applications can be duplicated into the wizard as new applications, and the wizard and the definition editor ask before
 closing with unsaved changes, keeping a draft in the browser that can be resumed for up to thirty days. A keyboard shortcut overlay opens
 with `?`, and tables and dialogs are easier to use with a keyboard and a screen reader: tables are named, rows with actions

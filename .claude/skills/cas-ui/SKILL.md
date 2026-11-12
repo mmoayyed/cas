@@ -162,6 +162,15 @@ description: "Change CAS views and presentation: Thymeleaf render path, theme re
   (`casConfig/retrieve`, `releaseAttributes`, `casValidate`, `serviceAccess`). Compare endpoint ids case-insensitively:
   Boot keys the links of CAS REST endpoints in lowercase (`ticketregistry`) while the access map uses the id
   (`ticketRegistry`); a case-sensitive match lets writes through.
+- JSON editor (`#editServiceDialog`, `PalantirServiceEditor` / `PalantirServiceTemplates` in `palantir-services-editor.js`):
+  two views, a template start screen for new definitions and the editor; footer buttons carry `data-editor-view`.
+  Templates reach the page as `serviceTemplates` (`{source, type, definition}`): built in from the palantir module's
+  `service-definitions/*.json` (a template's `name`/`description` are its card title/summary; put the telling setting
+  first, it is the card's peek; `"..."` client id/secret are replaced on use; `DashboardControllerTests` fails if a
+  template loses a field when CAS reads it), shared from the templates directory (read per view), and the operator's
+  own in localStorage. Use `PalantirServiceEditor.editor()`, not `initializeAceEditor("serviceEditor")`, which would put
+  the cobalt theme back; the code theme is `ace/theme/palantir` (`.ace-palantir`, `--palantir-code-*` tokens). Switching
+  to the wizard lists settings the wizard dropped and hands the edit-conflict original over.
 - SAML2 wizard "From Metadata" (`PalantirSamlMetadataImport` in `palantir-services-wizard-saml2.js`): URLs go through
   `samlIdPRegisteredServiceMetadataCache/preview` (browsers cannot read most metadata URLs: no CORS), pasted/chosen XML
   is parsed with `DOMParser`; the definition parts are merged over the wizard's JSON and filled with

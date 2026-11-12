@@ -81,6 +81,17 @@ The authentication section lists, under *Interrupts*, which [interrupt](../webfl
 a user would see at login, optionally signing in to a given application: the message, links and data of the interrupt,
 whether it blocks the login, and what each interrupt source answered.
 
+Writing a new application definition by hand starts from a template: CAS ships templates for the protocols the
+deployment supports, such as releasing selected attributes, requiring multifactor authentication, persistent SAML2
+NameIDs, public OpenID Connect clients with PKCE or pairwise subject identifiers, which can be filtered by protocol and
+searched, or the definition can start blank, be pasted or be read from a file. The editor then checks the JSON as it is
+typed, marks the line of a problem CAS reports when validating or saving, and can switch to the wizard, listing any
+setting the wizard does not cover with a way back. Templates can also be shared by placing application definitions as
+JSON files in a folder that the dashboard reads every time it is shown, and each operator can keep their own templates
+in the browser with *Save as template*.
+
+{% include_cached casproperties.html properties="cas.palantir.templates-directory" %}
+
 *Import* accepts an application definition in JSON or YAML, or a zip of JSON definitions such as the one *Export*
 produces; an imported application replaces one with the same id. While the file uploads and CAS imports it, the
 dashboard shows the progress of the upload and that the server is busy.
@@ -114,8 +125,7 @@ An application can be disabled from its context menu, and enabled again, after c
 marked in the table and the cards. An access strategy that has no switch of its own is combined with a disabled
 default strategy while the application is disabled, and left as it was once it is enabled again. Applications can be
 selected with their checkboxes, all of those the search and type filter show at once, and the selection deleted
-together; *Delete All* removes every application from the service registry after the operator types a confirmation,
-offering to export them first.
+together; *Delete All* removes every application from the service registry after the operator confirms.
 
 *Duplicate Application* opens a copy of an application in the wizard as a new application, named after the original,
 with its service id left empty and, where the application has them, a new client id and secret. When the wizard or the
