@@ -433,6 +433,10 @@ one-time codes can be added when `cas.authn.mfa.simple.mail.accepted-email-patte
 ### OAuth & OpenID Connect
 {: .changed data-area="oidc"}
 
+- {: .fixed data-area="oidc"} Authorization responses returned in the [URI fragment](../authentication/OAuth-Authentication-Clients-ResponseMode.html)
+  percent-encode their parameters as the specification requires. A `state` that carried JSON or other reserved characters,
+  as 1Password's "Unlock with SSO" now sends, failed the redirect with a server error, and values with `&`, `=`, `#` or
+  spaces, such as an `error_description`, reached the application truncated or malformed.
 - {: .fixed data-area="oidc"} [Front-channel logout](../authentication/OIDC-Authentication-Logout.html) requests now carry the same
   `sid` as the ID token and the back-channel logout token; the session identifier used to be computed differently, so
   applications could not match it to the session they had recorded.
