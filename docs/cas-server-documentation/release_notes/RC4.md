@@ -967,6 +967,9 @@ one-time codes can be added when `cas.authn.mfa.simple.mail.accepted-email-patte
 
 ## Other Stuff
 
+- {: .fixed data-area="mfa"} When CAS adds the user index to an existing DynamoDb table of
+  [Google Authenticator devices](../mfa/GoogleAuthenticator-Authentication-Registration-DynamoDb.html), it waits until the
+  index is built before using it, so device lookups no longer fail while DynamoDb fills the index from existing devices.
 - {: .fixed data-area="operations"} [Encrypted settings](../configuration/Configuration-Properties-Security-CAS.html) kept
   in dynamic configuration sources, such as MongoDb, JDBC or REST, are decrypted when CAS applies its configuration, at
   startup and after a refresh; they used to be applied as they were stored, still encrypted. The `casConfig` endpoint
