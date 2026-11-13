@@ -433,6 +433,10 @@ one-time codes can be added when `cas.authn.mfa.simple.mail.accepted-email-patte
 ### OAuth & OpenID Connect
 {: .changed data-area="oidc"}
 
+- {: .fixed data-area="oidc"} Authorization responses returned in the [URI fragment](../authentication/OAuth-Authentication-Clients-ResponseMode.html)
+  percent-encode their parameters as the specification requires. A `state` that carried JSON or other reserved characters,
+  as 1Password's "Unlock with SSO" now sends, failed the redirect with a server error, and values with `&`, `=`, `#` or
+  spaces, such as an `error_description`, reached the application truncated or malformed.
 - {: .fixed data-area="oidc"} [Front-channel logout](../authentication/OIDC-Authentication-Logout.html) requests now carry the same
   `sid` as the ID token and the back-channel logout token; the session identifier used to be computed differently, so
   applications could not match it to the session they had recorded.
@@ -967,6 +971,9 @@ one-time codes can be added when `cas.authn.mfa.simple.mail.accepted-email-patte
 
 ## Other Stuff
 
+- {: .fixed data-area="mfa"} When CAS adds the user index to an existing DynamoDb table of
+  [Google Authenticator devices](../mfa/GoogleAuthenticator-Authentication-Registration-DynamoDb.html), it waits until the
+  index is built before using it, so device lookups no longer fail while DynamoDb fills the index from existing devices.
 - {: .fixed data-area="operations"} [Encrypted settings](../configuration/Configuration-Properties-Security-CAS.html) kept
   in dynamic configuration sources, such as MongoDb, JDBC or REST, are decrypted when CAS applies its configuration, at
   startup and after a refresh; they used to be applied as they were stored, still encrypted. The `casConfig` endpoint

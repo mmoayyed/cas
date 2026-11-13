@@ -37,6 +37,7 @@ public class CasConfigurationDecryptionInitializer implements ApplicationContext
      * Name of the property source that holds the decrypted values.
      */
     public static final String PROPERTY_SOURCE_NAME = "casConfigurationDecryptedProperties";
+    private static final int ORDER_OFFSET = 20;
 
     private final CipherExecutor<String, String> cipherExecutor;
 
@@ -50,7 +51,7 @@ public class CasConfigurationDecryptionInitializer implements ApplicationContext
 
     @Override
     public int getOrder() {
-        return Ordered.HIGHEST_PRECEDENCE + 20;
+        return Ordered.HIGHEST_PRECEDENCE + ORDER_OFFSET;
     }
 
     /**

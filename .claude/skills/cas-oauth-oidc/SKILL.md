@@ -1,6 +1,6 @@
 ---
 name: cas-oauth-oidc
-description: "Review and change CAS OAuth2/OIDC protocol behavior: token endpoint error mapping, RFC 8707 resource indicators, discovery metadata, DPoP (RFC 9449) and certificate-bound tokens (RFC 8705), client ID metadata documents, device user code approval, request objects and their keys, client registration, OIDC logout. Use when touching support/cas-server-support-oauth* or support/cas-server-support-oidc* outside verifiable credentials and federation; for client authentication, access-token-protected endpoints, the authenticated profile and the login handshake, use cas-oauth-oidc-authentication; for OpenID Federation, cas-oidc-federation; for unsigned JWTs, cas-jwt."
+description: "Review and change CAS OAuth2/OIDC protocol behavior: token endpoint error mapping, RFC 8707 resource indicators, discovery metadata, DPoP (RFC 9449) and certificate-bound tokens (RFC 8705), client ID metadata documents, device user code approval, request objects and their keys, client registration, authorization response modes (fragment encoding), OIDC logout. Use when touching support/cas-server-support-oauth* or support/cas-server-support-oidc* outside verifiable credentials and federation; for client authentication, access-token-protected endpoints, the authenticated profile and the login handshake, use cas-oauth-oidc-authentication; for OpenID Federation, cas-oidc-federation; for unsigned JWTs, cas-jwt."
 ---
 
 
@@ -192,6 +192,18 @@ description: "Review and change CAS OAuth2/OIDC protocol behavior: token endpoin
   `::ffff:0:0/96` is a 16-byte `AddressBlock` built from bytes: `InetAddress.getByName("::ffff:…")` returns an
   `Inet4Address`, so tests of mapped DNS answers need `Inet6Address.getByAddress(null, bytes, null)`. Client keys at an http(s) `jwks` URL are read through a `UrlResource` without
   redirects (5 s timeouts), checked before any request.
+
+## Authorization response modes
+
+- `OAuth20ResponseModeFragmentBuilder` percent-encodes every parameter name and value (`UriUtils.encode`, so a space is
+  `%20`) and keeps the redirect URI's query as it was encoded. Spring's `RedirectView` expands `{...}` as URI template
+  variables by default: a decoded `state` carrying JSON (1Password's "Unlock with SSO") failed the redirect with
+  `Model has no value for key`, and `&`, `=`, `#` or spaces broke the fragment. A builder that assembles the whole URL
+  itself encodes the values and calls `setExpandUriTemplateVariables(false)`; the query mode leaves its parameters in the
+  model, which `RedirectView` encodes when it appends them.
+- Tests that read only `RedirectView.getUrl()` never reach template expansion: render the view with
+  `MockHttpServletRequest`/`MockHttpServletResponse` and decode the `Location` fragment (`DefaultOAuth20AuthorizationModelAndViewBuilderTests`).
+  `oidc-debugger-code-login-fragment` sends a JSON `state` end to end.
 
 ## Replay records, expressions, service lookups and logout
 
