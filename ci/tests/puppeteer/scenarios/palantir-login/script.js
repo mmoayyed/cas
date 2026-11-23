@@ -1,7 +1,7 @@
 /* global $, CAS_FEATURES, CasActuatorEndpoints, openRegisteredServiceWizardDialog, isPopulatingWizard,
    activateDashboardTab, currentActiveTab, Swal, Tabs, Chart, PalantirHome, topApplicationsChart, CasDiscoveryProfile,
    PalantirScripts, ace, Diff, initializeDashboardTab, openNewConfigurationPropertyDialog,
-   PalantirLinks, PalantirPages, PalantirPanelFocus, registeredServicesById */
+   PalantirLinks, PalantirPages, PalantirPanelFocus, registeredServicesById, navigateToApplication */
 const assert = require("assert");
 const path = require("path");
 const cas = require("../../cas.js");
@@ -102,6 +102,21 @@ async function verifyLinks(page) {
     const link = await page.evaluate((serviceId) => PalantirLinks.url(Tabs.APPLICATIONS, serviceId), id);
     assert(link.endsWith(`/palantir/dashboard#applications/${id}`), link);
     await cas.logg(`A link to an application opens Applications with it selected: ${link}`);
+
+    const cancelled = await page.evaluate(() => {
+        const banners = [];
+        const banner = window.displayBanner;
+        window.displayBanner = (message) => banners.push(String(message?.message ?? message));
+        return Promise.all([navigateToApplication("987654321987"), PalantirLinks.follow("#applications")])
+            .finally(() => {
+                window.displayBanner = banner;
+            })
+            .then(() => ({banners, selected: $("#applicationsTable").DataTable().rows(".selected").count()
+                + $("#applicationsCards .palantir-application-card.is-selected").length}));
+    });
+    assert(cancelled.banners.length === 0, `Going back to Applications stops the application still on its way: ${JSON.stringify(cancelled)}`);
+    assert(cancelled.selected === 0, `Going back to Applications selects no application: ${JSON.stringify(cancelled)}`);
+    await cas.logg("Following a link to Applications stops an application that was still being looked for");
 
     await cas.goto(page, `${DASHBOARD_URL}#system`);
     await waitForDashboard(page);
