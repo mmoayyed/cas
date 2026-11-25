@@ -675,6 +675,14 @@ one-time codes can be added when `cas.authn.mfa.simple.mail.accepted-email-patte
 ### OAuth & OpenID Connect
 {: .changed data-area="oidc"}
 
+- {: .fixed data-area="oidc"} The claims of a [DPoP proof](../authentication/OIDC-Authentication-DPoP.html) no longer become
+  attributes of the client that sent it; CAS keeps only the proof and the thumbprint of its key. The client signs its
+  proof with a key of its own choosing, so a proof that named another `client_id` could make the token endpoint act
+  for that client, for instance to redeem its authorization codes, and other claims reached the client's attributes.
+- {: .fixed data-area="oidc"} [Audit records](../audits/Audits.html) of issued ID tokens and of user profile requests
+  name the application by its URL only. They used to record the whole request behind the token, so the client
+  credentials of the `Authorization` header, the PKCE `code_verifier`, cookies and other request parameters reached the
+  audit log in clear text. Services written to the CAS logs no longer show those request details either.
 - {: .fixed data-area="oidc"} Authorization responses returned in the [URI fragment](../authentication/OAuth-Authentication-Clients-ResponseMode.html)
   percent-encode their parameters as the specification requires. A `state` that carried JSON or other reserved characters,
   as 1Password's "Unlock with SSO" now sends, failed the redirect with a server error, and values with `&`, `=`, `#` or

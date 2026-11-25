@@ -5,7 +5,15 @@ import org.apereo.cas.CasProtocolConstants;
 import org.apereo.cas.config.BaseAutoConfigurationTests;
 import org.apereo.cas.services.UnauthorizedServiceException;
 import org.apereo.cas.test.CasTestExtension;
+import lombok.Getter;
 import lombok.val;
+import org.apache.logging.log4j.Level;
+import org.apache.logging.log4j.core.LogEvent;
+import org.apache.logging.log4j.core.LoggerContext;
+import org.apache.logging.log4j.core.appender.AbstractAppender;
+import org.apache.logging.log4j.core.config.LoggerConfig;
+import org.apache.logging.log4j.core.config.Property;
+import org.apache.logging.log4j.core.layout.PatternLayout;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -14,6 +22,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.HttpHeaders;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.web.context.request.RequestContextHolder;
@@ -160,10 +169,58 @@ class WebApplicationServiceFactoryTests {
     }
 
     @Test
+    void verifyAttributeValuesAreNotLogged() {
+        val context = LoggerContext.getContext(false);
+        val configuration = context.getConfiguration();
+        val appender = new InMemoryLogAppender("WebApplicationServiceFactoryTestsAppender");
+        appender.start();
+        val loggerConfig = new LoggerConfig(AbstractServiceFactory.class.getName(), Level.TRACE, false);
+        loggerConfig.addAppender(appender, Level.TRACE, null);
+        configuration.addLogger(loggerConfig.getName(), loggerConfig);
+        context.updateLoggers();
+        try {
+            val authorization = "Basic " + UUID.randomUUID();
+            val parameterValue = UUID.randomUUID().toString();
+            val request = new MockHttpServletRequest();
+            request.addParameter(CasProtocolConstants.PARAMETER_SERVICE, "https://app.example.org/" + UUID.randomUUID());
+            request.addParameter("code_verifier", parameterValue);
+            request.addHeader(HttpHeaders.AUTHORIZATION, authorization);
+            val service = serviceFactory.createService(request);
+            assertNotNull(service);
+            val messages = appender.getEvents()
+                .stream()
+                .map(event -> event.getMessage().getFormattedMessage())
+                .filter(message -> message.contains(service.getId()))
+                .toList();
+            assertFalse(messages.isEmpty());
+            assertTrue(messages.stream().anyMatch(message -> message.contains("code_verifier")));
+            assertTrue(messages.stream().noneMatch(message -> message.contains(authorization) || message.contains(parameterValue)));
+        } finally {
+            configuration.removeLogger(loggerConfig.getName());
+            appender.stop();
+            context.updateLoggers();
+        }
+    }
+
+    @Test
     void verifyServiceByClassReq() {
         val request = new MockHttpServletRequest();
         request.addParameter(CasProtocolConstants.PARAMETER_TARGET_SERVICE, "test");
         assertThrows(ClassCastException.class, () -> serviceFactory.createService(request, mock(Service.class).getClass()));
         assertNotNull(serviceFactory.createService(request, WebApplicationService.class));
+    }
+
+    @Getter
+    private static final class InMemoryLogAppender extends AbstractAppender {
+        private final List<LogEvent> events = new CopyOnWriteArrayList<>();
+
+        private InMemoryLogAppender(final String name) {
+            super(name, null, PatternLayout.createDefaultLayout(), true, Property.EMPTY_ARRAY);
+        }
+
+        @Override
+        public void append(final LogEvent event) {
+            events.add(event.toImmutable());
+        }
     }
 }

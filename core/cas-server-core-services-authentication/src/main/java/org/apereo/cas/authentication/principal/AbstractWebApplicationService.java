@@ -81,6 +81,7 @@ public abstract class AbstractWebApplicationService implements WebApplicationSer
 
     @Column(columnDefinition = "json")
     @Convert(converter = MultivaluedMapToJsonAttributeConverter.class)
+    @ToString.Exclude
     private Map<String, Object> attributes = new HashMap<>();
 
     protected AbstractWebApplicationService(@Nullable final String id, final String originalUrl,

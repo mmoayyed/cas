@@ -41,7 +41,6 @@ import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.Strings;
-import org.jooq.lambda.Unchecked;
 import org.jspecify.annotations.Nullable;
 import org.springframework.http.HttpHeaders;
 import jakarta.servlet.http.HttpServletRequest;
@@ -334,14 +333,26 @@ public class DefaultOAuth20ProofOfPossessionValidator implements OAuth20ProofOfP
         };
     }
 
+    /**
+     * Record the verified proof and the thumbprint of its key on the authenticated profile, from which the issued token
+     * is bound to that key. Nothing else of the proof is recorded: the client signs it with a key of its own choosing,
+     * so its claims are whatever the client wants, and a claim such as {@code client_id} would otherwise stand in for
+     * the client that actually authenticated.
+     *
+     * @param request      the request
+     * @param response     the response
+     * @param dPopProof    the verified proof
+     * @param clientId     the authenticated client
+     * @param confirmation the thumbprint of the proof's key
+     * @throws Throwable when the profile cannot be adjusted
+     */
     protected void adjustUserProfile(final HttpServletRequest request,
                                      final HttpServletResponse response,
                                      final String dPopProof,
                                      final String clientId,
                                      final JWKThumbprintConfirmation confirmation)
             throws Throwable {
-        OAuth20Utils.findAuthenticatedUserProfile(request, response, this.sessionStore).ifPresent(Unchecked.consumer(profile -> {
-            val signedProof = getSignedProofOfPosessionJwt(dPopProof);
+        OAuth20Utils.findAuthenticatedUserProfile(request, response, this.sessionStore).ifPresent(profile -> {
             /*
              * A profile that already names this client was authenticated as somebody -- the
              * subject of a pre-authorized code, say -- and its identifier is that subject, not
@@ -350,10 +361,9 @@ public class DefaultOAuth20ProofOfPossessionValidator implements OAuth20ProofOfP
             if (!clientId.equals(OAuth20Utils.getClientIdFromAuthenticatedProfile(profile))) {
                 profile.setId(clientId);
             }
-            signedProof.getJWTClaimsSet().getClaims().forEach(profile::addAttribute);
             profile.addAttribute(OAuth20Constants.DPOP, dPopProof);
             profile.addAttribute(OAuth20Constants.DPOP_CONFIRMATION, confirmation.getValue().toString());
-        }));
+        });
     }
 
     /**

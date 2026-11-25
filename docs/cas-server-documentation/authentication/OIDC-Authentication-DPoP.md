@@ -26,6 +26,10 @@ The SPA authentication flow with a DPoP token can be summarized as such:
 - The SPA makes the usual token request to CAS but to trigger issue of a DPoP access token the proof JWT must be included in an HTTP request header called *DPoP*.
 - If the DPoP proof is valid and signed with a supported JWS algorithms the token response will appear in the usual format, but with the token type set to *DPoP*.
 
+A DPoP proof does not authenticate the client: it is signed with a key the client picks, so it only proves possession of
+that key. The client still authenticates at the token endpoint as it is registered to, and CAS keeps nothing of the proof
+but the proof itself and the thumbprint of its key; other claims in the proof are ignored.
+
 To access a protected resource with a DPoP token (such as the `profile` endpoint in CAS) the client needs 
 to generate a new DPoP proof, with one additional string claim - `ath`, set to the BASE64URL-encoded 
 SHA-256 hash of the access token value. The `htm` (HTTP method) and `htu` (HTTP URI) claims must match those of the resource.

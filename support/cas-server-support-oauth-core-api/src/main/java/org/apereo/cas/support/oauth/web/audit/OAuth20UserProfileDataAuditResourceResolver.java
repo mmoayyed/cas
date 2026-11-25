@@ -2,6 +2,7 @@ package org.apereo.cas.support.oauth.web.audit;
 
 import module java.base;
 import org.apereo.cas.CasProtocolConstants;
+import org.apereo.cas.authentication.principal.Service;
 import org.apereo.cas.support.oauth.OAuth20Constants;
 import org.apereo.cas.support.oauth.web.views.OAuth20UserProfileViewRenderer;
 import org.apereo.cas.ticket.accesstoken.OAuth20AccessToken;
@@ -25,7 +26,7 @@ public class OAuth20UserProfileDataAuditResourceResolver extends ReturnValueAsSt
 
         var service = profileMap.get(CasProtocolConstants.PARAMETER_SERVICE);
         if (service == null) {
-            service = accessToken.getService();
+            service = Optional.ofNullable(accessToken.getService()).map(Service::getId).orElse(null);
         }
         var clientId = profileMap.get(OAuth20Constants.CLIENT_ID);
         if (clientId == null) {

@@ -16,8 +16,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.HttpHeaders;
 import org.springframework.mock.web.MockHttpServletRequest;
 import tools.jackson.databind.ObjectMapper;
+import jakarta.servlet.http.Cookie;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -50,6 +52,29 @@ class SimpleWebApplicationServiceImplTests {
         MAPPER.writeValue(JSON_FILE, serviceWritten);
         val serviceRead = MAPPER.readValue(JSON_FILE, SimpleWebApplicationServiceImpl.class);
         assertEquals(serviceWritten, serviceRead);
+    }
+
+    @Test
+    void verifyToStringOmitsRequestDetails() {
+        val authorization = "Basic " + UUID.randomUUID();
+        val cookieValue = "TGT-" + UUID.randomUUID();
+        val parameterValue = UUID.randomUUID().toString();
+        val request = new MockHttpServletRequest();
+        request.setParameter(CasProtocolConstants.PARAMETER_SERVICE, RegisteredServiceTestUtils.CONST_TEST_URL);
+        request.setParameter("code_verifier", parameterValue);
+        request.addHeader(HttpHeaders.AUTHORIZATION, authorization);
+        request.setCookies(new Cookie("TGC", cookieValue));
+        val service = webApplicationServiceFactory.createService(request);
+        assertNotNull(service);
+        val attributes = service.getAttributes().toString();
+        assertTrue(attributes.contains(authorization));
+        assertTrue(attributes.contains(cookieValue));
+        assertTrue(attributes.contains(parameterValue));
+        val description = service.toString();
+        assertTrue(description.contains(RegisteredServiceTestUtils.CONST_TEST_URL));
+        assertFalse(description.contains(authorization));
+        assertFalse(description.contains(cookieValue));
+        assertFalse(description.contains(parameterValue));
     }
 
     @Test

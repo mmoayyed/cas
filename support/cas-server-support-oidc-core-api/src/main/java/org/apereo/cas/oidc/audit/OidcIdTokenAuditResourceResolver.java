@@ -24,6 +24,15 @@ import org.jspecify.annotations.Nullable;
 public class OidcIdTokenAuditResourceResolver extends ReturnValueAsStringResourceResolver {
     private final AuditEngineProperties properties;
 
+    /**
+     * Describes the issued ID token. The service is recorded by its abbreviated id only: the service object carries the
+     * headers, parameters and cookies of the token request (client credentials, PKCE verifiers), none of which may
+     * reach the audit trail.
+     *
+     * @param auditableTarget the join point whose first argument is the ID token generation context
+     * @param returnValue     the generated ID token
+     * @return the audit resource
+     */
     @Override
     public String[] resolveFrom(final JoinPoint auditableTarget, @Nullable final Object returnValue) {
         val values = new HashMap<>();
@@ -44,7 +53,8 @@ public class OidcIdTokenAuditResourceResolver extends ReturnValueAsStringResourc
             values.put(OAuth20Constants.SCOPE, accessToken.getScopes());
         }
         FunctionUtils.doIfNotNull(userProfile, _ -> values.put("username", userProfile.getId()));
-        FunctionUtils.doIfNotNull(accessToken.getService(), svc -> values.put("service", svc));
+        FunctionUtils.doIfNotNull(accessToken.getService(),
+            svc -> values.put("service", DigestUtils.abbreviate(svc.getId(), properties.getAbbreviationLength())));
         return new String[]{auditFormat.serialize(values)};
     }
 }

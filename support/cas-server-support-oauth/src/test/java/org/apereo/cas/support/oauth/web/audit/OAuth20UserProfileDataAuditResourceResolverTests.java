@@ -12,6 +12,8 @@ import lombok.val;
 import org.aspectj.lang.JoinPoint;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpHeaders;
+import org.springframework.mock.web.MockHttpServletRequest;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
@@ -53,7 +55,13 @@ class OAuth20UserProfileDataAuditResourceResolverTests {
         val r = new OAuth20UserProfileDataAuditResourceResolver();
         val token = mock(OAuth20AccessToken.class);
         when(token.getId()).thenReturn("CODE");
-        val webApplicationService = RegisteredServiceTestUtils.getService();
+        val accessTokenHeader = "Bearer " + UUID.randomUUID();
+        val request = new MockHttpServletRequest();
+        request.addParameter(CasProtocolConstants.PARAMETER_SERVICE, RegisteredServiceTestUtils.CONST_TEST_URL);
+        request.addHeader(HttpHeaders.AUTHORIZATION, accessTokenHeader);
+        val webApplicationService = RegisteredServiceTestUtils.getWebApplicationServiceFactory().createService(request);
+        assertNotNull(webApplicationService);
+        assertTrue(webApplicationService.getAttributes().toString().contains(accessTokenHeader));
         when(token.getService()).thenReturn(webApplicationService);
         when(token.getClientId()).thenReturn("CLIENTID");
 
@@ -64,6 +72,8 @@ class OAuth20UserProfileDataAuditResourceResolverTests {
             OAuth20UserProfileViewRenderer.MODEL_ATTRIBUTE_ID, "id",
             "scopes", CollectionUtils.wrapSet("email"),
             "attributes", CollectionUtils.wrap("attributeName", "attributeValue")));
-        assertTrue(result.length > 0);
+        assertEquals(1, result.length);
+        assertTrue(result[0].contains(webApplicationService.getId()));
+        assertFalse(result[0].contains(accessTokenHeader));
     }
 }

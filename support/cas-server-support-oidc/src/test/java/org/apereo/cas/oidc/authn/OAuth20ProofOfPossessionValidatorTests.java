@@ -13,10 +13,18 @@ import org.apereo.cas.support.oauth.OAuth20Constants;
 import org.apereo.cas.support.oauth.OAuth20GrantTypes;
 import org.apereo.cas.support.oauth.OAuth20ResponseTypes;
 import org.apereo.cas.ticket.TransientSessionTicket;
+import org.apereo.cas.ticket.accesstoken.OAuth20AccessToken;
 import com.jayway.jsonpath.JsonPath;
+import com.nimbusds.jose.JOSEObjectType;
 import com.nimbusds.jose.JWSAlgorithm;
+import com.nimbusds.jose.JWSHeader;
+import com.nimbusds.jose.crypto.ECDSASigner;
 import com.nimbusds.jose.jwk.Curve;
+import com.nimbusds.jose.jwk.ECKey;
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator;
+import com.nimbusds.jwt.JWTClaimsSet;
+import com.nimbusds.jwt.JWTParser;
+import com.nimbusds.jwt.SignedJWT;
 import com.nimbusds.oauth2.sdk.dpop.DefaultDPoPProofFactory;
 import com.nimbusds.oauth2.sdk.pkce.CodeChallenge;
 import com.nimbusds.oauth2.sdk.pkce.CodeChallengeMethod;
@@ -215,6 +223,46 @@ class OAuth20ProofOfPossessionValidatorTests extends AbstractOidcTests {
     }
 
     @Test
+    void verifyDPoPProofCannotNameAnotherClient() throws Throwable {
+        val attacker = getOidcRegisteredService(UUID.randomUUID().toString());
+        servicesManager.save(attacker);
+        val victim = getOidcRegisteredService(UUID.randomUUID().toString());
+        servicesManager.save(victim);
+        val code = addCode(CoreAuthenticationTestUtils.getPrincipal("casuser"), victim);
+        val key = new ECKeyGenerator(Curve.P_256).generate();
+
+        performTokenRequest(attacker, code.getId(), signedProof(key, Map.of(OAuth20Constants.CLIENT_ID, victim.getClientId())))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.error").value(OAuth20Constants.INVALID_GRANT));
+        performTokenRequest(victim, code.getId(), signedProof(key, Map.of()))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.token_type").value(OAuth20Constants.TOKEN_TYPE_DPOP));
+    }
+
+    @Test
+    void verifyDPoPProofClaimsDoNotReachTheClient() throws Throwable {
+        val registeredService = getOidcRegisteredService(UUID.randomUUID().toString());
+        registeredService.setSupportedGrantTypes(Set.of(OAuth20GrantTypes.CLIENT_CREDENTIALS.getType()));
+        servicesManager.save(registeredService);
+        val claimName = "memberOf";
+        val proof = signedProof(new ECKeyGenerator(Curve.P_256).generate(), Map.of(claimName, "admins"));
+
+        val response = mockMvc.perform(tokenRequest(registeredService, proof)
+                .param(OAuth20Constants.GRANT_TYPE, OAuth20GrantTypes.CLIENT_CREDENTIALS.getType()))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.token_type").value(OAuth20Constants.TOKEN_TYPE_DPOP))
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
+        val accessTokenId = JWTParser.parse(JsonPath.read(response, "$.access_token").toString()).getJWTClaimsSet().getJWTID();
+        val principal = Objects.requireNonNull(ticketRegistry.getTicket(accessTokenId, OAuth20AccessToken.class)).getAuthentication().getPrincipal();
+        assertEquals(registeredService.getClientId(), principal.getId());
+        assertTrue(principal.getAttributes().containsKey(OAuth20Constants.DPOP_CONFIRMATION));
+        assertFalse(principal.getAttributes().containsKey(claimName));
+        assertFalse(principal.getAttributes().containsKey("htu"));
+    }
+
+    @Test
     void verifyClientWithDPoPBoundAccessTokens() throws Throwable {
         val registeredService = getOidcRegisteredService(UUID.randomUUID().toString());
         registeredService.setDpopBoundAccessTokens(true);
@@ -388,6 +436,30 @@ class OAuth20ProofOfPossessionValidatorTests extends AbstractOidcTests {
             request.param(OAuth20Constants.CLIENT_SECRET, registeredService.getClientSecret());
         }
         return dpopProof == null ? request : request.header(OAuth20Constants.DPOP, dpopProof);
+    }
+
+    /**
+     * A DPoP proof for the token endpoint, signed with the given key, that carries additional claims of the client's choosing.
+     *
+     * @param key              the key that signs the proof and whose public part the proof carries
+     * @param additionalClaims the claims added to the proof
+     * @return the serialized proof
+     * @throws Exception when the proof cannot be signed
+     */
+    private static String signedProof(final ECKey key, final Map<String, Object> additionalClaims) throws Exception {
+        val claims = new JWTClaimsSet.Builder()
+            .jwtID(UUID.randomUUID().toString())
+            .claim("htm", HttpMethod.POST.name())
+            .claim("htu", TOKEN_URI.toString())
+            .issueTime(new Date());
+        additionalClaims.forEach(claims::claim);
+        val header = new JWSHeader.Builder(JWSAlgorithm.ES256)
+            .type(new JOSEObjectType("dpop+jwt"))
+            .jwk(key.toPublicJWK())
+            .build();
+        val proof = new SignedJWT(header, claims.build());
+        proof.sign(new ECDSASigner(key));
+        return proof.serialize();
     }
 
     private static String readRefreshToken(final ResultActions result) throws Exception {

@@ -192,7 +192,7 @@ public abstract class AbstractServiceFactory<T extends Service> implements Servi
         }
 
         if (service != null) {
-            LOGGER.trace("Extracted attributes [{}] for service [{}]", attributes, service.getId());
+            LOGGER.trace("Extracted attributes named [{}] for service [{}]", attributes.keySet(), service.getId());
             service.setAttributes(attributes);
             tenantExtractor.extract(request)
                 .map(TenantDefinition::getId)
