@@ -88,11 +88,18 @@ description: "Review and extend the CAS MCP server (support/cas-server-support-m
 - Bearer access tokens (`AI.mcp-oauth`, nested `CasMcpOAuthConfiguration`, needs OIDC for the issuer): the filter
   `CasMcpBearerTokenAuthenticationFilter` is built inside a `CasWebSecurityConfigurer`, never exposed as a bean (Spring Boot
   registers `Filter` beans for every request). It sits before `BasicAuthenticationFilter`, acts only on the MCP path with a
-  `Bearer` header, sets a `CasMcpBearerTokenAuthentication` (principal id, client id, scopes) without saving it, and grants
+  `Bearer` or `DPoP` authorization header (`OAuth20Utils.extractAccessTokenFromAuthorizationHeader`), checks sender-constrained
+  tokens with the OAuth `oauthProofOfPossessionValidator` through `OAuth20Utils.verifyProofOfPossession` (never a copy of its
+  checks), answers every refusal with `OAuth20Utils.protectedResourceErrorResponse` plus `resource_metadata`, and sets a `CasMcpBearerTokenAuthentication` (principal id, client id, scopes) without saving it, and grants
   `ROLE_MCP_ADMIN` only from `cas.mcp.oauth.required-attributes` (empty matches nobody), and `ROLE_MCP_OPERATOR` only with the
   `mcp:write` scope plus `cas.mcp.oauth.operator-required-attributes` (`grantRoles`), checked against attributes resolved
   through `defaultPrincipalResolver` (token principal as current principal): a token's principal carries only the attributes
-  released to the client, so `memberOf` and the like are usually missing there. The unauthenticated challenge comes from
+  released to the client, so `memberOf` and the like are usually missing there. A `tools/call` of an operator tool (found
+  by `findOperatorTools`: `@McpTool` methods under `org.apereo.cas.mcp.` whose `@PreAuthorize` names `MCP_OPERATOR`) with a
+  token lacking `mcp:write`, by a person matching the operator attributes, is refused at HTTP level with `403
+  insufficient_scope` and scope `mcp:read mcp:write` (step-up); the filter reads the JSON-RPC body through a re-readable
+  `CachedBodyRequest` and hands that wrapper on. The 401 challenge names `mcp:read` only (least privilege).
+  The unauthenticated challenge comes from
   `defaultAuthenticationEntryPointFor(..., mcp matcher)`, registered before `httpBasic` initializes so it wins. Being first
   also makes it Spring Security's fallback for requests no entry point claims (browser requests to actuators), so outside
   the MCP path it answers with the Basic challenge alone. A configurer must never set an explicit `authenticationEntryPoint`,
@@ -105,7 +112,10 @@ description: "Review and extend the CAS MCP server (support/cas-server-support-m
   expected value's class (`List.of`'s immutable type) becomes the target type; assert `[0]` and `length()` instead. Protected resource metadata lives under the CAS
   context (`/cas/.well-known/oauth-protected-resource/mcp`), because the root well-known path is outside the web app; clients
   reach it through `resource_metadata`. Tests build `OAuth20DefaultAccessToken` directly and add it to the registry
-  (`CasMcpServerTests.newAccessToken`); `mcp-server-saml-oidc` gets a JWT token through the password grant.
+  (`CasMcpServerTests.newAccessToken`; DPoP proofs with nimbus `DefaultDPoPProofFactory` per request, certificates as the
+  `jakarta.servlet.request.X509Certificate` attribute); `BaseCasMcpTests` contexts lack the OAuth auto-configuration, so
+  `McpFederationTestConfiguration` declares the validator. `mcp-server-saml-oidc` gets a JWT token through the password grant,
+  plain and DPoP-bound (`jose` keys, `cas.createJwt` proofs with `ath`).
 - `CasMcpEvaluationContextFactory` hands the username to the principal resolvers as the current principal. Without attribute repositories the chain holds only `EchoingPrincipalResolver`, which echoes the current principal, so resolving without one yields `NullPrincipal` (`nobody`).
 - OAuth/OIDC services serialize their secret as `clientSecrets` (a list of objects with `value`); `getClientSecret()` is `@JsonIgnore`. Redaction of service definitions must cover the plural property, which `SECRET_PROPERTY` in `CasServiceManagementTools` does with `secrets?`.
 - `CasOidcTools.checkOidcClientResource` reuses `RegisteredServiceOAuthResourceMatcher` (`isValidResource`,

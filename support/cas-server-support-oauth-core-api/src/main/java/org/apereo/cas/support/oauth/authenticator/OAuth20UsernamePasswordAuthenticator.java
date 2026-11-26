@@ -74,7 +74,7 @@ public class OAuth20UsernamePasswordAuthenticator implements OAuth20ClientCreden
             RegisteredServiceAccessStrategyUtils.ensureServiceAccessIsAllowed(registeredService);
 
             val clientSecret = clientIdAndSecret.getRight();
-            if (!clientSecretValidator.validate(registeredService, clientSecret)) {
+            if (!OAuth20Utils.isValidClientSecret(clientSecretValidator, Objects.requireNonNull(registeredService), clientSecret, request)) {
                 throw new BadCredentialsException("Client Credentials provided is not valid for registered service: "
                     + Objects.requireNonNull(registeredService).getName());
             }

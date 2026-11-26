@@ -1,5 +1,6 @@
 const cas = require("../../cas.js");
 const assert = require("assert");
+const jose = require("jose");
 
 const MCP_ENDPOINT = "https://localhost:8443/cas/mcp";
 const MCP_ADMIN = `Basic ${btoa("mcpadmin:Mellon")}`;
@@ -60,18 +61,21 @@ async function callTool(sessionId, name, args, authorization = MCP_ADMIN) {
     return JSON.parse(text);
 }
 
-async function requestAccessToken(scope) {
+async function requestAccessToken(scope, headers = {}, clientSecretPost = true) {
     const params = new URLSearchParams({
         grant_type: "password",
-        client_id: "mcp-agent",
-        client_secret: "mcp-agent-secret-value",
         username: "casuser",
         password: "Mellon",
         scope: scope,
         resource: MCP_ENDPOINT
     });
+    if (clientSecretPost) {
+        params.append("client_id", "mcp-agent");
+        params.append("client_secret", "mcp-agent+secret%value&1");
+    }
     return cas.doPost("https://localhost:8443/cas/oidc/token", params, {
-        "Content-Type": "application/x-www-form-urlencoded"
+        "Content-Type": "application/x-www-form-urlencoded",
+        ...headers
     }, (res) => res.data.access_token, (error) => {
         throw `Unable to obtain an access token: ${error}`;
     });
@@ -92,13 +96,32 @@ async function verifyAccessTokens() {
     await cas.log(protectedResource);
     assert(protectedResource.resource === MCP_ENDPOINT);
     assert.deepStrictEqual(protectedResource.authorization_servers, ["https://localhost:8443/cas/oidc"]);
-    assert.deepStrictEqual(protectedResource.scopes_supported, ["mcp:read"]);
+    assert.deepStrictEqual(protectedResource.scopes_supported, ["mcp:read", "mcp:write"]);
     assert.deepStrictEqual(protectedResource.bearer_methods_supported, ["header"]);
 
     const agent = `Bearer ${await requestAccessToken("openid mcp:read")}`;
     const agentSession = await initialize(agent);
     const agentClient = await callTool(agentSession, "findOidcClient", {clientId: "mcp-agent"}, agent);
     assert(agentClient.id === 2004);
+
+    await cas.log("A tool that changes CAS asks for the mcp:write scope (step-up authorization)");
+    const logLevel = {loggerName: "org.apereo.cas.mcp", level: "DEBUG"};
+    await cas.doRequest(MCP_ENDPOINT, "POST", mcpHeaders(agentSession, agent), 403,
+        jsonRpc("tools/call", {name: "setLogLevel", arguments: logLevel}), async (res) => {
+            const challenge = String(res.headers["www-authenticate"]);
+            await cas.log(`Challenge: ${challenge}`);
+            assert(challenge.startsWith("Bearer error=\"insufficient_scope\""), challenge);
+            assert(challenge.includes("scope=\"mcp:read mcp:write\""), challenge);
+            assert(challenge.includes(`resource_metadata="${resourceMetadataUrl}"`), challenge);
+        });
+    await cas.log("Client credentials sent in the Basic header without form-encoding are accepted");
+    const operator = `Bearer ${await requestAccessToken("openid mcp:read mcp:write", {
+        "Authorization": `Basic ${btoa("mcp-agent:mcp-agent+secret%value&1")}`
+    }, false)}`;
+    const operatorSession = await initialize(operator);
+    const debug = await callTool(operatorSession, "setLogLevel", logLevel, operator);
+    assert(debug.level === "DEBUG");
+    await callTool(operatorSession, "setLogLevel", {loggerName: "org.apereo.cas.mcp"}, operator);
 
     const reader = `Bearer ${await requestAccessToken("openid")}`;
     await cas.doRequest(MCP_ENDPOINT, "POST", mcpHeaders(undefined, reader), 403, jsonRpc("initialize", {}), async (res) => {
@@ -108,6 +131,76 @@ async function verifyAccessTokens() {
     await cas.doRequest(MCP_ENDPOINT, "POST", mcpHeaders(undefined, "Bearer AT-1-unknown"), 401, jsonRpc("initialize", {}), async (res) => {
         assert(String(res.headers["www-authenticate"]).startsWith("Bearer error=\"invalid_token\""));
     });
+}
+
+async function createDPoPProof(key, htu, accessToken) {
+    const payload = {
+        htm: "POST",
+        htu: htu,
+        iat: Math.floor(Date.now() / 1000) - 5,
+        jti: await cas.randomWord(16, false)
+    };
+    if (accessToken !== undefined) {
+        payload.ath = await cas.base64Url(await cas.sha256(accessToken));
+    }
+    return cas.createJwt(payload, key.privateKeyPem, "ES256", {header: {jwk: key.publicJwk, typ: "dpop+jwt"}});
+}
+
+async function sendWithDPoP(key, accessToken, sessionId, body, status) {
+    const headers = {
+        ...mcpHeaders(sessionId, `DPoP ${accessToken}`),
+        "DPoP": await createDPoPProof(key, MCP_ENDPOINT, accessToken)
+    };
+    let responseHeaders = undefined;
+    const responseBody = await cas.doRequest(MCP_ENDPOINT, "POST", headers, status, body, async (res) => {
+        responseHeaders = res.headers;
+    });
+    return {headers: responseHeaders, body: responseBody};
+}
+
+async function verifyDPoPAccessTokens() {
+    await cas.separator();
+    const protectedResource = JSON.parse(await cas.doRequest("https://localhost:8443/cas/.well-known/oauth-protected-resource/mcp",
+        "GET", {"Accept": "application/json"}, 200));
+    assert(protectedResource.dpop_signing_alg_values_supported.includes("ES256"));
+
+    const {publicKey, privateKey} = await jose.generateKeyPair("ES256", {extractable: true});
+    const key = {publicJwk: await jose.exportJWK(publicKey), privateKeyPem: await jose.exportPKCS8(privateKey)};
+    const accessToken = await requestAccessToken("openid mcp:read",
+        {"DPoP": await createDPoPProof(key, "https://localhost:8443/cas/oidc/token")});
+    await cas.log("Calling the MCP server with a DPoP-bound access token");
+
+    const initialized = await sendWithDPoP(key, accessToken, undefined, jsonRpc("initialize", {
+        protocolVersion: "2025-11-25",
+        capabilities: {},
+        clientInfo: {name: "cas-puppeteer", version: "1.0.0"}
+    }), 200);
+    const sessionId = initialized.headers["mcp-session-id"];
+    assert(sessionId !== undefined);
+    await sendWithDPoP(key, accessToken, sessionId, JSON.stringify({jsonrpc: "2.0", method: "notifications/initialized"}), 202);
+    const called = await sendWithDPoP(key, accessToken, sessionId,
+        jsonRpc("tools/call", {name: "findOidcClient", arguments: {clientId: "mcp-agent"}}), 200);
+    const events = called.body.split(/\r?\n/)
+        .filter((line) => line.startsWith("data:"))
+        .map((line) => line.substring("data:".length).trim());
+    const result = JSON.parse(events[events.length - 1]).result;
+    assert(result.isError !== true, JSON.stringify(result));
+    assert(JSON.parse(result.content[0].text).id === 2004);
+
+    await cas.doRequest(MCP_ENDPOINT, "POST", mcpHeaders(undefined, `Bearer ${accessToken}`), 401,
+        jsonRpc("initialize", {}), async (res) => {
+            const challenge = String(res.headers["www-authenticate"]);
+            await cas.log(`Challenge: ${challenge}`);
+            assert(challenge.startsWith("Bearer error=\"invalid_token\""), challenge);
+        });
+    await cas.doRequest(MCP_ENDPOINT, "POST", mcpHeaders(undefined, `DPoP ${accessToken}`), 401,
+        jsonRpc("initialize", {}), async (res) => {
+            const challenge = String(res.headers["www-authenticate"]);
+            await cas.log(`Challenge: ${challenge}`);
+            assert(challenge.startsWith("DPoP error=\"invalid_dpop_proof\""), challenge);
+            assert(challenge.includes("algs="), challenge);
+            assert(challenge.includes("resource_metadata="), challenge);
+        });
 }
 
 async function verifyClientIdMetadataDocuments(sessionId) {
@@ -199,5 +292,6 @@ async function verifyClientIdMetadataDocuments(sessionId) {
         "Only key metadata may be returned");
 
     await verifyAccessTokens();
+    await verifyDPoPAccessTokens();
     await verifyClientIdMetadataDocuments(sessionId);
 })();

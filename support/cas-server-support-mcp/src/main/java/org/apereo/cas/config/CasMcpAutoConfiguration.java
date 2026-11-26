@@ -79,6 +79,7 @@ import org.apereo.cas.services.OidcRegisteredService;
 import org.apereo.cas.services.ServiceRegistry;
 import org.apereo.cas.services.ServicesManager;
 import org.apereo.cas.support.events.CasEventRepository;
+import org.apereo.cas.support.oauth.validator.OAuth20ProofOfPossessionValidator;
 import org.apereo.cas.support.saml.services.idp.metadata.cache.SamlRegisteredServiceCachingMetadataResolver;
 import org.apereo.cas.throttle.AuthenticationThrottlingExecutionPlan;
 import org.apereo.cas.ticket.accesstoken.OAuth20AccessToken;
@@ -446,11 +447,14 @@ public class CasMcpAutoConfiguration {
             final Environment environment,
             final McpServerStreamableHttpProperties mcpServerStreamableHttpProperties,
             @Qualifier(OidcIssuerService.BEAN_NAME)
-            final ObjectProvider<OidcIssuerService> oidcIssuerService) {
+            final ObjectProvider<OidcIssuerService> oidcIssuerService,
+            @Qualifier("oauthProofOfPossessionValidator")
+            final ObjectProvider<OAuth20ProofOfPossessionValidator> oauthProofOfPossessionValidator) {
             val protectedResource = CasMcpProtectedResource.of(casProperties, mcpServerStreamableHttpProperties.getMcpEndpoint());
             val writable = environment.getProperty(CasFeatureModule.FeatureCatalog.AI.toProperty("mcp-write"), Boolean.class, Boolean.FALSE);
             return new CasMcpProtectedResourceMetadataController(protectedResource, oidcIssuerService,
-                environment.getProperty("spring.ai.mcp.server.name", "Apereo CAS MCP Server"), writable);
+                environment.getProperty("spring.ai.mcp.server.name", "Apereo CAS MCP Server"), writable,
+                oauthProofOfPossessionValidator, casProperties.getAuthn().getOidc().getDiscovery().isTlsClientCertificateBoundAccessTokens());
         }
 
         @Bean
@@ -465,7 +469,10 @@ public class CasMcpAutoConfiguration {
             @Qualifier(JwtBuilder.ACCESS_TOKEN_JWT_BUILDER_BEAN_NAME)
             final ObjectProvider<JwtBuilder> accessTokenJwtBuilder,
             @Qualifier(PrincipalResolver.BEAN_NAME_PRINCIPAL_RESOLVER)
-            final ObjectProvider<PrincipalResolver> principalResolver) {
+            final ObjectProvider<PrincipalResolver> principalResolver,
+            @Qualifier("oauthProofOfPossessionValidator")
+            final ObjectProvider<OAuth20ProofOfPossessionValidator> oauthProofOfPossessionValidator,
+            final ConfigurableApplicationContext applicationContext) {
             val endpoint = mcpServerStreamableHttpProperties.getMcpEndpoint();
             val protectedResource = CasMcpProtectedResource.of(casProperties, endpoint);
             return new CasWebSecurityConfigurer<>() {
@@ -480,7 +487,8 @@ public class CasMcpAutoConfiguration {
                     val matcher = PathPatternRequestMatcher.withDefaults().matcher(endpoint);
                     val filter = new CasMcpBearerTokenAuthenticationFilter(matcher, protectedResource,
                         casProperties.getMcp().getOauth(), ticketRegistry.getObject(), servicesManager.getObject(), accessTokenJwtBuilder,
-                        principalResolver.getObject());
+                        principalResolver.getObject(), oauthProofOfPossessionValidator,
+                        CasMcpBearerTokenAuthenticationFilter.findOperatorTools(applicationContext.getBeanFactory()));
                     http.addFilterBefore(filter, BasicAuthenticationFilter.class)
                         .exceptionHandling(customizer -> customizer.defaultAuthenticationEntryPointFor(
                             new CasMcpAuthenticationEntryPoint(matcher, protectedResource), matcher));

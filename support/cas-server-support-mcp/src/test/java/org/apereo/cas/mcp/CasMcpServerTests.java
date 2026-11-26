@@ -34,10 +34,18 @@ import org.apereo.cas.ticket.expiration.NeverExpiresExpirationPolicy;
 import org.apereo.cas.ticket.registry.TicketRegistry;
 import org.apereo.cas.util.DefaultUniqueTicketIdGenerator;
 import org.apereo.cas.util.RandomUtils;
+import org.apereo.cas.util.function.FunctionUtils;
 import com.jayway.jsonpath.JsonPath;
+import com.nimbusds.jose.JWSAlgorithm;
+import com.nimbusds.jose.jwk.Curve;
+import com.nimbusds.jose.jwk.gen.ECKeyGenerator;
+import com.nimbusds.oauth2.sdk.dpop.DPoPProofFactory;
+import com.nimbusds.oauth2.sdk.dpop.DefaultDPoPProofFactory;
+import com.nimbusds.oauth2.sdk.token.DPoPAccessToken;
 import lombok.val;
 import org.apereo.inspektr.audit.AuditActionContext;
 import org.apereo.inspektr.common.web.ClientInfo;
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -53,7 +61,9 @@ import org.springframework.security.authentication.InsufficientAuthenticationExc
 import org.springframework.security.web.authentication.www.BasicAuthenticationEntryPoint;
 import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
+import java.security.cert.X509Certificate;
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -188,6 +198,9 @@ class CasMcpServerTests {
                 .andExpect(jsonPath("$.scopes_supported[0]").value("mcp:read"))
                 .andExpect(jsonPath("$.bearer_methods_supported.length()").value(1))
                 .andExpect(jsonPath("$.bearer_methods_supported[0]").value("header"))
+                .andExpect(jsonPath("$.dpop_signing_alg_values_supported.length()").value(6))
+                .andExpect(jsonPath("$.dpop_signing_alg_values_supported[3]").value("ES256"))
+                .andExpect(jsonPath("$.tls_client_certificate_bound_access_tokens").doesNotExist())
                 .andExpect(jsonPath("$.resource_name").value("Apereo CAS MCP Server"));
         }
 
@@ -820,6 +833,90 @@ class CasMcpServerTests {
         void verifyBasicAuthenticationStillWorks() throws Throwable {
             assertNotNull(initialize(MCP_ADMIN));
         }
+
+        @Test
+        void verifyDPoPBoundToken() throws Throwable {
+            val clientId = registerOidcClient(servicesManager, true);
+            val key = new ECKeyGenerator(Curve.P_256).generate();
+            val token = newAccessToken(ticketRegistry, clientId, Set.of("mcp:read"), Set.of(RESOURCE), Map.of(),
+                Map.of(OAuth20Constants.DPOP_CONFIRMATION, List.of(key.computeThumbprint().toString())));
+            val proofs = new DefaultDPoPProofFactory(key, JWSAlgorithm.ES256);
+            val dpop = dpop(token, proofs);
+            val username = "agent-" + UUID.randomUUID();
+            val response = send(dpop, initialize(dpop), callToolRequest("findPerson", "{\"username\":\"%s\"}".formatted(username)));
+            assertFalse(isToolError(response), response);
+
+            val downgraded = refuse(bearer(token));
+            assertTrue(downgraded.startsWith("Bearer error=\"invalid_token\""), downgraded);
+            assertTrue(downgraded.endsWith("resource_metadata=\"%s\"".formatted(RESOURCE_METADATA)), downgraded);
+
+            val target = URI.create("http://localhost" + MCP_ENDPOINT);
+            val presented = new DPoPAccessToken(token);
+            val proof = proofs.createDPoPJWT("POST", target, presented).serialize();
+            mockMvc.perform(post(MCP_ENDPOINT)
+                    .with(dpop(token, proof))
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .accept(MediaType.APPLICATION_JSON, MediaType.TEXT_EVENT_STREAM)
+                    .content(jsonRpcRequest("initialize", """
+                        {"protocolVersion":"2025-11-25","capabilities":{},"clientInfo":{"name":"cas-tests","version":"1.0.0"}}
+                        """)))
+                .andExpect(status().isOk());
+            val invalidProofs = new ArrayList<String>();
+            invalidProofs.add(null);
+            invalidProofs.add(proof);
+            invalidProofs.add(new DefaultDPoPProofFactory(new ECKeyGenerator(Curve.P_256).generate(), JWSAlgorithm.ES256)
+                .createDPoPJWT("POST", target, presented).serialize());
+            invalidProofs.add(proofs.createDPoPJWT("POST", target, new DPoPAccessToken("AT-" + UUID.randomUUID())).serialize());
+            invalidProofs.add(proofs.createDPoPJWT("GET", target, presented).serialize());
+            invalidProofs.add(proofs.createDPoPJWT("POST", URI.create("http://localhost/other"), presented).serialize());
+            for (val invalidProof : invalidProofs) {
+                val challenge = refuse(dpop(token, invalidProof));
+                assertTrue(challenge.startsWith("DPoP error=\"invalid_dpop_proof\""), challenge);
+                assertTrue(challenge.contains("algs=\"RS256 RS384 RS512 ES256 ES384 ES512\""), challenge);
+                assertTrue(challenge.endsWith("resource_metadata=\"%s\"".formatted(RESOURCE_METADATA)), challenge);
+            }
+
+            val unbound = newAccessToken(ticketRegistry, clientId, Set.of("mcp:read"), Set.of(RESOURCE), Map.of(), Map.of());
+            val challenge = refuse(dpop(unbound, proofs));
+            assertTrue(challenge.startsWith("DPoP error=\"invalid_token\""), challenge);
+            assertTrue(challenge.endsWith("resource_metadata=\"%s\"".formatted(RESOURCE_METADATA)), challenge);
+        }
+
+        @Test
+        void verifyCertificateBoundToken() throws Throwable {
+            val clientId = registerOidcClient(servicesManager, true);
+            val encoding = RandomUtils.randomAlphanumeric(64).getBytes(StandardCharsets.UTF_8);
+            val thumbprint = Base64.getUrlEncoder().withoutPadding().encodeToString(MessageDigest.getInstance("SHA-256").digest(encoding));
+            val token = newAccessToken(ticketRegistry, clientId, Set.of("mcp:read"), Set.of(RESOURCE), Map.of(),
+                Map.of(OAuth20Constants.X509_CERTIFICATE_DIGEST, List.of(thumbprint)));
+            val certificate = mock(X509Certificate.class);
+            when(certificate.getEncoded()).thenReturn(encoding);
+            val otherCertificate = mock(X509Certificate.class);
+            when(otherCertificate.getEncoded()).thenReturn(RandomUtils.randomAlphanumeric(64).getBytes(StandardCharsets.UTF_8));
+
+            for (val credentials : List.of(bearer(token), certificate(bearer(token), otherCertificate))) {
+                val challenge = refuse(credentials);
+                assertTrue(challenge.startsWith("Bearer error=\"invalid_token\""), challenge);
+                assertTrue(challenge.endsWith("resource_metadata=\"%s\"".formatted(RESOURCE_METADATA)), challenge);
+            }
+            val bound = certificate(bearer(token), certificate);
+            val response = send(bound, initialize(bound), callToolRequest("findPerson", "{\"username\":\"casuser\"}"));
+            assertFalse(isToolError(response), response);
+        }
+
+        private String refuse(final RequestPostProcessor credentials) throws Exception {
+            val challenge = mockMvc.perform(post(MCP_ENDPOINT)
+                    .with(credentials)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .accept(MediaType.APPLICATION_JSON, MediaType.TEXT_EVENT_STREAM)
+                    .content(jsonRpcRequest("initialize", "{}")))
+                .andExpect(status().isUnauthorized())
+                .andReturn()
+                .getResponse()
+                .getHeader(HttpHeaders.WWW_AUTHENTICATE);
+            assertNotNull(challenge);
+            return challenge;
+        }
     }
 
     @Nested
@@ -978,7 +1075,18 @@ class CasMcpServerTests {
             assertTrue(isToolError(send(operator, initialize(operator), callToolRequest("findPerson", "{\"username\":\"casuser\"}"))));
 
             val reader = bearer(newAccessToken(ticketRegistry, clientId, Set.of("mcp:read"), Set.of(RESOURCE), Map.of(), Map.of()));
-            assertTrue(isToolError(send(reader, initialize(reader), callToolRequest("setLogLevel", logger))));
+            val readerSession = initialize(reader);
+            mockMvc.perform(post(MCP_ENDPOINT)
+                    .with(reader)
+                    .header(MCP_SESSION_ID, readerSession)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .accept(MediaType.APPLICATION_JSON, MediaType.TEXT_EVENT_STREAM)
+                    .content(callToolRequest("setLogLevel", logger)))
+                .andExpect(status().isForbidden())
+                .andExpect(header().string(HttpHeaders.WWW_AUTHENTICATE,
+                    "Bearer error=\"insufficient_scope\", error_description=\"The tool changes CAS and requires the mcp:write scope\", "
+                        + "scope=\"mcp:read mcp:write\", resource_metadata=\"https://cas.example.org:8443/cas/.well-known/oauth-protected-resource/mcp\""));
+            assertTrue(isToolError(send(reader, readerSession, callToolRequest("findPerson", "{\"username\":\"casuser\"}"))));
         }
 
         @Test
@@ -1003,6 +1111,32 @@ class CasMcpServerTests {
         return request -> {
             request.addHeader(HttpHeaders.AUTHORIZATION, "Bearer " + token);
             return request;
+        };
+    }
+
+    private static RequestPostProcessor dpop(final String token, final DPoPProofFactory proofs) {
+        return request -> {
+            request.addHeader(HttpHeaders.AUTHORIZATION, "DPoP " + token);
+            request.addHeader(OAuth20Constants.DPOP, FunctionUtils.doUnchecked(() -> proofs.createDPoPJWT(request.getMethod(),
+                URI.create(request.getRequestURL().toString()), new DPoPAccessToken(token)).serialize()));
+            return request;
+        };
+    }
+
+    private static RequestPostProcessor dpop(final String token, final @Nullable String proof) {
+        return request -> {
+            request.addHeader(HttpHeaders.AUTHORIZATION, "DPoP " + token);
+            if (proof != null) {
+                request.addHeader(OAuth20Constants.DPOP, proof);
+            }
+            return request;
+        };
+    }
+
+    private static RequestPostProcessor certificate(final RequestPostProcessor credentials, final X509Certificate certificate) {
+        return request -> {
+            request.setAttribute("jakarta.servlet.request.X509Certificate", new X509Certificate[]{certificate});
+            return credentials.postProcessRequest(request);
         };
     }
 

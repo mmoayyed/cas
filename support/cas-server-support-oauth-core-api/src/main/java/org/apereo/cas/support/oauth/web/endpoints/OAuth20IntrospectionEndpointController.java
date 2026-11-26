@@ -175,7 +175,8 @@ public class OAuth20IntrospectionEndpointController<T extends OAuth20Configurati
             return Optional.of(buildBadRequestResponseEntity(OAuth20Constants.MISSING_ACCESS_TOKEN));
         }
 
-        if (getConfigurationContext().getClientSecretValidator().validate(registeredService, credentials.getRight())) {
+        if (OAuth20Utils.isValidClientSecret(getConfigurationContext().getClientSecretValidator(), registeredService,
+            credentials.getRight(), request)) {
             val service = getConfigurationContext().getWebApplicationServiceServiceFactory().createService(registeredService.getClientId());
             val audit = AuditableContext.builder()
                 .service(service)

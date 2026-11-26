@@ -13,6 +13,7 @@ import org.apereo.cas.support.oauth.OAuth20ResponseModeTypes;
 import org.apereo.cas.support.oauth.OAuth20ResponseTypes;
 import org.apereo.cas.support.oauth.profile.DefaultOAuth20UserProfile;
 import org.apereo.cas.support.oauth.services.OAuthRegisteredService;
+import org.apereo.cas.support.oauth.services.OAuthRegisteredServiceClientSecret;
 import org.apereo.cas.support.oauth.web.OAuth20RequestParameterResolver;
 import org.apereo.cas.support.oauth.web.response.accesstoken.OAuth20TokenGeneratedResult;
 import org.apereo.cas.support.oauth.web.response.callback.OAuth20ResponseModeFactory;
@@ -251,6 +252,36 @@ class OAuth20UtilsTests extends AbstractOAuth20Tests {
         assertEquals("se+cret value", decodedCredentials.getRight());
         assertEquals("client%3A1", OAuth20Utils.readBasicAuthorization(encodedRequest).orElseThrow().getLeft());
         verify(manager, never()).getAllServicesOfType(any());
+
+        val unencodedRequest = new MockHttpServletRequest();
+        unencodedRequest.addHeader(HttpHeaders.AUTHORIZATION, "Basic " + EncodingUtils.encodeBase64("client:se%cret&1"));
+        assertEquals("se%cret&1", OAuth20Utils.readClientBasicAuthorization(unencodedRequest).orElseThrow().getRight());
+    }
+
+    @Test
+    void verifyClientSecretSentWithoutFormEncoding() {
+        val registeredService = addRegisteredService();
+        val secret = "se+cr%41et&1";
+        registeredService.setClientSecrets(List.of(OAuthRegisteredServiceClientSecret.withoutExpiration(secret)));
+
+        val unencodedRequest = new MockHttpServletRequest();
+        unencodedRequest.addHeader(HttpHeaders.AUTHORIZATION, "Basic " + EncodingUtils.encodeBase64(registeredService.getClientId() + ':' + secret));
+        val decodedSecret = OAuth20Utils.readClientBasicAuthorization(unencodedRequest).orElseThrow().getRight();
+        assertEquals("se crAet&1", decodedSecret);
+        assertTrue(OAuth20Utils.isValidClientSecret(oauth20ClientSecretValidator, registeredService, decodedSecret, unencodedRequest));
+
+        val encodedRequest = new MockHttpServletRequest();
+        encodedRequest.addHeader(HttpHeaders.AUTHORIZATION, "Basic " + EncodingUtils.encodeBase64(registeredService.getClientId() + ':'
+            + URLEncoder.encode(secret, StandardCharsets.UTF_8)));
+        val encodedSecret = OAuth20Utils.readClientBasicAuthorization(encodedRequest).orElseThrow().getRight();
+        assertEquals(secret, encodedSecret);
+        assertTrue(OAuth20Utils.isValidClientSecret(oauth20ClientSecretValidator, registeredService, encodedSecret, encodedRequest));
+
+        val wrongRequest = new MockHttpServletRequest();
+        wrongRequest.addHeader(HttpHeaders.AUTHORIZATION, "Basic " + EncodingUtils.encodeBase64(registeredService.getClientId() + ":se+cr%41et&2"));
+        assertFalse(OAuth20Utils.isValidClientSecret(oauth20ClientSecretValidator, registeredService,
+            OAuth20Utils.readClientBasicAuthorization(wrongRequest).orElseThrow().getRight(), wrongRequest));
+        assertFalse(OAuth20Utils.isValidClientSecret(oauth20ClientSecretValidator, registeredService, "se crAet&1", new MockHttpServletRequest()));
     }
 
     @Test

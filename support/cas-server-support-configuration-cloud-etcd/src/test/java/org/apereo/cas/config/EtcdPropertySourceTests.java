@@ -58,7 +58,7 @@ class EtcdPropertySourceTests {
         clients.forEach(client -> verify(client).close());
     }
 
-    private static Client newClient(final List<Client> clients, final Map<String, String> values) {
+    static Client newClient(final List<Client> clients, final Map<String, String> values) {
         val keyValues = values.entrySet().stream().map(entry -> {
             val keyValue = mock(KeyValue.class);
             when(keyValue.getKey()).thenReturn(ByteSequence.from(entry.getKey(), StandardCharsets.UTF_8));

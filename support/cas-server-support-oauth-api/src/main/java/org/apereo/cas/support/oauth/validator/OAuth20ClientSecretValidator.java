@@ -36,6 +36,18 @@ public interface OAuth20ClientSecretValidator {
     boolean validate(OAuthRegisteredService registeredService, String clientSecret);
 
     /**
+     * Validate a client secret that may have been sent in more than one form, such as a secret both as decoded and as
+     * sent. A mismatch is reported once for all of them.
+     *
+     * @param registeredService the registered service
+     * @param clientSecrets     the forms of the client secret
+     * @return true if one of them is valid
+     */
+    default boolean validate(final OAuthRegisteredService registeredService, final Collection<String> clientSecrets) {
+        return clientSecrets.stream().anyMatch(clientSecret -> validate(registeredService, clientSecret));
+    }
+
+    /**
      * Determines whether the client secret is expired.
      *
      * @param secret            the secret

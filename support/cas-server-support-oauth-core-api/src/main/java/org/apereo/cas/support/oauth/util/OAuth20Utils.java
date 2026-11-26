@@ -16,6 +16,7 @@ import org.apereo.cas.support.oauth.profile.OAuth20UserProfile;
 import org.apereo.cas.support.oauth.services.OAuthRegisteredService;
 import org.apereo.cas.support.oauth.services.RegisteredServiceOAuthResourceMatcher;
 import org.apereo.cas.support.oauth.validator.DPoPBoundAccessTokenDowngradeException;
+import org.apereo.cas.support.oauth.validator.OAuth20ClientSecretValidator;
 import org.apereo.cas.support.oauth.validator.OAuth20ProofOfPossessionValidator;
 import org.apereo.cas.support.oauth.validator.token.OAuth20InvalidTargetException;
 import org.apereo.cas.support.oauth.web.OAuth20RequestParameterResolver;
@@ -537,21 +538,58 @@ public class OAuth20Utils {
 
     /**
      * Read the client id and secret of the HTTP Basic {@code Authorization} header of a client authentication request.
-     * Both are form-url-decoded, as clients encode them before HTTP Basic encoding (RFC 6749, section 2.3.1).
+     * Both are form-url-decoded, as clients encode them before HTTP Basic encoding (RFC 6749, section 2.3.1). Some clients
+     * skip that encoding, so a value that is not valid form-url-encoding, such as one with a {@code %} that starts no
+     * escape, is taken as sent; {@link #isValidClientSecret(OAuth20ClientSecretValidator, OAuthRegisteredService, String, HttpServletRequest)}
+     * also accepts a secret as sent.
      *
      * @param request the request
      * @return the client id and secret, if the request carries the header
      * @throws BadCredentialsException when the header is not a Basic one or cannot be decoded
      */
     public Optional<Pair<String, String>> readClientBasicAuthorization(final HttpServletRequest request) throws BadCredentialsException {
-        return readBasicAuthorization(request).map(credentials -> {
-            try {
-                return Pair.of(URLDecoder.decode(credentials.getLeft(), StandardCharsets.UTF_8),
-                    URLDecoder.decode(credentials.getRight(), StandardCharsets.UTF_8));
-            } catch (final IllegalArgumentException e) {
-                throw new BadCredentialsException("Client credentials of the basic auth header are not form-url-encoded", e);
-            }
-        });
+        return readBasicAuthorization(request).map(credentials ->
+            Pair.of(decodeClientCredential(credentials.getLeft()), decodeClientCredential(credentials.getRight())));
+    }
+
+    /**
+     * Whether the client secret is valid for the service. A secret read from the HTTP Basic {@code Authorization} header
+     * is form-url-decoded (RFC 6749, section 2.3.1); clients that send it without form-url-encoding it first, as the MCP
+     * SDKs do, turn a {@code +} into a space or a {@code %} escape into another character once it is decoded. When the
+     * secret checked is the decoded secret of that header, the secret as sent in the header is checked along with it.
+     * Either way only the secret of the service is accepted, and a mismatch is reported once.
+     *
+     * @param clientSecretValidator the client secret validator
+     * @param registeredService     the registered service
+     * @param clientSecret          the client secret to check
+     * @param request               the request that carries it
+     * @return true if the client secret, or the secret as sent in the Basic header, is valid
+     */
+    public boolean isValidClientSecret(final OAuth20ClientSecretValidator clientSecretValidator,
+                                       final OAuthRegisteredService registeredService,
+                                       final String clientSecret, final HttpServletRequest request) {
+        val clientSecrets = new ArrayList<String>();
+        clientSecrets.add(clientSecret);
+        findClientSecretAsSent(request, clientSecret).ifPresent(clientSecrets::add);
+        return clientSecretValidator.validate(registeredService, clientSecrets);
+    }
+
+    private static Optional<String> findClientSecretAsSent(final HttpServletRequest request, final String decodedClientSecret) {
+        try {
+            return readBasicAuthorization(request)
+                .map(Pair::getRight)
+                .filter(sentSecret -> !sentSecret.equals(decodedClientSecret) && decodeClientCredential(sentSecret).equals(decodedClientSecret));
+        } catch (final BadCredentialsException _) {
+            return Optional.empty();
+        }
+    }
+
+    private static String decodeClientCredential(final String value) {
+        try {
+            return URLDecoder.decode(value, StandardCharsets.UTF_8);
+        } catch (final IllegalArgumentException _) {
+            return value;
+        }
     }
 
     /**

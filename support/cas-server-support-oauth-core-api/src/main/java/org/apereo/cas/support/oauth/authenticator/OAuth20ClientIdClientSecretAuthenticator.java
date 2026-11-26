@@ -151,7 +151,7 @@ public class OAuth20ClientIdClientSecretAuthenticator implements OAuth20ClientCr
                                        final OAuthRegisteredService registeredService,
                                        final OAuth20ClientAuthenticationMethods authnMethod) {
         val pwdToCheck = Objects.requireNonNull((String) token.getCredentials());
-        if (!clientSecretValidator.validate(registeredService, pwdToCheck)) {
+        if (!OAuth20Utils.isValidClientSecret(clientSecretValidator, registeredService, pwdToCheck, token.getRequest())) {
             throw new BadCredentialsException("Invalid client credentials provided for registered service: " + registeredService.getName());
         }
     }

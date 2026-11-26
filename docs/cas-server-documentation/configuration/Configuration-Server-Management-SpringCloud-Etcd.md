@@ -21,6 +21,38 @@ Support is provided via the following dependency in the WAR overlay:
 
 {% include_cached casproperties.html properties="cas.spring.cloud.etcd" %}
 
+CAS reads the settings when it starts and again on every refresh, and keeps them in memory in between. A value
+changed in etcd takes effect after the next refresh.
+
+## Customizing the Client
+
+CAS opens an etcd client whenever it reads or changes settings and closes it right after. Clients are created by
+a bean named `etcdClientFactory`, of type `Supplier<io.etcd.jetcd.Client>`, which connects to the configured
+endpoints only. A deployment that needs credentials or TLS to reach etcd defines its own bean under that name,
+returning a new client every time:
+
+```java
+@Order(Ordered.HIGHEST_PRECEDENCE)
+@Configuration(proxyBeanMethods = false)
+public class EtcdClientConfiguration {
+    @Bean
+    public Supplier<Client> etcdClientFactory() {
+        return () -> Client.builder()
+            .endpoints("https://etcd.example.org:2379")
+            .user(ByteSequence.from("cas", StandardCharsets.UTF_8))
+            .password(ByteSequence.from("...", StandardCharsets.UTF_8))
+            .build();
+    }
+}
+```
+
+Settings are located before the rest of CAS starts, so this configuration class must be registered as a bootstrap
+configuration in `META-INF/spring.factories` of the overlay:
+
+```properties
+org.springframework.cloud.bootstrap.BootstrapConfiguration=org.example.EtcdClientConfiguration
+```
+
 ## Actuator Endpoints
 
 The following endpoints are provided by CAS:

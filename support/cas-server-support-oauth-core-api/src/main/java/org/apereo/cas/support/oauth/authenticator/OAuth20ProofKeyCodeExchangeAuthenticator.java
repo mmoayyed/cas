@@ -59,7 +59,7 @@ public class OAuth20ProofKeyCodeExchangeAuthenticator extends OAuth20ClientIdCli
                                        final OAuth20ClientAuthenticationMethods authnMethod) {
         val request = credentials.getRequest();
         val clientSecret = getRequestParameterResolver().resolveClientIdAndClientSecret(request).getRight();
-        if (!getClientSecretValidator().validate(registeredService, clientSecret)) {
+        if (!OAuth20Utils.isValidClientSecret(getClientSecretValidator(), registeredService, clientSecret, request)) {
             throw new BadCredentialsException("Client Credentials provided is not valid for service: " + registeredService.getName());
         }
         val codeVerifier = getRequestParameterResolver()

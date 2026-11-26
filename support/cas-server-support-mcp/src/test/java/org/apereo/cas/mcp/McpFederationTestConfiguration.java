@@ -1,12 +1,21 @@
 package org.apereo.cas.mcp;
 
 import module java.base;
+import org.apereo.cas.audit.AuditableExecution;
+import org.apereo.cas.configuration.CasConfigurationProperties;
 import org.apereo.cas.configuration.model.support.oidc.OidcProperties;
 import org.apereo.cas.oidc.issuer.OidcIssuerService;
 import org.apereo.cas.oidc.jwks.generator.OidcJsonWebKeystoreGeneratorService;
+import org.apereo.cas.services.ServicesManager;
+import org.apereo.cas.support.oauth.validator.DefaultOAuth20DPoPNonceService;
+import org.apereo.cas.support.oauth.validator.DefaultOAuth20ProofOfPossessionValidator;
+import org.apereo.cas.support.oauth.validator.OAuth20ProofOfPossessionValidator;
 import org.apereo.cas.support.saml.services.SamlRegisteredService;
 import org.apereo.cas.support.saml.services.idp.metadata.cache.CachedMetadataResolverResult;
 import org.apereo.cas.support.saml.services.idp.metadata.cache.SamlRegisteredServiceCachingMetadataResolver;
+import org.apereo.cas.ticket.TicketFactory;
+import org.apereo.cas.ticket.registry.TicketRegistry;
+import org.apereo.cas.web.CasSessionStore;
 import lombok.val;
 import net.shibboleth.shared.resolver.CriteriaSet;
 import org.apache.commons.io.IOUtils;
@@ -23,6 +32,7 @@ import org.opensaml.saml.saml2.metadata.SingleLogoutService;
 import org.opensaml.security.credential.UsageType;
 import org.opensaml.xmlsec.signature.KeyInfo;
 import org.opensaml.xmlsec.signature.X509Data;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.core.io.ClassPathResource;
@@ -85,6 +95,22 @@ public class McpFederationTestConfiguration {
     @Bean(name = OidcIssuerService.BEAN_NAME)
     public OidcIssuerService oidcIssuerService() {
         return OidcIssuerService.echoing(OIDC_ISSUER);
+    }
+
+    @Bean(name = "oauthProofOfPossessionValidator")
+    public OAuth20ProofOfPossessionValidator oauthProofOfPossessionValidator(
+        final CasConfigurationProperties casProperties,
+        @Qualifier(TicketRegistry.BEAN_NAME)
+        final TicketRegistry ticketRegistry,
+        @Qualifier(TicketFactory.BEAN_NAME)
+        final TicketFactory ticketFactory,
+        @Qualifier(ServicesManager.BEAN_NAME)
+        final ServicesManager servicesManager,
+        @Qualifier(AuditableExecution.AUDITABLE_EXECUTION_REGISTERED_SERVICE_ACCESS)
+        final AuditableExecution registeredServiceAccessStrategyEnforcer) {
+        return new DefaultOAuth20ProofOfPossessionValidator(mock(CasSessionStore.class), servicesManager, ticketRegistry,
+            ticketFactory, registeredServiceAccessStrategyEnforcer, casProperties,
+            new DefaultOAuth20DPoPNonceService(ticketRegistry, ticketFactory, casProperties));
     }
 
     private static EntityDescriptor buildEntityDescriptor(final String entityId, final boolean expired) throws Exception {

@@ -338,8 +338,7 @@ public class DefaultOAuth20RequestParameterResolver implements OAuth20RequestPar
         }
         val clientId = resolveRequestParameter(request, OAuth20Constants.CLIENT_ID)
             .map(String::valueOf).orElse(StringUtils.EMPTY);
-        val clientSecret = resolveRequestParameter(request, OAuth20Constants.CLIENT_SECRET)
-            .map(String::valueOf).orElse(StringUtils.EMPTY);
+        val clientSecret = StringUtils.defaultIfBlank(request.getParameter(OAuth20Constants.CLIENT_SECRET), StringUtils.EMPTY);
         return Pair.of(clientId, clientSecret);
     }
 

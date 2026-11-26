@@ -78,19 +78,36 @@ follow to discover CAS as their authorization server. The metadata is published 
   "bearer_methods_supported": [
     "header"
   ],
+  "dpop_signing_alg_values_supported": [
+    "RS256",
+    "RS384",
+    "RS512",
+    "ES256",
+    "ES384",
+    "ES512"
+  ],
   "resource_name": "Apereo CAS MCP Server"
 }
 ```
 
-An access token is accepted in the `Authorization: Bearer` header only, never as a request parameter, and only when:
+An access token is accepted in the `Authorization` header only, never as a request parameter, under the `Bearer` scheme or,
+for a sender-constrained token, the `DPoP` scheme, and only when:
 
 - it is found in the ticket registry, either by its identifier or, for JWT access tokens, by the identifier it carries, and has not expired;
 - it was issued for the MCP endpoint, which clients request with the `resource` parameter ([RFC 8707](https://www.rfc-editor.org/rfc/rfc8707.html)).
   CAS allows every client to [request the MCP endpoint](../authentication/OAuth-Authentication-Clients.html#resources-for-every-client) by default;
 - the application it was issued to is still registered and allowed;
-- it is not bound to a [DPoP](../authentication/OIDC-Authentication-DPoP.html) key or a client certificate. Sender-constrained tokens are not accepted yet.
+- when it is bound to a [DPoP](../authentication/OIDC-Authentication-DPoP.html) key, it is presented under the `DPoP` scheme
+  with a DPoP proof of that very request, signed with the bound key, carrying the hash of the token, used only once and, when
+  DPoP nonces are turned on, carrying a nonce handed out by CAS ([RFC 9449](https://www.rfc-editor.org/rfc/rfc9449.html#section-7));
+- when it is bound to a [client certificate](../authentication/OIDC-Authentication-AccessToken-AuthMethods.html#mutual-tls-client-authentication),
+  the request comes over a mutual TLS connection that presents the same certificate ([RFC 8705](https://www.rfc-editor.org/rfc/rfc8705.html#section-3)).
 
-Otherwise the request is refused with `401` and `error="invalid_token"`. A token without the `mcp:read` scope is refused with
+Otherwise the request is refused with `401` and `error="invalid_token"`, or `error="invalid_dpop_proof"` for a missing or invalid
+DPoP proof; a proof without the expected nonce is answered with `error="use_dpop_nonce"` and a fresh nonce in the `DPoP-Nonce`
+header. Challenges answer in the scheme the token was presented with, and a `DPoP` challenge lists the accepted proof algorithms.
+The protected resource metadata lists those algorithms as well and, when CAS issues certificate-bound access tokens, says so. A
+DPoP proof names the URL of the request, so behind a proxy or load balancer CAS must see the external URL of the MCP endpoint. A token without the `mcp:read` scope is refused with
 `403` and `error="insufficient_scope"`. When the [tools that change CAS](#tools-that-change-cas) are turned on, the protected
 resource metadata also lists the `mcp:write` scope.
 
@@ -103,7 +120,11 @@ record of a call made with a token also names the OAuth client.
 The `MCP_OPERATOR` role, which the tools that change CAS require, is granted to the person behind a token only when the token
 also carries the `mcp:write` scope and the person's attributes match a separate set of attributes and regular expressions,
 which is empty by default. A token that carries `mcp:write` grants nothing more without those attributes, and a person with
-those attributes cannot change CAS with a token issued for `mcp:read` only. Add `mcp:write` to the scopes of the discovery
+those attributes cannot change CAS with a token issued for `mcp:read` only. When such a person calls a tool that changes CAS
+with a token that lacks `mcp:write`, the request is refused with `403` and `error="insufficient_scope"`, naming both scopes,
+so that MCP clients ask the person to authorize the larger scope and try again
+([step-up authorization](https://modelcontextprotocol.io/specification/2025-11-25/basic/authorization#scope-challenge-handling)).
+Clients are first asked for `mcp:read` only, and ask for `mcp:write` when they need it. Add `mcp:write` to the scopes of the discovery
 document and to the applications that may change CAS, in the same way as `mcp:read`.
 
 {% include_cached casproperties.html properties="cas.mcp.oauth" %}
@@ -321,7 +342,8 @@ When CORS is turned on for a browser client, allow the origin of that client, th
 methods, and the `Authorization`, `Content-Type`, `Accept`, `Mcp-Session-Id`, `MCP-Protocol-Version` and `Last-Event-ID`
 request headers. The `Mcp-Session-Id` response header must also be exposed; otherwise the browser hides the session id
 returned by `initialize` and every later call fails. Browser clients that use access tokens also need the `WWW-Authenticate`
-response header exposed, to read the challenges.
+response header exposed, to read the challenges, and those that use DPoP the `DPoP` request header and the `DPoP-Nonce`
+response header.
 
 {% include_cached casproperties.html properties="cas.http-web-request.cors" %}
 

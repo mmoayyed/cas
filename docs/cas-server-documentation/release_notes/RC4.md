@@ -137,7 +137,7 @@ release:
       area: operations
     - type: changed
       title: etcd configuration source
-      text: keeps the values it read at startup or at the last refresh and no longer defines an `etcdClient` bean; custom code that used that bean opens its own client.
+      text: keeps the values it read at startup or at the last refresh. The `etcdClient` bean is replaced by `etcdClientFactory`, which returns a new client each time; a deployment that overrode `etcdClient`, for example to add credentials or TLS, overrides `etcdClientFactory` instead.
       section: Other Stuff
       area: operations
   spotlight:
@@ -872,6 +872,10 @@ one-time codes can be added when `cas.authn.mfa.simple.mail.accepted-email-patte
   hint, one of its logout URLs, or a registered service; otherwise the session ends without a redirect. An ID token
   hint that is not a JWT, names no registered client or whose signature cannot be verified is answered with `400`
   instead of a server error.
+- {: .fixed data-area="oidc"} [Client secrets](../authentication/OIDC-Authentication-AccessToken-AuthMethods.html) that
+  contain characters such as `%`, `+` or `&` work at the token, introspection and other client authentication endpoints.
+  A posted client secret was URL-decoded a second time, which refused or changed it, and a secret sent in the Basic header
+  without the form-encoding of RFC 6749, as MCP clients do, is now accepted as sent too.
 
 ### OpenID Federation
 {: .changed data-area="oidc"}
@@ -1005,13 +1009,19 @@ one-time codes can be added when `cas.authn.mfa.simple.mail.accepted-email-patte
   the principal attributes listed in `cas.mcp.oauth.required-attributes`{: .cas-setting}, resolved for the person when the token
   is used rather than taken from the attributes released to the client; they match nobody by default, and the
   audit record of a call names the OAuth client. The `AI.mcp-oauth` feature toggle turns it off.
+- {: .new data-area="oidc"} The [MCP server](../installation/Admin-MCP-Server.html#oauth-access-tokens) accepts
+  sender-constrained access tokens, which it used to refuse: a DPoP-bound token with a DPoP proof of each request (RFC 9449),
+  checked as at the other CAS protected resources, nonce included, and a certificate-bound token over a mutual TLS connection
+  that presents its certificate (RFC 8705). Challenges follow the scheme the token was presented with, and the protected resource
+  metadata lists the algorithms accepted for DPoP proofs.
 - {: .new data-area="operations"} The [MCP server](../installation/Admin-MCP-Server.html#tools-that-change-cas) can offer
   tools that change CAS: end the single sign-on sessions of a person with single logout, release throttled logins, turn an
   application on or off, change a log level, revoke OAuth tokens and consent decisions, and remove trusted devices,
   one-time password devices and WebAuthn devices. They are turned off by default, are turned on with the `AI.mcp-write`
   feature toggle, and require the new `MCP_OPERATOR` role. With an OAuth access token, that role also requires the
   `mcp:write` scope and the principal attributes listed in `cas.mcp.oauth.operator-required-attributes`{: .cas-setting},
-  which match nobody by default.
+  which match nobody by default. When such a person calls one of these tools with a token that lacks `mcp:write`, the
+  request is refused with `403 insufficient_scope` naming the scope, so MCP clients ask for it and try again.
 - {: .fixed data-area="operations"} The [MCP server](../installation/Admin-MCP-Server.html#transport) answers requests to
   open a stream of server-initiated messages with `405 Method Not Allowed`, as the Streamable HTTP transport allows. Such
   requests used to stay open without a response status, so clients that wait for it before finishing initialization,
@@ -1368,6 +1378,7 @@ one-time codes can be added when `cas.authn.mfa.simple.mail.accepted-email-patte
   a value that cannot be encrypted is no longer written to the logs in plain text.
 - {: .fixed data-area="operations"} The [etcd configuration source](../configuration/Configuration-Server-Management-SpringCloud-Etcd.html)
   keeps working after a refresh: it keeps the values it read and opens its own client for each refresh or update, where
-  the shared client used to be closed with the bootstrap context after the first refresh.
+  the shared client used to be closed with the bootstrap context after the first refresh. Clients come from the
+  `etcdClientFactory` bean, which a deployment can override to add credentials or TLS.
 
 {% include release-footer.html %}

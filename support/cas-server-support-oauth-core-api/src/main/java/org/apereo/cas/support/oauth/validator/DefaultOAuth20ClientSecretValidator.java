@@ -28,6 +28,11 @@ public class DefaultOAuth20ClientSecretValidator implements OAuth20ClientSecretV
 
     @Override
     public boolean validate(final OAuthRegisteredService registeredService, final String clientSecret) {
+        return validate(registeredService, Collections.singletonList(clientSecret));
+    }
+
+    @Override
+    public boolean validate(final OAuthRegisteredService registeredService, final Collection<String> clientSecrets) {
         if (isClientSecretUndefined(registeredService)) {
             LOGGER.debug("The client secret is not defined for the registered service [{}]", registeredService.getName());
             return true;
@@ -39,7 +44,7 @@ public class DefaultOAuth20ClientSecretValidator implements OAuth20ClientSecretV
             .map(secret -> SpringExpressionLanguageValueResolver.getInstance().resolve(secret.getValue()))
             .map(secretValue -> cipherExecutor.decode(secretValue, new Object[]{registeredService}))
             .filter(Objects::nonNull)
-            .anyMatch(secret -> isClientSecretCorrect(secret, clientSecret));
+            .anyMatch(secret -> clientSecrets.stream().anyMatch(clientSecret -> isClientSecretCorrect(secret, clientSecret)));
 
         if (!secretIsValid) {
             LOGGER.error("Wrong client secret for service: [{}]. If you intend to use PKCE, note that it does not require a client secret and "

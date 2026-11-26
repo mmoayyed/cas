@@ -108,6 +108,9 @@ class DefaultOAuth20RequestParameterResolverTests extends AbstractOidcTests {
         request.setParameter("client_id", "myid");
         request.setParameter("client_secret", "mysecret");
         assertTrue(oauthRequestParameterResolver.isParameterOnQueryString(request, OAuth20Constants.CLIENT_SECRET));
+
+        request.setParameter("client_secret", "se+cr%et%41&1");
+        assertEquals("se+cr%et%41&1", oauthRequestParameterResolver.resolveClientIdAndClientSecret(request).getRight());
     }
 
     @Test
