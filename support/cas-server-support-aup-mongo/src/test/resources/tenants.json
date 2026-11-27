@@ -9,7 +9,7 @@
         "cas.acceptable-usage-policy.mongo.host": "localhost",
         "cas.acceptable-usage-policy.mongo.port": "27017",
         "cas.acceptable-usage-policy.mongo.drop-collection": "true",
-        "cas.acceptable-usage-policy.mongo.collection": "acceptable-usage-policy",
+        "cas.acceptable-usage-policy.mongo.collection": "acceptable-usage-policy-shire",
         "cas.acceptable-usage-policy.mongo.user-id": "root",
         "cas.acceptable-usage-policy.mongo.password": "secret",
         "cas.acceptable-usage-policy.mongo.database-name": "acceptableUsagePolicy",

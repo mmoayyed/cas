@@ -62,6 +62,19 @@ description: "Review and extend the CAS MCP server (support/cas-server-support-m
   `geolocation` parameter; `withClientInfo(client, ...)` swaps `ClientInfoHolder` only around components that read it
   (MFA triggers). Do not swap it around audited calls such as the risk evaluator, or the audit trail records the
   supplied address instead of the operator's.
+- Groups added in the 2026-11 round (feature module -> bean): `mcp-oauth-tokens` (casOAuthTools), `mcp-history`
+  (casServiceHistoryTools, Javers `objectVersionRepository`), `mcp-pm`, `mcp-x509`, `mcp-token` (JWT tickets via
+  `tokenTicketJwtBuilder`; token authentication through a nested class so the module stays optional), `mcp-oidc-federation`,
+  `mcp-oidc-vc`, `mcp-groups`. Core diagnostics (expiration, webflow, validation preview, geolocation) and core write tools
+  (saveServiceDefinition, sendTestNotification) live in nested `CasMcpDiagnosticsConfiguration` and
+  `CasMcpCoreAdministrationConfiguration` to keep the outer configuration's class fan-out under the checkstyle limit.
+- Optional collaborators of a core tool are MCP interfaces with optional implementations: `CasMcpSaml1ResponseRenderer`
+  (SAML1 preview, `CasMcpSaml1Configuration`) and `CasMcpGroupMembershipSource` (Grouper, SCIM, Syncope in `mcp.groups`, each
+  returning empty when its system is not configured). CAS ticket expiration overrides of a service (TGT, ST, PT, PGT) are read
+  from the service, since only the OAuth builders implement `buildTicketExpirationPolicyFor`.
+- `saveServiceDefinition` restores `<redacted>` values (`CasServiceManagementTools.REDACTED`, `redact`) from the saved service at
+  the same JSON path and refuses when none is saved; `rotateClientSecret` is the only tool that returns a secret, once.
+- Locals whose declared type is generic may not be declared `final Type<...> name;` (regex rule); use a helper returning a record.
 - A new tool also goes into `CAS_TOOLS` (`CasMcpServerTests`, `mcp-server-tools/script.js` when core), the role-denial
   lists, `FeatureDisabledTests`, and the tables and feature-toggle list in `Admin-MCP-Server.md`. A new optional group also
   goes into `CasDeploymentTools.MCP_TOOL_GROUPS` (feature module to bean name), which `describeDeployment` reports.
@@ -80,7 +93,8 @@ description: "Review and extend the CAS MCP server (support/cas-server-support-m
   `spring.ai.mcp.server.name`; `cas.*` settings and the `module` filter are covered by unit tests (`McpSettingsMetadata.json`).
 - MCP completion (`@McpComplete`) only completes resource-template and prompt arguments, never tool parameters. Completion
   methods carry `@PreAuthorize` like tools and are not audited; `spring.ai.mcp.server.capabilities.completion` must be true.
-- Claude's shells have no JDK 25 or Maven Central; `build/mcp-run.sh` compiles, runs checkstyle, the `RestfulApi` tests
+- MCP unit tests carry `@Tag("MCP")` (`./testcas.sh --category mcp`, or `testMCP`); the runtime hints test stays `Native`.
+- Claude's shells have no JDK 25 or Maven Central; `build/mcp-run.sh` compiles, runs checkstyle, the `MCP` tests
   and the MCP puppeteer scenarios on the Mac.
 - OAuth resource checks use `OAuth20RequestParameterResolver.resolveAllowedResources(service)`, which adds the CAS-wide
   `cas.authn.oauth.core.allowed-resources` (default: the CAS MCP endpoint) to the service's `allowedResources`; never

@@ -24,7 +24,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * @author Misagh Moayyed
  * @since 8.1.0
  */
-@Tag("RestfulApi")
+@Tag("MCP")
 @SpringBootTest(classes = BaseCasMcpTests.SharedTestConfiguration.class,
     webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ExtendWith(CasTestExtension.class)

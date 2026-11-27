@@ -579,7 +579,7 @@ public class OAuth20Utils {
             return readBasicAuthorization(request)
                 .map(Pair::getRight)
                 .filter(sentSecret -> !sentSecret.equals(decodedClientSecret) && decodeClientCredential(sentSecret).equals(decodedClientSecret));
-        } catch (final BadCredentialsException _) {
+        } catch (BadCredentialsException _) {
             return Optional.empty();
         }
     }
@@ -587,7 +587,7 @@ public class OAuth20Utils {
     private static String decodeClientCredential(final String value) {
         try {
             return URLDecoder.decode(value, StandardCharsets.UTF_8);
-        } catch (final IllegalArgumentException _) {
+        } catch (IllegalArgumentException _) {
             return value;
         }
     }

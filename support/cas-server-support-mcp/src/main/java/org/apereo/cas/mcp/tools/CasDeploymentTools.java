@@ -49,6 +49,14 @@ public class CasDeploymentTools {
         Map.entry("mcp-heimdall", "casHeimdallTools"),
         Map.entry("mcp-settings", "casSettingTools"),
         Map.entry("mcp-audit", "casMcpAuditor"),
+        Map.entry("mcp-oauth-tokens", "casOAuthTools"),
+        Map.entry("mcp-history", "casServiceHistoryTools"),
+        Map.entry("mcp-pm", "casPasswordManagementTools"),
+        Map.entry("mcp-x509", "casX509Tools"),
+        Map.entry("mcp-token", "casJwtTokenTools"),
+        Map.entry("mcp-oidc-federation", "casOidcFederationTools"),
+        Map.entry("mcp-oidc-vc", "casVerifiableCredentialTools"),
+        Map.entry("mcp-groups", "casGroupMembershipTools"),
         Map.entry("mcp-write", "casAdministrationTools")));
 
     private static final String FEATURE_PREFIX = CasFeatureModule.class.getSimpleName() + '.';

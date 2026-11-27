@@ -8,7 +8,8 @@ const CAS_TOOLS = ["evaluateAccess", "evaluateMultifactorTriggers", "findAuditRe
     "findSessions", "findSessionsWithAttribute", "findTenant", "findTicket", "getRegistryStatistics",
     "listMultifactorProviders", "matchService", "previewAttributeRelease", "previewLogout", "searchServices",
     "findAuthenticationEvents", "findSurrogateAccounts", "searchSettings", "describeDeployment", "findThrottledLogins",
-    "findAttributeSources", "findAttributeDefinitions", "validateServiceDefinition", "explainLogin"];
+    "findAttributeSources", "findAttributeDefinitions", "validateServiceDefinition", "explainLogin",
+    "explainExpiration", "describeLoginFlow", "previewValidationResponse", "geolocateAddress", "findGroupMemberships"];
 const FREE_FORM_TOOLS = ["findService", "matchService"];
 
 let requestId = 0;
@@ -110,7 +111,8 @@ async function failLogin(username, expectedStatus) {
     for (const optional of ["findConsentDecisions", "resolveSamlMetadata", "findOidcClient", "checkOidcClientResource",
         "listJwksKeys", "findTrustedDevices",
         "previewInterrupt", "evaluateAuthenticationRisk", "findOneTimeTokenAccounts", "findWebAuthnDevices",
-        "findPasswordlessAccount", "listIdentityProviders", "findAuthorizableResources"]) {
+        "findPasswordlessAccount", "listIdentityProviders", "findAuthorizableResources", "findServiceHistory",
+        "findAccountStatus", "inspectCertificate", "resolveOidcTrustChain", "findVerifiableCredentialStatus"]) {
         assert(!names.includes(optional), `Tool ${optional} must not be listed without its module`);
     }
     for (const tool of CAS_TOOLS) {
@@ -282,6 +284,26 @@ async function failLogin(username, expectedStatus) {
         {username: "casuser", service: "https://localhost:9859/anything/restricted"})).text);
     assert(explainedDenied.outcome === "ACCESS_DENIED" && explainedDenied.steps.length === 1);
 
+    await cas.log("Ticket expiration, the login flow and the validation response");
+    const expiration = JSON.parse((await callTool(MCP_ADMIN, sessionId, "explainExpiration", {service: "1001"})).text);
+    assert(expiration.registeredService.id === 1001);
+    assert(expiration.policies.some((policy) => policy.ticketType === "TicketGrantingTicket"));
+    const flow = JSON.parse((await callTool(MCP_ADMIN, sessionId, "describeLoginFlow", {})).text);
+    assert(flow.flowId === "login" && flow.states.length > 0 && flow.flows.includes("logout"), JSON.stringify(flow));
+    const startState = JSON.parse((await callTool(MCP_ADMIN, sessionId, "describeLoginFlow", {stateId: flow.startState})).text);
+    assert(startState.details[0].id === flow.startState);
+    const validationResponse = JSON.parse((await callTool(MCP_ADMIN, sessionId, "previewValidationResponse",
+        {username: "casuser", service: "https://localhost:9859/anything/mcp"})).text);
+    assert(validationResponse.allowed === true && validationResponse.user === "casuser");
+    assert.deepStrictEqual(validationResponse.attributes.mail, ["casuser@example.org"]);
+    const cas1Response = JSON.parse((await callTool(MCP_ADMIN, sessionId, "previewValidationResponse",
+        {username: "casuser", service: "https://localhost:9859/anything/mcp", protocol: "CAS1"})).text);
+    assert(cas1Response.user === "casuser" && cas1Response.attributes === undefined);
+    const location = JSON.parse((await callTool(MCP_ADMIN, sessionId, "geolocateAddress", {address: "192.0.2.10"})).text);
+    assert(location.reason !== undefined);
+    const memberships = JSON.parse((await callTool(MCP_ADMIN, sessionId, "findGroupMemberships", {username: "casuser"})).text);
+    assert(memberships.reason === "No group system is configured");
+
     const candidate = JSON.stringify({
         "@class": "org.apereo.cas.services.CasRegisteredService",
         serviceId: "^https://localhost:9859/anything/mcp/new.*",
@@ -353,7 +375,12 @@ async function failLogin(username, expectedStatus) {
         {name: "findAttributeSources", args: {username: "casuser"}},
         {name: "findAttributeDefinitions", args: {}},
         {name: "validateServiceDefinition", args: {definition: "{}"}},
-        {name: "explainLogin", args: {username: "casuser", service: "https://localhost:9859/anything/mcp"}}
+        {name: "explainLogin", args: {username: "casuser", service: "https://localhost:9859/anything/mcp"}},
+        {name: "explainExpiration", args: {}},
+        {name: "describeLoginFlow", args: {}},
+        {name: "previewValidationResponse", args: {username: "casuser", service: "https://localhost:9859/anything/mcp"}},
+        {name: "geolocateAddress", args: {address: "192.0.2.10"}},
+        {name: "findGroupMemberships", args: {username: "casuser"}}
     ]) {
         const denied = await callTool(MCP_USER, userSessionId, call.name, call.args);
         assert(denied.error, `Tool ${call.name} must be denied for users without the MCP_ADMIN role`);

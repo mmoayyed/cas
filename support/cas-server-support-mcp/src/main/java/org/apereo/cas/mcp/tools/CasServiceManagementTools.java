@@ -28,9 +28,12 @@ import tools.jackson.databind.node.ObjectNode;
  */
 @RequiredArgsConstructor
 public class CasServiceManagementTools {
-    private static final int MAX_SERVICES = 50;
+    /**
+     * The value that replaces secrets in service definitions.
+     */
+    static final String REDACTED = "<redacted>";
 
-    private static final String REDACTED = "<redacted>";
+    private static final int MAX_SERVICES = 50;
 
     private static final Pattern SECRET_PROPERTY = Pattern.compile(
         "(?i).*(secrets?|password|apikey|accesskey|privatekey|secretkey|signingkey|encryptionkey)$");
@@ -213,7 +216,12 @@ public class CasServiceManagementTools {
         return MAPPER.writeValueAsString(definition);
     }
 
-    private static void redact(final JsonNode node) {
+    /**
+     * Replace the secrets of a service definition, at any depth, with {@link #REDACTED}.
+     *
+     * @param node the service definition
+     */
+    static void redact(final JsonNode node) {
         if (node instanceof final ObjectNode objectNode) {
             val names = objectNode.properties().stream().map(Map.Entry::getKey).toList();
             for (val name : names) {

@@ -266,6 +266,9 @@ while (( "$#" )); do
             cas)
                 task+="testCAS "
                 ;;
+            mcp|mcpserver)
+                task+="testMCP "
+                ;;
             metrics|stats)
                 task+="testMetrics "
                 ;;

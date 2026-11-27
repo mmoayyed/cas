@@ -127,4 +127,16 @@ async function callTool(sessionId, name, args, authorization = MCP_ADMIN) {
     assert(debug.level === "DEBUG");
     const reset = await callTool(operator, "setLogLevel", {loggerName: "org.apereo.cas.trusted"}, MCP_OPERATOR);
     assert(reset.previousLevel === "DEBUG" && reset.level !== undefined);
+
+    const definition = JSON.stringify({
+        "@class": "org.apereo.cas.services.CasRegisteredService",
+        serviceId: "^https://localhost:9859/anything/saved.*",
+        name: "MCP-Saved",
+        id: 5001
+    });
+    const saved = await callTool(operator, "saveServiceDefinition", {definition: definition}, MCP_OPERATOR);
+    assert(saved.saved === true && saved.created === true && saved.service.id === 5001, JSON.stringify(saved));
+    const notified = await callTool(operator, "sendTestNotification",
+        {username: "casuser", channel: "EMAIL", from: "cas@example.org"}, MCP_OPERATOR);
+    assert(notified.sent === false && notified.reason !== undefined, JSON.stringify(notified));
 })();

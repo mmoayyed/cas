@@ -103,6 +103,9 @@ async function verifyAccessTokens() {
     const agentSession = await initialize(agent);
     const agentClient = await callTool(agentSession, "findOidcClient", {clientId: "mcp-agent"}, agent);
     assert(agentClient.id === 2004);
+    const agentTokens = await callTool(await initialize(), "findOAuthTokens", {clientId: "mcp-agent"});
+    assert(agentTokens.count >= 1 && agentTokens.tokens.every((token) => token.reference.startsWith("token:")), JSON.stringify(agentTokens));
+    assert(!JSON.stringify(agentTokens).includes(agent.substring("Bearer ".length)), "Tokens must never be returned");
 
     await cas.log("A tool that changes CAS asks for the mcp:write scope (step-up authorization)");
     const logLevel = {loggerName: "org.apereo.cas.mcp", level: "DEBUG"};

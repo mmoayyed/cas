@@ -74,7 +74,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * @author Misagh Moayyed
  * @since 8.1.0
  */
-@Tag("RestfulApi")
+@Tag("MCP")
 @ExtendWith(CasTestExtension.class)
 class CasMcpServerTests {
     private static final List<String> CAS_TOOLS = List.of("evaluateAccess", "evaluateMultifactorTriggers",
@@ -84,13 +84,20 @@ class CasMcpServerTests {
         "resolveSamlMetadata", "findOidcClient", "checkOidcClientResource", "listJwksKeys", "findAuthenticationEvents", "findTrustedDevices",
         "findSurrogateAccounts", "previewInterrupt", "evaluateAuthenticationRisk", "findOneTimeTokenAccounts", "findWebAuthnDevices",
         "findPasswordlessAccount", "listIdentityProviders", "findAuthorizableResources", "searchSettings", "describeDeployment",
-        "findThrottledLogins", "findAttributeSources", "findAttributeDefinitions", "validateServiceDefinition", "explainLogin");
+        "findThrottledLogins", "findAttributeSources", "findAttributeDefinitions", "validateServiceDefinition", "explainLogin",
+        "explainExpiration", "describeLoginFlow", "previewValidationResponse", "geolocateAddress", "findOAuthTokens",
+        "findServiceHistory", "diffServiceVersions", "findAccountStatus", "inspectCertificate", "decodeJwtTicket",
+        "checkAuthorization", "resolveOidcTrustChain", "findVerifiableCredentialStatus", "findGroupMemberships");
 
     private static final List<String> FREE_FORM_TOOLS = List.of("findService", "matchService");
 
     private static final List<String> WRITE_TOOLS = List.of("revokeSessions", "releaseThrottledLogins", "setServiceEnabled",
         "setLogLevel", "revokeOAuthTokens", "revokeConsentDecisions", "removeTrustedDevices", "removeOneTimeTokenAccounts",
-        "removeWebAuthnDevices");
+        "removeWebAuthnDevices", "rotateClientSecret", "saveServiceDefinition", "refreshSamlMetadata", "unlockAccount",
+        "sendTestNotification");
+
+    private static final List<String> NON_DESTRUCTIVE_WRITE_TOOLS = List.of("setLogLevel", "refreshSamlMetadata", "unlockAccount",
+        "sendTestNotification");
 
     @Nested
     @SpringBootTest(classes = BaseCasMcpTests.SharedTestConfiguration.class,
@@ -726,7 +733,21 @@ class CasMcpServerTests {
                 callToolRequest("findAttributeSources", "{\"username\":\"casuser\"}"),
                 callToolRequest("findAttributeDefinitions", "{}"),
                 callToolRequest("validateServiceDefinition", "{\"definition\":\"{}\"}"),
-                callToolRequest("explainLogin", "{\"username\":\"casuser\",\"service\":\"https://mcp.example.org\"}"));
+                callToolRequest("explainLogin", "{\"username\":\"casuser\",\"service\":\"https://mcp.example.org\"}"),
+                callToolRequest("explainExpiration", "{}"),
+                callToolRequest("describeLoginFlow", "{}"),
+                callToolRequest("previewValidationResponse", "{\"username\":\"casuser\",\"service\":\"https://mcp.example.org\"}"),
+                callToolRequest("geolocateAddress", "{\"address\":\"192.0.2.10\"}"),
+                callToolRequest("findOAuthTokens", "{\"username\":\"casuser\"}"),
+                callToolRequest("findServiceHistory", "{\"serviceId\":1}"),
+                callToolRequest("diffServiceVersions", "{\"serviceId\":1,\"fromVersion\":\"1.0\"}"),
+                callToolRequest("findAccountStatus", "{\"username\":\"casuser\"}"),
+                callToolRequest("inspectCertificate", "{\"certificate\":\"none\"}"),
+                callToolRequest("decodeJwtTicket", "{\"token\":\"none\",\"service\":\"https://mcp.example.org\"}"),
+                callToolRequest("checkAuthorization", "{\"username\":\"casuser\",\"resourceType\":\"document\",\"action\":\"can_read\"}"),
+                callToolRequest("resolveOidcTrustChain", "{\"entityId\":\"https://rp.example.org\"}"),
+                callToolRequest("findVerifiableCredentialStatus", "{\"username\":\"casuser\"}"),
+                callToolRequest("findGroupMemberships", "{\"username\":\"casuser\"}"));
             for (val call : calls) {
                 val response = send(CAS_USER, sessionId, call);
                 assertTrue(isToolError(response), response);
@@ -1000,6 +1021,11 @@ class CasMcpServerTests {
             assertFalse(webApplicationContext.containsBean("casTrustedDeviceAdministrationTools"));
             assertFalse(webApplicationContext.containsBean("casOneTimeTokenAdministrationTools"));
             assertFalse(webApplicationContext.containsBean("casWebAuthnAdministrationTools"));
+            List.of("casTicketExpirationTools", "casWebflowTools", "casValidationTools", "casGeoLocationTools", "casOAuthTools",
+                    "casServiceHistoryTools", "casPasswordManagementTools", "casX509Tools", "casJwtTokenTools", "casOidcFederationTools",
+                    "casVerifiableCredentialTools", "casGroupMembershipTools", "casServiceAdministrationTools",
+                    "casNotificationAdministrationTools", "casSamlIdPAdministrationTools", "casPasswordManagementAdministrationTools")
+                .forEach(bean -> assertFalse(webApplicationContext.containsBean(bean), bean));
         }
     }
 
@@ -1029,7 +1055,7 @@ class CasMcpServerTests {
             for (val tool : WRITE_TOOLS) {
                 val prefix = "$.result.tools[?(@.name == '%s')]".formatted(tool);
                 assertEquals(List.of(false), JsonPath.read(response, prefix + ".annotations.readOnlyHint"), response);
-                assertEquals(List.of(!"setLogLevel".equals(tool)), JsonPath.read(response, prefix + ".annotations.destructiveHint"), response);
+                assertEquals(List.of(!NON_DESTRUCTIVE_WRITE_TOOLS.contains(tool)), JsonPath.read(response, prefix + ".annotations.destructiveHint"), response);
                 assertFalse(JsonPath.<List<Object>>read(response, prefix + ".outputSchema").isEmpty(), tool);
             }
         }
@@ -1046,10 +1072,49 @@ class CasMcpServerTests {
                 callToolRequest("revokeConsentDecisions", "{\"username\":\"casuser\"}"),
                 callToolRequest("removeTrustedDevices", "{\"username\":\"casuser\"}"),
                 callToolRequest("removeOneTimeTokenAccounts", "{\"username\":\"casuser\"}"),
-                callToolRequest("removeWebAuthnDevices", "{\"username\":\"casuser\"}"));
+                callToolRequest("removeWebAuthnDevices", "{\"username\":\"casuser\"}"),
+                callToolRequest("rotateClientSecret", "{\"clientId\":\"unknown\"}"),
+                callToolRequest("saveServiceDefinition", "{\"definition\":\"{}\"}"),
+                callToolRequest("refreshSamlMetadata", "{\"entityId\":\"https://sp.example.org\"}"),
+                callToolRequest("unlockAccount", "{\"username\":\"casuser\"}"),
+                callToolRequest("sendTestNotification", "{\"username\":\"casuser\",\"channel\":\"EMAIL\",\"from\":\"cas@example.org\"}"));
             for (val call : calls) {
                 assertTrue(isToolError(send(MCP_ADMIN, sessionId, call)), call);
             }
+        }
+
+        @Test
+        void verifyFindOAuthTokensAndRotateClientSecret() throws Throwable {
+            val clientId = registerOidcClient(servicesManager, true);
+            val token = newAccessToken(ticketRegistry, clientId, Set.of("mcp:read"), Set.of(RESOURCE), Map.of(), Map.of());
+            val tokens = send(MCP_ADMIN, initialize(MCP_ADMIN), callToolRequest("findOAuthTokens", "{\"clientId\":\"%s\"}".formatted(clientId)));
+            assertFalse(isToolError(tokens), tokens);
+            assertEquals(1, JsonPath.<Number>read(tokens, "$.result.structuredContent.count").intValue(), tokens);
+            assertEquals("ACCESS_TOKEN", JsonPath.read(tokens, "$.result.structuredContent.tokens[0].kind"), tokens);
+            assertTrue(JsonPath.<String>read(tokens, "$.result.structuredContent.tokens[0].reference").startsWith("token:"), tokens);
+            assertFalse(tokens.contains(token), tokens);
+
+            val operatorSession = initialize(MCP_OPERATOR);
+            val first = send(MCP_OPERATOR, operatorSession, callToolRequest("rotateClientSecret", "{\"clientId\":\"%s\"}".formatted(clientId)));
+            assertFalse(isToolError(first), first);
+            val firstSecret = JsonPath.<String>read(first, "$.result.structuredContent.clientSecret");
+            assertFalse(firstSecret.isBlank(), first);
+            assertEquals(0, JsonPath.<Number>read(first, "$.result.structuredContent.previousSecrets").intValue(), first);
+
+            val second = send(MCP_OPERATOR, operatorSession,
+                callToolRequest("rotateClientSecret", "{\"clientId\":\"%s\",\"gracePeriod\":\"PT1H\",\"expiresIn\":\"P30D\"}".formatted(clientId)));
+            assertFalse(isToolError(second), second);
+            assertEquals(1, JsonPath.<Number>read(second, "$.result.structuredContent.previousSecrets").intValue(), second);
+            assertNotNull(JsonPath.read(second, "$.result.structuredContent.previousSecretsExpireAt"), second);
+            assertNotNull(JsonPath.read(second, "$.result.structuredContent.clientSecretExpiresAt"), second);
+            val service = (OidcRegisteredService) servicesManager.findServiceBy(
+                JsonPath.<Number>read(second, "$.result.structuredContent.serviceId").longValue());
+            assertEquals(2, service.getClientSecrets().size());
+            assertTrue(service.getClientSecrets().stream().anyMatch(secret -> firstSecret.equals(secret.getValue()) && !secret.isWithoutExpiration()));
+
+            val refused = send(MCP_OPERATOR, operatorSession,
+                callToolRequest("rotateClientSecret", "{\"clientId\":\"%s\",\"gracePeriod\":\"soon\"}".formatted(clientId)));
+            assertNotNull(JsonPath.read(refused, "$.result.structuredContent.reason"), refused);
         }
 
         @Test

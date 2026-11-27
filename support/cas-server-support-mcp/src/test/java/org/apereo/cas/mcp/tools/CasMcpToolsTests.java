@@ -22,6 +22,8 @@ import org.apereo.cas.services.ChainingRegisteredServiceAccessStrategy;
 import org.apereo.cas.services.DefaultRegisteredServiceAccessStrategy;
 import org.apereo.cas.services.DefaultRegisteredServiceMultifactorPolicy;
 import org.apereo.cas.services.DefaultRegisteredServiceProperty;
+import org.apereo.cas.services.DefaultRegisteredServiceServiceTicketExpirationPolicy;
+import org.apereo.cas.services.OidcRegisteredService;
 import org.apereo.cas.services.RegisteredServiceTestUtils;
 import org.apereo.cas.services.ReturnAllAttributeReleasePolicy;
 import org.apereo.cas.services.ServicesManager;
@@ -39,6 +41,8 @@ import org.apereo.cas.trusted.authentication.api.MultifactorAuthenticationTrustS
 import org.apereo.cas.util.DefaultUniqueTicketIdGenerator;
 import org.apereo.cas.util.spring.beans.BeanSupplier;
 import org.apereo.cas.util.text.MessageSanitizer;
+import org.apereo.cas.version.EntityHistoryRepository;
+import org.apereo.cas.version.HistoricalEntity;
 import org.apereo.cas.web.support.ThrottledSubmission;
 import org.apereo.cas.web.support.ThrottledSubmissionsStore;
 import org.apereo.cas.webauthn.storage.WebAuthnCredentialRepository;
@@ -64,6 +68,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.support.StaticListableBeanFactory;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.ConfigurableApplicationContext;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.access.AccessDeniedException;
@@ -81,7 +86,7 @@ import static org.mockito.Mockito.*;
  * @author Misagh Moayyed
  * @since 8.1.0
  */
-@Tag("RestfulApi")
+@Tag("MCP")
 @SpringBootTest(classes = BaseCasMcpTests.SharedTestConfiguration.class,
     properties = "CasFeatureModule.AI.mcp-write.enabled=true",
     webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
@@ -138,6 +143,70 @@ class CasMcpToolsTests extends BaseCasMcpTests {
     @Autowired
     @Qualifier("casSurrogateTools")
     private CasSurrogateTools casSurrogateTools;
+
+    @Autowired
+    @Qualifier("casTicketExpirationTools")
+    private CasTicketExpirationTools casTicketExpirationTools;
+
+    @Autowired
+    @Qualifier("casWebflowTools")
+    private CasWebflowTools casWebflowTools;
+
+    @Autowired
+    @Qualifier("casValidationTools")
+    private CasValidationTools casValidationTools;
+
+    @Autowired
+    @Qualifier("casGeoLocationTools")
+    private CasGeoLocationTools casGeoLocationTools;
+
+    @Autowired
+    @Qualifier("casOAuthTools")
+    private CasOAuthTools casOAuthTools;
+
+    @Autowired
+    @Qualifier("casServiceHistoryTools")
+    private CasServiceHistoryTools casServiceHistoryTools;
+
+    @Autowired
+    @Qualifier("casPasswordManagementTools")
+    private CasPasswordManagementTools casPasswordManagementTools;
+
+    @Autowired
+    @Qualifier("casX509Tools")
+    private CasX509Tools casX509Tools;
+
+    @Autowired
+    @Qualifier("casJwtTokenTools")
+    private CasJwtTokenTools casJwtTokenTools;
+
+    @Autowired
+    @Qualifier("casOidcFederationTools")
+    private CasOidcFederationTools casOidcFederationTools;
+
+    @Autowired
+    @Qualifier("casVerifiableCredentialTools")
+    private CasVerifiableCredentialTools casVerifiableCredentialTools;
+
+    @Autowired
+    @Qualifier("casGroupMembershipTools")
+    private CasGroupMembershipTools casGroupMembershipTools;
+
+    @Autowired
+    @Qualifier("casServiceAdministrationTools")
+    private CasServiceAdministrationTools casServiceAdministrationTools;
+
+    @Autowired
+    @Qualifier("casNotificationAdministrationTools")
+    private CasNotificationAdministrationTools casNotificationAdministrationTools;
+
+    @Autowired
+    @Qualifier("casSamlIdPAdministrationTools")
+    private CasSamlIdPAdministrationTools casSamlIdPAdministrationTools;
+
+    @Autowired
+    @Qualifier("casPasswordManagementAdministrationTools")
+    private CasPasswordManagementAdministrationTools casPasswordManagementAdministrationTools;
 
     @Autowired
     @Qualifier(CasEventRepository.BEAN_NAME)
@@ -305,6 +374,11 @@ class CasMcpToolsTests extends BaseCasMcpTests {
         assertTrue(AopUtils.isAopProxy(casOneTimeTokenAdministrationTools));
         assertTrue(AopUtils.isAopProxy(casWebAuthnAdministrationTools));
         assertTrue(AopUtils.isAopProxy(casOAuthAdministrationTools));
+        Stream.of(casTicketExpirationTools, casWebflowTools, casValidationTools, casGeoLocationTools, casOAuthTools, casServiceHistoryTools,
+                casPasswordManagementTools, casX509Tools, casJwtTokenTools, casOidcFederationTools, casVerifiableCredentialTools,
+                casGroupMembershipTools, casServiceAdministrationTools, casNotificationAdministrationTools, casSamlIdPAdministrationTools,
+                casPasswordManagementAdministrationTools)
+            .forEach(tools -> assertTrue(AopUtils.isAopProxy(tools), tools::toString));
     }
 
     @Test
@@ -484,6 +558,183 @@ class CasMcpToolsTests extends BaseCasMcpTests {
         assertThrows(AccessDeniedException.class, () -> casOneTimeTokenAdministrationTools.removeOneTimeTokenAccounts("casuser", null));
         assertThrows(AccessDeniedException.class, () -> casWebAuthnAdministrationTools.removeWebAuthnDevices("casuser"));
         assertThrows(AccessDeniedException.class, () -> casOAuthAdministrationTools.revokeOAuthTokens("casuser", null));
+        assertThrows(AccessDeniedException.class, () -> casOAuthAdministrationTools.rotateClientSecret("client", null, null));
+        assertThrows(AccessDeniedException.class, () -> casServiceAdministrationTools.saveServiceDefinition("{}"));
+        assertThrows(AccessDeniedException.class, () -> casSamlIdPAdministrationTools.refreshSamlMetadata("https://sp.example.org"));
+        assertThrows(AccessDeniedException.class, () -> casPasswordManagementAdministrationTools.unlockAccount("casuser"));
+        assertThrows(AccessDeniedException.class, () -> casNotificationAdministrationTools.sendTestNotification("casuser",
+            CasNotificationAdministrationTools.NotificationChannel.EMAIL, "cas@example.org", null));
+    }
+
+    @Test
+    @WithMockUser(roles = "MCP_ADMIN")
+    void verifyExplainExpiration() {
+        val defaults = casTicketExpirationTools.explainExpiration(null);
+        assertNull(defaults.reason(), defaults::toString);
+        assertTrue(defaults.policies().stream().anyMatch(policy -> "TicketGrantingTicket".equals(policy.ticketType())), defaults::toString);
+        assertTrue(defaults.policies().stream().noneMatch(CasTicketExpirationTools.TicketExpirationPolicy::overriddenByApplication));
+
+        val serviceUrl = newServiceUrl();
+        val registeredService = newRegisteredService(serviceUrl, Map.of(), new ReturnAllAttributeReleasePolicy());
+        registeredService.setServiceTicketExpirationPolicy(new DefaultRegisteredServiceServiceTicketExpirationPolicy(5, "PT30S"));
+        servicesManager.save(registeredService);
+        val forService = casTicketExpirationTools.explainExpiration(String.valueOf(registeredService.getId()));
+        assertEquals(registeredService.getId(), Objects.requireNonNull(forService.registeredService()).id());
+        val serviceTicket = forService.policies().stream().filter(policy -> "ServiceTicket".equals(policy.ticketType())).findFirst().orElseThrow();
+        assertTrue(serviceTicket.overriddenByApplication(), serviceTicket::toString);
+        assertEquals(30L, serviceTicket.timeToLiveSeconds());
+        assertEquals(forService.policies().size(), casTicketExpirationTools.explainExpiration(serviceUrl + "/app").policies().size());
+        assertNotNull(casTicketExpirationTools.explainExpiration("https://unknown-" + UUID.randomUUID() + ".example.org").reason());
+    }
+
+    @Test
+    @WithMockUser(roles = "MCP_ADMIN")
+    void verifyDescribeLoginFlow() {
+        val unknown = casWebflowTools.describeLoginFlow("unknown-" + UUID.randomUUID(), null);
+        assertNotNull(unknown.reason());
+        val login = casWebflowTools.describeLoginFlow(null, null);
+        if (login.startState() != null) {
+            assertFalse(Objects.requireNonNull(login.states()).isEmpty());
+            val start = casWebflowTools.describeLoginFlow("login", login.startState());
+            assertEquals(login.startState(), Objects.requireNonNull(start.details()).getFirst().id(), start::toString);
+            assertNotNull(casWebflowTools.describeLoginFlow("login", "^no-such-state$").reason());
+        } else {
+            assertNotNull(login.reason(), login::toString);
+        }
+    }
+
+    @Test
+    @WithMockUser(roles = "MCP_ADMIN")
+    void verifyPreviewValidationResponse() {
+        val serviceUrl = newServiceUrl();
+        servicesManager.save(newRegisteredService(serviceUrl, Map.of(), new ReturnAllAttributeReleasePolicy()));
+        val cas3 = casValidationTools.previewValidationResponse("casuser", serviceUrl, null);
+        assertTrue(cas3.allowed(), cas3::toString);
+        assertEquals("casuser", cas3.user());
+        assertEquals(List.of("casuser@apereo.org"), Objects.requireNonNull(cas3.attributes()).get("mail"));
+        assertNotNull(cas3.authenticationAttributes());
+        val cas1 = casValidationTools.previewValidationResponse("casuser", serviceUrl, CasValidationTools.ValidationProtocol.CAS1);
+        assertEquals("casuser", cas1.user());
+        assertNull(cas1.attributes());
+        val saml1 = casValidationTools.previewValidationResponse("casuser", serviceUrl, CasValidationTools.ValidationProtocol.SAML1);
+        assertFalse(saml1.allowed());
+        assertNotNull(saml1.reason());
+        val denied = newRegisteredService(newServiceUrl(), Map.of("memberOf", Set.of("nobody")), new ReturnAllAttributeReleasePolicy());
+        servicesManager.save(denied);
+        assertFalse(casValidationTools.previewValidationResponse("casuser", denied.getServiceId().replace(".*", "/app"), null).allowed());
+        assertFalse(casValidationTools.previewValidationResponse("casuser", "https://unknown-" + UUID.randomUUID() + ".org", null).allowed());
+    }
+
+    @Test
+    @WithMockUser(roles = {"MCP_ADMIN", "MCP_OPERATOR"})
+    void verifySaveServiceDefinition() {
+        val service = new OidcRegisteredService();
+        service.setId(ThreadLocalRandom.current().nextLong(1, Integer.MAX_VALUE));
+        service.setName("MCP-OIDC-" + service.getId());
+        service.setServiceId("^https://oidc-" + service.getId() + ".example.org/.*");
+        service.setClientId("client-" + service.getId());
+        service.setClientSecret("mcp-oidc-secret-value");
+        servicesManager.save(service);
+
+        val redacted = Objects.requireNonNull(casServiceManagementTools.findService(service.getId()));
+        assertFalse(redacted.contains("mcp-oidc-secret-value"));
+        val edited = redacted.replace(service.getName(), service.getName() + "-Edited");
+        val saved = casServiceAdministrationTools.saveServiceDefinition(edited);
+        assertTrue(saved.saved(), saved::toString);
+        assertFalse(saved.created());
+        val reloaded = (OidcRegisteredService) servicesManager.findServiceBy(service.getId());
+        assertEquals(service.getName() + "-Edited", reloaded.getName());
+        assertEquals("mcp-oidc-secret-value", reloaded.getClientSecrets().getFirst().getValue());
+
+        val newId = ThreadLocalRandom.current().nextLong(Integer.MAX_VALUE, Long.MAX_VALUE);
+        val created = casServiceAdministrationTools.saveServiceDefinition("""
+            {"@class": "org.apereo.cas.services.CasRegisteredService", "serviceId": "^https://new-%s.example.org/.*", "name": "MCP-New", "id": %s}
+            """.formatted(newId, newId));
+        assertTrue(created.saved(), created::toString);
+        assertTrue(created.created());
+        assertNotNull(servicesManager.findServiceBy(newId));
+
+        val orphan = casServiceAdministrationTools.saveServiceDefinition(redacted.replace("\"id\":" + service.getId(), "\"id\":" + (newId - 1)));
+        assertFalse(orphan.saved(), orphan::toString);
+        assertFalse(casServiceAdministrationTools.saveServiceDefinition("not json").saved());
+        assertFalse(casServiceAdministrationTools.saveServiceDefinition("""
+            {"@class": "org.apereo.cas.services.CasRegisteredService", "serviceId": "[", "name": "MCP-Bad", "id": 1}
+            """).saved());
+    }
+
+    @Test
+    void verifyServiceHistory() {
+        val current = newRegisteredService(newServiceUrl(), Map.of(), new ReturnAllAttributeReleasePolicy());
+        current.setName("MCP-History-Current");
+        servicesManager.save(current);
+        val older = newRegisteredService(newServiceUrl(), Map.of(), new ReturnAllAttributeReleasePolicy());
+        older.setId(current.getId());
+        older.setName("MCP-History-Older");
+        older.setServiceId(current.getServiceId());
+        val repository = mock(EntityHistoryRepository.class);
+        when(repository.getHistory(any())).thenReturn(List.of(
+            new HistoricalEntity(current, "2.0", LocalDateTime.now(ZoneOffset.UTC), "casadmin"),
+            new HistoricalEntity(older, "1.0", LocalDateTime.now(ZoneOffset.UTC).minusDays(1), "casadmin")));
+        val beanFactory = new StaticListableBeanFactory();
+        beanFactory.addBean("objectVersionRepository", repository);
+        val tools = new CasServiceHistoryTools(beanFactory.getBeanProvider(EntityHistoryRepository.class), servicesManager,
+            new CasServiceManagementTools.RegisteredServiceParser(applicationContext));
+
+        val history = tools.findServiceHistory(current.getId(), null);
+        assertEquals(2, history.count());
+        assertEquals("2.0", history.versions().getFirst().version());
+        assertTrue(history.versions().getFirst().changedProperties().contains("name"), history::toString);
+        assertTrue(history.versions().getLast().changedProperties().isEmpty());
+
+        val diff = tools.diffServiceVersions(current.getId(), "1.0", "2.0");
+        val name = diff.changes().stream().filter(change -> "name".equals(change.property())).findFirst().orElseThrow();
+        assertEquals(CasServiceHistoryTools.ChangeKind.CHANGED, name.kind());
+        assertEquals("MCP-History-Older", name.oldValue());
+        assertEquals("MCP-History-Current", name.newValue());
+        assertTrue(tools.diffServiceVersions(current.getId(), "2.0", null).changes().isEmpty());
+        assertNotNull(tools.diffServiceVersions(current.getId(), "9.0", null).reason());
+        assertNotNull(tools.findServiceHistory(Long.MAX_VALUE, null).reason());
+    }
+
+    @Test
+    @WithMockUser(roles = {"MCP_ADMIN", "MCP_OPERATOR"})
+    void verifyToolsWithoutTheirBackingServices() throws Exception {
+        assertEquals("Service history is not configured", casServiceHistoryTools.findServiceHistory(1, null).reason());
+        assertEquals("Service history is not configured", casServiceHistoryTools.diffServiceVersions(1, "1.0", null).reason());
+        assertEquals("No geolocation service is configured", casGeoLocationTools.geolocateAddress("192.0.2.10").reason());
+        assertEquals("A username or a client id is required", casOAuthTools.findOAuthTokens(null, " ").reason());
+        assertEquals("Password management is not configured", casPasswordManagementTools.findAccountStatus("casuser").reason());
+        assertEquals("Password management is not configured", casPasswordManagementAdministrationTools.unlockAccount("casuser").reason());
+        assertEquals("OpenID Federation is not configured", casOidcFederationTools.resolveOidcTrustChain("https://rp.example.org").reason());
+        assertEquals("Verifiable credential issuance is not configured",
+            casVerifiableCredentialTools.findVerifiableCredentialStatus("casuser").reason());
+        assertEquals("No group system is configured", casGroupMembershipTools.findGroupMemberships("casuser").reason());
+        assertEquals("Heimdall is not configured", casHeimdallTools.checkAuthorization("casuser", "API", "GET", "/api", null, null, null).reason());
+        val unknownEntityId = "https://sp-" + UUID.randomUUID() + ".example.org";
+        assertEquals("No SAML2 service provider registration matches " + unknownEntityId,
+            casSamlIdPAdministrationTools.refreshSamlMetadata(unknownEntityId).reason());
+        val notification = casNotificationAdministrationTools.sendTestNotification("casuser",
+            CasNotificationAdministrationTools.NotificationChannel.EMAIL, "cas@example.org", null);
+        assertFalse(notification.sent(), notification::toString);
+        assertNotNull(notification.reason(), notification::toString);
+
+        val serviceUrl = newServiceUrl();
+        servicesManager.save(newRegisteredService(serviceUrl, Map.of(), new ReturnAllAttributeReleasePolicy()));
+        assertEquals("JWT service tickets are not configured", casJwtTokenTools.decodeJwtTicket("a.b.c", serviceUrl, null).reason());
+        assertTrue(casJwtTokenTools.decodeJwtTicket("a.b.c", "https://unknown-" + UUID.randomUUID() + ".org", null).reason().startsWith("No registered service"));
+
+        assertNotNull(casX509Tools.inspectCertificate("not a certificate").reason());
+        assertNotNull(casX509Tools.inspectCertificate("-----BEGIN PRIVATE KEY-----").reason());
+        val pem = new ClassPathResource("mcp-x509-client.pem").getContentAsString(StandardCharsets.UTF_8);
+        val inspection = casX509Tools.inspectCertificate(pem);
+        assertEquals("X.509 authentication is not configured", inspection.reason());
+        val certificate = inspection.certificates().getFirst();
+        assertTrue(certificate.subject().contains("CN=casuser"), certificate::toString);
+        assertEquals("1234abcd", certificate.serialNumber());
+        assertTrue(certificate.subjectAlternativeNames().contains("1:casuser@apereo.org"), certificate::toString);
+        assertEquals(List.of("digitalSignature", "keyEncipherment"), certificate.keyUsages());
+        assertFalse(certificate.certificateAuthority());
+        assertNotNull(certificate.sha256Fingerprint());
     }
 
     @Test
@@ -500,7 +751,7 @@ class CasMcpToolsTests extends BaseCasMcpTests {
                 && "CasFeatureModule.AI.mcp-consent.enabled".equals(group.property())), deployment::toString);
         assertTrue(deployment.mcpToolGroups().stream()
             .anyMatch(group -> "mcp-write".equals(group.feature()) && group.active()), deployment::toString);
-        assertEquals(15, deployment.mcpToolGroups().size());
+        assertEquals(23, deployment.mcpToolGroups().size());
     }
 
     @Test
@@ -1356,6 +1607,20 @@ class CasMcpToolsTests extends BaseCasMcpTests {
         assertThrows(AccessDeniedException.class, () -> casServiceResources.describeService("1"));
         assertThrows(AccessDeniedException.class, () -> casServiceResources.completeServiceId("1"));
         assertThrows(AccessDeniedException.class, () -> casSettingResources.completeSettingName("cas.server"));
+        assertThrows(AccessDeniedException.class, () -> casTicketExpirationTools.explainExpiration(null));
+        assertThrows(AccessDeniedException.class, () -> casWebflowTools.describeLoginFlow(null, null));
+        assertThrows(AccessDeniedException.class, () -> casValidationTools.previewValidationResponse("casuser", "https://mcp.example.org", null));
+        assertThrows(AccessDeniedException.class, () -> casGeoLocationTools.geolocateAddress("192.0.2.10"));
+        assertThrows(AccessDeniedException.class, () -> casOAuthTools.findOAuthTokens("casuser", null));
+        assertThrows(AccessDeniedException.class, () -> casServiceHistoryTools.findServiceHistory(1, null));
+        assertThrows(AccessDeniedException.class, () -> casServiceHistoryTools.diffServiceVersions(1, "1.0", null));
+        assertThrows(AccessDeniedException.class, () -> casPasswordManagementTools.findAccountStatus("casuser"));
+        assertThrows(AccessDeniedException.class, () -> casX509Tools.inspectCertificate("none"));
+        assertThrows(AccessDeniedException.class, () -> casJwtTokenTools.decodeJwtTicket("none", "https://mcp.example.org", null));
+        assertThrows(AccessDeniedException.class, () -> casHeimdallTools.checkAuthorization("casuser", "API", "GET", "/api", null, null, null));
+        assertThrows(AccessDeniedException.class, () -> casOidcFederationTools.resolveOidcTrustChain("https://rp.example.org"));
+        assertThrows(AccessDeniedException.class, () -> casVerifiableCredentialTools.findVerifiableCredentialStatus("casuser"));
+        assertThrows(AccessDeniedException.class, () -> casGroupMembershipTools.findGroupMemberships("casuser"));
     }
 
     @Test

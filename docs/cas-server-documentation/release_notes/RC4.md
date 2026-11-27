@@ -1027,6 +1027,14 @@ one-time codes can be added when `cas.authn.mfa.simple.mail.accepted-email-patte
   requests used to stay open without a response status, so clients that wait for it before finishing initialization,
   such as Antigravity, never connected. Messages the transport refuses, such as a request without a session, are answered
   with a JSON-RPC error response instead of the serialized server exception and its stack trace.
+- {: .new data-area="operations"} The [MCP server](../installation/Admin-MCP-Server.html#tools) gains tools to explain
+  ticket and token expiration, describe the login webflow, preview the ticket validation response an application receives,
+  geolocate addresses and list group memberships, and, when the features are included, to list OAuth tokens, read and compare
+  [service history](../services/Configuring-Service-Version-History.html), report password management status, inspect client
+  certificates, decode JWT service tickets, check Heimdall authorization, resolve OpenID Federation trust chains and list
+  verifiable credentials. [Tools that change CAS](../installation/Admin-MCP-Server.html#tools-that-change-cas) can now also
+  rotate client secrets with a grace period, save service definitions while keeping redacted secrets, refresh SAML2 service
+  provider metadata, unlock accounts and send test notifications to a person's own email or phone.
 
 ### Attribute Release
 {: .fixed data-area="attributes"}
