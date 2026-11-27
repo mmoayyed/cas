@@ -66,15 +66,15 @@ class OidcAccessTokenTokenExchangeGrantRequestExtractorTests extends AbstractOid
 
         request.addParameter(OAuth20Constants.SUBJECT_TOKEN, idToken.token());
         request.addParameter(OAuth20Constants.SUBJECT_TOKEN_TYPE, OAuth20TokenExchangeTypes.ID_TOKEN.getType());
+        request.addParameter(OAuth20Constants.GRANT_TYPE, OAuth20GrantTypes.TOKEN_EXCHANGE.getType());
+        request.addParameter(OAuth20Constants.AUDIENCE, registeredService.getClientId());
+        assertThrows(IllegalArgumentException.class, () -> extractor.extract(request, response));
 
         request.addParameter(OAuth20Constants.ACTOR_TOKEN, idToken.deviceSecret());
         request.addParameter(OAuth20Constants.ACTOR_TOKEN_TYPE, OAuth20TokenExchangeTypes.DEVICE_SECRET.getType());
-
-        request.addParameter(OAuth20Constants.GRANT_TYPE, OAuth20GrantTypes.TOKEN_EXCHANGE.getType());
-        request.addParameter(OAuth20Constants.AUDIENCE, registeredService.getClientId());
-        
         val tokenContext = extractor.extract(request, response);
         assertNotNull(tokenContext);
+        assertEquals(accessToken.getTicketGrantingTicket().getId(), tokenContext.getTicketGrantingTicket().getId());
     }
 
     @Test
@@ -116,8 +116,12 @@ class OidcAccessTokenTokenExchangeGrantRequestExtractorTests extends AbstractOid
 
         request.addParameter(OAuth20Constants.GRANT_TYPE, OAuth20GrantTypes.TOKEN_EXCHANGE.getType());
         request.addParameter(OAuth20Constants.AUDIENCE, registeredService.getClientId());
+        assertThrows(IllegalArgumentException.class, () -> extractor.extract(request, response));
 
+        request.setParameter(OAuth20Constants.SUBJECT_TOKEN, accessToken.getId());
+        request.setParameter(OAuth20Constants.SUBJECT_TOKEN_TYPE, OAuth20TokenExchangeTypes.ACCESS_TOKEN.getType());
         val tokenContext = extractor.extract(request, response);
         assertNotNull(tokenContext);
+        assertNotNull(tokenContext.getActorToken());
     }
 }

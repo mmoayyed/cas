@@ -10,11 +10,7 @@ import org.apereo.cas.support.oauth.services.OAuthRegisteredService;
 import org.apereo.cas.support.oauth.services.RegisteredServiceOAuthResourceMatcher;
 import org.apereo.cas.support.oauth.util.OAuth20Utils;
 import org.apereo.cas.support.oauth.web.endpoints.OAuth20ConfigurationContext;
-import org.apereo.cas.ticket.accesstoken.OAuth20AccessToken;
 import org.apereo.cas.util.function.FunctionUtils;
-import com.nimbusds.jose.proc.SimpleSecurityContext;
-import com.nimbusds.jwt.proc.DefaultJWTClaimsVerifier;
-import com.nimbusds.jwt.proc.JWTClaimsSetVerifier;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.jspecify.annotations.Nullable;
@@ -30,12 +26,8 @@ import jakarta.servlet.http.HttpServletResponse;
  */
 @Slf4j
 public class OAuth20TokenExchangeGrantTypeTokenRequestValidator<T extends OAuth20ConfigurationContext> extends BaseOAuth20TokenRequestValidator<T> {
-    private static final Set<String> JWT_TOKEN_TYPE_REQUIRED_CLAIMS = Set.of("iss", "aud", "sub", "exp", "iat", "nbf");
-    private final JWTClaimsSetVerifier jwtClaimsSetVerifier;
-
     public OAuth20TokenExchangeGrantTypeTokenRequestValidator(final ObjectProvider<T> configurationContext) {
         super(configurationContext);
-        jwtClaimsSetVerifier = new DefaultJWTClaimsVerifier<>(null, JWT_TOKEN_TYPE_REQUIRED_CLAIMS);
     }
 
     @Override
@@ -96,8 +88,10 @@ public class OAuth20TokenExchangeGrantTypeTokenRequestValidator<T extends OAuth2
     }
 
     /**
-     * Locate the registered service that owns the subject token. A JWT subject token whose claims cannot be unpacked
-     * (one whose signature cannot be verified unpacks to nothing) is refused.
+     * Locate the registered service that owns the subject token. An access token, as its identifier or as the JWT CAS
+     * issued for it, belongs to the client it was issued to; a JWT is verified with the keys of that client, and one
+     * that cannot be verified or names no access token is refused
+     * (see {@link OAuth20Utils#resolveAccessToken}).
      *
      * @param subjectTokenType the subject token type
      * @param subjectToken     the subject token
@@ -109,17 +103,10 @@ public class OAuth20TokenExchangeGrantTypeTokenRequestValidator<T extends OAuth2
             throws Exception {
         val configurationContext = getConfigurationContext().getObject();
         return switch (OAuth20TokenExchangeTypes.from(subjectTokenType)) {
-            case ACCESS_TOKEN -> {
-                val accessToken = configurationContext.getTicketRegistry().getTicket(subjectToken, OAuth20AccessToken.class);
+            case ACCESS_TOKEN, JWT -> {
+                val accessToken = OAuth20Utils.resolveAccessToken(configurationContext.getTicketRegistry(),
+                    configurationContext.getAccessTokenJwtBuilder(), subjectToken);
                 yield OAuth20Utils.getRegisteredOAuthServiceByClientId(configurationContext.getServicesManager(), accessToken.getClientId());
-            }
-            case JWT -> {
-                val claimSet = Optional.ofNullable(configurationContext.getAccessTokenJwtBuilder().unpack(Optional.empty(), subjectToken))
-                    .orElseThrow(() -> new IllegalArgumentException("Subject token cannot be verified"));
-                jwtClaimsSetVerifier.verify(claimSet, new SimpleSecurityContext());
-                val service = Objects.requireNonNull(configurationContext.getWebApplicationServiceServiceFactory().createService(claimSet.getIssuer()));
-                service.getAttributes().put(OAuth20Constants.CLIENT_ID, List.of(claimSet.getSubject()));
-                yield OAuth20Utils.getRegisteredOAuthServiceByClientId(configurationContext.getServicesManager(), claimSet.getSubject());
             }
             default -> throw new IllegalArgumentException("Subject token type %s is not supported".formatted(subjectTokenType));
         };

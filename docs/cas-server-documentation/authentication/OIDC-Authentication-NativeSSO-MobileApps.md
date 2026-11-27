@@ -92,3 +92,7 @@ When making the request,
 - The `actor_token` request parameter must be set to the `device_secret` obtained.
 - The `actor_token_type` request parameter must be set to `urn:openid:params:token-type:device-secret`.
 - The `requested_token_type` request parameter must be set to `urn:ietf:params:oauth:token-type:access_token` or `urn:ietf:params:oauth:token-type:id_token`.
+
+An ID token is only accepted as the `subject_token` along with the `device_secret` it is bound to, and the single sign-on
+session it names must still be valid. A token exchange request that presents an ID token without its device secret is
+refused with `invalid_request`. Tokens issued by the exchange belong to that single sign-on session.

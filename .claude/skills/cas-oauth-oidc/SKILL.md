@@ -1,6 +1,6 @@
 ---
 name: cas-oauth-oidc
-description: "Review and change CAS OAuth2/OIDC protocol behavior: token endpoint error mapping, RFC 8707 resource indicators, discovery metadata, DPoP (RFC 9449) and certificate-bound tokens (RFC 8705), client ID metadata documents, device user code approval, request objects and their keys, client registration, authorization response modes (fragment encoding), OIDC logout. Use when touching support/cas-server-support-oauth* or support/cas-server-support-oidc* outside verifiable credentials and federation; for client authentication, access-token-protected endpoints, the authenticated profile and the login handshake, use cas-oauth-oidc-authentication; for OpenID Federation, cas-oidc-federation; for unsigned JWTs, cas-jwt."
+description: "Review and change CAS OAuth2/OIDC protocol behavior: token endpoint error mapping, RFC 8707 resource indicators, discovery metadata, DPoP (RFC 9449) and certificate-bound tokens (RFC 8705), client ID metadata documents, device user code approval, request objects and their keys, client registration, authorization response modes (fragment encoding), OIDC logout, token exchange (JWT subjects, native SSO). Use when touching support/cas-server-support-oauth* or support/cas-server-support-oidc* outside verifiable credentials and federation; for client authentication, access-token-protected endpoints, the authenticated profile and the login handshake, use cas-oauth-oidc-authentication; for OpenID Federation, cas-oidc-federation; for unsigned JWTs, cas-jwt."
 ---
 
 
@@ -44,6 +44,24 @@ description: "Review and change CAS OAuth2/OIDC protocol behavior: token endpoin
   `String[]` and collection claims through `getJwtRequestClaimValues`, so do not call `getStringArrayClaim` directly.
 - The login round-trip does not lose request parameters: after `callbackAuthorize`, the callback restores the saved original
   `/authorize` URL with every value; the callback URL's own parameters only feed the login flow.
+
+## Token exchange (RFC 8693)
+
+- Subject and actor tokens of the `access_token` and `jwt` types go through `OAuth20Utils.resolveAccessToken`: an opaque id
+  or a CAS JWT, verified by `OAuth20JwtAccessTokenDecodableCipher` with the keys of the service its header names
+  (`RegisteredServiceCipherExecutor.CUSTOM_HEADER_REGISTERED_SERVICE_ID`, OIDC signs JWT access tokens that way), then
+  its `jti` loaded from the registry. The registry token is the subject (principal, scopes, client, TGT); never read
+  `sub`/`iss` claims or call `unpack(Optional.empty(), ...)` for tokens CAS issued, which only tries the default keys.
+  Service JWT keys may be symmetric secrets the client holds, so claims verified with them prove nothing.
+- An ID token is a subject only for native SSO and only with the device-secret actor
+  (`OidcTokenExchangeGrantTypeTokenRequestValidator.ensureDeviceSecretActorToken`, called by the validator and the OIDC
+  extractor; `invalid_request`). `BaseTokenSigningAndEncryptionService.decode` checks no `exp` or `aud`.
+- The exchanged token carries the subject's ticket-granting ticket (`TokenExchangeRequest.ticketGrantingTicket`; native
+  SSO: the session of `sid_ref`) and `OAuth20DefaultTokenGenerator.limitExpirationToSubjectToken` caps its lifetime at
+  the subject's; keep both when changing the exchange path.
+- Tests encode a mock access token as a JWT with `OAuth20JwtAccessTokenEncoder.toEncodableCipher(context, service, token,
+  token.getService(), true)` after `servicesManager.save(service)`, which assigns the id the JWT header names. Scenarios:
+  `oauth2-token-exchange`, `oidc-token-exchange` (JWT subjects, another client, native SSO refusals).
 
 ## OpenID Connect discovery metadata
 

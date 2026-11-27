@@ -78,6 +78,14 @@ class OidcTokenExchangeGrantTypeTokenRequestValidatorTests extends AbstractOidcT
             .build();
         val idToken = oidcIdTokenGenerator.generate(idTokenContext);
         request.setParameter(OAuth20Constants.SUBJECT_TOKEN, idToken.token());
+        assertThrows(IllegalArgumentException.class, () -> validator.validate(request, response));
+
+        request.setParameter(OAuth20Constants.ACTOR_TOKEN, idToken.token());
+        request.setParameter(OAuth20Constants.ACTOR_TOKEN_TYPE, OAuth20TokenExchangeTypes.ID_TOKEN.getType());
+        assertThrows(IllegalArgumentException.class, () -> validator.validate(request, response));
+
+        request.setParameter(OAuth20Constants.ACTOR_TOKEN, idToken.deviceSecret());
+        request.setParameter(OAuth20Constants.ACTOR_TOKEN_TYPE, OAuth20TokenExchangeTypes.DEVICE_SECRET.getType());
         assertTrue(validator.validate(request, response));
     }
 }

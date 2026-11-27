@@ -11,11 +11,12 @@ import org.apereo.cas.support.oauth.services.OAuthRegisteredService;
 import org.apereo.cas.support.oauth.util.OAuth20Utils;
 import org.apereo.cas.support.oauth.web.endpoints.OAuth20ConfigurationContext;
 import org.apereo.cas.ticket.OAuth20Token;
-import org.apereo.cas.ticket.accesstoken.OAuth20AccessToken;
+import org.apereo.cas.ticket.Ticket;
 import org.apereo.cas.util.function.FunctionUtils;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.apache.commons.lang3.StringUtils;
+import org.jspecify.annotations.Nullable;
 import org.springframework.beans.factory.ObjectProvider;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -75,7 +76,7 @@ public class AccessTokenTokenExchangeGrantRequestExtractor<T extends OAuth20Conf
             ? extractRequestedScopesByToken(requestedScopes, token, request)
             : requestedScopes;
         val requesterBoundRequest = new TokenExchangeRequest(extractedRequest.token(), extractedRequest.service(),
-            requestingRegisteredService, extractedRequest.authentication());
+            requestingRegisteredService, extractedRequest.authentication(), extractedRequest.ticketGrantingTicket());
         val resourceService = resource
             .map(res -> {
                 val service = configurationContext.getWebApplicationServiceServiceFactory().createService(res);
@@ -96,13 +97,15 @@ public class AccessTokenTokenExchangeGrantRequestExtractor<T extends OAuth20Conf
             .service(extractedRequest.service())
             .registeredService(requestingRegisteredService)
             .authentication(extractedRequest.authentication())
+            .ticketGrantingTicket(extractedRequest.ticketGrantingTicket())
             .actorToken(getActorTokenAuthentication(request, response, requesterBoundRequest))
             .build();
     }
 
     /**
-     * Extract the token exchange request from the subject token. A JWT subject token whose claims cannot be unpacked
-     * (one whose signature cannot be verified unpacks to nothing) is refused.
+     * Extract the token exchange request from the subject token. An access token, as its identifier or as the JWT CAS
+     * issued for it, is the subject; see {@link OAuth20Utils#resolveAccessToken}. The exchanged token stays within the
+     * single sign-on session of the subject token, so that it ends with that session.
      *
      * @param request  the request
      * @param response the response
@@ -119,21 +122,12 @@ public class AccessTokenTokenExchangeGrantRequestExtractor<T extends OAuth20Conf
         val subjectToken = requestParameterResolver.resolveRequestParameter(request, OAuth20Constants.SUBJECT_TOKEN)
             .orElseThrow(() -> new IllegalArgumentException("Subject token cannot be undefined"));
         return switch (subjectTokenType) {
-            case ACCESS_TOKEN -> {
-                val token = configurationContext.getTicketRegistry().getTicket(subjectToken, OAuth20AccessToken.class);
+            case ACCESS_TOKEN, JWT -> {
+                val token = OAuth20Utils.resolveAccessToken(configurationContext.getTicketRegistry(),
+                    configurationContext.getAccessTokenJwtBuilder(), subjectToken);
                 val registeredService = OAuth20Utils.getRegisteredOAuthServiceByClientId(configurationContext.getServicesManager(), token.getClientId());
-                yield new TokenExchangeRequest(token, token.getService(), registeredService, token.getAuthentication());
-            }
-            case JWT -> {
-                val claimSet = Optional.ofNullable(configurationContext.getAccessTokenJwtBuilder().unpack(Optional.empty(), subjectToken))
-                    .orElseThrow(() -> new IllegalArgumentException("Subject token cannot be verified"));
-                val service = configurationContext.getWebApplicationServiceServiceFactory().createService(claimSet.getIssuer());
-                service.getAttributes().put(OAuth20Constants.CLIENT_ID, List.of(claimSet.getIssuer()));
-                val registeredService = OAuth20Utils.getRegisteredOAuthServiceByClientId(configurationContext.getServicesManager(), claimSet.getIssuer());
-                val userProfile = extractUserProfile(request, response).orElseThrow();
-                val authentication = configurationContext.getAuthenticationBuilder()
-                    .build(userProfile, registeredService, request, service);
-                yield new TokenExchangeRequest(claimSet, service, registeredService, authentication);
+                yield new TokenExchangeRequest(token, token.getService(), registeredService,
+                    token.getAuthentication(), token.getTicketGrantingTicket());
             }
             default -> throw new IllegalArgumentException("Subject token type %s is not supported".formatted(subjectTokenType));
         };
@@ -170,43 +164,31 @@ public class AccessTokenTokenExchangeGrantRequestExtractor<T extends OAuth20Conf
         return buildActorTokenAuthentication(request, response, actorTokenType, actorToken);
     }
 
+    /**
+     * Build the actor authentication. An access token, as its identifier or as the JWT CAS issued for it, acts with the
+     * authentication it was issued for; see {@link OAuth20Utils#resolveAccessToken}.
+     *
+     * @param request        the request
+     * @param response       the response
+     * @param actorTokenType the actor token type
+     * @param actorToken     the actor token
+     * @return the authentication
+     * @throws Throwable the throwable
+     */
     protected Authentication buildActorTokenAuthentication(final HttpServletRequest request, final HttpServletResponse response,
                                                            final OAuth20TokenExchangeTypes actorTokenType,
                                                            final String actorToken)
             throws Throwable {
         val configurationContext = getConfigurationContext().getObject();
         return switch (actorTokenType) {
-            case ACCESS_TOKEN -> {
-                val token = configurationContext.getTicketRegistry().getTicket(actorToken, OAuth20Token.class);
-                yield Objects.requireNonNull(token.getAuthentication());
-            }
-            case JWT -> buildActorTokenAuthenticationFromJwt(actorToken, request, response);
+            case ACCESS_TOKEN, JWT -> Objects.requireNonNull(OAuth20Utils.resolveAccessToken(configurationContext.getTicketRegistry(),
+                configurationContext.getAccessTokenJwtBuilder(), actorToken).getAuthentication());
             default -> throw new IllegalArgumentException("Actor token type %s is not supported".formatted(actorTokenType));
         };
     }
 
-    /**
-     * Build the actor authentication from a JWT actor token. A token whose claims cannot be unpacked
-     * (one whose signature cannot be verified unpacks to nothing) is refused.
-     *
-     * @param actorToken the actor token
-     * @param request    the request
-     * @param response   the response
-     * @return the authentication
-     * @throws Throwable the throwable
-     */
-    protected Authentication buildActorTokenAuthenticationFromJwt(final String actorToken, final HttpServletRequest request, final HttpServletResponse response) throws Throwable {
-        val configurationContext = getConfigurationContext().getObject();
-        val claimSet = Optional.ofNullable(configurationContext.getAccessTokenJwtBuilder().unpack(Optional.empty(), actorToken))
-            .orElseThrow(() -> new IllegalArgumentException("Actor token cannot be verified"));
-        val service = configurationContext.getWebApplicationServiceServiceFactory().createService(claimSet.getIssuer());
-        service.getAttributes().put(OAuth20Constants.CLIENT_ID, List.of(claimSet.getIssuer()));
-        val registeredService = OAuth20Utils.getRegisteredOAuthServiceByClientId(configurationContext.getServicesManager(), claimSet.getIssuer());
-        val userProfile = extractUserProfile(request, response).orElseThrow();
-        return configurationContext.getAuthenticationBuilder().build(userProfile, registeredService, request, service);
-    }
-
     public record TokenExchangeRequest(Serializable token, Service service,
-        OAuthRegisteredService registeredService, Authentication authentication) {
+        OAuthRegisteredService registeredService, Authentication authentication,
+        @Nullable Ticket ticketGrantingTicket) {
     }
 }

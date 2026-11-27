@@ -1,7 +1,7 @@
 const assert = require("assert");
 const cas = require("../../cas.js");
 
-async function exchangeToken(token, fromType, toType) {
+async function exchangeToken(token, fromType, toType, subjectExpiresIn, credentials = "client:secret") {
     const grantType = "urn:ietf:params:oauth:grant-type:token-exchange";
     let params = `grant_type=${encodeURIComponent(grantType)}&scope=${encodeURIComponent("openid profile")}`;
     params += `&subject_token=${encodeURIComponent(token)}`;
@@ -13,10 +13,11 @@ async function exchangeToken(token, fromType, toType) {
 
     const url = `https://localhost:8443/cas/oidc/token?${params}`;
     await cas.log(`Exchanging token ${token}`);
-    await cas.doPost(url, "", {
+    return cas.doPost(url, "", {
         "Content-Type": "application/json",
-        "Authorization": `Basic ${btoa("client:secret")}`
+        "Authorization": `Basic ${btoa(credentials)}`
     }, async (payload) => {
+        assert(payload.data.expires_in <= subjectExpiresIn);
         switch (toType) {
         case "access_token":
         case "jwt":
@@ -68,6 +69,7 @@ async function exchangeToken(token, fromType, toType) {
             assert(decoded.iat !== undefined);
             assert(decoded.jti !== undefined);
         }
+        return payload.data;
     }, (error) => {
         throw `Operation failed: ${error}`;
     });
@@ -86,9 +88,14 @@ async function verifyTokenExchangeTypes() {
         assert(res.data.access_token !== undefined);
         assert(res.data.refresh_token !== undefined);
 
-        await exchangeToken(res.data.access_token, "access_token", "access_token");
-        await exchangeToken(res.data.access_token, "access_token", "jwt");
-        await exchangeToken(res.data.access_token, "access_token", "id_token");
+        await exchangeToken(res.data.access_token, "access_token", "access_token", res.data.expires_in);
+        const exchanged = await exchangeToken(res.data.access_token, "access_token", "jwt", res.data.expires_in);
+        await exchangeToken(res.data.access_token, "access_token", "id_token", res.data.expires_in);
+
+        await cas.log("Exchanging the JWT access token signed with the keys of its application, also by another application");
+        await exchangeToken(exchanged.access_token, "jwt", "jwt", exchanged.expires_in);
+        await exchangeToken(exchanged.access_token, "jwt", "access_token", exchanged.expires_in, "client2:secret2");
+        await exchangeToken(exchanged.access_token, "access_token", "access_token", exchanged.expires_in, "client2:secret2");
 
     }, (error) => {
         throw `Operation failed: ${error}`;
@@ -153,7 +160,22 @@ async function verifyTokenExchangeNativeSso() {
         const subjectTokenType = "urn:ietf:params:oauth:token-type:id_token";
         const actorTokenType = "urn:openid:params:token-type:device-secret";
 
+        await cas.log("Exchanging ID token without its device secret...");
         let params = `grant_type=${encodeURIComponent(grantType)}`;
+        params += `&scope=${encodeURIComponent("openid profile")}`;
+        params += `&subject_token=${tokens.id_token}`;
+        params += `&subject_token_type=${encodeURIComponent(subjectTokenType)}`;
+        await cas.doPost(`${baseTokenUrl}?${params}`, "", {
+            "Content-Type": "application/json",
+            "Authorization": `Basic ${btoa("client2:secret2")}`
+        }, (res) => {
+            throw `ID token without device secret must be refused: ${res.data}`;
+        }, (error) => {
+            assert(error.response.status === 400);
+            assert(error.response.data.error === "invalid_request");
+        });
+
+        params = `grant_type=${encodeURIComponent(grantType)}`;
         params += `&scope=${encodeURIComponent("openid profile email")}`;
         params += `&resource=${encodeURIComponent("https://localhost:9859/anything/backend")}`;
         params += `&subject_token=${tokens.id_token}`;

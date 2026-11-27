@@ -224,6 +224,38 @@ class OidcAccessTokenEndpointControllerTests {
         }
 
         @Test
+        void verifyExchangeIdTokenRequiresDeviceSecret() throws Throwable {
+            val registeredService = getOidcRegisteredService(UUID.randomUUID().toString());
+            registeredService.setEncryptIdToken(false);
+            registeredService.setSupportedGrantTypes(Set.of(OAuth20GrantTypes.TOKEN_EXCHANGE.getType()));
+            servicesManager.save(registeredService);
+
+            val accessToken = getAccessToken(registeredService.getClientId(), Set.of(
+                OidcConstants.StandardScopes.OPENID.getScope(), OidcConstants.StandardScopes.DEVICE_SSO.getScope()));
+            ticketRegistry.addTicket(accessToken.getTicketGrantingTicket());
+            ticketRegistry.addTicket(accessToken);
+            val idToken = oidcIdTokenGenerator.generate(IdTokenGenerationContext.builder()
+                .accessToken(accessToken)
+                .userProfile(new DefaultOAuth20UserProfile("casuser"))
+                .responseType(OAuth20ResponseTypes.CODE)
+                .grantType(OAuth20GrantTypes.AUTHORIZATION_CODE)
+                .registeredService(registeredService)
+                .build());
+
+            mvc.perform(post("/cas/" + OidcConstants.BASE_OIDC_URL + '/' + OidcConstants.TOKEN_URL)
+                    .secure(true)
+                    .param(OAuth20Constants.CLIENT_ID, registeredService.getClientId())
+                    .param(OAuth20Constants.CLIENT_SECRET, registeredService.getClientSecrets().getFirst().getValue())
+                    .queryParam(OAuth20Constants.SUBJECT_TOKEN, idToken.token())
+                    .queryParam(OAuth20Constants.SUBJECT_TOKEN_TYPE, OAuth20TokenExchangeTypes.ID_TOKEN.getType())
+                    .queryParam(OAuth20Constants.SCOPE, OidcConstants.StandardScopes.OPENID.getScope())
+                    .queryParam(OAuth20Constants.GRANT_TYPE, OAuth20GrantTypes.TOKEN_EXCHANGE.getType()))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value(OAuth20Constants.INVALID_REQUEST))
+                .andExpect(jsonPath("$.access_token").doesNotExist());
+        }
+
+        @Test
         void verifyRefreshTokenUpdatesTicketGrantingTicket() throws Throwable {
             val registeredService = getOidcRegisteredService(UUID.randomUUID().toString());
             registeredService.setSupportedGrantTypes(Set.of(OAuth20GrantTypes.REFRESH_TOKEN.getType(), OAuth20GrantTypes.AUTHORIZATION_CODE.getType()));

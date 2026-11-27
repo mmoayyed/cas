@@ -21,6 +21,7 @@ import org.apereo.cas.support.oauth.validator.OAuth20ProofOfPossessionValidator;
 import org.apereo.cas.support.oauth.validator.token.OAuth20InvalidTargetException;
 import org.apereo.cas.support.oauth.web.OAuth20RequestParameterResolver;
 import org.apereo.cas.support.oauth.web.response.accesstoken.OAuth20TokenGeneratedResult;
+import org.apereo.cas.support.oauth.web.response.accesstoken.response.OAuth20JwtAccessTokenEncoder;
 import org.apereo.cas.ticket.OAuth20Token;
 import org.apereo.cas.ticket.Ticket;
 import org.apereo.cas.ticket.TransientSessionTicket;
@@ -782,6 +783,28 @@ public class OAuth20Utils {
                 return ((OAuth20AccessToken) token).getExpiresIn();
             })
             .orElse(0L);
+    }
+
+    /**
+     * Resolve the access token CAS keeps for a token a client presents: the identifier of the access token, or the JWT
+     * CAS issued for it. A JWT is verified with the keys of the application its header names, or else with the default
+     * keys, exactly as it was signed, and only its identifier is read. The access token found in the registry, not the
+     * claims of the JWT, carries the principal, scopes, client and single sign-on session, so a JWT that names no
+     * access token, or one CAS cannot verify, is refused.
+     *
+     * @param ticketRegistry        the ticket registry
+     * @param accessTokenJwtBuilder the access token JWT builder
+     * @param token                 the token as presented
+     * @return the access token
+     */
+    public static OAuth20AccessToken resolveAccessToken(final TicketRegistry ticketRegistry,
+                                                        final JwtBuilder accessTokenJwtBuilder,
+                                                        final String token) {
+        val accessTokenId = OAuth20JwtAccessTokenEncoder.toDecodableCipher(accessTokenJwtBuilder).decode(token);
+        if (StringUtils.isBlank(accessTokenId)) {
+            throw new IllegalArgumentException("Token cannot be verified or names no access token");
+        }
+        return ticketRegistry.getTicket(accessTokenId, OAuth20AccessToken.class);
     }
 
     /**

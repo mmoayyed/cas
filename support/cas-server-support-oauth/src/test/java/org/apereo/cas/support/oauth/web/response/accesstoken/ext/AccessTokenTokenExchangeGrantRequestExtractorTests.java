@@ -8,6 +8,8 @@ import org.apereo.cas.support.oauth.OAuth20GrantTypes;
 import org.apereo.cas.support.oauth.OAuth20ResponseTypes;
 import org.apereo.cas.support.oauth.OAuth20TokenExchangeTypes;
 import org.apereo.cas.support.oauth.profile.DefaultOAuth20UserProfile;
+import org.apereo.cas.support.oauth.web.response.accesstoken.response.OAuth20JwtAccessTokenEncoder;
+import org.apereo.cas.ticket.InvalidTicketException;
 import org.apereo.cas.ticket.OAuth20UnauthorizedScopeRequestException;
 import org.apereo.cas.token.JwtBuilder;
 import org.apereo.cas.util.RandomUtils;
@@ -60,6 +62,10 @@ class AccessTokenTokenExchangeGrantRequestExtractorTests extends AbstractOAuth20
         when(subjectToken.getScopes()).thenReturn(Set.of("read"));
         ticketRegistry.addTicket(subjectToken);
 
+        val actorToken = getAccessToken(RegisteredServiceTestUtils.getAuthentication("adminuser"),
+            registeredService.getServiceId(), registeredService.getClientId());
+        ticketRegistry.addTicket(actorToken);
+
         request.addParameter(OAuth20Constants.SUBJECT_TOKEN, subjectToken.getId());
         request.addParameter(OAuth20Constants.SUBJECT_TOKEN_TYPE, OAuth20TokenExchangeTypes.ACCESS_TOKEN.getType());
 
@@ -75,9 +81,14 @@ class AccessTokenTokenExchangeGrantRequestExtractorTests extends AbstractOAuth20
         userProfile.addAttribute(OAuth20Constants.CLIENT_ID, registeredService.getClientId());
         userProfile.addAttributes((Map) RegisteredServiceTestUtils.getTestAttributes());
         storeProfileIntoSession(request, userProfile);
+        assertThrows(InvalidTicketException.class, () -> extractor.extract(request, response));
 
+        request.setParameter(OAuth20Constants.ACTOR_TOKEN, OAuth20JwtAccessTokenEncoder.toEncodableCipher(configurationContext,
+            registeredService, actorToken, actorToken.getService(), true).encode(actorToken.getId()));
         val tokenContext = extractor.extract(request, response);
         assertNotNull(tokenContext);
+        assertEquals("adminuser", tokenContext.getActorToken().getPrincipal().getId());
+        assertSame(subjectToken.getTicketGrantingTicket(), tokenContext.getTicketGrantingTicket());
     }
 
     @Test
@@ -115,6 +126,7 @@ class AccessTokenTokenExchangeGrantRequestExtractorTests extends AbstractOAuth20
         assertEquals(OAuth20TokenExchangeTypes.ACCESS_TOKEN, tokenContext.getSubjectTokenType());
         assertEquals(OAuth20TokenExchangeTypes.ACCESS_TOKEN, tokenContext.getRequestedTokenType());
         assertNotNull(tokenContext.getActorToken());
+        assertSame(subjectToken.getTicketGrantingTicket(), tokenContext.getTicketGrantingTicket());
     }
 
     @Test

@@ -29,6 +29,7 @@ import org.apereo.cas.ticket.TicketFactory;
 import org.apereo.cas.ticket.TransientSessionTicket;
 import org.apereo.cas.ticket.TransientSessionTicketFactory;
 import org.apereo.cas.ticket.accesstoken.OAuth20AccessToken;
+import org.apereo.cas.ticket.accesstoken.OAuth20AccessTokenExpirationPolicy;
 import org.apereo.cas.ticket.accesstoken.OAuth20AccessTokenFactory;
 import org.apereo.cas.ticket.device.OAuth20DeviceToken;
 import org.apereo.cas.ticket.device.OAuth20DeviceTokenFactory;
@@ -334,11 +335,35 @@ public class OAuth20DefaultTokenGenerator implements OAuth20TokenGenerator {
             accessToken.getClaims(),
             accessToken.getResponseType(),
             accessToken.getGrantType());
+        limitExpirationToSubjectToken(exchangedToken, accessToken);
         Optional.ofNullable(tokenRequestContext.getTokenExchangeAudience())
             .filter(StringUtils::isNotBlank)
             .or(() -> Optional.ofNullable(tokenRequestContext.getTokenExchangeResource()).map(Service::getId))
             .ifPresent(audience -> exchangedToken.setAudience(List.of(audience)));
         return exchangedToken;
+    }
+
+    /**
+     * Limit the lifetime of the exchanged token to that of the subject token. The exchange does not extend the validity
+     * of the token it starts from (RFC 8693, section 2.1), so exchanging a token again and again never keeps it alive.
+     * The exchanged token keeps the kind of its expiration policy and its idle timeout, which never exceeds the
+     * shortened lifetime.
+     *
+     * @param exchangedToken the exchanged token
+     * @param subjectToken   the subject token
+     */
+    protected void limitExpirationToSubjectToken(final OAuth20AccessToken exchangedToken, final OAuth20AccessToken subjectToken) {
+        val subjectExpirationPolicy = subjectToken.getExpirationPolicy();
+        val subjectExpiration = subjectExpirationPolicy == null ? null : subjectExpirationPolicy.toMaximumExpirationTime(subjectToken);
+        if (subjectExpiration != null && exchangedToken.getExpirationPolicy() instanceof final OAuth20AccessTokenExpirationPolicy policy) {
+            val timeToLive = Math.max(0L, Duration.between(exchangedToken.getCreationTime(), subjectExpiration).toSeconds());
+            if (timeToLive < policy.getTimeToLive()) {
+                val timeToIdle = Math.min(policy.getTimeToIdle(), timeToLive);
+                exchangedToken.setExpirationPolicy(policy instanceof OAuth20AccessTokenExpirationPolicy.OAuthAccessTokenSovereignExpirationPolicy
+                    ? new OAuth20AccessTokenExpirationPolicy.OAuthAccessTokenSovereignExpirationPolicy(timeToLive, timeToIdle)
+                    : new OAuth20AccessTokenExpirationPolicy(timeToLive, timeToIdle));
+            }
+        }
     }
 
     protected Ticket addAccessToken(final AccessTokenRequestContext tokenRequestContext,

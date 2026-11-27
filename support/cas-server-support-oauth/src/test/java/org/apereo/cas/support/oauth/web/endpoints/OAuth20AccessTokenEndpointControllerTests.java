@@ -6,6 +6,8 @@ import org.apereo.cas.CasProtocolConstants;
 import org.apereo.cas.authentication.CoreAuthenticationTestUtils;
 import org.apereo.cas.authentication.principal.Principal;
 import org.apereo.cas.mock.MockTicketGrantingTicket;
+import org.apereo.cas.services.DefaultRegisteredServiceProperty;
+import org.apereo.cas.services.RegisteredServiceProperty.RegisteredServiceProperties;
 import org.apereo.cas.support.oauth.OAuth20ClientAuthenticationMethods;
 import org.apereo.cas.support.oauth.OAuth20Constants;
 import org.apereo.cas.support.oauth.OAuth20GrantTypes;
@@ -14,17 +16,21 @@ import org.apereo.cas.support.oauth.OAuth20TokenExchangeTypes;
 import org.apereo.cas.support.oauth.profile.DefaultOAuth20UserProfile;
 import org.apereo.cas.support.oauth.services.OAuthRegisteredService;
 import org.apereo.cas.support.oauth.util.OAuth20Utils;
+import org.apereo.cas.support.oauth.web.response.accesstoken.response.OAuth20JwtAccessTokenEncoder;
 import org.apereo.cas.ticket.accesstoken.OAuth20AccessToken;
+import org.apereo.cas.ticket.accesstoken.OAuth20AccessTokenExpirationPolicy;
 import org.apereo.cas.ticket.code.OAuth20DefaultOAuthCodeFactory;
 import org.apereo.cas.ticket.device.OAuth20DeviceUserCode;
 import org.apereo.cas.ticket.refreshtoken.OAuth20DefaultRefreshTokenFactory;
 import org.apereo.cas.ticket.refreshtoken.OAuth20RefreshToken;
 import org.apereo.cas.util.CollectionUtils;
 import org.apereo.cas.util.DefaultUniqueTicketIdGenerator;
+import org.apereo.cas.util.EncodingUtils;
 import org.apereo.cas.util.crypto.CertUtils;
 import org.apereo.cas.util.crypto.CipherExecutor;
 import org.apereo.cas.util.http.HttpUtils;
 import org.apereo.cas.web.cookie.CasCookieBuilder;
+import com.jayway.jsonpath.JsonPath;
 import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.jwk.Curve;
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator;
@@ -375,6 +381,77 @@ class OAuth20AccessTokenEndpointControllerTests {
                 .andExpect(jsonPath("$.scope").value("update"))
                 .andExpect(jsonPath("$.access_token").exists())
                 .andExpect(jsonPath("$.issued_token_type").value(OAuth20TokenExchangeTypes.JWT.getType()));
+        }
+
+        @Test
+        void verifyJwtSignedWithServiceKeysExchangedByAnotherClient() throws Throwable {
+            val subjectService = getRegisteredService(UUID.randomUUID().toString(), OAuth20GrantTypes.CLIENT_CREDENTIALS);
+            subjectService.setScopes(Set.of("create", "update"));
+            subjectService.getProperties().put(RegisteredServiceProperties.ACCESS_TOKEN_AS_JWT_SIGNING_KEY.getPropertyName(),
+                new DefaultRegisteredServiceProperty(EncodingUtils.generateJsonWebKey(512)));
+            servicesManager.save(subjectService);
+            val subjectToken = getAccessToken(subjectService.getServiceId(), subjectService.getClientId());
+            when(subjectToken.getScopes()).thenReturn(Set.of("create", "update"));
+            ticketRegistry.addTicket(subjectToken);
+            val subjectJwt = OAuth20JwtAccessTokenEncoder.toEncodableCipher(configurationContext, subjectService,
+                subjectToken, subjectToken.getService(), true).encode(subjectToken.getId());
+
+            val actorToken = getAccessToken(CoreAuthenticationTestUtils.getAuthentication("adminuser"),
+                subjectService.getServiceId(), subjectService.getClientId());
+            ticketRegistry.addTicket(actorToken);
+            val actorJwt = OAuth20JwtAccessTokenEncoder.toEncodableCipher(configurationContext, subjectService,
+                actorToken, actorToken.getService(), true).encode(actorToken.getId());
+
+            val requestingService = getRegisteredService(UUID.randomUUID().toString(), OAuth20GrantTypes.TOKEN_EXCHANGE);
+            requestingService.setScopes(Set.of("create", "update"));
+            servicesManager.save(requestingService);
+
+            for (val subjectTokenType : List.of(OAuth20TokenExchangeTypes.JWT, OAuth20TokenExchangeTypes.ACCESS_TOKEN)) {
+                val result = mvc.perform(post("/cas" + CONTEXT + OAuth20Constants.ACCESS_TOKEN_URL)
+                        .param(OAuth20Constants.CLIENT_ID, requestingService.getClientId())
+                        .param(OAuth20Constants.CLIENT_SECRET, requestingService.getClientSecrets().getFirst().getValue())
+                        .queryParam(OAuth20Constants.SUBJECT_TOKEN, subjectJwt)
+                        .queryParam(OAuth20Constants.SUBJECT_TOKEN_TYPE, subjectTokenType.getType())
+                        .queryParam(OAuth20Constants.ACTOR_TOKEN, actorJwt)
+                        .queryParam(OAuth20Constants.ACTOR_TOKEN_TYPE, subjectTokenType.getType())
+                        .queryParam(OAuth20Constants.REQUESTED_TOKEN_TYPE, OAuth20TokenExchangeTypes.JWT.getType())
+                        .queryParam(OAuth20Constants.GRANT_TYPE, OAuth20GrantTypes.TOKEN_EXCHANGE.getType())
+                        .queryParam(OAuth20Constants.SCOPE, "update"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.scope").value("update"))
+                    .andExpect(jsonPath("$.issued_token_type").value(OAuth20TokenExchangeTypes.JWT.getType()))
+                    .andReturn();
+                val claims = accessTokenJwtBuilder.unpack(Optional.of(requestingService),
+                    JsonPath.read(result.getResponse().getContentAsString(), "$.access_token").toString());
+                assertNotNull(claims);
+                assertEquals(subjectToken.getAuthentication().getPrincipal().getId(), claims.getSubject());
+                assertEquals(requestingService.getClientId(), claims.getStringClaim(OAuth20Constants.CLIENT_ID));
+                assertEquals("adminuser", claims.getJSONObjectClaim(OAuth20Constants.CLAIM_ACT).get(OAuth20Constants.CLAIM_SUB));
+            }
+        }
+
+        @Test
+        void verifyExchangedTokenEndsWithSubjectToken() throws Throwable {
+            val service = getRegisteredService(UUID.randomUUID().toString(), OAuth20GrantTypes.TOKEN_EXCHANGE);
+            servicesManager.save(service);
+            val subjectToken = getAccessToken(service.getServiceId(), service.getClientId());
+            when(subjectToken.getExpirationPolicy()).thenReturn(new OAuth20AccessTokenExpirationPolicy(60, 60));
+            ticketRegistry.addTicket(subjectToken.getTicketGrantingTicket());
+            ticketRegistry.addTicket(subjectToken);
+
+            val result = mvc.perform(post("/cas" + CONTEXT + OAuth20Constants.ACCESS_TOKEN_URL)
+                    .param(OAuth20Constants.CLIENT_ID, service.getClientId())
+                    .param(OAuth20Constants.CLIENT_SECRET, service.getClientSecrets().getFirst().getValue())
+                    .queryParam(OAuth20Constants.SUBJECT_TOKEN, subjectToken.getId())
+                    .queryParam(OAuth20Constants.SUBJECT_TOKEN_TYPE, OAuth20TokenExchangeTypes.ACCESS_TOKEN.getType())
+                    .queryParam(OAuth20Constants.GRANT_TYPE, OAuth20GrantTypes.TOKEN_EXCHANGE.getType()))
+                .andExpect(status().isOk())
+                .andReturn();
+            val json = result.getResponse().getContentAsString();
+            val exchangedToken = ticketRegistry.getTicket(JsonPath.read(json, "$.access_token").toString(), OAuth20AccessToken.class);
+            assertEquals(subjectToken.getTicketGrantingTicket().getId(), exchangedToken.getTicketGrantingTicket().getId());
+            assertTrue(exchangedToken.getExpiresIn() <= 60);
+            assertTrue(Long.parseLong(JsonPath.read(json, "$.expires_in").toString()) <= 60);
         }
     }
 

@@ -19,6 +19,7 @@ import org.apereo.cas.util.function.FunctionUtils;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.apache.commons.lang3.Strings;
+import org.jose4j.jwt.JwtClaims;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.util.Assert;
 import jakarta.servlet.http.HttpServletRequest;
@@ -36,6 +37,15 @@ public class OidcAccessTokenTokenExchangeGrantRequestExtractor extends AccessTok
         super(configurationContext);
     }
 
+    /**
+     * Extract the token exchange request from the subject token. An ID token is the subject only along with the device
+     * secret it is bound to, and the exchanged token stays within the single sign-on session the ID token names.
+     *
+     * @param request  the request
+     * @param response the response
+     * @return the token exchange request
+     * @throws Throwable the throwable
+     */
     @Override
     protected TokenExchangeRequest extractSubjectTokenExchangeRequest(final HttpServletRequest request, final HttpServletResponse response) throws Throwable {
         val configurationContext = getConfigurationContext().getObject();
@@ -47,12 +57,14 @@ public class OidcAccessTokenTokenExchangeGrantRequestExtractor extends AccessTok
             .orElseThrow(() -> new IllegalArgumentException("Subject token cannot be undefined"));
 
         if (subjectTokenType == OAuth20TokenExchangeTypes.ID_TOKEN) {
+            OidcTokenExchangeGrantTypeTokenRequestValidator.ensureDeviceSecretActorToken(requestParameterResolver, request);
             val userProfile = extractUserProfile(request, response).orElseThrow();
             val requestingClientId = userProfile.getId();
 
             val clientIdInIdToken = OAuth20Utils.extractClientIdFromToken(subjectToken);
             val registeredService = OAuth20Utils.getRegisteredOAuthServiceByClientId(configurationContext.getServicesManager(), clientIdInIdToken);
             val claimSet = configurationContext.getIdTokenSigningAndEncryptionService().decode(subjectToken, Optional.ofNullable(registeredService));
+            val ticketGrantingTicket = locateTicketGrantingTicket(claimSet);
             val service = configurationContext.getWebApplicationServiceServiceFactory().createService(claimSet.getIssuer());
             service.getAttributes().put(OAuth20Constants.CLIENT_ID, List.of(requestingClientId));
 
@@ -65,7 +77,7 @@ public class OidcAccessTokenTokenExchangeGrantRequestExtractor extends AccessTok
                 OAuth20ResponseTypes.NONE, OAuth20GrantTypes.TOKEN_EXCHANGE);
             val requestedRegisteredService = OAuth20Utils.getRegisteredOAuthServiceByClientId(
                 configurationContext.getServicesManager(), requestingClientId);
-            return new TokenExchangeRequest(accessToken, service, requestedRegisteredService, authentication);
+            return new TokenExchangeRequest(accessToken, service, requestedRegisteredService, authentication, ticketGrantingTicket);
 
         }
         return super.extractSubjectTokenExchangeRequest(request, response);
@@ -94,19 +106,31 @@ public class OidcAccessTokenTokenExchangeGrantRequestExtractor extends AccessTok
             val claims = configurationContext.getIdTokenSigningAndEncryptionService().decode(subjectToken, Optional.ofNullable(registeredService));
             Assert.isTrue(claims.hasClaim(OidcConstants.DS_HASH), "Subject token must contain the claim %s".formatted(OidcConstants.DS_HASH));
             Assert.isTrue(claims.hasClaim(OidcConstants.CLAIM_SESSION_ID), "Subject token must contain the claim %s".formatted(OidcConstants.CLAIM_SESSION_ID));
-            Assert.isTrue(claims.hasClaim(OidcConstants.CLAIM_SESSION_REF), "Subject token must contain the claim %s".formatted(OidcConstants.CLAIM_SESSION_REF));
 
             val deviceSecret = configurationContext.getDeviceSecretGenerator().hash(actorToken.orElseThrow());
             Assert.isTrue(Strings.CI.equals(deviceSecret, claims.getStringClaimValue(OidcConstants.DS_HASH)),
                 "Device secret hash does not match the subject token claim %s".formatted(OidcConstants.DS_HASH));
-
-            val base64DecodedSessionId = EncodingUtils.decodeUrlSafeBase64(claims.getStringClaimValue(OidcConstants.CLAIM_SESSION_REF));
-            val ticketGrantingTicketId = new String((byte[]) configurationContext.getTicketRegistry().getCipherExecutor().decode(base64DecodedSessionId), StandardCharsets.UTF_8);
-            val ticketGrantingTicket = configurationContext.getTicketRegistry().getTicket(ticketGrantingTicketId, TicketGrantingTicket.class);
-            Assert.notNull(ticketGrantingTicket, "Ticket granting ticket cannot be null");
-            return ticketGrantingTicket.getAuthentication();
+            return locateTicketGrantingTicket(claims).getAuthentication();
         }
         return super.getActorTokenAuthentication(request, response, extractedRequest);
+    }
+
+    /**
+     * Locate the single sign-on session an ID token issued for native SSO names in its session reference claim. The
+     * session must still be valid (OpenID Connect Native SSO for Mobile Apps 1.0, section 4.3).
+     *
+     * @param claims the ID token claims
+     * @return the ticket-granting ticket
+     * @throws Throwable the throwable
+     */
+    protected TicketGrantingTicket locateTicketGrantingTicket(final JwtClaims claims) throws Throwable {
+        Assert.isTrue(claims.hasClaim(OidcConstants.CLAIM_SESSION_REF), "Subject token must contain the claim %s".formatted(OidcConstants.CLAIM_SESSION_REF));
+        val configurationContext = getConfigurationContext().getObject();
+        val base64DecodedSessionId = EncodingUtils.decodeUrlSafeBase64(claims.getStringClaimValue(OidcConstants.CLAIM_SESSION_REF));
+        val ticketGrantingTicketId = new String((byte[]) configurationContext.getTicketRegistry().getCipherExecutor().decode(base64DecodedSessionId), StandardCharsets.UTF_8);
+        val ticketGrantingTicket = configurationContext.getTicketRegistry().getTicket(ticketGrantingTicketId, TicketGrantingTicket.class);
+        Assert.notNull(ticketGrantingTicket, "Ticket granting ticket cannot be null");
+        return ticketGrantingTicket;
     }
 
     @Override

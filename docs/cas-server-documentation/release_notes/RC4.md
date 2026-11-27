@@ -679,6 +679,20 @@ one-time codes can be added when `cas.authn.mfa.simple.mail.accepted-email-patte
   attributes of the client that sent it; CAS keeps only the proof and the thumbprint of its key. The client signs its
   proof with a key of its own choosing, so a proof that named another `client_id` could make the token endpoint act
   for that client, for instance to redeem its authorization codes, and other claims reached the client's attributes.
+- {: .fixed data-area="oidc"} Security: with [native SSO](../authentication/OIDC-Authentication-NativeSSO-MobileApps.html),
+  which is on by default, a [token exchange](../authentication/OAuth-ProtocolFlow-TokenExchange.html) accepted an ID token
+  as the subject token without its device secret, so any client allowed to exchange tokens that held another application's
+  ID token could obtain tokens for its user, even once the ID token had expired. An ID token is now accepted only with the
+  device secret it is bound to, while its single sign-on session is valid; other requests are refused with `invalid_request`.
+- {: .fixed data-area="oidc"} Security: tokens issued by a [token exchange](../authentication/OAuth-ProtocolFlow-TokenExchange.html)
+  no longer outlive the subject token. They expire no later than the subject token and belong to its single sign-on
+  session; they used to start a full lifetime of their own outside any session, so exchanging a token again and again
+  kept access alive after the subject token had expired and after logout.
+- {: .fixed data-area="oidc"} A [token exchange](../authentication/OAuth-ProtocolFlow-TokenExchange.html) accepts access
+  tokens issued as JWTs, as `jwt` or `access_token` subject and actor tokens. They are verified with the keys of the
+  application they were issued to, which OpenID Connect uses to sign them, and everything else comes from the access
+  token CAS keeps. They used to be checked against the default keys only and against claims CAS does not issue, so the
+  exchange failed.
 - {: .fixed data-area="oidc"} [Audit records](../audits/Audits.html) of issued ID tokens and of user profile requests
   name the application by its URL only. They used to record the whole request behind the token, so the client
   credentials of the `Authorization` header, the PKCE `code_verifier`, cookies and other request parameters reached the

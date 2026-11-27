@@ -124,13 +124,26 @@ The following combinations of token types are supported for impersonation operat
 | `urn:ietf:params:oauth:token-type:access_token` | `urn:ietf:params:oauth:token-type:access_token` | Exchange an access token for another.                                                                  |
 | `urn:ietf:params:oauth:token-type:access_token` | `urn:ietf:params:oauth:token-type:jwt`          | Exchange an access token for another as JWT.                                                           |
 | `urn:ietf:params:oauth:token-type:access_token` | `urn:ietf:params:oauth:token-type:id_token`     | Exchange an access token for an [OpenID Connect ID token](../authentication/OIDC-Authentication.html). |
+| `urn:ietf:params:oauth:token-type:jwt`          | `urn:ietf:params:oauth:token-type:access_token` | Exchange an access token issued as JWT for another.                                                    |
+| `urn:ietf:params:oauth:token-type:jwt`          | `urn:ietf:params:oauth:token-type:jwt`          | Exchange an access token issued as JWT for another as JWT.                                             |
 
 The following combinations of token types are supported for delegation operations:
 
-| Subject Token Type                              | Issued Token Type                               | Description                                  |
-|-------------------------------------------------|-------------------------------------------------|----------------------------------------------|
-| `urn:ietf:params:oauth:token-type:access_token` | `urn:ietf:params:oauth:token-type:access_token` | Exchange an access token for another.        |
-| `urn:ietf:params:oauth:token-type:access_token` | `urn:ietf:params:oauth:token-type:jwt`          | Exchange an access token for another as JWT. |
+| Subject Token Type                              | Issued Token Type                               | Description                                                |
+|-------------------------------------------------|-------------------------------------------------|------------------------------------------------------------|
+| `urn:ietf:params:oauth:token-type:access_token` | `urn:ietf:params:oauth:token-type:access_token` | Exchange an access token for another.                      |
+| `urn:ietf:params:oauth:token-type:access_token` | `urn:ietf:params:oauth:token-type:jwt`          | Exchange an access token for another as JWT.               |
+| `urn:ietf:params:oauth:token-type:jwt`          | `urn:ietf:params:oauth:token-type:access_token` | Exchange an access token issued as JWT for another.        |
+| `urn:ietf:params:oauth:token-type:jwt`          | `urn:ietf:params:oauth:token-type:jwt`          | Exchange an access token issued as JWT for another as JWT. |
+
+Subject and actor tokens of the `access_token` and `jwt` types are access tokens issued by CAS, presented as their
+identifier or as the JWT CAS issued for them; such a JWT may be presented with either type. CAS verifies a JWT with the
+signing and encryption keys of the application it was issued to, or with its default keys when the application defines
+none, and takes everything else from the access token it keeps. A JWT that CAS cannot verify, or that does not stand for
+such an access token, is refused.
+
+The exchanged token never outlives the subject token: it expires no later than the subject token, and it belongs to the
+single sign-on session of the subject token, as any token issued within that session does.
    
 ## Delegation vs. Impersonation
 
