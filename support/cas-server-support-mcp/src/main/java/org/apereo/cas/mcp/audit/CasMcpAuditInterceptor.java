@@ -1,7 +1,9 @@
 package org.apereo.cas.mcp.audit;
 
 import module java.base;
+import org.apereo.cas.mcp.CasMcpOperationNotConfirmedException;
 import org.apereo.cas.mcp.oauth.CasMcpBearerTokenAuthentication;
+import io.modelcontextprotocol.server.McpSyncServerExchange;
 import lombok.RequiredArgsConstructor;
 import lombok.val;
 import org.aopalliance.intercept.MethodInterceptor;
@@ -49,6 +51,9 @@ public class CasMcpAuditInterceptor implements MethodInterceptor {
         } catch (final AccessDeniedException | AuthenticationException e) {
             record(invocation, CasMcpOperation.Outcome.DENIED);
             throw e;
+        } catch (final CasMcpOperationNotConfirmedException e) {
+            record(invocation, CasMcpOperation.Outcome.NOT_CONFIRMED);
+            throw e;
         } catch (final Throwable e) {
             record(invocation, CasMcpOperation.Outcome.FAILED);
             throw e;
@@ -89,7 +94,7 @@ public class CasMcpAuditInterceptor implements MethodInterceptor {
         val parameters = invocation.getMethod().getParameters();
         val values = invocation.getArguments();
         return IntStream.iterate(0, i -> i < parameters.length && i < values.length, i -> i + 1)
-            .filter(i -> values[i] != null)
+            .filter(i -> values[i] != null && !(values[i] instanceof McpSyncServerExchange))
             .boxed()
             .collect(Collectors.toMap(i -> parameters[i].getName(),
                 i -> StringUtils.abbreviate(String.valueOf(values[i]), MAX_ARGUMENT_LENGTH), (a, b) -> b, LinkedHashMap::new));

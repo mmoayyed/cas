@@ -43,6 +43,10 @@ public record CasMcpOperation(String operator, String operation, Map<String, Str
         /**
          * The call failed with an error.
          */
-        FAILED
+        FAILED,
+        /**
+         * The person at the MCP client did not confirm a call that changes CAS.
+         */
+        NOT_CONFIRMED
     }
 }

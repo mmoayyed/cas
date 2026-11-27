@@ -122,7 +122,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
     "spring.ai.mcp.server.name=Apereo CAS MCP Server",
     "spring.ai.mcp.server.protocol=STREAMABLE",
     "spring.ai.mcp.server.capabilities.resource=true",
-    "spring.ai.mcp.server.capabilities.prompt=false",
+    "spring.ai.mcp.server.capabilities.prompt=true",
     "spring.ai.mcp.server.capabilities.completion=true",
     "cas.monitor.endpoints.json.location=classpath:/McpUserDetails.json",
     "cas.authn.attribute-repository.stub.attributes.mail=casuser@apereo.org",

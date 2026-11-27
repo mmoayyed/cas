@@ -16,6 +16,7 @@ import org.apereo.cas.ticket.registry.TicketRegistry;
 import org.apereo.cas.web.support.ThrottledSubmission;
 import org.apereo.cas.web.support.ThrottledSubmissionsStore;
 import com.fasterxml.jackson.annotation.JsonInclude;
+import io.modelcontextprotocol.server.McpSyncServerExchange;
 import lombok.RequiredArgsConstructor;
 import lombok.val;
 import org.apache.commons.lang3.StringUtils;
@@ -60,6 +61,7 @@ public class CasAdministrationTools {
      *
      * @param username         the username
      * @param sessionReference the session reference of a single session, optional
+     * @param exchange the MCP exchange, to ask the person at the MCP client to confirm
      * @return the ended sessions
      */
     @McpTool(description = "End the single sign-on sessions of a person, or a single session given its session reference from "
@@ -75,7 +77,8 @@ public class CasAdministrationTools {
         @McpToolParam(description = "The username (principal id) of the person")
         final String username,
         @McpToolParam(description = "Only end the session with this session reference, as returned by findSessions", required = false)
-        @Nullable final String sessionReference) {
+        @Nullable final String sessionReference,
+        @Nullable final McpSyncServerExchange exchange) {
         val executor = singleLogoutRequestExecutor.getIfAvailable();
         if (executor == null) {
             return new RevokedSessions(username, 0, List.of(), "Single logout is not available");
@@ -94,10 +97,10 @@ public class CasAdministrationTools {
                 sessions.map(Ticket::getId).forEach(ticketIds::add);
             }
         }
-        val exchange = casMcpEvaluationContextFactory.currentHttpExchange();
+        val httpExchange = casMcpEvaluationContextFactory.currentHttpExchange();
         val revoked = ticketIds.stream()
             .map(ticketId -> {
-                val requests = executor.execute(ticketId, exchange.request(), exchange.response());
+                val requests = executor.execute(ticketId, httpExchange.request(), httpExchange.response());
                 return new RevokedSession(CasMcpSessionReferences.of(ticketId),
                     count(requests, LogoutRequestStatus.SUCCESS), count(requests, LogoutRequestStatus.FAILURE));
             })
@@ -110,6 +113,7 @@ public class CasAdministrationTools {
      *
      * @param username        the username, optional
      * @param clientIpAddress the client IP address, optional
+     * @param exchange the MCP exchange, to ask the person at the MCP client to confirm
      * @return the number of released records
      */
     @McpTool(description = "Release failed login attempts that CAS authentication throttling tracks, for a username, a client "
@@ -125,7 +129,8 @@ public class CasAdministrationTools {
         @McpToolParam(description = "Release records for this username, ignoring case", required = false)
         @Nullable final String username,
         @McpToolParam(description = "Release records for this client IP address", required = false)
-        @Nullable final String clientIpAddress) {
+        @Nullable final String clientIpAddress,
+        @Nullable final McpSyncServerExchange exchange) {
         if (StringUtils.isAllBlank(username, clientIpAddress)) {
             return new ReleasedThrottledLogins(username, clientIpAddress, 0, "A username or a client IP address is required");
         }
@@ -146,6 +151,7 @@ public class CasAdministrationTools {
      *
      * @param serviceId the numeric id of the registered service
      * @param enabled   whether the application is allowed
+     * @param exchange the MCP exchange, to ask the person at the MCP client to confirm
      * @return the status of the application
      */
     @McpTool(description = "Turn a registered application (service) on or off by its numeric id, through the enabled flag of "
@@ -161,7 +167,8 @@ public class CasAdministrationTools {
         @McpToolParam(description = "The numeric id of the registered service")
         final long serviceId,
         @McpToolParam(description = "true to allow the application, false to refuse it")
-        final boolean enabled) {
+        final boolean enabled,
+        @Nullable final McpSyncServerExchange exchange) {
         val registeredService = servicesManager.findServiceBy(serviceId);
         if (registeredService == null) {
             return new ServiceStatus(serviceId, null, null, null, null, "No registered service has this id");
@@ -186,6 +193,7 @@ public class CasAdministrationTools {
      *
      * @param loggerName the logger name
      * @param level      the level, or null to reset it
+     * @param exchange the MCP exchange, to ask the person at the MCP client to confirm
      * @return the logger levels
      */
     @McpTool(description = "Change the log level of a logger of this CAS server, such as org.apereo.cas or ROOT, until the "
@@ -202,7 +210,8 @@ public class CasAdministrationTools {
         @McpToolParam(description = "The name of the logger, such as org.apereo.cas, or ROOT for the root logger")
         final String loggerName,
         @McpToolParam(description = "The new level; leave it out to reset the logger to its configured level", required = false)
-        @Nullable final String level) {
+        @Nullable final String level,
+        @Nullable final McpSyncServerExchange exchange) {
         val system = loggingSystem.getIfAvailable();
         if (system == null || StringUtils.isBlank(loggerName)) {
             return new LogLevelChange(loggerName, null, null, system == null ? "The logging system is not available" : "A logger name is required");

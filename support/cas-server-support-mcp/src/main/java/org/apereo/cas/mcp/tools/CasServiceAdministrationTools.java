@@ -4,6 +4,7 @@ import module java.base;
 import org.apereo.cas.services.RegisteredService;
 import org.apereo.cas.services.ServicesManager;
 import com.fasterxml.jackson.annotation.JsonInclude;
+import io.modelcontextprotocol.server.McpSyncServerExchange;
 import lombok.RequiredArgsConstructor;
 import lombok.val;
 import org.apache.commons.lang3.StringUtils;
@@ -39,6 +40,7 @@ public class CasServiceAdministrationTools {
      * Save a registered service definition.
      *
      * @param definition the registered service definition as JSON
+     * @param exchange the MCP exchange, to ask the person at the MCP client to confirm
      * @return the saved service, or why it was not saved
      */
     @McpTool(description = "Save a registered service (application) definition, given as JSON including its @class: a new "
@@ -54,7 +56,8 @@ public class CasServiceAdministrationTools {
     @PreAuthorize("hasRole('MCP_OPERATOR')")
     public SavedService saveServiceDefinition(
         @McpToolParam(description = "The registered service definition as JSON, including its @class")
-        final String definition) {
+        final String definition,
+        @Nullable final McpSyncServerExchange exchange) {
         val tree = readTree(definition);
         if (tree.error() != null) {
             return SavedService.refused(List.of("The definition is not valid JSON: " + tree.error()));

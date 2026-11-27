@@ -26,6 +26,7 @@ import org.apereo.cas.interrupt.InterruptInquirer;
 import org.apereo.cas.interrupt.InterruptInquiryExecutionPlan;
 import org.apereo.cas.logout.slo.SingleLogoutRequestExecutor;
 import org.apereo.cas.logout.slo.SingleLogoutServiceLogoutUrlBuilder;
+import org.apereo.cas.mcp.CasMcpConfirmationInterceptor;
 import org.apereo.cas.mcp.CasMcpErrorHttpMessageConverter;
 import org.apereo.cas.mcp.CasMcpEvaluationContextFactory;
 import org.apereo.cas.mcp.CasMcpEventStreamFilter;
@@ -42,6 +43,7 @@ import org.apereo.cas.mcp.oauth.CasMcpAuthenticationEntryPoint;
 import org.apereo.cas.mcp.oauth.CasMcpBearerTokenAuthenticationFilter;
 import org.apereo.cas.mcp.oauth.CasMcpProtectedResource;
 import org.apereo.cas.mcp.oauth.CasMcpProtectedResourceMetadataController;
+import org.apereo.cas.mcp.prompts.CasMcpPrompts;
 import org.apereo.cas.mcp.resources.CasServiceResources;
 import org.apereo.cas.mcp.resources.CasSettingResources;
 import org.apereo.cas.mcp.tools.CasAdministrationTools;
@@ -163,6 +165,7 @@ import org.springframework.core.Ordered;
 import org.springframework.core.env.Environment;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.converter.HttpMessageConverters;
+import org.springframework.security.authorization.method.AuthorizationInterceptorsOrder;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.web.access.intercept.AuthorizationFilter;
@@ -1047,6 +1050,24 @@ public class CasMcpAutoConfiguration {
             @Qualifier(PrincipalResolver.BEAN_NAME_PRINCIPAL_RESOLVER)
             final PrincipalResolver principalResolver) {
             return new CasNotificationAdministrationTools(communicationsManager, principalResolver);
+        }
+
+        @Bean
+        @Role(BeanDefinition.ROLE_INFRASTRUCTURE)
+        @ConditionalOnMissingBean(name = "casMcpConfirmationAdvisor")
+        public static Advisor casMcpConfirmationAdvisor() {
+            val advisor = new DefaultPointcutAdvisor(CasMcpConfirmationInterceptor.OPERATOR_TOOLS, new CasMcpConfirmationInterceptor());
+            advisor.setOrder(AuthorizationInterceptorsOrder.PRE_AUTHORIZE.getOrder() + 1);
+            return advisor;
+        }
+    }
+
+    @Configuration(value = "CasMcpPromptsConfiguration", proxyBeanMethods = false)
+    static class CasMcpPromptsConfiguration {
+        @Bean
+        @ConditionalOnMissingBean(name = "casMcpPrompts")
+        public CasMcpPrompts casMcpPrompts() {
+            return new CasMcpPrompts();
         }
     }
 }

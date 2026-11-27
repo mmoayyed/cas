@@ -1,5 +1,6 @@
 const cas = require("../../cas.js");
 const assert = require("assert");
+const https = require("https");
 
 const MCP_ENDPOINT = "https://localhost:8443/cas/mcp";
 const MCP_ADMIN = `Basic ${btoa("mcpadmin:Mellon")}`;
@@ -24,12 +25,12 @@ function jsonRpc(method, params) {
     return JSON.stringify({jsonrpc: "2.0", id: requestId, method: method, params: params});
 }
 
-async function initialize(authorization = MCP_ADMIN) {
+async function initialize(authorization = MCP_ADMIN, capabilities = {}) {
     let sessionId = undefined;
     await cas.doRequest(MCP_ENDPOINT, "POST", mcpHeaders(undefined, authorization), 200,
         jsonRpc("initialize", {
             protocolVersion: "2025-11-25",
-            capabilities: {},
+            capabilities: capabilities,
             clientInfo: {name: "cas-puppeteer", version: "1.0.0"}
         }),
         async (res) => {
@@ -59,6 +60,49 @@ async function callTool(sessionId, name, args, authorization = MCP_ADMIN) {
     const text = result.content[0].text;
     await cas.log(`Tool ${name} returned: ${text}`);
     return JSON.parse(text);
+}
+
+function callToolWithConfirmation(sessionId, name, args, answer, authorization = MCP_OPERATOR) {
+    return new Promise((resolve, reject) => {
+        const request = https.request(MCP_ENDPOINT, {
+            method: "POST",
+            headers: mcpHeaders(sessionId, authorization),
+            rejectUnauthorized: false
+        }, (response) => {
+            let buffer = "";
+            let elicitation = undefined;
+            response.setEncoding("utf8");
+            response.on("data", async (chunk) => {
+                buffer += chunk.replace(/\r\n/g, "\n");
+                let separator = buffer.indexOf("\n\n");
+                while (separator >= 0) {
+                    const event = buffer.substring(0, separator);
+                    buffer = buffer.substring(separator + 2);
+                    separator = buffer.indexOf("\n\n");
+                    const data = event.split("\n")
+                        .filter((line) => line.startsWith("data:"))
+                        .map((line) => line.substring("data:".length).trim())
+                        .join("");
+                    if (data.length === 0) {
+                        continue;
+                    }
+                    const message = JSON.parse(data);
+                    if (message.method === "elicitation/create") {
+                        elicitation = message.params;
+                        await cas.log(`CAS asks for confirmation: ${elicitation.message}`);
+                        await cas.doRequest(MCP_ENDPOINT, "POST", mcpHeaders(sessionId, authorization), 202,
+                            JSON.stringify({jsonrpc: "2.0", id: message.id, result: answer}));
+                    } else if (message.result !== undefined || message.error !== undefined) {
+                        resolve({elicitation: elicitation, response: message});
+                    }
+                }
+            });
+            response.on("error", reject);
+        });
+        request.on("error", reject);
+        request.write(jsonRpc("tools/call", {name: name, arguments: args}));
+        request.end();
+    });
 }
 
 (async () => {
@@ -139,4 +183,22 @@ async function callTool(sessionId, name, args, authorization = MCP_ADMIN) {
     const notified = await callTool(operator, "sendTestNotification",
         {username: "casuser", channel: "EMAIL", from: "cas@example.org"}, MCP_OPERATOR);
     assert(notified.sent === false && notified.reason !== undefined, JSON.stringify(notified));
+
+    await cas.separator();
+    const confirming = await initialize(MCP_OPERATOR, {elicitation: {form: {}}});
+    const declined = await callToolWithConfirmation(confirming, "setLogLevel",
+        {loggerName: "org.apereo.cas.trusted", level: "TRACE"}, {action: "decline"});
+    assert(declined.elicitation !== undefined && declined.elicitation.message.includes("org.apereo.cas.trusted"),
+        JSON.stringify(declined));
+    assert(declined.elicitation.requestedSchema.properties.confirm.type === "boolean", JSON.stringify(declined.elicitation));
+    assert(declined.response.result.isError === true, JSON.stringify(declined.response));
+
+    const confirmed = await callToolWithConfirmation(confirming, "setLogLevel",
+        {loggerName: "org.apereo.cas.trusted", level: "TRACE"}, {action: "accept", content: {confirm: true}});
+    assert(confirmed.response.result.isError !== true, JSON.stringify(confirmed.response));
+    assert(JSON.parse(confirmed.response.result.content[0].text).level === "TRACE", JSON.stringify(confirmed.response));
+
+    const restored = await callToolWithConfirmation(confirming, "setLogLevel",
+        {loggerName: "org.apereo.cas.trusted"}, {action: "accept", content: {confirm: true}});
+    assert(JSON.parse(restored.response.result.content[0].text).previousLevel === "TRACE", JSON.stringify(restored.response));
 })();

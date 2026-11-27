@@ -3,6 +3,7 @@ package org.apereo.cas.mcp.tools;
 import module java.base;
 import org.apereo.cas.webauthn.storage.WebAuthnCredentialRepository;
 import com.fasterxml.jackson.annotation.JsonInclude;
+import io.modelcontextprotocol.server.McpSyncServerExchange;
 import lombok.RequiredArgsConstructor;
 import lombok.val;
 import org.jspecify.annotations.Nullable;
@@ -26,6 +27,7 @@ public class CasWebAuthnAdministrationTools {
      * Remove the WebAuthn devices of a person.
      *
      * @param username the username
+     * @param exchange the MCP exchange, to ask the person at the MCP client to confirm
      * @return the number of removed devices
      */
     @McpTool(description = "Remove all WebAuthn security keys and passkeys a person has registered for multifactor "
@@ -37,7 +39,8 @@ public class CasWebAuthnAdministrationTools {
     @PreAuthorize("hasRole('MCP_OPERATOR')")
     public RemovedWebAuthnDevices removeWebAuthnDevices(
         @McpToolParam(description = "The username (principal id) of the person")
-        final String username) {
+        final String username,
+        @Nullable final McpSyncServerExchange exchange) {
         val repository = webAuthnCredentialRepository.getIfAvailable();
         if (repository == null) {
             return new RemovedWebAuthnDevices(username, 0, "WebAuthn multifactor authentication is not configured");

@@ -45,8 +45,9 @@ the `ROLE_MCP_OPERATOR` role/authority. A tool call made by a user without the r
 result and the tool is not executed.
 
 Every tool call and resource read is recorded in the [audit log](../audits/Audits.html) under the MCP user who made it,
-with the action `MCP_TOOL_CALL_SUCCESS`, `MCP_TOOL_CALL_DENIED` or `MCP_TOOL_CALL_FAILED` and, as the resource, the tool name
-or resource URI along with its arguments. Calls refused for lack of the `MCP_ADMIN` role are recorded too.
+with the action `MCP_TOOL_CALL_SUCCESS`, `MCP_TOOL_CALL_DENIED`, `MCP_TOOL_CALL_NOT_CONFIRMED` or `MCP_TOOL_CALL_FAILED` and,
+as the resource, the tool name or resource URI along with its arguments. Calls refused for lack of the `MCP_ADMIN` role are
+recorded too, and so are [changes the person did not confirm](#confirmation).
 
 <div class="alert alert-warning">:warning: <strong>Usage Warning!</strong><p>
 The tools return sensitive data, such as the attributes CAS resolves and releases for a person, single sign-on
@@ -295,7 +296,39 @@ These tools change CAS for real, with no undo. Only grant the <code>MCP_OPERATOR
 logs; reset the logger when done.
 </p></div>
 
+### Confirmation
+
+Before a tool that changes CAS runs, CAS asks the person at the MCP client to confirm it, through
+[elicitation](https://modelcontextprotocol.io/specification/2025-11-25/client/elicitation): the client shows a message such
+as `Revoke Single Sign-On Sessions (username: casuser). Should CAS go ahead?` with a single *Confirm* checkbox. The tool runs only when the
+person accepts with the box checked. When the person declines or dismisses the request, or the client does not answer in
+time, the tool is not run, the call ends with an error result, and the audit log records it as `MCP_TOOL_CALL_NOT_CONFIRMED`.
+The request travels on the response stream of the tool call itself, so the client must accept server-sent events for
+`tools/call`, as Streamable HTTP clients do; how long CAS waits for an answer is the request timeout of the MCP server,
+which CAS sets to two minutes.
+
+Clients that do not declare the elicitation capability when they connect cannot be asked. For those, the tool runs
+without confirmation, as before, and CAS logs a warning and sends it to the client as a log message. Elicitation lets the
+person stay in control of what an agent does, but it is not an access control: role checks still decide who may call these
+tools, and a client could answer on its own.
+
 {% include_cached featuretoggles.html features="AI.mcp-write" %}
+
+## Prompts
+
+The MCP server offers [prompts](https://modelcontextprotocol.io/specification/2025-11-25/server/prompts), ready-made
+instructions that walk an agent through a common task with the tools of CAS. A prompt only tells the agent which tools to
+call and what to report; it changes nothing, asks the agent not to call tools that change CAS unless the person asks, and
+the tools it names keep their own role checks. Getting a prompt requires the `ROLE_MCP_ADMIN` role/authority.
+
+| Prompt                       | Arguments                                         | Description                                                                                                                                                      |
+|------------------------------|---------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `diagnoseLoginFailure`       | `username`, `service` (optional)                  | Find out why a person cannot log into an application: the person's attributes, throttling, authentication events, each step of `explainLogin` and their sessions. |
+| `onboardSamlServiceProvider` | `entityId`, `metadataLocation` (optional)         | Read the metadata of a SAML2 service provider, check its certificates and endpoints, and draft and validate a service definition for it, to save only on request. |
+| `auditOidcClient`            | `clientId`                                        | Review an OpenID Connect or OAuth client: redirect URIs, grants, PKCE, secrets, keys, token lifetimes, tokens and released claims, and report risks.                |
+{: .cas-mcp-tools}
+
+Prompts are advertised only when the prompt capability of the MCP server is turned on, which CAS does by default.
 
 ## Resources
 

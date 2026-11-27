@@ -10,6 +10,7 @@ import org.apereo.cas.consent.ConsentRepository;
 import org.apereo.cas.mcp.audit.CasMcpOperation;
 import org.apereo.cas.mcp.oauth.CasMcpAuthenticationEntryPoint;
 import org.apereo.cas.mcp.oauth.CasMcpProtectedResource;
+import org.apereo.cas.mcp.prompts.CasMcpPrompts;
 import org.apereo.cas.multitenancy.TenantDefinition;
 import org.apereo.cas.multitenancy.TenantsManager;
 import org.apereo.cas.services.DefaultRegisteredServiceAccessStrategy;
@@ -305,6 +306,57 @@ class CasMcpServerTests {
                 "{\"uri\":\"cas://services/%s\"}".formatted(registeredService.getId())));
             val definition = JsonPath.<String>read(read, "$.result.contents[0].text");
             assertEquals(registeredService.getServiceId(), JsonPath.read(definition, "$.serviceId"), definition);
+        }
+
+        @Test
+        void verifyPrompts() throws Throwable {
+            mockMvc.perform(post(MCP_ENDPOINT)
+                    .with(MCP_ADMIN)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .accept(MediaType.APPLICATION_JSON, MediaType.TEXT_EVENT_STREAM)
+                    .content(jsonRpcRequest("initialize", """
+                        {"protocolVersion":"2025-11-25","capabilities":{},"clientInfo":{"name":"cas-tests","version":"1.0.0"}}
+                        """)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.result.capabilities.prompts").exists());
+            val sessionId = initialize(MCP_ADMIN);
+            val prompts = send(MCP_ADMIN, sessionId, jsonRpcRequest("prompts/list", "{}"));
+            assertTrue(JsonPath.<List<String>>read(prompts, "$.result.prompts[*].name").containsAll(List.of(
+                CasMcpPrompts.DIAGNOSE_LOGIN_FAILURE, CasMcpPrompts.ONBOARD_SAML_SERVICE_PROVIDER, CasMcpPrompts.AUDIT_OIDC_CLIENT)), prompts);
+
+            val diagnose = send(MCP_ADMIN, sessionId, jsonRpcRequest("prompts/get", """
+                {"name":"diagnoseLoginFailure","arguments":{"username":"casuser","service":"https://app.example.org"}}
+                """));
+            val diagnoseText = JsonPath.<String>read(diagnose, "$.result.messages[0].content.text");
+            assertTrue(diagnoseText.contains("casuser") && diagnoseText.contains("https://app.example.org")
+                && diagnoseText.contains("explainLogin"), diagnoseText);
+            assertEquals("user", JsonPath.read(diagnose, "$.result.messages[0].role"), diagnose);
+
+            val onboard = send(MCP_ADMIN, sessionId, jsonRpcRequest("prompts/get", """
+                {"name":"onboardSamlServiceProvider","arguments":{"entityId":"https://sp.example.org"}}
+                """));
+            val onboardText = JsonPath.<String>read(onboard, "$.result.messages[0].content.text");
+            assertTrue(onboardText.contains("https://sp.example.org") && onboardText.contains("resolveSamlMetadata"), onboardText);
+
+            val audit = send(MCP_ADMIN, sessionId, jsonRpcRequest("prompts/get", """
+                {"name":"auditOidcClient","arguments":{"clientId":"mcp-client"}}
+                """));
+            val auditText = JsonPath.<String>read(audit, "$.result.messages[0].content.text");
+            assertTrue(auditText.contains("mcp-client") && auditText.contains("findOidcClient"), auditText);
+
+            val userSession = initialize(CAS_USER);
+            val denied = mockMvc.perform(post(MCP_ENDPOINT)
+                    .with(CAS_USER)
+                    .header(MCP_SESSION_ID, userSession)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .accept(MediaType.APPLICATION_JSON, MediaType.TEXT_EVENT_STREAM)
+                    .content(jsonRpcRequest("prompts/get", """
+                        {"name":"auditOidcClient","arguments":{"clientId":"mcp-client"}}
+                        """)))
+                .andReturn()
+                .getResponse()
+                .getContentAsString(StandardCharsets.UTF_8);
+            assertFalse(denied.contains("findOidcClient"), denied);
         }
 
         @Test
@@ -1057,6 +1109,7 @@ class CasMcpServerTests {
                 assertEquals(List.of(false), JsonPath.read(response, prefix + ".annotations.readOnlyHint"), response);
                 assertEquals(List.of(!NON_DESTRUCTIVE_WRITE_TOOLS.contains(tool)), JsonPath.read(response, prefix + ".annotations.destructiveHint"), response);
                 assertFalse(JsonPath.<List<Object>>read(response, prefix + ".outputSchema").isEmpty(), tool);
+                assertEquals(List.of(), JsonPath.read(response, prefix + ".inputSchema.properties.exchange"), response);
             }
         }
 

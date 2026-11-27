@@ -3,6 +3,7 @@ package org.apereo.cas.mcp.tools;
 import module java.base;
 import org.apereo.cas.trusted.authentication.api.MultifactorAuthenticationTrustStorage;
 import com.fasterxml.jackson.annotation.JsonInclude;
+import io.modelcontextprotocol.server.McpSyncServerExchange;
 import lombok.RequiredArgsConstructor;
 import lombok.val;
 import org.jspecify.annotations.Nullable;
@@ -27,6 +28,7 @@ public class CasTrustedDeviceAdministrationTools {
      *
      * @param username the username
      * @param deviceId the id of a single device, optional
+     * @param exchange the MCP exchange, to ask the person at the MCP client to confirm
      * @return the number of removed devices
      */
     @McpTool(description = "Remove the devices a person has registered as trusted for multifactor authentication, or a "
@@ -41,7 +43,8 @@ public class CasTrustedDeviceAdministrationTools {
         @McpToolParam(description = "The username (principal id) of the person")
         final String username,
         @McpToolParam(description = "Only remove the device with this id, as returned by findTrustedDevices", required = false)
-        @Nullable final Long deviceId) {
+        @Nullable final Long deviceId,
+        @Nullable final McpSyncServerExchange exchange) {
         val storage = trustStorage.getIfAvailable();
         if (storage == null) {
             return new RemovedTrustedDevices(username, 0, "Multifactor authentication trusted devices are not configured");

@@ -13,6 +13,7 @@ import org.apereo.cas.notifications.mail.EmailMessageRequest;
 import org.apereo.cas.notifications.sms.SmsRequest;
 import org.apereo.cas.util.function.FunctionUtils;
 import com.fasterxml.jackson.annotation.JsonInclude;
+import io.modelcontextprotocol.server.McpSyncServerExchange;
 import lombok.RequiredArgsConstructor;
 import lombok.val;
 import org.apache.commons.lang3.StringUtils;
@@ -49,6 +50,7 @@ public class CasNotificationAdministrationTools {
      * @param channel   email or text message
      * @param from      the sender address or number
      * @param attribute the attribute that holds the recipient, optional
+     * @param exchange the MCP exchange, to ask the person at the MCP client to confirm
      * @return what was sent
      */
     @McpTool(description = "Send a fixed test message to a person through the email or text message (SMS) sender CAS is "
@@ -69,7 +71,8 @@ public class CasNotificationAdministrationTools {
         @McpToolParam(description = "The sender: an email address for EMAIL, a phone number or sender id for SMS")
         final String from,
         @McpToolParam(description = "The attribute of the person that holds the recipient, if not one of the usual ones", required = false)
-        @Nullable final String attribute) {
+        @Nullable final String attribute,
+        @Nullable final McpSyncServerExchange exchange) {
         val manager = communicationsManager.getIfAvailable();
         if (manager == null) {
             return SentNotification.refused(username, channel, "Notifications are not configured");

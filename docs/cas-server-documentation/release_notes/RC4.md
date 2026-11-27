@@ -1035,6 +1035,11 @@ one-time codes can be added when `cas.authn.mfa.simple.mail.accepted-email-patte
   verifiable credentials. [Tools that change CAS](../installation/Admin-MCP-Server.html#tools-that-change-cas) can now also
   rotate client secrets with a grace period, save service definitions while keeping redacted secrets, refresh SAML2 service
   provider metadata, unlock accounts and send test notifications to a person's own email or phone.
+- {: .new data-area="operations"} [Tools that change CAS](../installation/Admin-MCP-Server.html#confirmation) ask the person
+  at the MCP client to confirm each call through elicitation before they run, and do nothing when the person declines;
+  such calls are audited as `MCP_TOOL_CALL_NOT_CONFIRMED`. Clients without elicitation keep working, with a warning.
+  The MCP server also offers [prompts](../installation/Admin-MCP-Server.html#prompts) to diagnose a failed login, onboard a
+  SAML2 service provider and audit an OpenID Connect client.
 
 ### Attribute Release
 {: .fixed data-area="attributes"}

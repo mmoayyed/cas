@@ -93,6 +93,15 @@ description: "Review and extend the CAS MCP server (support/cas-server-support-m
   `spring.ai.mcp.server.name`; `cas.*` settings and the `module` filter are covered by unit tests (`McpSettingsMetadata.json`).
 - MCP completion (`@McpComplete`) only completes resource-template and prompt arguments, never tool parameters. Completion
   methods carry `@PreAuthorize` like tools and are not audited; `spring.ai.mcp.server.capabilities.completion` must be true.
+- Tools that change CAS (`@PreAuthorize` naming `MCP_OPERATOR`) take a trailing `@Nullable McpSyncServerExchange exchange`
+  parameter, which Spring AI injects and leaves out of the input schema. `CasMcpConfirmationInterceptor` (advisor ordered
+  right after `PRE_AUTHORIZE`, so unauthorized calls are never confirmed) asks for confirmation through elicitation on the
+  request's own response stream and throws `CasMcpOperationNotConfirmedException` (audited `NOT_CONFIRMED`) unless the
+  person accepts with `confirm: true`; without the client capability (or a `null` exchange in bean-level tests) the call
+  proceeds with a warning. New write tools must add that parameter, or they run unconfirmed. The audit interceptor drops the
+  exchange from recorded arguments. `spring.ai.mcp.server.request-timeout` bounds the wait.
+- Prompts live in `CasMcpPrompts` (`@McpPrompt`, `@McpArg`, `McpSchema.GetPromptResult`, `@PreAuthorize` MCP_ADMIN, not
+  audited); the prompt capability is on in the webapp and in `BaseCasMcpTests`.
 - MCP unit tests carry `@Tag("MCP")` (`./testcas.sh --category mcp`, or `testMCP`); the runtime hints test stays `Native`.
 - Claude's shells have no JDK 25 or Maven Central; `build/mcp-run.sh` compiles, runs checkstyle, the `MCP` tests
   and the MCP puppeteer scenarios on the Mac.

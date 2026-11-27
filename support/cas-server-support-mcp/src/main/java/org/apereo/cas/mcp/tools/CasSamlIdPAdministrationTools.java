@@ -5,6 +5,7 @@ import org.apereo.cas.services.ServicesManager;
 import org.apereo.cas.support.saml.services.SamlRegisteredService;
 import org.apereo.cas.support.saml.services.idp.metadata.cache.SamlRegisteredServiceCachingMetadataResolver;
 import com.fasterxml.jackson.annotation.JsonInclude;
+import io.modelcontextprotocol.server.McpSyncServerExchange;
 import lombok.RequiredArgsConstructor;
 import lombok.val;
 import net.shibboleth.shared.resolver.CriteriaSet;
@@ -34,6 +35,7 @@ public class CasSamlIdPAdministrationTools {
      * Drop the cached metadata of a SAML2 service provider and fetch it again.
      *
      * @param entityId the entity id of the service provider
+     * @param exchange the MCP exchange, to ask the person at the MCP client to confirm
      * @return whether the metadata resolves again
      */
     @McpTool(description = "Drop the cached metadata of a SAML2 service provider, so that CAS reads it again from its metadata "
@@ -47,7 +49,8 @@ public class CasSamlIdPAdministrationTools {
     @PreAuthorize("hasRole('MCP_OPERATOR')")
     public RefreshedMetadata refreshSamlMetadata(
         @McpToolParam(description = "The entity id of the SAML2 service provider")
-        final String entityId) {
+        final String entityId,
+        @Nullable final McpSyncServerExchange exchange) {
         val resolver = metadataResolver.getIfAvailable();
         if (resolver == null) {
             return RefreshedMetadata.refused(entityId, "The SAML2 identity provider is not configured");

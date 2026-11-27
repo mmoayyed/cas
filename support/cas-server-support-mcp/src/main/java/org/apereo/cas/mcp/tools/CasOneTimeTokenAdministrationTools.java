@@ -3,6 +3,7 @@ package org.apereo.cas.mcp.tools;
 import module java.base;
 import org.apereo.cas.otp.repository.credentials.OneTimeTokenCredentialRepository;
 import com.fasterxml.jackson.annotation.JsonInclude;
+import io.modelcontextprotocol.server.McpSyncServerExchange;
 import lombok.RequiredArgsConstructor;
 import lombok.val;
 import org.jspecify.annotations.Nullable;
@@ -27,6 +28,7 @@ public class CasOneTimeTokenAdministrationTools {
      *
      * @param username  the username
      * @param accountId the id of a single device, optional
+     * @param exchange the MCP exchange, to ask the person at the MCP client to confirm
      * @return the number of removed devices
      */
     @McpTool(description = "Remove the one-time password devices, such as Google Authenticator, a person has registered for "
@@ -41,7 +43,8 @@ public class CasOneTimeTokenAdministrationTools {
         @McpToolParam(description = "The username (principal id) of the person")
         final String username,
         @McpToolParam(description = "Only remove the device with this id, as returned by findOneTimeTokenAccounts", required = false)
-        @Nullable final Long accountId) {
+        @Nullable final Long accountId,
+        @Nullable final McpSyncServerExchange exchange) {
         val repository = credentialRepository.getIfAvailable();
         if (repository == null) {
             return new RemovedOneTimeTokenAccounts(username, 0, "One-time password multifactor authentication is not configured");

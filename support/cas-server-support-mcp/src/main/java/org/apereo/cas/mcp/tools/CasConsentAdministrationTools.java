@@ -4,6 +4,7 @@ import module java.base;
 import org.apereo.cas.consent.ConsentRepository;
 import org.apereo.cas.util.function.FunctionUtils;
 import com.fasterxml.jackson.annotation.JsonInclude;
+import io.modelcontextprotocol.server.McpSyncServerExchange;
 import lombok.RequiredArgsConstructor;
 import lombok.val;
 import org.jspecify.annotations.Nullable;
@@ -28,6 +29,7 @@ public class CasConsentAdministrationTools {
      *
      * @param username   the username
      * @param decisionId the id of a single decision, optional
+     * @param exchange the MCP exchange, to ask the person at the MCP client to confirm
      * @return the number of revoked decisions
      */
     @McpTool(description = "Revoke the attribute consent decisions of a person, or a single decision given its id from "
@@ -41,7 +43,8 @@ public class CasConsentAdministrationTools {
         @McpToolParam(description = "The username (principal id) of the person")
         final String username,
         @McpToolParam(description = "Only revoke the decision with this id, as returned by findConsentDecisions", required = false)
-        @Nullable final Long decisionId) {
+        @Nullable final Long decisionId,
+        @Nullable final McpSyncServerExchange exchange) {
         val repository = consentRepository.getIfAvailable();
         if (repository == null) {
             return new RevokedConsentDecisions(username, 0, "Attribute consent is not configured");

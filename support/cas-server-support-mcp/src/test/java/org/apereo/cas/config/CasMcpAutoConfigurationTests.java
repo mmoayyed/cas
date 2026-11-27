@@ -411,15 +411,15 @@ class CasMcpAutoConfigurationTests {
             assertNull(context.getStartupFailure());
             writeTools.forEach(bean -> assertTrue(context.containsBean(bean), bean));
             assertEquals("Attribute consent is not configured",
-                context.getBean(CasConsentAdministrationTools.class).revokeConsentDecisions("casuser", null).reason());
+                context.getBean(CasConsentAdministrationTools.class).revokeConsentDecisions("casuser", null, null).reason());
             assertEquals("Multifactor authentication trusted devices are not configured",
-                context.getBean(CasTrustedDeviceAdministrationTools.class).removeTrustedDevices("casuser", null).reason());
+                context.getBean(CasTrustedDeviceAdministrationTools.class).removeTrustedDevices("casuser", null, null).reason());
             assertEquals("One-time password multifactor authentication is not configured",
-                context.getBean(CasOneTimeTokenAdministrationTools.class).removeOneTimeTokenAccounts("casuser", null).reason());
+                context.getBean(CasOneTimeTokenAdministrationTools.class).removeOneTimeTokenAccounts("casuser", null, null).reason());
             assertEquals("WebAuthn multifactor authentication is not configured",
-                context.getBean(CasWebAuthnAdministrationTools.class).removeWebAuthnDevices("casuser").reason());
+                context.getBean(CasWebAuthnAdministrationTools.class).removeWebAuthnDevices("casuser", null).reason());
             assertEquals("A username or a client id is required",
-                context.getBean(CasOAuthAdministrationTools.class).revokeOAuthTokens(null, null).reason());
+                context.getBean(CasOAuthAdministrationTools.class).revokeOAuthTokens(null, null, null).reason());
         });
         enabled.withClassLoader(new FilteredClassLoader(OAuth20AccessToken.class))
             .run(context -> assertFalse(context.containsBean("casOAuthAdministrationTools")));
@@ -431,10 +431,10 @@ class CasMcpAutoConfigurationTests {
         val tools = new CasAdministrationTools(mock(TicketRegistry.class), mock(ServicesManager.class), mock(CasMcpEvaluationContextFactory.class),
             beanFactory.getBeanProvider(SingleLogoutRequestExecutor.class), beanFactory.getBeanProvider(ThrottledSubmissionsStore.class),
             beanFactory.getBeanProvider(LoggingSystem.class));
-        assertEquals("Single logout is not available", tools.revokeSessions("casuser", null).reason());
-        assertEquals("No throttle store is available", tools.releaseThrottledLogins("casuser", null).reason());
-        assertEquals("The logging system is not available", tools.setLogLevel("org.apereo.cas", "DEBUG").reason());
-        assertEquals("No registered service has this id", tools.setServiceEnabled(1, false).reason());
+        assertEquals("Single logout is not available", tools.revokeSessions("casuser", null, null).reason());
+        assertEquals("No throttle store is available", tools.releaseThrottledLogins("casuser", null, null).reason());
+        assertEquals("The logging system is not available", tools.setLogLevel("org.apereo.cas", "DEBUG", null).reason());
+        assertEquals("No registered service has this id", tools.setServiceEnabled(1, false, null).reason());
     }
     @Test
     void verifyOptionalToolGroupsActivation() {
@@ -510,7 +510,7 @@ class CasMcpAutoConfigurationTests {
         assertFalse(status.toString().contains("Rex"));
 
         val unlocked = new CasPasswordManagementAdministrationTools(beanFactory.getBeanProvider(PasswordManagementService.class))
-            .unlockAccount("casuser");
+            .unlockAccount("casuser", null);
         assertTrue(unlocked.unlocked());
         verify(service).unlockAccount(argThat(credential -> "casuser".equals(credential.getId())));
     }
@@ -640,14 +640,14 @@ class CasMcpAutoConfigurationTests {
         val metadataResolver = mock(SamlRegisteredServiceCachingMetadataResolver.class);
         when(metadataResolver.resolve(any(), any())).thenReturn(cachedResult);
         val refreshed = new CasSamlIdPAdministrationTools(servicesManager, providerOf(SamlRegisteredServiceCachingMetadataResolver.class, metadataResolver))
-            .refreshSamlMetadata("https://sp.example.org");
+            .refreshSamlMetadata("https://sp.example.org", null);
         assertTrue(refreshed.invalidated());
         assertTrue(refreshed.resolved());
         verify(metadataResolver).invalidate(eq(samlService), any());
         val failingResolver = mock(SamlRegisteredServiceCachingMetadataResolver.class);
         doThrow(new IllegalStateException("Cache is unavailable")).when(failingResolver).invalidate(any(), any());
         val failed = new CasSamlIdPAdministrationTools(servicesManager, providerOf(SamlRegisteredServiceCachingMetadataResolver.class, failingResolver))
-            .refreshSamlMetadata("https://sp.example.org");
+            .refreshSamlMetadata("https://sp.example.org", null);
         assertFalse(failed.invalidated());
         assertTrue(failed.reason().contains("Cache is unavailable"));
 
@@ -662,15 +662,15 @@ class CasMcpAutoConfigurationTests {
                 Map.<String, List<Object>>of("mail", List.of("casuser@example.org"), "phoneNumber", List.of("+15550100"))));
         val notifications = new CasNotificationAdministrationTools(providerOf(CommunicationsManager.class, manager), principalResolver);
         val email = notifications.sendTestNotification("casuser", CasNotificationAdministrationTools.NotificationChannel.EMAIL,
-            "cas@example.org", null);
+            "cas@example.org", null, null);
         assertTrue(email.sent(), email::toString);
         assertEquals(List.of("c***@example.org"), email.recipients());
         verify(manager).email(argThat(request -> request.getRecipients().equals(List.of("casuser@example.org"))));
-        val sms = notifications.sendTestNotification("casuser", CasNotificationAdministrationTools.NotificationChannel.SMS, "CAS", null);
+        val sms = notifications.sendTestNotification("casuser", CasNotificationAdministrationTools.NotificationChannel.SMS, "CAS", null, null);
         assertTrue(sms.sent(), sms::toString);
         assertEquals("phoneNumber", sms.attribute());
         assertNotNull(notifications.sendTestNotification("casuser", CasNotificationAdministrationTools.NotificationChannel.EMAIL,
-            "cas@example.org", "alternateEmail").reason());
+            "cas@example.org", "alternateEmail", null).reason());
     }
 
     private static <T> ObjectProvider<T> providerOf(final Class<T> type, final T bean) {

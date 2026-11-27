@@ -4,6 +4,7 @@ import module java.base;
 import org.apereo.cas.authentication.credential.BasicIdentifiableCredential;
 import org.apereo.cas.pm.PasswordManagementService;
 import com.fasterxml.jackson.annotation.JsonInclude;
+import io.modelcontextprotocol.server.McpSyncServerExchange;
 import lombok.RequiredArgsConstructor;
 import lombok.val;
 import org.jspecify.annotations.Nullable;
@@ -27,6 +28,7 @@ public class CasPasswordManagementAdministrationTools {
      * Unlock an account.
      *
      * @param username the username
+     * @param exchange the MCP exchange, to ask the person at the MCP client to confirm
      * @return whether the account was unlocked
      */
     @McpTool(description = "Unlock a person's account in the account store behind password management, such as LDAP or a "
@@ -39,7 +41,8 @@ public class CasPasswordManagementAdministrationTools {
     @PreAuthorize("hasRole('MCP_OPERATOR')")
     public UnlockedAccount unlockAccount(
         @McpToolParam(description = "The username of the person")
-        final String username) {
+        final String username,
+        @Nullable final McpSyncServerExchange exchange) {
         val service = passwordManagementService.getIfAvailable();
         if (service == null) {
             return new UnlockedAccount(username, false, "Password management is not configured");

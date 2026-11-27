@@ -14,6 +14,7 @@ import org.apereo.cas.util.function.FunctionUtils;
 import org.apereo.cas.util.gen.DefaultRandomStringGenerator;
 import org.apereo.cas.util.gen.RandomStringGenerator;
 import com.fasterxml.jackson.annotation.JsonInclude;
+import io.modelcontextprotocol.server.McpSyncServerExchange;
 import lombok.RequiredArgsConstructor;
 import lombok.val;
 import org.apache.commons.lang3.StringUtils;
@@ -46,6 +47,7 @@ public class CasOAuthAdministrationTools {
      *
      * @param username the username, optional
      * @param clientId the client id, optional
+     * @param exchange the MCP exchange, to ask the person at the MCP client to confirm
      * @return the number of revoked tokens
      */
     @McpTool(description = "Revoke the OAuth and OpenID Connect access tokens and refresh tokens that CAS issued to a person, "
@@ -61,7 +63,8 @@ public class CasOAuthAdministrationTools {
         @McpToolParam(description = "Only tokens issued to this username (principal id)", required = false)
         @Nullable final String username,
         @McpToolParam(description = "Only tokens issued to this OAuth client id", required = false)
-        @Nullable final String clientId) {
+        @Nullable final String clientId,
+        @Nullable final McpSyncServerExchange exchange) {
         if (StringUtils.isAllBlank(username, clientId)) {
             return new RevokedOAuthTokens(username, clientId, 0, 0, "A username or a client id is required");
         }
@@ -81,6 +84,7 @@ public class CasOAuthAdministrationTools {
      * @param clientId    the client id
      * @param gracePeriod how long the current secrets stay valid, as an ISO-8601 duration
      * @param expiresIn   how long the new secret is valid, as an ISO-8601 duration, optional
+     * @param exchange the MCP exchange, to ask the person at the MCP client to confirm
      * @return the new secret, once, and when the previous secrets expire
      */
     @McpTool(description = "Rotate the client secret of an OAuth or OpenID Connect application: add a newly generated secret "
@@ -100,7 +104,8 @@ public class CasOAuthAdministrationTools {
         @Nullable final String gracePeriod,
         @McpToolParam(description = "How long the new secret is valid, as an ISO-8601 duration such as P90D; it does not "
             + "expire by default", required = false)
-        @Nullable final String expiresIn) {
+        @Nullable final String expiresIn,
+        @Nullable final McpSyncServerExchange exchange) {
         val registeredService = OAuth20Utils.getRegisteredOAuthServiceByClientId(servicesManager, clientId);
         if (registeredService == null) {
             return RotatedClientSecret.refused(clientId, "No OAuth or OpenID Connect application has the client id " + clientId);
